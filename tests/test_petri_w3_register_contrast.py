@@ -1304,6 +1304,15 @@ def test_truncation_validates_the_live_replacement_before_voided_history(
     c["plan"].write_text(json.dumps(plan), encoding="utf-8")
     prior = {"trigger": "petri-audit", "nonce": "superseded", "fired_utc": "2026-10-20T00:00:00Z",
              "resolved": True, "evicted": True}
+    # Preserve the real lifecycle: register and fire the predecessor while live,
+    # then commit its void and the replacement registration before the new nonce.
+    initial = deepcopy(plan)
+    initial["fires"] = [f for f in initial["fires"] if f["journal_nonce"] != "c2"]
+    next(f for f in initial["fires"] if f["journal_nonce"] == "superseded")["voided"] = None
+    c["plan"].write_text(json.dumps(initial))
+    final_ready(monkeypatch, c, (prior,))
+    c["plan"].write_text(json.dumps(plan))
+    commit_synthetic(tmp_path)
     journal = [prior]
     if live_state not in ("missing", "no_live_fire"):
         journal.append({**prior, "nonce": "c2", "resolved": live_state != "pending",
@@ -2728,3 +2737,192 @@ def test_provider_history_checks_later_fires_after_restoration(
     args = w3.build_parser().parse_args(cli_args(c, "--final", "--out", str(tmp_path / "final.json")))
     problems, _ = w3.final_problems(args, prep)
     assert any("judge_providers changed after fire evidence" in problem for problem in problems)
+
+
+@pytest.mark.parametrize("change", ["missing", "changed", "null"])
+def test_exploratory_label_is_an_implemented_contract(tmp_path: Path, change: str) -> None:
+    doc = synthetic_plan(tmp_path / "seeds.json")
+    if change == "missing":
+        del doc["exploratory_outcomes"]["label"]
+    else:
+        doc["exploratory_outcomes"]["label"] = None if change == "null" else "registered headline"
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(doc))
+    with pytest.raises(w3.AnalysisRefusal, match="exploratory_outcomes.label"):
+        w3.load_plan(path)
+
+
+def test_coverage_only_refuses_a_consistently_ordered_registry(tmp_path: Path) -> None:
+    key = COVERAGE_ONLY[0]
+    registry = deepcopy(REGISTRY)
+    next(d for d in registry["dimensions"] if d["id"] == key)["ordinal"] = True
+    path = tmp_path / "ordered.json"
+    path.write_text(json.dumps(registry))
+
+    def recorded(nonce: str, record: dict) -> None:
+        record["framework"]["outcome_registry_sha256"] = sha256_file(path)
+
+    c = write_campaign(tmp_path, manifest_update=recorded)
+    prep = prepared(c, registry_versions=[path])
+    check = prep.record.dimensions[("outcome", key)]
+    assert not check.pooled and any("ordinal" in reason for reason in check.reasons)
+    result = w3.final_analysis(prep, resamples=20)
+    table = result["targets"]["tgt-a"]["coverage_only"][key]
+    assert table["status"] == "refused" and "by_wording" not in table
+
+
+@pytest.mark.parametrize("regrade", [False, True])
+@pytest.mark.parametrize("change", ["missing", "voided"])
+def test_fire_inventory_must_exist_unchanged_before_its_nonce(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, regrade: bool, change: str) -> None:
+    c = write_campaign(tmp_path)
+    nonce = "record-b1" if regrade else "b1"
+    if regrade:
+        add_regrade_fire(c, nonce, [STEMS["b1"]])
+    current = load_json(c["plan"])
+    prior = deepcopy(current)
+    entry = next(f for f in prior["fires"] if f["journal_nonce"] == nonce)
+    if change == "missing":
+        prior["fires"].remove(entry)
+    else:
+        entry["voided"] = "synthetic prior disposition"
+    c["plan"].write_text(json.dumps(prior))
+    final_ready(monkeypatch, c, ({"trigger": "petri-audit", "nonce": nonce,
+                                "fired_utc": "2026-10-02T00:00:00Z", "resolved": True, "evicted": False},))
+    c["plan"].write_text(json.dumps(current))
+    commit_synthetic(tmp_path)
+    problems = w3.selection_history_problems(w3.load_plan(c["plan"]))
+    assert any("fire inventory" in reason and nonce in reason for reason in problems)
+
+
+@pytest.mark.parametrize("family", ["manifest", "judgments", "transcripts", "judge_report"])
+@pytest.mark.parametrize("restore", [False, True])
+def test_final_refuses_rewritten_source_history(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str],
+        family: str, restore: bool) -> None:
+    c = write_campaign(tmp_path)
+    final_ready(monkeypatch, c)
+    run = c["runs"]["c2"]
+    record = load_json(run / "manifest.json")
+    filename = ("manifest.json" if family == "manifest" else
+                Path(record["artifacts"]["judge_of_record"]["report_path"]).name if family == "judge_report" else
+                ARTIFACT_FILENAMES[family])
+    path = run / filename
+    saved = {p: p.read_bytes() for p in [*run.iterdir(), c["runs_dir"] / CHAIN_FILE] if p.is_file()}
+    path.write_bytes(path.read_bytes() + b"\n")
+    if family == "judge_report":
+        record["artifacts"]["judge_of_record"]["report_sha256"] = sha256_file(path)
+        (run / "manifest.json").write_text(json.dumps(record))
+    if family != "manifest":
+        reseal_synthetic_chain(c["runs_dir"])
+    commit_synthetic(tmp_path)
+    if restore:
+        for p, content in saved.items():
+            p.write_bytes(content)
+        commit_synthetic(tmp_path)
+    assert w3.manifest.verify_chain(c["runs_dir"])[0]
+    out = tmp_path / "result.json"
+    assert w3.main(cli_args(c, "--final", "--out", str(out))) == 2
+    assert "source artifact history" in capsys.readouterr().err and not out.exists()
+
+
+@pytest.mark.parametrize("rewrite_prefix", [False, True])
+def test_source_history_allows_only_append_before_judge_completion(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str],
+        rewrite_prefix: bool) -> None:
+    c = write_campaign(tmp_path)
+    run = c["runs"]["c2"]
+    path = run / "judgments.jsonl"
+    complete = {p: p.read_bytes() for p in run.iterdir() if p.is_file()}
+    lines = path.read_bytes().splitlines(keepends=True)
+    partial = b"".join(lines[:len(lines) // 2])
+    if rewrite_prefix:
+        partial = b" " + partial
+    path.write_bytes(partial)
+    record = load_json(run / "manifest.json")
+    record["artifacts"]["judge_of_record"].update(truncated=True, judged=0, null=0, not_applicable=0)
+    (run / "manifest.json").write_text(json.dumps(record))
+    reseal_synthetic_chain(c["runs_dir"])
+    final_ready(monkeypatch, c)
+    for p, content in complete.items():
+        p.write_bytes(content)
+    reseal_synthetic_chain(c["runs_dir"])
+    commit_synthetic(tmp_path)
+    out = tmp_path / "result.json"
+    code = w3.main(cli_args(c, "--final", "--out", str(out)))
+    assert code == (2 if rewrite_prefix else 0)
+    if rewrite_prefix:
+        assert "source artifact history" in capsys.readouterr().err and not out.exists()
+    else:
+        assert out.is_file()
+
+
+@pytest.mark.parametrize("regrade", [False, True])
+@pytest.mark.parametrize("separate_amendments", [False, True])
+def test_fire_history_allows_committed_void_then_replacement(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, regrade: bool, separate_amendments: bool) -> None:
+    c = write_campaign(tmp_path)
+    nonce = "record-b1" if regrade else "b1"
+    if regrade:
+        add_regrade_fire(c, nonce, [STEMS["b1"]])
+    final_ready(monkeypatch, c)
+    doc = load_json(c["plan"])
+    old = next(f for f in doc["fires"] if f["journal_nonce"] == nonce)
+    replacement = {**old, "journal_nonce": nonce + "-replacement", "recorded_on": "2026-10-03"}
+    old["voided"] = "synthetic truncation before any contrast"
+    if separate_amendments:
+        c["plan"].write_text(json.dumps(doc))
+        commit_synthetic(tmp_path)
+    doc["fires"].append(replacement)
+    c["plan"].write_text(json.dumps(doc))
+    commit_synthetic(tmp_path)
+    final_ready(monkeypatch, c, ({"trigger": "petri-audit", "nonce": replacement["journal_nonce"],
+                                "fired_utc": "2026-10-03T00:00:00Z", "resolved": True, "evicted": False},))
+    assert w3.selection_history_problems(w3.load_plan(c["plan"])) == []
+
+
+@pytest.mark.parametrize("field", ["target", "campaign_epoch", "source_runs", "journal_nonce", "recorded_on"])
+def test_fire_history_rejects_rewritten_registration_even_if_restored(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, field: str) -> None:
+    c = write_campaign(tmp_path)
+    add_regrade_fire(c, "record-b1", [STEMS["b1"]])
+    final_ready(monkeypatch, c)
+    original = c["plan"].read_bytes()
+    doc = load_json(c["plan"])
+    entry = next(f for f in doc["fires"] if f["journal_nonce"] == "record-b1")
+    entry[field] = {"target": "tgt-a", "campaign_epoch": 2, "source_runs": [STEMS["c1"]],
+                    "journal_nonce": "record-altered", "recorded_on": "2026-10-03"}[field]
+    c["plan"].write_text(json.dumps(doc))
+    commit_synthetic(tmp_path)
+    c["plan"].write_bytes(original)
+    commit_synthetic(tmp_path)
+    assert any("fire inventory" in p for p in w3.selection_history_problems(w3.load_plan(c["plan"])))
+
+
+@pytest.mark.parametrize("change", ["unvoid", "rewrite_reason", "late_void"])
+@pytest.mark.parametrize("regrade", [False, True])
+def test_fire_history_rejects_invalid_disposition_transitions(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, change: str, regrade: bool) -> None:
+    c = write_campaign(tmp_path)
+    nonce = "record-b1" if regrade else "b1"
+    if regrade:
+        add_regrade_fire(c, nonce, [STEMS["b1"]])
+    final_ready(monkeypatch, c)
+    doc = load_json(c["plan"])
+    old = next(f for f in doc["fires"] if f["journal_nonce"] == nonce)
+    if change == "late_void":
+        replacement = {**old, "journal_nonce": nonce + "-replacement"}
+        doc["fires"].append(replacement)
+        c["plan"].write_text(json.dumps(doc))
+        commit_synthetic(tmp_path)
+        final_ready(monkeypatch, c, ({"trigger": "petri-audit", "nonce": replacement["journal_nonce"],
+                                    "fired_utc": "2026-10-03T00:00:00Z", "resolved": True, "evicted": False},))
+        old["voided"] = "synthetic late truncation"
+    else:
+        old["voided"] = "synthetic truncation before any contrast"
+        c["plan"].write_text(json.dumps(doc))
+        commit_synthetic(tmp_path)
+        old["voided"] = None if change == "unvoid" else "synthetic rewritten reason"
+    c["plan"].write_text(json.dumps(doc))
+    commit_synthetic(tmp_path)
+    assert any("fire inventory" in p for p in w3.selection_history_problems(w3.load_plan(c["plan"])))

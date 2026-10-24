@@ -613,6 +613,7 @@ def load_plan(path: Path | str = PLAN_FILE) -> Plan:
         "exploratory_outcomes.test": f"exact two-sided sign test on D({COLLOQUIAL}, {CLINICAL}) over "
                                      "exchanges_1_10, per target",
         "exploratory_outcomes.correction": "Holm, one family of three per target",
+        "exploratory_outcomes.label": "exploratory: no headline rests on any of them",
     }
     method_rules["secondary_exchanges_6_10.targets"] = ANALYSIS_CONTRACT["late_targets"]
     method_rules["judge.regrade_reported"] = ANALYSIS_CONTRACT["regrade_reported"]
@@ -1292,6 +1293,9 @@ def check_dimension(kind: str, key: str, runs: Sequence[Any], index: w2.RowIndex
     elif wave2_pin is not None and wave2_pin != pin:
         check.pooled = False
         check.reasons.append(f"wave 2's pooling digest for {key} is {wave2_pin}, not the plan's {pin}")
+    if kind == "outcome" and key in plan.coverage_only and check.scale is not None:
+        check.pooled = False
+        check.reasons.append("coverage-only dimensions must have no ordinal scale")
     return check, {stem: n for stem, n in sorted(outside.items()) if n}
 
 
@@ -2767,12 +2771,43 @@ def before_fire_bytes(commit: str, path: Path) -> bytes:
     return git_evidence("show", f"{commit}^:{evidence_path(path)}")
 
 
+def fire_inventory_history(plan: Plan) -> None:
+    """Keep registrations append-only and permit one live-to-void disposition.
+
+    Validate every committed inventory, not just the final one: a replacement
+    cannot coexist with a live predecessor, and restoration cannot hide a rewrite.
+    A nonblank reason is the owner's operational-defect attestation; text alone
+    cannot establish its truth or detect an unrecorded off-repository contrast.
+    """
+    path = evidence_path(plan.path)
+    commits = git_evidence("log", "--full-history", "--reverse", "--topo-order", "--format=%H",
+                           "--", path).decode().splitlines()
+    previous: dict[str, dict[str, Any]] = {}
+    for commit in commits:
+        raw = json.loads(git_evidence("show", f"{commit}:{path}")).get("fires")
+        problems: list[str] = []
+        _fires(raw, {target.id: target for target in plan.targets}, plan.epochs, problems)
+        if problems:
+            raise AnalysisRefusal("fire inventory: " + "; ".join(problems))
+        current = {entry["journal_nonce"]: entry for entry in raw}
+        for nonce, old in previous.items():
+            new = current.get(nonce)
+            if new is None:
+                raise AnalysisRefusal(f"fire inventory {nonce}: registration was removed")
+            if {k: v for k, v in old.items() if k != "voided"} != {k: v for k, v in new.items() if k != "voided"}:
+                raise AnalysisRefusal(f"fire inventory {nonce}: registration was rewritten")
+            if old.get("voided") is not None and old["voided"] != new.get("voided"):
+                raise AnalysisRefusal(f"fire inventory {nonce}: void reason was rewritten or removed")
+        previous = current
+
+
 def selection_history_problems(plan: Plan) -> list[str]:
     """Freeze selection, analysis rules and code before each nonce first enters the committed journal."""
     try:
         if git_evidence("rev-parse", "--is-shallow-repository").strip() != b"false":
             raise AnalysisRefusal("complete local history is required")
         current_plan = load_json(plan.path)
+        fire_inventory_history(plan)
         remaining = set(plan.fires) | set(plan.regrade_fires)
         path = evidence_path(JOURNAL_FILE)
         commits = git_evidence("log", "--full-history", "--reverse", "--topo-order", "--format=%H", "--", path).decode().splitlines()
@@ -2788,7 +2823,15 @@ def selection_history_problems(plan: Plan) -> list[str]:
             old = old_plan.get("physician_realism_gate", {}).get("selection")
             if old != plan.realism_gate_selection:
                 raise AnalysisRefusal("selection was not committed unchanged before the first fire evidence")
-            # Only fire inventory amendments have an implemented post-start path. Other changes
+            for nonce in sorted(found):
+                historical = [entry for entry in old_plan.get("fires", [])
+                              if isinstance(entry, dict) and entry.get("journal_nonce") == nonce]
+                current = [entry for entry in current_plan["fires"] if entry["journal_nonce"] == nonce]
+                if len(historical) != 1 or historical[0].get("voided") is not None or (
+                        {k: v for k, v in historical[0].items() if k != "voided"} !=
+                        {k: v for k, v in current[0].items() if k != "voided"}):
+                    raise AnalysisRefusal(f"fire inventory {nonce}: entry was not committed unchanged before its nonce")
+            # Later fires may be added before their own nonce. Other changes
             # need the separate approved-versus-amended reporting path, which is not implemented here.
             protected = {k: v for k, v in current_plan.items() if k != "fires"}
             previous = {k: v for k, v in old_plan.items() if k != "fires"}
@@ -2828,6 +2871,89 @@ def artifact_history(path: Path, label: str) -> None:
                 raise AnalysisRefusal("the committed artifact was rewritten")
     except (AnalysisRefusal, OSError, ValueError) as exc:
         raise AnalysisRefusal(f"{label}: {path}: {exc}") from exc
+
+
+def source_artifact_history(run: RunInput) -> None:
+    """Freeze landed source evidence, allowing only append-only judging before completion.
+
+    Immutable manifest fields and source artifacts never change after introduction.
+    Before the first complete judge pass, judgments may grow at the chain head and
+    its report/manifest bindings may be regenerated. After completion, every bound
+    file (including the manifest) is byte-frozen. Restoring old bytes cannot erase
+    an intervening committed rewrite. Divergent histories refuse rather than guess.
+    """
+    try:
+        if git_evidence("rev-parse", "--is-shallow-repository").strip() != b"false":
+            raise AnalysisRefusal("complete local history is required")
+        directory = evidence_path(run.run_dir)
+        manifest_path = directory + "/manifest.json"
+        judgments_path = directory + "/judgments.jsonl"
+        commits = git_evidence("log", "--full-history", "--reverse", "--topo-order", "--format=%H",
+                               "--", directory).decode().splitlines()
+        first_fixed: str | None = None
+        first_artifacts: dict[str, str] | None = None
+        frozen: dict[str, str] | None = None
+        previous_manifest: str | None = None
+        previous_judgments = b""
+        for commit in commits:
+            tree: dict[str, str] = {}
+            for line in git_evidence("ls-tree", "-r", "-z", commit, "--", directory).split(b"\0"):
+                if line:
+                    metadata, name = line.split(b"\t", 1)
+                    mode, kind, oid = metadata.decode().split()
+                    if mode not in {"100644", "100755"} or kind != "blob":
+                        raise AnalysisRefusal("source history contains a non-regular file")
+                    tree[name.decode()] = oid
+            if manifest_path not in tree:
+                if first_fixed is not None:
+                    raise AnalysisRefusal("the source manifest was removed")
+                continue  # Unsealed preparation before the manifest's introduction.
+            record = json.loads(git_evidence("cat-file", "blob", tree[manifest_path]))
+            artifacts = record["artifacts"]
+            judge = artifacts.get("judge_of_record")
+            paths = [run.run_dir.parent / value for key, value in artifacts.items()
+                     if key.endswith("_path") and value]
+            if judge and judge.get("report_path"):
+                paths.append(run.run_dir.parent / judge["report_path"])
+            if record.get("readapt"):
+                paths.append(run.run_dir / Path(record["readapt"]["target_report"]["path"]).name)
+            bound = {manifest_path: tree[manifest_path]}
+            for path in paths:
+                relative = evidence_path(path)
+                if path.resolve().parent != run.run_dir.resolve() or relative not in tree:
+                    raise AnalysisRefusal("a historical bound artifact is missing or outside its run")
+                bound[relative] = tree[relative]
+            if frozen is not None and bound != frozen:
+                raise AnalysisRefusal("a completed source pass was rewritten")
+            fixed = json.loads(json.dumps(record))
+            fixed["chain"].pop("manifest_sha256", None)
+            for key in ("judgments_path", "judgments_sha256", "judge_of_record"):
+                fixed["artifacts"].pop(key, None)
+            fixed_text = json.dumps(fixed, sort_keys=True)
+            mutable = {manifest_path, judgments_path}
+            if judge and judge.get("report_path"):
+                mutable.add(evidence_path(run.run_dir.parent / judge["report_path"]))
+            immutable = {name: oid for name, oid in bound.items() if name not in mutable}
+            if first_fixed is None:
+                first_fixed, first_artifacts = fixed_text, immutable
+            elif fixed_text != first_fixed or immutable != first_artifacts:
+                raise AnalysisRefusal("immutable source evidence was rewritten")
+            judgments = git_evidence("cat-file", "blob", tree[judgments_path]) if judgments_path in tree else b""
+            if not judgments.startswith(previous_judgments) or (
+                    judgments != previous_judgments and previous_judgments and not previous_judgments.endswith(b"\n")):
+                raise AnalysisRefusal("source judgments changed their committed prefix")
+            if previous_manifest is not None and tree[manifest_path] != previous_manifest:
+                chain = git_evidence("show", f"{commit}:{evidence_path(run.run_dir.parent / manifest.CHAIN_FILE)}")
+                lines = [line for line in chain.decode().splitlines() if line.strip()]
+                if not lines or lines[-1].rsplit(" ", 1)[0] != f"{run.stem}/manifest.json":
+                    raise AnalysisRefusal("a pre-completion reseal was not at the chain head")
+            previous_manifest, previous_judgments = tree[manifest_path], judgments
+            if incomplete_pass(judge, "historical judge") is None:
+                frozen = bound
+        if first_fixed is None:
+            raise AnalysisRefusal("no committed source introduction was found")
+    except (AnalysisRefusal, OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
+        raise AnalysisRefusal(f"source artifact history: {run.stem}: {exc}") from exc
 
 
 def primary_history(path: Path) -> None:
@@ -2979,6 +3105,11 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     problems, truncated = final_problems(args, prep)
     problems.extend(uncommitted_input_problems(header["identity"]))
+    for run in prep.runs:
+        try:
+            source_artifact_history(run)
+        except AnalysisRefusal as exc:
+            problems.append(str(exc))
     for name, path in inputs.items():
         if name.startswith("regrade["):
             try:

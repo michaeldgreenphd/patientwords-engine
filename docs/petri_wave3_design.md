@@ -569,6 +569,30 @@ needs a separately implemented and reviewed approved-versus-amended reporting
 path; this reader refuses it instead of silently treating it as the original
 analysis. These are execution checks, not edits to the registered plan.
 
+Final history validation also requires each fire's immutable registration fields
+(nonce, target, epoch, date and any source-run list) to be committed before its
+nonce first appears in the journal. Inventories remain append-only. A live fire
+may transition once to a nonblank operational-defect void reason; unvoiding,
+reason rewrites and registration rewrites refuse, including a later restoration.
+Every committed inventory must retain at most one live fire per target/epoch or
+re-grade source run. The void and replacement registration may share an amendment,
+but it must precede the replacement nonce. The reason is an owner attestation,
+not machine verification that the defect occurred before any off-repository
+contrast. This preserves the existing operational-defect replacement procedure.
+
+Selected source manifests and their bound artifacts also undergo history checks.
+Source evidence and fixed manifest fields cannot change after introduction.
+Before the judge pass completes, only prefix-preserving judgment appends and the
+associated report/manifest reseal at the chain head are accepted. After the first
+complete pass, all bound bytes are frozen. Missing files, intervening rewrites,
+restorations and incomplete history refuse before final output creation. These
+checks establish preservation from first commit, not pre-commit authenticity.
+
+The fixed exploratory label is validated against the implemented plan contract.
+Coverage-only dimensions must have no ordinal scale; an ordered registry version
+refuses that block instead of silently discarding its order. Neither check changes
+the registered scientific endpoints or the wave-2 implementation.
+
 Both primary final mode and post-final disclosure require the replacement and
 secondary re-grade manifest, judgments, analysis rows and report to retain their
 original committed bytes throughout their complete local Git history. Consistent
