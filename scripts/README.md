@@ -41,6 +41,7 @@ publish-site-data skill, which the Routine runs in §5 when new results land.
 
 | Script | What it does | Status | Writes | Who runs it |
 |---|---|---|---|---|
+| `action_annotation_messages.py` | Builds Messages request envelopes and replays synthetic transport outcomes; no network/live mode or budget admission | staged | Exclusive external `action_requests.json` / `action_annotations.json`; no measurement or ledger writer | owner or session for offline rehearsal; no CI lane |
 | `action_annotations.py` | Prepares blinded synthetic requests, validates evidence spans and compares annotations with an independent fixture key; no provider calls | staged | New `action_requests.json` or `action_annotations.json` outside Git; never measurement collectors | owner or session for offline rehearsal; no CI lane |
 
 ## Ops tooling and the Routine
