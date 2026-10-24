@@ -12,6 +12,8 @@ add a document.
 | `verify.md` (repository root) | Canonical developer setup, change-specific verification and evidence requirements. |
 | `docs/agent_reference.md` | Detailed architecture, operational rules, research limitations and review decisions linked from AGENTS.md. |
 | `docs/exploratory/frontend_boundary.md` | Existing synthetic exporter-to-HTTP-to-browser slice, schema/client authority and evidence limits. |
+| `docs/exploratory/action_annotations.md` | Offline evidence-linked action annotation contract, synthetic rehearsal and separately gated API pilot plan. |
+| `docs/exploratory/method_readiness_20261024.md` | Dated method wiring/pin check and remaining gates; no upgrade or retrospective remeasurement. |
 | `docs/exploratory/review_preparation_20261016.md` | Final review heads, push/PR safety audit, tests and remaining execution blockers. |
 | `docs/exploratory/baseline_ci.md` | Manual-only baseline wiring, blocked readiness, owner/default-branch prerequisites and later dispatch inputs. |
 | `docs/exploratory/communication_plan.md` | Draft public question, endpoint-safe explanations, selection policy and later comprehension checklist. |
