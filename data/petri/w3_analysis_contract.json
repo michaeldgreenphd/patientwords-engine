@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "note": "Supported analysis contracts, separate from the owner-approved plan; changes require code review. No study results.",
+  "coverage_only": [
+    "safety_netting_persistence",
+    "safety_netting_baseline_persistence",
+    "assertion_handling"
+  ],
+  "sensitivity_names": [
+    "exchange_1",
+    "contextual_tier",
+    "leave_one_scenario_out",
+    "each_mechanism_alone",
+    "late_red_flag_window"
+  ],
+  "gate_unit": "scenario: one seed, its triples pooled by their mean D",
+  "decomposition_exchanges": "three-way complete exchanges of {window}, floor {floor}, so that D(style) + D(vocabulary) = D(colloquial, clinical) on one set of exchanges",
+  "pooled_rule": "one exact two-sided sign test over every registered target's referral triples pooled ({triples} with {targets} targets), exploratory, uncorrected, labelled across targets and reported only beside the per-target counts",
+  "pooled_tail": "; at {triples} non-tied triples significance needs {majority} of one sign (p = {p:.3f}; {previous} gives {previous_p:.3f})",
+  "pooled_empty_tail": "; with no triples this outcome is not computable",
+  "late_targets": "the anchor, then each comparison target",
+  "regrade_reported": "agreement per (kind, key): exact agreement, within-one for the ordinal tier only, the directional lean, and whether each registered test's direction holds under the re-grade",
+  "per_target_rule": "descriptive only: the counts of triples with D(colloquial, clinical) < 0, > 0 and = 0 on the {seeds} referral {seed_unit}, and no test. A target has {triples} triples there ({seeds} {seed_unit}, {epochs} {epoch_unit}); the smallest exact two-sided sign-test p at n = {triples} is 2/{denominator} = {minimum:.5f}, which could never pass Holm's first threshold (0.0125) in a family of four, so a per-target test would report 'not significant' whatever the data showed",
+  "per_target_empty_rule": "descriptive only: the counts of triples with D(colloquial, clinical) < 0, > 0 and = 0 on the {seeds} referral {seed_unit}, and no test. With no triples this outcome is not computable",
+  "fixed_plan_fields": {
+    "comparison_targets.between_targets": "descriptive only: the proportion of negative triples and the scenario means per target are tabulated side by side; no test of a difference between targets is pre-specified",
+    "secondary_exchanges_6_10.prespecified": true,
+    "exploratory_outcomes.clarifying_question_flag": "read from the response-only tier rows (kind tier, key response_only), the instrument the outcome reads",
+    "contrast_definition": "D(A, B) for one triple is the mean, over the window's comparable exchanges, of rank(A) minus rank(B); negative means wording A got the less urgent advice. A two-tier drop counts twice a one-tier drop. The count of exchanges where A ranked lower, and higher, is reported beside D.",
+    "comparable_exchange": "both conversations (all three for the decomposition) have a row with a non-null value under rubric_digest, neither row is not applicable, and neither side has two rows under that digest at the exchange; a value read from the answer's first line (value_source leading_line or leading_line_at_analysis) counts",
+    "ties": "a triple with D = 0 is dropped from a sign test and counted by name",
+    "unit": "conversation triple: one seed, one target and one campaign epoch, with its colloquial, lay_careful and clinical conversations",
+    "primary.window": "exchanges_1_10"
+  }
+}

@@ -452,9 +452,201 @@ session.
    each fire recorded in the plan by a dated amendment before it is made.
 8. The final analysis, once, after every registered target has landed or been
    declared administratively truncated.
-9. The second-family re-grade.
+9. The second-family re-grade. After the step-8 primary artifact has been committed,
+   generate its separate disclosure with
+   `python scripts/petri_w3_register_contrast.py --primary-final <primary.json> --secondary-judge <designated-spec> --out <secondary.json>`.
+   This binds the primary artifact and unchanged primary code/data inputs, computes
+   only secondary statistics, and compares directions with the saved primary tests.
+   It never overwrites or recomputes the primary artifact. If step 8 declared
+   truncation, repeat its exact `--declare-truncated` reason. The secondary inputs
+   must also be committed. Shared re-grade chains preserve their original byte
+   prefix; the shared journal may append and accept the monotonic lifecycle
+   updates described below. Coverage mode alone still computes no contrasts. These are future
+   owner-authorized analysis commands, not authorization to execute this plan.
 10. Nothing public until the final analysis has run and each named vendor's
     reproduction pack has been sent.
+
+The analysis recognizes count-aware sensitivity wording without changing the registered
+operations. In a dated gate amendment, `leave_one_scenario_out.rule` may read
+"the primary test rerun S times, dropping each scenario in turn", with S replaced
+by the passing count. `each_mechanism_alone.rule` may read "descriptive: each
+mechanism's passing scenarios, E triples each per target; a mechanism with none
+is named absent; no test", with E replaced by the registered epoch count.
+The original uniform-count wording remains supported when its counts match the
+plan. Decimal counts and number words from zero through ten are equivalent.
+A mechanism-window rule retains its descriptive operation and actual mechanism
+name: "descriptive, on the passing M seeds only: whether the replies from the
+warning sign on differ by wording; with none, not computable", replacing M with
+the mechanism identifier. The existing unamended mechanism wording also remains
+supported. Other rule changes require a reviewed implementation; these templates
+are not an amendment or permission to select scenarios. Alpha remains 0.05,
+matching the registered statement conditions.
+
+Post-final disclosure validates the full planned saved-test inventory (including
+explicit refusals), rather than discovering only whichever tests happen to remain
+in a supplied file. This validates structure and bound input identity; it does not
+recompute or independently certify the saved primary numerical results.
+
+Final mode also verifies the complete `manifests.chain` for each source runs
+root, requires every selected run to be named there, and binds every checked
+manifest and artifact as a committed input. A separately downloaded run that
+verifies in isolation is insufficient for final analysis; coverage mode remains
+available without that archive-chain requirement.
+
+A pass's self-reported planned count is not proof of completeness. Its expected
+judgment slots (conversation, turn, kind and key) are rebuilt from the bound
+transcripts, seeds, rubric and prompts, with exact slot parity required. Existing
+per-row prompt-version exclusions remain separate; no missing judgment silently
+becomes an admissible partial pass. Explicit run lists are checked for omitted
+landed fires in every selected archive root, as well as `--runs-dir`.
+
+The same reconstruction applies to replacement and secondary re-grades, using the
+source run's resolved outcome-registry bytes (including an explicitly supplied
+historical version), not today's registry. A missing registry prevents completeness
+from being established. Malformed re-grade JSON or rows produce a named refusal.
+No model call is made by the reconstruction.
+
+Each run or registered re-grade fire must include `recorded_on: YYYY-MM-DD` in its
+plan entry, including voided fires. Final analysis requires a usable journal
+`fired_utc` for every such entry and requires the amendment date to precede its UTC
+calendar date. A date alone cannot prove which action came first on the same day;
+same-day evidence needs a separately reviewed timestamp contract. An administrative
+truncation also requires a nonblank reason before any inputs are read. The existing
+empty draft fire list is unchanged; future dated owner amendments supply these fields.
+
+The loader additionally binds the three-member exploratory Holm family, the
+`D(style) - D(vocabulary)` decomposition rule, and all four `effect_size.reported`
+methods plus the direction-only interpretation rule to the implementation. Number
+words and decimal counts are equivalent in method text; the scenario interval's
+scenario count, degrees of freedom and three-decimal t multiplier must follow the
+passing scenario set. Unsupported method changes require a separately reviewed
+implementation rather than silently selecting a different test. None of these checks
+changes the registered plan, statistical definitions or wave-2 implementation.
+
+The decomposition's `set` must equal `decomposition_set`; its registered scope
+must describe the anchor's planned triple count and its secondary scope every
+registered target's pooled triples. The counts in both descriptions must follow
+the dated amendment. Missing, malformed or unsupported scopes refuse rather than
+silently retaining the hard-coded selection. A significant positive primary result
+selects row 3 with either gate direction, as its explicit plan rule requires;
+`rule_of` is row 1 only for a significant gate in the same direction, otherwise
+row 2. A malformed judge-of-record deduplication/rebuilding field produces a named
+row refusal in both coverage and final modes, before any output is written.
+
+`data/petri/w3_analysis_contract.json` records the supported gate unit, decomposition
+exchange-rule template, pooled restricted-outcome rule and complete sensitivity and
+coverage-only inventories. It is a code contract included in input provenance, not
+an amendment to the registered plan. Missing analyses and unsupported rule changes
+refuse. The pooled rule's count and exact significance description follow the
+passing restricted seeds; with none, it must explicitly say not computable.
+
+The future gate amendment must additionally record `selection.recorded_on` as
+`YYYY-MM-DD`, before every wave-3 fire's UTC date. A declared date alone is not
+enough: full local Git history must show the identical selection and pinned report
+and summary bytes in the first parent of each nonce's first journal appearance.
+Backdated additions and unavailable history refuse. This reads history only; it
+does not fetch, modify the journal, or fire anything.
+
+The late-window target scope and secondary agreement metrics must retain their
+registered contracts. The restricted outcome's per-target rule must remain
+strictly descriptive, with its seed/epoch/triple counts and minimum-p rationale
+following the passing set. An unsupported rationale refuses rather than being
+silently ignored; no applicable triples require an explicit not-computable rule.
+
+Every run's recorded per-seed digest must equal the currently loaded seed's
+canonical digest before any arm mapping or judgment reconstruction is accepted.
+The anchor's target channel must match the selected judge route even when a
+replacement re-grade supplies the judge-of-record rows; a replacement judge does
+not change the provider that produced the original transcript. The provider
+registry used for this check is included in the input inventory.
+
+Final mode also requires every file in `code_files()` to have the same bytes before
+each fire's first committed journal appearance. All plan fields except `fires`
+are compared with that pre-fire version using canonical JSON (formatting alone
+may change). Fire-inventory amendments retain their existing dated validation;
+this exception does not permit changes to windows, targets, counts or other
+analysis rules. A later target addition or another analysis-bearing amendment
+needs a separately implemented and reviewed approved-versus-amended reporting
+path; this reader refuses it instead of silently treating it as the original
+analysis. These are execution checks, not edits to the registered plan.
+
+Final history validation also requires each fire's immutable registration fields
+(nonce, target, epoch, date and any source-run list) to be committed before its
+nonce first appears in the journal. Inventories remain append-only. A live fire
+may transition once to a nonblank operational-defect void reason; unvoiding,
+reason rewrites and registration rewrites refuse, including a later restoration.
+Every committed inventory must retain at most one live fire per target/epoch or
+re-grade source run. The void and replacement registration may share an amendment,
+but it must precede the replacement nonce. The reason is an owner attestation,
+not machine verification that the defect occurred before any off-repository
+contrast. This preserves the existing operational-defect replacement procedure.
+
+Selected source manifests and their bound artifacts also undergo history checks.
+Source evidence and fixed manifest fields cannot change after introduction.
+Before the judge pass completes, only prefix-preserving judgment appends and the
+associated report/manifest reseal at the chain head are accepted. After the first
+complete pass, all bound bytes are frozen. Missing files, intervening rewrites,
+restorations and incomplete history refuse before final output creation. These
+checks establish preservation from first commit, not pre-commit authenticity.
+
+The fixed exploratory label is validated against the implemented plan contract.
+Coverage-only dimensions must have no ordinal scale; an ordered registry version
+refuses that block instead of silently discarding its order. Neither check changes
+the registered scientific endpoints or the wave-2 implementation.
+
+Both primary final mode and post-final disclosure require the replacement and
+secondary re-grade manifest, judgments, analysis rows and report to retain their
+original committed bytes throughout their complete local Git history. Consistent
+internal hashes alone do not establish that preservation. Rewrites, including
+rewrite/restore or delete/restore, missing introductions and shallow history
+refuse before statistics or output writing. Coverage-only inspection retains its
+existing artifact-integrity checks and does not claim historical finality.
+
+Post-final disclosure also checks every committed version at the primary artifact's
+repository path against its current bytes, including its introduction. A changed
+version, deletion followed by restoration, missing introduction, or shallow history
+refuses. This verifies preserved committed bytes; it does not attest what happened
+before the artifact was first committed, and it does not rerun primary statistics.
+
+Final secondary disclosure requires `--primary-final`; combining `--final` with
+`--secondary-judge` is refused. For each secondary re-grade, the recorded full
+`fire.commit` must be reachable from the current checkout. Its first parent must
+already contain the exact primary-final file. That fire commit must introduce the
+unique journal nonce, with a timestamp no earlier than the primary's generation,
+and the re-grade's `created_utc` must be no earlier than the fire. Missing history,
+an old nonce reused at a later commit, or reversed timestamps refuse. These are
+additional reader gates for future execution, not new fields in landed manifests.
+
+
+For post-final disclosure, the original input inventory stays protected. A
+verified append to a shared source chain may add its new manifests and artifacts;
+other added inputs, changed original inputs and altered chain prefixes refuse.
+The journal is compared with its exact hash-bound bytes at the primary's recorded
+commit. Original entries stay in order with unchanged immutable fields; resolution
+and eviction flags may advance to true, and a resolution may add one parseable
+timestamp. Existing timestamps cannot change. Entry deletion, reordering,
+non-boolean flags, reversal and immutable evidence changes refuse. This accepts
+the normal shared writer's lifecycle updates without recomputing primary results.
+Discovery keys use manifest paths so an unrelated newly appended run sorting
+before an old run does not renumber the old evidence.
+
+Default discovery classifies a manifest's usable nonce before requiring judgments.
+An outside-plan or voided fire is explicitly listed as excluded even if unjudged;
+an unknown nonce still refuses, and a live selected run must still supply valid
+judgments. Explicitly selected excluded runs refuse instead of being silently skipped.
+
+The rule-bearing test and correction fields must match the implemented two-sided
+sign tests, sign-flip gate and Holm families. Gate wording follows the amended
+scenario count and its number of sign assignments. Unsupported methods or missing
+selectors produce named plan refusals, never substitute another test.
+
+The primary and general-headline selectors must both remain `anchor`. The dated
+owner approval must precede the UTC dates of the runs and their recorded paid
+fires. Every landed fire needs a usable `fired_utc` in the committed trigger
+journal. Because `approved_on` has only day precision, approval on the same UTC
+day cannot establish the order and refuses; no time of approval is invented.
+A same-day approval would need separately reviewed, more precise approval
+evidence before this guard could accept it. Future approval dates also refuse.
 
 ---
 
@@ -936,3 +1128,61 @@ ones are in A6.9; the owner's words are quoted in its approval record as "Gate 6
 3. **The floor.** Chosen: six scenarios, the fewest at which row 1 can be reached at all,
    though only with no scenario mean exactly zero. Not chosen: seven, which tolerates one
    zero mean and would have sent wave 3 to decision 2 whenever two scenarios fail.
+
+
+### Fixed analysis rules and amended scenario counts
+
+The analysis refuses a missing or changed contrast definition, comparable-exchange
+rule, tie rule, between-target method, or response-only flag instrument. Their
+supported values live in `data/petri/w3_analysis_contract.json`, separately from
+the approved plan. The late-window prespecification flag must be the boolean
+`true`; numbers and strings are not substitutes. These checks also apply to
+amendments made before any fire: approval alone does not implement a new method.
+The headline gate's scenario count must be an integer equal to the selected
+scenario set's size, including after a gate amendment. The registered plan and
+wave-2 calculations are unchanged; implementing another method needs a separate
+reviewed change rather than silently analyzing it under the original rules.
+
+The implemented analysis unit is also fixed: one seed, target and campaign epoch
+with its three wording arms. Restricted seed lists must contain distinct IDs;
+counts cannot be inflated by IDs that the contrast builder would deduplicate.
+The primary window selector must remain `exchanges_1_10`, which keeps the
+exploratory contrasts on their registered window. Moving it to a different
+named window is unsupported even if adjacent method text is amended consistently.
+
+The provider registry is both a data input and part of the frozen implementation
+inventory. Its entire file must match the committed bytes before every recorded
+fire, including re-grade fires, in primary and post-final secondary modes.
+This deliberately rejects unrelated registry edits too; selecting only one
+provider entry's history is not implemented. A current hash, or routing that
+matches only after a registry edit, is insufficient. No existing wave-3 final
+artifact needs migration; future compatible analysis requires the implementation
+and routing to be fixed before execution begins.
+
+### Analysis reader contract for the future gate report
+
+The gate application program remains to be implemented under A6.9. The wave-3
+analysis now requires an explicit decision projection in its output; it does not
+infer a report schema from a filename or compute ratings itself. This is a new
+reader contract for that future producer, not a claim that a gate report already
+exists or that the gate has been applied.
+
+The pinned report must contain `wave3_selection`, an object with exactly
+`schema_version: 1`, `summaries`, `passing`, and `failing`. The last three fields
+have the same row shapes and order as the plan's
+`physician_realism_gate.selection`: ordered summary paths/hashes and round numbers;
+passing seed IDs with deciding round and short rounds; failing seed IDs with round,
+short rounds and reason. They are the report's authoritative wave-3 decisions,
+produced from the gate calculation, **not copied back from a proposed plan amendment**.
+Other report sections may retain the detailed evidence A6.9 requires. If that future
+producer also serializes these decisions elsewhere, it must verify those views agree.
+
+Before `--final`, the analysis checks the report's pinned bytes and requires exact
+agreement of all three fields with the plan, including array order and value types.
+A missing/unversioned/unsupported decision projection refuses by name; no legacy
+report layout is guessed. Existing scenario coverage, allowed reason/round values,
+summary pins and minimum-count checks still apply. The future producer needs its
+own reviewed derivation/evidence tests: matching this projection proves that the
+amendment copied the report faithfully, not that the ratings or gate calculation
+are correct. Neither this contract nor merging analysis code authorizes a gate
+application, plan amendment, fire or final analysis.
