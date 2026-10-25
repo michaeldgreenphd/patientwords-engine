@@ -148,6 +148,12 @@ ready PRs; external commenters cannot start reviews. Eligible jobs share a
 workflow-name/PR-number concurrency group with cancellation, so rapid pushes
 replace stale reviews and unrelated comments do not cancel active reviews.
 Each review job has a 10-minute timeout to bound runner time and quota use.
+The root checkout retains full commit history with `filter: blob:none`, avoiding
+old artifact downloads while materializing every file at the reviewed head.
+Diff generation fetches historical blobs on demand and retains the true merge base.
+The CLI session is capped at eight model turns: batch related searches/reads and
+return the final review by the seventh turn. Disclose any unreviewed consumers
+when this budget prevents completion; a limited review is not full verification.
 Fork/Dependabot PRs are skipped because this credentialed review requires a secret
 and write access. Comment events run only after the workflow is on the default
 branch. They resolve the PR head explicitly instead of reviewing default-branch code.
@@ -175,3 +181,15 @@ as a stable model for software engineering and agents with a 1,048,576-token inp
 limit (checked 2026-10-25). Context capacity is not a tokens-per-minute allowance;
 quota and billing depend on the API key's project and selected model. Cancellation
 reduces redundant work but does not guarantee a free-tier quota or zero cost.
+
+Requests per day and requests per minute are separate from context size and TPM.
+The [frontend CI run on 2026-10-25](https://github.com/michaeldgreenphd/patientwords/actions/runs/40210493105/attempts/2)
+reported HTTP 503 retries followed by
+HTTP 429 for an exhausted 20-request daily allowance on this model. An eight-turn
+cap reduces agent loops; retries and other API activity can still exhaust the
+project's allowance, shared across repositories if their keys use the same project.
+Quota failures leave the job failed and do not replace a prior sticky review with
+a success summary. Inspect the action log and the project's
+[active limits](https://ai.google.dev/gemini-api/docs/rate-limits) before rerunning;
+daily quota resets at midnight Pacific time. Do not add automatic whole-job retries
+or silently switch models to conceal quota failures.
