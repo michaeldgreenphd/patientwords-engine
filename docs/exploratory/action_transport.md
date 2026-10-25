@@ -105,7 +105,10 @@ The new primitive needs no frontend change and does not alter published results.
 python -m pytest -q tests/test_action_annotation_transport.py tests/test_action_annotations.py
 ```
 
-Tests inject fake HTTPS connections into the actual transport. They exercise exact
+Tests inject fake HTTPS connections into the actual transport. Local socket pairs
+also exercise the real HTTP response buffer for fixed-length, chunked and
+connection-close bodies, including stalls and premature EOF. No external server
+is contacted. These tests exercise exact
 request bytes/endpoint, redirects/errors without retries, byte limits, partial reads,
 credential-free receipts, write-before-send, storage failures, interruptions and
 exclusive claims. They call no provider, read no keys or archive data, and establish

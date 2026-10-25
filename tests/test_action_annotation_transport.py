@@ -4,6 +4,7 @@ from __future__ import annotations
 import copy
 import http.client
 import json
+import socket
 from pathlib import Path
 from typing import Any
 
@@ -36,7 +37,7 @@ class Response:
     def getheader(self, name: str) -> str | None:
         return "request_fixture" if name == "request-id" else None
 
-    def read(self, size: int) -> bytes:
+    def read1(self, size: int) -> bytes:
         if not self.body and self.fail:
             raise self.fail
         part, self.body = self.body[:size], self.body[size:]
@@ -45,7 +46,7 @@ class Response:
 
 
 class Connection:
-    def __init__(self, response: Response, fail: BaseException | None = None) -> None:
+    def __init__(self, response: Response | http.client.HTTPResponse, fail: BaseException | None = None) -> None:
         self.response = response
         self.fail = fail
         self.calls: list[tuple] = []
@@ -56,7 +57,7 @@ class Connection:
         if self.fail:
             raise self.fail
 
-    def getresponse(self) -> Response:
+    def getresponse(self) -> Response | http.client.HTTPResponse:
         return self.response
 
     def close(self) -> None:
@@ -163,6 +164,45 @@ def test_partial_read_preserves_prefix_and_cannot_become_success(
     assert (root / result["request_sha256"] / "response.bin").read_bytes() == expected
     assert conn.closed and len(conn.calls) == 1
 
+
+@pytest.mark.parametrize("framing", ["length", "chunked", "close"])
+@pytest.mark.parametrize("ending", ["timeout", "eof", "complete"])
+def test_real_http_buffer_retains_received_body(
+    monkeypatch: pytest.MonkeyPatch, wire: dict, root: Path, framing: str, ending: str,
+) -> None:
+    # Preload only a local socket pair: actual HTTPResponse buffering, no provider.
+    prefix = b'{"partial":"evidence"}'
+    size = len(prefix) if ending == "complete" else 100
+    if framing == "length":
+        header = f"Content-Length: {size}\r\n".encode()
+        payload = prefix
+    elif framing == "chunked":
+        header = b"Transfer-Encoding: chunked\r\n"
+        payload = f"{size:x}\r\n".encode() + prefix
+        if ending == "complete":
+            payload += b"\r\n0\r\n\r\n"
+    else:
+        header, payload = b"Connection: close\r\n", prefix
+    reader, writer = socket.socketpair()
+    with reader, writer:
+        reader.settimeout(0.05)
+        writer.sendall(b"HTTP/1.1 200 OK\r\nrequest-id: fixture\r\n" + header + b"\r\n" + payload)
+        if ending != "timeout":
+            writer.shutdown(socket.SHUT_WR)
+        with http.client.HTTPResponse(reader) as response:
+            response.begin()
+            conn = Connection(response)
+            install(monkeypatch, conn)
+            result = capture(wire, root, at.AnthropicTransport("fixture-placeholder"))
+        expected_error = "timeout" if ending == "timeout" else (
+            "incomplete_response" if ending == "eof" and framing != "close" else None)
+        assert result["transport_error"] == expected_error
+        assert result["body_complete"] is (expected_error is None)
+        assert (root / result["request_sha256"] / "response.bin").read_bytes() == prefix
+        assert result["raw_body_sha256"] == aa.digest(prefix)
+        assert result["raw_body_bytes"] == len(prefix)
+        assert result["cost_usd"] is None and result["reservation_release_allowed"] is False
+        assert conn.closed and len(conn.calls) == 1
 
 def test_body_limit_is_explicit_and_prefix_retained(monkeypatch: pytest.MonkeyPatch, wire: dict, root: Path) -> None:
     monkeypatch.setattr(at, "MAX_BODY_BYTES", 20)

@@ -95,9 +95,10 @@ class AnthropicTransport:
                 "Content-Type": "application/json", "Accept": "application/json", "Accept-Encoding": "identity"})
             response = connection.getresponse()
             status, request_id = response.status, response.getheader("request-id")
-            # Read incrementally so a late read failure retains the prior prefix.
+            # read1 returns buffered bytes before waiting for more. read(size) can
+            # consume a prefix internally and lose it when that same read times out.
             while len(raw) <= MAX_BODY_BYTES:
-                part = response.read(min(65536, MAX_BODY_BYTES + 1 - len(raw)))
+                part = response.read1(min(65536, MAX_BODY_BYTES + 1 - len(raw)))
                 if not part:
                     if response.length not in (None, 0):
                         return Reply(status, request_id, raw, False, "incomplete_response")
