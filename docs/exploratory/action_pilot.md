@@ -173,3 +173,65 @@ Re-park through the tool after terminal harvesting;
 if the journal's active slots are full, wait for expiry rather than evicting a hold.
 This owner request authorizes the new run; it does not authorize agent merging or
 bypassing review. No further paid attempt is allowed if this recovery stops.
+
+## Quote-only correction after the first response
+
+Recovery run `40344924588` passed source/budget admission and all 14 count requests.
+Its first generation (s01) returned HTTP 200 but an invalid annotation:
+`evidence_span_mismatch`. Both proposed ranges were `[0,60)` in a 55-code-point
+source; the quoted evidence and condition occur at `[0,55)` and `[26,54)`.
+The worker stopped: zero accepted annotations, 13 items unattempted, including all
+four archived responses. Its additive receipt is
+`data/action_annotations/runs/action_40344924588.report.json`; reported usage costs
+$0.0002326 at the pinned published rates, not an invoice-verified total. Raw bytes
+and historical records are not repaired or relabeled by the following correction.
+
+`scripts/action_quote_annotations.py` adds a **separate provider contract**,
+`data/action_annotations/annotation_quotes.v1.schema.json`. The provider copies
+quotations and supplies `schema_version: patientwords.action-quotes/1`, without
+numeric offsets. The normalizer requires evidence to occur exactly once in the
+original source, then timing/condition quotations exactly once within that evidence.
+It counts overlapping occurrences, preserves case/whitespace/Unicode and derives
+zero-based, end-exclusive Unicode-code-point positions. Missing, empty or ambiguous
+matches refuse; no fuzzy matching, first-match selection or context expansion.
+Longer contextual quotations can distinguish otherwise repeated phrases.
+
+The resulting object passes every existing `annotation.v1.schema.json` and rubric
+constraint. Categories, stance, actor, status, missing/null rules and negation/context
+requirements are unchanged. `rubric_quotes.v1.json` changes only the version and
+span-format instruction. Literal correspondence still cannot establish correct or
+exhaustive action labels, clinical appropriateness, or health-equity findings.
+
+`interpret_reply(..., response_format="patientwords.action-quotes/1")` explicitly
+selects this route and emits interpretation version 2, retaining provider proposal,
+raw-body hash, normalization implementation/schema identities and normalized result.
+Failures keep raw provenance and no accepted annotation. The default remains the
+unchanged numeric-span version 1: old replies are never automatically repaired or
+reinterpreted as quote-only. Transport/model/stop/usage checks remain shared.
+
+`data/action_annotations/quote_preparation.v1.json` freezes new request/contract
+hashes and links the prior plan/failure. Offline preparation first re-admits the
+original source hashes, joins and seal, then checks the new requests. It keeps the
+same 10 synthetic challenges and R01–R04, model/settings and source text; owner
+labels, source-model identities and provisional family joins do not enter prompts.
+The candidate explicitly records `execution_enabled: false` and zero model calls.
+
+```bash
+python -m scripts.action_quote_annotations --out /tmp/pw-action-quotes-new
+python -m pytest -q tests/test_action_quote_annotations.py tests/test_action_annotation_reply.py
+```
+
+This correction **does not enable another paid run**. The current live campaign
+still accepts only its old frozen plan/consumed identities. Its requests, trigger,
+workflow, reservations, price receipt and budget rules are unchanged. A future
+reviewed campaign change must bind the quote plan, interpreter format, new attempt
+identity and preserved prior receipts, with current prices/budgets and a bounded
+owner execution decision. Code merge alone neither fires nor authorizes that run.
+No new frontend payload or publication path is introduced.
+
+The regression fixture `tests/fixtures/action_annotations/quote_failure_regression.json`
+records the previous invalid annotation and a **synthetic test transformation** of
+its quotations. That transformed object is not a new provider response, repaired
+research result or independent gold label. Tests keep the original failure invalid
+and exercise Unicode, overlapping/repeated/missing quotations, nested context,
+schema-first refusals, legacy compatibility and unchanged live-plan refusal.

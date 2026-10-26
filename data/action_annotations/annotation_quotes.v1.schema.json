@@ -1,0 +1,95 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PatientWords quote-only provider response v1",
+  "description": "Provider contract only. Exact quotations are normalized into annotation.v1.schema.json; no offsets or coercion are accepted.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "actions",
+    "reason"
+  ],
+  "properties": {
+    "status": {
+      "type": "string"
+    },
+    "reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/action"
+      }
+    },
+    "schema_version": {
+      "type": "string",
+      "description": "Must equal patientwords.action-quotes/1; checked by the normalizer."
+    }
+  },
+  "definitions": {
+    "span": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "quote"
+      ],
+      "properties": {
+        "quote": {
+          "type": "string"
+        }
+      }
+    },
+    "optional_span": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "quote"
+      ],
+      "properties": {
+        "quote": {
+          "type": "string"
+        }
+      }
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "category",
+        "stance",
+        "actor",
+        "evidence",
+        "timing",
+        "condition"
+      ],
+      "properties": {
+        "category": {
+          "type": "string"
+        },
+        "stance": {
+          "type": "string"
+        },
+        "actor": {
+          "type": "string"
+        },
+        "evidence": {
+          "$ref": "#/definitions/span"
+        },
+        "timing": {
+          "$ref": "#/definitions/optional_span"
+        },
+        "condition": {
+          "$ref": "#/definitions/optional_span"
+        }
+      }
+    }
+  }
+}
