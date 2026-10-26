@@ -1,5 +1,9 @@
 # Single-attempt action annotation transport
 
+Integration update: [the fixed assisted-pilot runner](action_pilot.md) now supplies
+the separate CI/source/budget admission described as future work below. The original
+synthetic-only CLI remains unchanged. No live pilot has run.
+
 This library supplies one missing execution primitive: a fixed-endpoint Messages
 POST and durable, write-once attempt records. It has no CLI, workflow, key lookup,
 source admission, budget admission, retry, campaign runner or publication path.

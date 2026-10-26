@@ -112,17 +112,19 @@ def test_secondary_petri_disables_hidden_sdk_retries_and_keeps_the_metered_gate(
 
 
 @pytest.mark.parametrize("failed_output_commit", [False, True])
-@pytest.mark.parametrize("kind", ["advice", "petri_primary", "petri_secondary"])
+@pytest.mark.parametrize("kind", ["advice", "petri_primary", "petri_secondary", "action"])
 def test_cost_only_push_preserves_unpublished_outputs(tmp_path: Path, failed_output_commit: bool, kind: str) -> None:
     """Execute the workflow shell with tracked dirty outputs and with an unpushed output commit."""
     import yaml
 
     root = Path(__file__).resolve().parents[1]
-    filename = "advice_evaluation.yml" if kind == "advice" else "petri_audit.yml"
+    filename = {"advice": "advice_evaluation.yml", "action": "action_annotation.yml"}.get(kind, "petri_audit.yml")
     workflow = yaml.safe_load((root / ".github/workflows" / filename).read_text())
     prefix = {"advice": "Commit each judge pass cost", "petri_primary": "Commit cost sidecars of a paid run",
-              "petri_secondary": "Commit the secondary pass and its cost"}[kind]
-    step = next(item for item in workflow["jobs"]["advice" if kind == "advice" else "audit"]["steps"]
+              "petri_secondary": "Commit the secondary pass and its cost",
+              "action": "Land the cost receipt"}[kind]
+    job = {"advice": "advice", "action": "pilot"}.get(kind, "audit")
+    step = next(item for item in workflow["jobs"][job]["steps"]
                 if item.get("name", "").startswith(prefix))
     remote = tmp_path / "remote.git"
     checkout = tmp_path / "checkout"
@@ -152,11 +154,13 @@ def test_cost_only_push_preserves_unpublished_outputs(tmp_path: Path, failed_out
     report = checkout / {"advice": "data/advice/judgments_example.judge_20261015T120000Z.report.json",
                          "petri_primary": "data/petri/runs/run_777_1/run_777_1.report.json",
                          "petri_secondary": "data/petri/rejudge/second/run_777_1/"
-                         "run_777_1.rejudge_777_secondary.judge.report.json"}[kind]
+                         "run_777_1.rejudge_777_secondary.judge.report.json",
+                         "action": "data/action_annotations/runs/action_777.report.json"}[kind]
     report.parent.mkdir(parents=True, exist_ok=True)
     report.write_text('{"cost_usd": 0.01}\n')
     relative = str(report.relative_to(checkout))
     (scratch / "advice-judge-reports.txt").write_text(relative + "\n")
+    (scratch / "action-sidecar-files.txt").write_text(relative + "\n")
     if failed_output_commit:
         git("add", ".")
         git("commit", "-m", "outputs whose push failed")

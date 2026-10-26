@@ -109,12 +109,21 @@ class AnthropicTransport:
 
     def __call__(self, wire: dict[str, Any]) -> Reply:
         body = _wire_bytes(wire)
+        return self._post("/v1/messages", wire["api_version"], body)
+
+    def count(self, wire: dict[str, Any]) -> Reply:
+        """One free count request for the same inputs; no generation or retries."""
+        _wire_bytes(wire)
+        body = {k: wire["body"][k] for k in ("model", "system", "messages", "thinking")}
+        return self._post("/v1/messages/count_tokens", wire["api_version"], aa.encoded(body))
+
+    def _post(self, path: str, version: str, body: bytes) -> Reply:
         connection = http.client.HTTPSConnection("api.anthropic.com", timeout=TIMEOUT_SECONDS)
         status, request_id = None, None
         raw = b""
         try:
-            connection.request("POST", "/v1/messages", body=body, headers={
-                "Authorization": "Bearer " + self._api_key, "anthropic-version": wire["api_version"],
+            connection.request("POST", path, body=body, headers={
+                "Authorization": "Bearer " + self._api_key, "anthropic-version": version,
                 "Content-Type": "application/json", "Accept": "application/json", "Accept-Encoding": "identity"})
             response = connection.getresponse()
             status, request_id = response.status, response.getheader("request-id")

@@ -24,7 +24,7 @@ Subscription usage in the owner's session is not provider spend, so
 `fire_trigger.py`'s journal and ceiling do not apply to it. A pilot run through a
 push-to-run lane, once one exists, needs no exception. Mechanics: `docs/pilot_runs.md`.
 
-Ten lanes. `scripts/fire_trigger.py` also knows `pab-probe`, whose
+11 lanes. `scripts/fire_trigger.py` also knows `pab-probe`, whose
 workflow exists only on the PAB branch. The lane reference, with every lane's exact
 key set, is `docs/triggers.md` (it says why `.github/trigger/README.md` is not);
 `tests/test_trigger_docs.py` checks it and the `AGENTS.md` table against `TRIGGERS`,
@@ -50,7 +50,7 @@ branch still fire. And the **resting-state rule**: a trigger file at rest is a l
 default any branch operation can pull, so its committed content should be the cheapest
 stage that exists with `commit_outputs`/`commit_sidecar` false, never the last expensive
 thing that ran. `scripts/fire_trigger.py park --trigger <t>` (or `--all`) fires each
-lane's no-op default from `PARK_DEFAULTS`. All ten lanes rest parked (`jev-audit` once
+lane's no-op default from `PARK_DEFAULTS`. All 11 lanes rest parked (`jev-audit` and `action-annotate` once
 first parked on `main`) except
 `archive-renders`, from the cycle that fires its $0 PNG sweep until the next re-parks it
 (`docs/routine_standing_prompt.md` §3d); after any real fire lands, re-park that lane
@@ -102,7 +102,7 @@ Read [exploratory/baseline_ci.md](exploratory/baseline_ci.md) before any work on
 route. The workflow has only `workflow_dispatch`, read-only permissions, owner/main
 and first-attempt guards, an exact expected-engine-commit assertion and a reviewed
 readiness gate before runtime setup, downloads or model capture. It has its own
-concurrency group and is not one of the ten push-to-run lanes. Separate execution
+concurrency group and is not one of the 11 push-to-run lanes. Separate execution
 approval and the readiness requirements remain necessary; neither a documentation
 change nor an offline test satisfies them. Historical receipts bind their recorded
 commits and must not be presented as tests of a later merge SHA.
@@ -382,3 +382,8 @@ and cite the actual counterpart/artifact before claiming current verification.
 * **Publication consequence.** These limitations are not permission to silently change
   historical published values. Changing a measurement implementation and remeasuring
   or republishing pairs are separate decisions; retain the existing owner review.
+
+The fixed `action-annotate` lane is paid only in `mode: run` ($1 total, Anthropic).
+Its harmless park calls nothing. [The runbook](exploratory/action_pilot.md) specifies
+first-attempt/source/budget gates, unknown-charge handling and artifact recovery.
+It does not change existing judges, historical measures or publication inputs.

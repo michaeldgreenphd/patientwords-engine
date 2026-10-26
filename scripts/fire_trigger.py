@@ -73,6 +73,7 @@ TRIGGERS = (
     "petri-audit",
     "pab-probe",
     "jev-audit",
+    "action-annotate",
 )
 # advice-eval: elicit AND judge spend Anthropic/provider tokens (2026-07-21)
 # pab-probe: patient/assistant/sandbox legs bill the prepaid OpenRouter key and
@@ -86,12 +87,12 @@ TRIGGERS = (
 # jev-audit (2026-10-14, owner decision D3): a live run calls the Jev decisions classifier through the OpenRouter key;
 # a mock run (live false, the park) calls nothing and costs $0, so it is exempt like petri-audit's free modes.
 PAID_TRIGGERS = frozenset({"scenario-generation", "model-evaluation", "advice-eval", "petri-audit", "pab-probe",
-                           "jev-audit"})
+                           "jev-audit", "action-annotate"})
 # The lanes whose paid fires carry a `_nonce` that binds the journal entry reserving the spend to the run and its cost
 # sidecar, so budget-gate can REQUIRE that reservation server-side (journal_reservation_problems,
 # push_reservation_problems, ref_reservation_problems). jev-audit joined petri-audit on 2026-10-14 (Codex review of
 # PR #110): without it a live trigger reaching a branch by merge or hand push ran whenever the lane had headroom.
-NONCE_LANES = frozenset({"petri-audit", "jev-audit"})
+NONCE_LANES = frozenset({"petri-audit", "jev-audit", "action-annotate"})
 # Two circuit-trace paths make Anthropic translation calls, the only paid paths
 # outside PAID_TRIGGERS: show_mitigation=true (2panel's LLM-translated third
 # panel) and mode translation (every pair's patient prompt is LLM-translated,
@@ -207,6 +208,7 @@ LOGITS_EVAL_JOB_DEFAULTS = {"pairs_file": "data/simulated/pairs_20260706T201750Z
 # always land), so their parks are 1-item haiku runs (~$0.002/accident).
 PARK_TINY_PAIRS = "data/simulated/pairs_20260706T172135Z.json"  # 2-pair batch, known good
 PARK_DEFAULTS = {
+    "action-annotate": {"mode": "park", "plan_sha256": "", "max_spend": "0", "expected_commit": ""},
     "circuit-trace": {"mode": "2panel", "pairs_file": PARK_TINY_PAIRS, "sample_size": "1",
                       "offsets": "0", "commit_outputs": "false"},
     "logits-eval": {"models": "qwen3-1.7b", "pairs_file": PARK_TINY_PAIRS, "limit": "1",
@@ -320,6 +322,8 @@ def is_paid_fire(trigger, params):
     if is_mitigation_fire(trigger, params) or is_translation_fire(trigger, params):
         return True
     if trigger not in PAID_TRIGGERS:
+        return False
+    if trigger == "action-annotate" and params.get("mode") == "park":
         return False
     if trigger == "petri-audit" and petri_mode(params) == PETRI_REJUDGE_MODE:
         # a rejudge spends through its judge, unless the judge is the zero-price rehearsal sentinel
@@ -1795,6 +1799,13 @@ def lane_params_problems(trigger: str, params: dict, registry: dict | None = Non
     if trigger == "jev-audit":
         # the checkout the fire writes to (fire --repo), so input paths are checked in the tree CI will run
         return jev_params_problems(params, repo)
+    if trigger == "action-annotate":
+        # Direct script invocation and -m must import the same checked-out code.
+        root = str(Path(__file__).resolve().parents[1])
+        if root not in sys.path:
+            sys.path.insert(0, root)
+        from scripts.action_pilot import params_problems
+        return params_problems(params, repo)
     return []
 
 
@@ -1825,6 +1836,7 @@ PUSH_BACKOFF_SECONDS = (2, 4, 8, 16)
 # keys are a hard error for EVERY trigger: CI silently ignores unknown keys, so
 # a typo means a run with defaults that can cost money or evict queued runs.
 KNOWN_KEYS = {
+    "action-annotate": frozenset({"mode", "plan_sha256", "max_spend", "expected_commit"}),
     # circuit_trace_evaluation.yml `defaults` dict (verified 2026-07-09): graph_model,
     # graph_models, mode, pairs_file, offsets, sample_size, screen_targets, show_mitigation,
     # commit_outputs, max_n_logits, desired_logit_prob, node_threshold, edge_threshold,
@@ -2280,7 +2292,7 @@ def inflight_max_spend(entries, today, now=None, expire_hours=None, lane="anthro
 
 
 def budget_check(params, dashboard, today, entries=(), now=None, expire_hours=DEFAULT_EXPIRE_HOURS,
-                 overrides=None, trigger=None):
+                 overrides=None, trigger=None, repo=None):
     """(kind, reason) against the daily spend ceiling for a paid trigger.
 
     kind is "ok", "ceiling" (over the daily ceiling - the only refusal
@@ -2312,6 +2324,15 @@ def budget_check(params, dashboard, today, entries=(), now=None, expire_hours=DE
     max_spend, commit_err = fire_commitment(params)
     if max_spend is None:
         return "invalid", commit_err
+    if trigger == "action-annotate":
+        root = Path(__file__).resolve().parents[1]
+        if str(root) not in sys.path:
+            sys.path.insert(0, str(root))
+        from scripts.action_pilot_budget import availability
+        try:
+            availability(Path(repo or root), list(entries), datetime.strptime(today, "%Y-%m-%d").date())
+        except (OSError, ValueError, KeyError, TypeError):
+            return "invalid", "action monthly allocation unknown or unavailable; no budget override"
     spend = dashboard.get("spend") if isinstance(dashboard, dict) else None
     if not isinstance(spend, dict):
         spend = {}
@@ -2853,7 +2874,7 @@ def cmd_fire(args):
         overrides = load_budget_overrides(repo / OVERRIDES_RELPATH)
         kind, reason = budget_check(budget_params, dashboard, now.strftime("%Y-%m-%d"),
                                     entries=entries, now=now, expire_hours=expire_hours,
-                                    overrides=overrides, trigger=args.trigger)
+                                    overrides=overrides, trigger=args.trigger, repo=repo)
         if kind == "ok":
             print(reason)
         elif kind == "ceiling" and args.override_budget:
@@ -3694,7 +3715,7 @@ def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Names
         overrides = _json_at(repo, head, OVERRIDES_RELPATH)
         kind, reason = budget_check(budget_params, dashboard, now.strftime("%Y-%m-%d"),
                                     entries=others, now=now, expire_hours=expire_hours,
-                                    overrides=overrides, trigger=trigger)
+                                    overrides=overrides, trigger=trigger, repo=repo)
         if kind == "ok":
             print(reason)
         elif kind == "ceiling" and args.override_budget:
@@ -4350,7 +4371,7 @@ def cmd_budget_gate(args):
     kind, reason = budget_check(budget_params, dashboard, today,
                                 entries=entries, now=now,
                                 expire_hours=expire_hours_from_env(),
-                                overrides=overrides, trigger=args.trigger)
+                                overrides=overrides, trigger=args.trigger, repo=repo)
     if kind == "ok":
         print(f"budget-gate: clear - {reason}")
         return 0

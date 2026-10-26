@@ -43,7 +43,11 @@ publish-site-data skill, which the Routine runs in §5 when new results land.
 |---|---|---|---|---|
 | `action_annotation_messages.py` | Builds synthetic Messages requests/replays and interprets bounded raw replies; no network/live CLI or source/budget admission | staged | Exclusive external `action_requests.json` / `action_annotations.json`; no measurement or ledger writer | owner or session for offline rehearsal; no CI lane |
 | `action_annotations.py` | Prepares blinded synthetic requests, validates evidence spans and compares annotations with an independent fixture key; no provider calls | staged | New `action_requests.json` or `action_annotations.json` outside Git; never measurement collectors | owner or session for offline rehearsal; no CI lane |
-| `action_annotation_transport.py` | Fixed-endpoint single-attempt Messages transport with write-ahead raw receipts; no CLI, admission or active caller | staged | New `action_annotation_attempts/` outside the engine; never measurement collectors | future reviewed CI only; offline tests inject transport |
+| `action_annotation_transport.py` | Fixed-endpoint single-attempt Messages transport with write-ahead raw receipts; no CLI; admission belongs to action_pilot | staged | New `action_annotation_attempts/` outside the engine; never measurement collectors | action-annotate CI only; offline tests inject transport |
+
+| `action_pilot.py` | Executes the fixed assisted pass with CI identity, reservation and deadline gates; offline prepare mode | staged | New external run artifacts and cost receipt; no public payload | action-annotate CI lane after owner merge/fire |
+| `action_pilot_inputs.py` | Admits exact source bytes, joins, seal and frozen requests | staged | None; returns versioned blinded input packet | imported by action_pilot |
+| `action_pilot_budget.py` | Validates dated prices, token usage, next-call bound and conservative allocation | staged | None; unknown costs refuse | action_pilot and trigger admission |
 
 ## Ops tooling and the Routine
 
