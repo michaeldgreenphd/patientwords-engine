@@ -35,7 +35,8 @@ unadjudicated key does not silently discard a challenge or certify the model.
 Only `fire_trigger.py` may create/change `action-annotate.json`, after this PR lands.
 The workflow has only a trigger-file push event, main/owner/first-attempt/creation
 checks, and one per-ref concurrency group with cancellation disabled. Park has no
-provider access or output commit. The paid pass accepts the fixed plan/nonce only;
+provider access or output commit. The paid pass accepts the fixed plan and named
+initial/recovery nonces only (the one recovery is described below);
 nonce reuse remains forbidden even after resolve/expiry/eviction. A failed admission
 also consumes that reservation identity: do not repair and replay it automatically.
 
@@ -132,3 +133,43 @@ After the single pass, inspect terminal jobs, raw captures, missing items, usage
 annotation validity and sidecar landing; preserve artifacts locally and report
 cost/limitations. Re-park through the tool only after harvesting; resolve only on
 terminal evidence. Any scale-up, retry or publication is a separate decision.
+
+The first live fire (Actions run `40320384841`, 2026-10-26) was refused before
+transport construction: the worker passed `refs/heads/main` to the budget gate,
+while `fire_trigger.py` journals `main`. The worker now passes the short name
+after enforcing its exact main-ref identity; the regression uses the writer's
+real `fire_ref` result. This fixes admission without relaxing branch binding.
+That failed fire made no API call and produced no result/cost artifact. Its
+reservation and consumed nonce remain unchanged. No replay, refund or completed
+pilot is inferred from this correction.
+
+On 2026-10-26 the owner explicitly requested fixing Anthropic and running it again,
+while leaving Jev untouched for their OpenRouter repair. The one authorized fresh
+attempt uses `assisted-actions-20261026-recovery-1`, with the **same 14 request
+hashes, model, plan, price receipt and $1 gross cap**. The original plan's historical
+`execution_status` is not rewritten; run receipts establish actual outcomes.
+
+`data/action_annotations/recovery_20261026.v1.json` records the original run URL,
+fire/source commits, saved refusal-log and worker hashes, and the exact retained
+journal reservation. The worker pins the receipt hash and admits recovery only
+with that unchanged original paid entry followed by exactly one new paid entry.
+A removed/edited/resolved/evicted original entry, missing receipt, different nonce,
+duplicate or third paid attempt refuses. The existing trigger writer still rejects
+every reused nonce. The new artifact and additive cost receipt include a `recovery`
+object linking the original failure; no existing consumer or output field changes.
+
+The original $1 continues to count alongside the new $1. Both daily and monthly
+gates remain in force; any refusal stops execution without raising a ceiling.
+This reviewed receipt attests this particular pre-transport failure, not a generic
+inference that an absent artifact means no spend. It authorizes no future recovery.
+No original run, journal entry, sidecar or source artifact is overwritten.
+
+After this recovery change is reviewed and owner-merged, use the new nonce in a
+fresh tool-generated fire after rechecking the actual queue/accounting and current
+main. This lane is already initialized: do not repeat the initial park step above
+or resolve the old failure to make room. Retain the original failed entry unresolved.
+Do not invoke `resolve` merely to clear the older missing-artifact failure.
+Re-park through the tool after terminal harvesting;
+if the journal's active slots are full, wait for expiry rather than evicting a hold.
+This owner request authorizes the new run; it does not authorize agent merging or
+bypassing review. No further paid attempt is allowed if this recovery stops.

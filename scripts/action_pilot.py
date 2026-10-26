@@ -28,6 +28,31 @@ from scripts.action_pilot_inputs import require
 ROOT = aa.ROOT
 TRIGGER = 'action-annotate'
 TRIGGER_PATH = Path('.github/trigger/action-annotate.json')
+RECOVERY = Path('data/action_annotations/recovery_20261026.v1.json')
+RECOVERY_SHA256 = '9758535734715f69ae61e587dc69212c9c4405fb07d20b02b87e6ce7341cf67d'
+RECOVERY_NONCE = 'assisted-actions-20261026-recovery-1'
+
+
+def recovery_receipt(root: Path) -> dict[str, Any]:
+    """One reviewed pre-transport failure, not a general retry allowance."""
+    return inputs.parse(inputs.verified_bytes(root, RECOVERY, RECOVERY_SHA256))
+
+
+def campaign_identity(entries: list[dict[str, Any]], nonce: str, root: Path) -> dict[str, Any]:
+    """Retain all paid history; allow only the original or one named recovery."""
+    mine = [e for e in entries if e.get('trigger') == TRIGGER and e.get('max_spend') is not None]
+    if nonce == inputs.NONCE:
+        require(len(mine) == 1 and mine[0].get('nonce') == nonce, 'campaign_already_reserved')
+        return {}
+    require(nonce == RECOVERY_NONCE, 'unauthorized_recovery')
+    receipt = recovery_receipt(root)
+    # Exact equality refuses a removed, resolved, evicted, renamed or edited hold.
+    # The current reservation is separately bound to this push by cmd_budget_gate.
+    require(len(mine) == 2 and mine[0] == receipt['prior_reservation'] and
+            mine[1].get('nonce') == nonce, 'recovery_history_mismatch')
+    return {'recovery': {'receipt_sha256': RECOVERY_SHA256, 'nonce': nonce,
+                         'prior_failure': receipt['prior_failure'],
+                         'prior_reservation_retained': True}}
 
 
 def git(*args: str, root: Path = ROOT) -> str:
@@ -47,7 +72,7 @@ def params_problems(params: dict[str, Any], root: Path | None = None) -> list[st
     if params['mode'] == 'park':
         return [] if all(params.get(k) == v for k, v in {
             'plan_sha256': '', 'max_spend': '0', 'expected_commit': ''}.items()) else ['action_park_values']
-    if params.get('plan_sha256') != inputs.PLAN_SHA256 or params.get('_nonce') != inputs.NONCE:
+    if params.get('plan_sha256') != inputs.PLAN_SHA256 or params.get('_nonce') not in (inputs.NONCE, RECOVERY_NONCE):
         return ['action_fixed_plan_and_nonce_required']
     if params.get('max_spend') != '1.00':
         return ['action_full_one_dollar_reservation_required']
@@ -57,6 +82,8 @@ def params_problems(params: dict[str, Any], root: Path | None = None) -> list[st
         try:
             inputs.verified_bytes(root, inputs.PLAN, inputs.PLAN_SHA256)
             budget.prices(root, datetime.now(timezone.utc).date())
+            if params['_nonce'] == RECOVERY_NONCE:
+                recovery_receipt(root)
         except (OSError, ValueError):
             return ['action_plan_or_price_unavailable']
     return []
@@ -82,19 +109,21 @@ def admit_ci(params: dict[str, Any], env: dict[str, str], root: Path = ROOT) -> 
     require(not git('status', '--porcelain', '--untracked-files=normal', root=root), 'dirty_execution_checkout')
     remote = git('ls-remote', 'origin', 'refs/heads/main', root=root).split()
     require(len(remote) == 2 and remote[0] == head, 'main_advanced_before_admission')
+    # The writer journals git's short branch name, as other CI lanes pass ref_name.
+    # Normalize only after the exact refs/heads/main identity check above succeeds.
     args = argparse.Namespace(repo=str(root), trigger=TRIGGER, params_file=None,
-                              push_before=event['before'], ref=env['GITHUB_REF'], run_attempt=1)
+                              push_before=event['before'], ref=env['GITHUB_REF'].removeprefix('refs/heads/'), run_attempt=1)
     require(ft.cmd_budget_gate(args) == 0, 'journal_or_daily_budget_refused')
     entries = ft.load_journal(root / ft.JOURNAL_RELPATH)
-    mine = [e for e in entries if e.get('trigger') == TRIGGER and e.get('max_spend') is not None]
-    require(len(mine) == 1 and mine[0].get('nonce') == inputs.NONCE, 'campaign_already_reserved')
+    nonce = params['_nonce']
+    recovery = campaign_identity(entries, nonce, root)
     now = datetime.now(timezone.utc)
     require(now.hour < 23 or now.minute < 25, 'too_close_to_utc_rollover')
-    available = budget.availability(root, entries, now.date(), inputs.NONCE)
+    available = budget.availability(root, entries, now.date(), nonce)
     return {'engine_commit': head, 'reviewed_code_commit': params['expected_commit'],
             'workflow_run_id': env['GITHUB_RUN_ID'], 'workflow_run_attempt': 1,
-            'journal_nonce': inputs.NONCE, 'inference': {'environment': 'github_actions'},
-            'budget_admission': available, 'execution_day_utc': now.date().isoformat()}
+            'journal_nonce': nonce, 'inference': {'environment': 'github_actions'},
+            'budget_admission': available, 'execution_day_utc': now.date().isoformat(), **recovery}
 
 
 @contextmanager
