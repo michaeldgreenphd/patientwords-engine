@@ -1,0 +1,97 @@
+name: Bounded assisted action annotation
+
+# No trigger file ships with this PR. Only fire_trigger.py creates/changes it
+# after owner merge. No schedule, PR trigger or workflow_dispatch route.
+on:
+  push:
+    paths:
+      - ".github/trigger/action-annotate.json"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: action-annotate-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  pilot:
+    if: >-
+      ${{ !github.event.created && github.ref == 'refs/heads/main' &&
+          github.repository == 'michaeldgreenphd/patientwords-engine' &&
+          github.actor == 'michaeldgreenphd' && github.triggering_actor == 'michaeldgreenphd' &&
+          github.run_attempt == 1 }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+      - name: Validate trigger and park without provider access
+        id: params
+        run: |
+          python - <<'PY'
+          import os
+          from scripts import action_annotations as aa
+          from scripts.action_pilot import TRIGGER_PATH, params_problems
+          defaults = {"mode": "park", "plan_sha256": "", "max_spend": "0", "expected_commit": ""}
+          cfg = aa.read_json(TRIGGER_PATH)
+          # Defaults document park; missing fields on disk are refused, never filled.
+          if not isinstance(cfg, dict) or not set(defaults) <= set(cfg):
+              raise SystemExit('action_trigger_incomplete')
+          problems = params_problems(cfg)
+          if problems:
+              raise SystemExit('; '.join(problems))
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:
+              stream.write('mode=' + cfg['mode'] + '\n')
+          PY
+      - name: Run the single admitted pass
+        if: steps.params.outputs.mode == 'run'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python -m scripts.action_pilot live --out "$RUNNER_TEMP/action-pilot-$GITHUB_RUN_ID"
+      - name: Preserve inputs, partial captures, failures and cost record
+        if: always() && steps.params.outputs.mode == 'run'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: action-pilot-${{ github.run_id }}-1
+          path: ${{ runner.temp }}/action-pilot-${{ github.run_id }}/
+          if-no-files-found: error
+          retention-days: 90
+      - name: Stage only the additive cost receipt
+        if: always() && steps.params.outputs.mode == 'run'
+        id: sidecar
+        run: |
+          python - <<'PY'
+          import os, re
+          from pathlib import Path
+          from scripts import action_annotations as aa
+          run_id = os.environ['GITHUB_RUN_ID']
+          if re.fullmatch('[1-9][0-9]*', run_id) is None:
+              raise SystemExit('invalid_run_id')
+          source = Path(os.environ['RUNNER_TEMP']) / ('action-pilot-' + run_id) / 'report.json'
+          if not source.is_file():
+              raise SystemExit('missing_report_keep_journal_reservation')
+          report = aa.read_json(source)
+          # An unfinished snapshot deliberately remains unknown, never cost zero.
+          report.pop('items', None)
+          report['artifact_report_sha256'] = aa.digest(source.read_bytes())
+          target = Path('data/action_annotations/runs') / ('action_' + run_id + '.report.json')
+          target.parent.mkdir(parents=True, exist_ok=True)
+          with target.open('xb') as stream:
+              stream.write(aa.encoded(report))
+          listing = Path(os.environ['RUNNER_TEMP']) / 'action-sidecar-files.txt'
+          listing.write_text(str(target) + '\n')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:
+              stream.write('ready=true\n')
+          PY
+      - name: Land the cost receipt without touching operational files
+        if: always() && steps.sidecar.outputs.ready == 'true'
+        env:
+          BRANCH: main
+        run: bash scripts/ci_publish_judge_files.sh "Record assisted annotation cost receipt" "$RUNNER_TEMP/action-sidecar-files.txt"

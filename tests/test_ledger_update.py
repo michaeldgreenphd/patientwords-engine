@@ -59,7 +59,7 @@ def run(tree, *extra):
     argv = ["--simulated-dir", str(tree["sim"]), "--advice-dir", str(tree["adv"]),
             "--pab-dir", str(tree["pab"]), "--petri-dir", str(tree["petri"]),
             "--petri-rejudge-dir", str(tree["rejudge"]), "--jev-dir", str(tree["jev"]),
-            "--trace-dir", str(tree["trace"]),
+            "--trace-dir", str(tree["trace"]), "--action-dir", str(tree["sim"].parent / "action_annotations/runs"),
             "--dashboard", str(tree["dash"]),
             "--ledger", str(tree["ledger"]), "--date", TODAY, *extra]
     return ledger_update.main(argv)
@@ -291,7 +291,8 @@ def test_failed_ledger_append_aborts_before_entries_seen_commit(tree):
 
     with pytest.raises(OSError):
         ledger_update.main(["--simulated-dir", str(tree["sim"]), "--dashboard", str(tree["dash"]),
-                            "--ledger", str(bad_ledger), "--date", TODAY])
+                            "--ledger", str(bad_ledger), "--date", TODAY,
+                            "--action-dir", str(tree["sim"].parent / "action_annotations/runs")])
 
     # entries_seen never committed: the dashboard write must not have happened
     assert not tree["dash"].exists()
@@ -433,6 +434,7 @@ def test_the_first_fold_on_the_repos_own_dashboard_leaves_the_closed_tierb_recor
         "--pab-dir", str(root / "data" / "pab"), "--petri-dir", str(root / "data" / "petri" / "runs"),
         "--petri-rejudge-dir", str(root / "data" / "petri" / "rejudge"),
         "--jev-dir", str(root / "data" / "jev" / "runs"),
+        "--action-dir", str(tmp_path / "empty-action-dir"),
         "--trace-dir", str(root / "trace_out"), "--dashboard", str(dash_path), "--ledger", str(ledger),
         "--date", "2026-09-23"]) == 0
 
@@ -832,3 +834,21 @@ def test_a_jev_audit_sidecar_books_to_the_openrouter_channel(tree):
     spend = load_dash(tree)["spend"]
     assert spend["by_day_by_channel"]["openrouter"][TODAY] == pytest.approx(0.11)
     assert TODAY not in spend["by_day_by_channel"].get("anthropic", {})
+
+
+def test_action_cost_receipt_folds_once_and_unknown_refuses_before_writes(tree: dict) -> None:
+    directory = tree['sim'].parent / 'action_annotations/runs'
+    directory.mkdir(parents=True)
+    report = {'schema_version': 'patientwords.action-pilot-report/1', 'billing_channel': 'anthropic',
+              'cost_usd': .0123, 'unknown_charge': False, 'run_timestamp': TODAY + 'T01:00:00Z',
+              'task': 'assisted_action_annotation', 'model': 'fixture-model'}
+    write_sidecar(directory, 'action_42.report.json', **report)
+    assert run(tree) == 0
+    spend = load_dash(tree)['spend']
+    assert spend['by_day_by_channel']['anthropic'][TODAY] == .0123
+    before = (tree['dash'].read_bytes(), tree['ledger'].read_bytes())
+    assert run(tree) == 0
+    assert (tree['dash'].read_bytes(), tree['ledger'].read_bytes()) == before
+    write_sidecar(directory, 'action_43.report.json', **{**report, 'cost_usd': None, 'unknown_charge': True})
+    assert run(tree) == 2
+    assert (tree['dash'].read_bytes(), tree['ledger'].read_bytes()) == before

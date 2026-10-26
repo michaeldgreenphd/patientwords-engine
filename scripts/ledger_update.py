@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -67,6 +68,8 @@ def parse_args(argv=None):
     parser.add_argument("--jev-dir", default="data/jev/runs",
                         help="jev-audit lane cost sidecars (scripts/jev_audit_sidecar.py, 2026-10-14): every "
                              "*.report.json folds into the same totals; each carries billing_channel openrouter")
+    parser.add_argument("--action-dir", default="data/action_annotations/runs",
+                        help="assisted annotation cost receipts; unknown charges refuse before any ledger write")
     parser.add_argument("--dashboard", default="ops/dashboard.json")
     parser.add_argument("--ledger", default=None,
                         help="ledger markdown file (default: lexicographically newest docs/*ledger*.md, "
@@ -378,6 +381,21 @@ def main(argv=None):
     dashboard_path = Path(args.dashboard)
     ledger_path = resolve_ledger(args.ledger)
 
+    # New receipts may preserve interrupted/unknown charges. Never feed a null to
+    # the legacy float(value or 0) fold. Refuse the entire update before any write.
+    for path in sorted(Path(args.action_dir).glob("*.report.json")):
+        try:
+            report = json.loads(path.read_text(encoding="utf-8"))
+            cost = report["cost_usd"]
+            if (report.get("schema_version") != "patientwords.action-pilot-report/1"
+                    or report.get("billing_channel") != "anthropic"
+                    or report.get("unknown_charge") is not False
+                    or type(cost) not in (int, float) or not math.isfinite(cost) or cost < 0):
+                raise ValueError("unreconciled cost")
+        except (OSError, ValueError, KeyError, TypeError):
+            print(f"REFUSED: action_cost_unreconciled: {path.name}; keep the reservation and inspect raw artifacts")
+            return 2
+
     dashboard = load_dashboard(dashboard_path)
     spend = dashboard.setdefault("spend", {})
     # Explicit OpenRouter lane ceiling (owner decision 2026-08-08, $10/day):
@@ -418,6 +436,7 @@ def main(argv=None):
                   (Path(args.petri_dir), "*/*.report.json"),
                   (Path(args.petri_rejudge_dir), "*/*/*.report.json"),
                   (Path(args.jev_dir), "*.report.json"),
+                  (Path(args.action_dir), "*.report.json"),
                   (Path(args.trace_dir), "*/mitigation*.report.json")]
     pab_dir = Path(args.pab_dir)
     by_day_ch = spend.setdefault("by_day_by_channel", {})

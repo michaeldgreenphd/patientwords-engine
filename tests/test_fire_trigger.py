@@ -1317,7 +1317,7 @@ def test_park_defaults_all_validate():
         ft.validate_params(trigger, params)  # raises on any drifted key set
         if "commit_outputs" in ft.KNOWN_KEYS[trigger]:
             assert params["commit_outputs"] == "false", trigger
-        if trigger in ft.PAID_TRIGGERS:
+        if ft.is_paid_fire(trigger, params):
             assert ft.parse_max_spend(params.get("max_spend")) is not None, trigger
 
 

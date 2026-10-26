@@ -303,3 +303,15 @@ def test_no_credential_or_network_side_effect_during_import_or_prepare(monkeypat
     for key in ("", "token\nheader", None):
         with pytest.raises(aa.AnnotationRefusal, match="invalid_credential"):
             at.AnthropicTransport(key)
+
+
+def test_count_endpoint_is_separate_single_attempt_and_shares_inputs(monkeypatch: pytest.MonkeyPatch, wire: dict) -> None:
+    conn = Connection(Response(b'{"input_tokens":42}'))
+    install(monkeypatch, conn)
+    reply = at.AnthropicTransport('fixture-placeholder').count(wire)
+    assert reply.http_status == 200 and reply.body == b'{"input_tokens":42}'
+    assert len(conn.calls) == 1 and conn.closed
+    args, kwargs = conn.calls[0]
+    assert args == ('POST', '/v1/messages/count_tokens')
+    assert json.loads(kwargs['body']) == {k: wire['body'][k] for k in ('model', 'system', 'messages', 'thinking')}
+    assert kwargs['headers']['anthropic-version'] == wire['api_version']

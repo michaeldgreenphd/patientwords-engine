@@ -1,5 +1,9 @@
 # Action annotations: offline Messages adapter
 
+Integration update: [the fixed assisted-pilot runner](action_pilot.md) now supplies
+the separate CI/source/budget admission described as future work below. The original
+synthetic-only CLI remains unchanged. No live pilot has run.
+
 This is the next preparation slice after [action_annotations.md](action_annotations.md).
 It creates deterministic Anthropic Messages request envelopes and replays explicitly
 synthetic transport records. Its CLI has no client, credentials, live mode, retry loop,

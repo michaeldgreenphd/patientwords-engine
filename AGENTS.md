@@ -115,8 +115,9 @@ The pilot exception and exact execution/queue/spend rules remain in the mandator
 | `advice-eval.json` | `advice_evaluation.yml` | deployed-assistant advice elicitation + judging (paid) |
 | `petri-audit.json` | `petri_audit.yml` | Petri-hosted multi-turn register experiments (paid modes: *Cost discipline*; `rejudge` re-grades landed runs with another judge into `data/petri/rejudge/`) |
 | `jev-audit.json` | `jev_pilot.yml` | Jev decisions classifier scored against landed advice and Petri outputs (paid when `live: true`, on OpenRouter) |
+| `action-annotate.json` | `action_annotation.yml` | One fixed assisted action-label pass; paid only in run mode, $1 reservation |
 
-Ten lanes. `scripts/fire_trigger.py` is the source of truth; read
+11 lanes. `scripts/fire_trigger.py` is the source of truth; read
 [docs/triggers.md](docs/triggers.md) and the reference before changing any workflow
 or trigger. Paid Petri `mode: rejudge` writes `data/petri/rejudge/`. Fire only through
 `scripts/fire_trigger.py`; never hand-edit trigger files or fire jobs merely to test docs.

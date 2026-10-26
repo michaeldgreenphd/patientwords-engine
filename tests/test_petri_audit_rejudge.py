@@ -612,6 +612,7 @@ def test_the_ledger_folds_each_rejudge_sidecar_once_to_the_judges_channel(tmp_pa
     ledger.write_text("# ledger\n", encoding="utf-8")
     argv = ["--simulated-dir", str(empty), "--advice-dir", str(empty), "--pab-dir", str(empty),
             "--petri-dir", str(empty), "--petri-rejudge-dir", str(root), "--trace-dir", str(empty),
+            "--action-dir", str(empty), "--jev-dir", str(empty),
             "--dashboard", str(dash), "--ledger", str(ledger), "--date", day]
     assert ledger_update.main(argv) == 0
     spend = framework.load_json(dash)["spend"]
@@ -1041,7 +1042,8 @@ def test_dual_rejudge_costs_reconcile_and_fold_once_without_filename_collision(
     ledger.write_text("# test ledger\n", encoding="utf-8")
     argv = ["--simulated-dir", str(empty), "--advice-dir", str(empty), "--pab-dir", str(empty),
             "--petri-dir", str(empty), "--petri-rejudge-dir", str(root), "--trace-dir", str(empty),
-            "--jev-dir", str(empty), "--dashboard", str(dashboard), "--ledger", str(ledger)]
+            "--jev-dir", str(empty), "--action-dir", str(empty),
+            "--dashboard", str(dashboard), "--ledger", str(ledger)]
     assert ledger_update.main(argv) == 0
     folded = framework.load_json(dashboard)["spend"]["entries_folded"]
     assert sum(folded[p.name] for p in reports) == pytest.approx(sum(costs))

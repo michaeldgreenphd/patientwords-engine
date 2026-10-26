@@ -22,7 +22,7 @@ while IFS= read -r path; do
     ""|/*|..|../*|*/../*|*/..) echo "judge_publish_invalid_path: $path" >&2; exit 1 ;;
   esac
   case "$path" in
-    data/advice/*|data/petri/runs/*|data/petri/rejudge/*|data/petri/secondary/*) ;;
+    data/advice/*|data/petri/runs/*|data/petri/rejudge/*|data/petri/secondary/*|data/action_annotations/runs/action_*.report.json) ;;
     *) echo "judge_publish_invalid_path: $path" >&2; exit 1 ;;
   esac
   if [ -d "$SOURCE_ROOT/$path" ]; then
