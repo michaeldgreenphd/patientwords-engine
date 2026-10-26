@@ -34,6 +34,29 @@ class Reply:
     error: str | None
 
 
+def validate_reply(reply: Reply) -> None:
+    """Validate the bounded raw-reply contract without decoding or pricing it."""
+    if not isinstance(reply, Reply) or type(reply.body) is not bytes:
+        raise aa.AnnotationRefusal("invalid_transport_reply")
+    if reply.http_status is not None and (type(reply.http_status) is not int or not 100 <= reply.http_status <= 599):
+        raise aa.AnnotationRefusal("invalid_transport_reply")
+    if reply.request_id is not None and (not isinstance(reply.request_id, str) or not reply.request_id.strip()):
+        raise aa.AnnotationRefusal("invalid_transport_reply")
+    if reply.request_id is not None:
+        try:
+            reply.request_id.encode("utf-8")
+        except UnicodeError as exc:
+            raise aa.AnnotationRefusal("invalid_transport_reply") from exc
+    if type(reply.complete) is not bool or (reply.error is not None and (
+            not isinstance(reply.error, str) or reply.error not in {
+                "timeout", "connection_error", "response_byte_limit", "incomplete_response"})):
+        raise aa.AnnotationRefusal("invalid_transport_reply")
+    if reply.complete != (reply.error is None) or (reply.complete and reply.http_status is None):
+        raise aa.AnnotationRefusal("invalid_transport_reply")
+    if len(reply.body) > MAX_BODY_BYTES:
+        raise aa.AnnotationRefusal("invalid_transport_reply")
+
+
 def prepare_wire(system: str, text: str) -> dict[str, Any]:
     """Explicit proposed text-only profile; does not admit or label source origin."""
     for value in (system, text):
@@ -176,19 +199,7 @@ def capture_attempt(wire: dict[str, Any], *, source_id: str, source_sha256: str,
     before = time.monotonic()
     try:
         reply = send(json.loads(request_bytes))  # Caller mutation cannot change the recorded request.
-        if not isinstance(reply, Reply) or type(reply.body) is not bytes:
-            raise aa.AnnotationRefusal("invalid_transport_reply")
-        if reply.http_status is not None and (type(reply.http_status) is not int or not 100 <= reply.http_status <= 599):
-            raise aa.AnnotationRefusal("invalid_transport_reply")
-        if reply.request_id is not None and (not isinstance(reply.request_id, str) or not reply.request_id.strip()):
-            raise aa.AnnotationRefusal("invalid_transport_reply")
-        if type(reply.complete) is not bool or reply.error not in {
-            None, "timeout", "connection_error", "response_byte_limit", "incomplete_response"}:
-            raise aa.AnnotationRefusal("invalid_transport_reply")
-        if reply.complete != (reply.error is None) or (reply.complete and reply.http_status is None):
-            raise aa.AnnotationRefusal("invalid_transport_reply")
-        if len(reply.body) > MAX_BODY_BYTES:
-            raise aa.AnnotationRefusal("invalid_transport_reply")
+        validate_reply(reply)
         _write(attempt_dir / "response.bin", reply.body)
         result = {**start, "schema_version": "patientwords.action-attempt-result/1",
                   "finished_utc": _utc(), "elapsed_seconds": time.monotonic() - before,

@@ -28,8 +28,10 @@ validate source origin, immutable hashes, eligibility and holdout status first.
 The synthetic-only contract in `action_annotations.py` is unchanged. The separately
 reviewed Messages v1 adapter in engine PR #126 remains unchanged and does not accept
 this new profile; its request hashes are not interchangeable. No archive record can
-be reclassified as synthetic to use that adapter. A later integration must explicitly
-version live/assisted records and their parser rather than silently reuse v1 fixtures.
+be reclassified as synthetic to use that adapter. The separate [raw-reply interpreter](action_messages.md#raw-reply-interpretation-library)
+now accepts this transport’s reply type without changing the v1 fixture contract.
+A later campaign integration must still version admitted live/assisted records and
+bind source/request/execution identities rather than silently reuse v1 fixtures.
 
 ## Transport behavior
 
@@ -78,9 +80,10 @@ reservation held when upload/accounting fails.
 Every receipt keeps `cost_usd: null` and `reservation_release_allowed: false`.
 These fields are instructions to the future reconciler, **not an update to the actual
 budget ledger**. A complete HTTP response has status `http_response_uninterpreted`;
-an incomplete transfer has `transport_incomplete`. Semantic validation, exact model
-identity, complete token usage, dated pricing, unknown-charge holds and sidecar
-accounting remain mandatory before any live campaign may continue.
+an incomplete transfer has `transport_incomplete`. The offline interpreter can now check annotation structure and exact returned model
+identity and preserve supplied usage; it does not verify semantic correctness or
+complete billing. Source admission, request/receipt joins, dated pricing, unknown-charge
+holds and sidecar accounting remain mandatory before any live campaign may continue.
 
 ## First assisted pass and remaining integration
 
@@ -93,7 +96,7 @@ false negatives or yield a classifier accuracy estimate. Do not equate a neutral
 style, conditional recommendation or list of options with clinical appropriateness.
 
 The remaining CI integration must separately admit archived inputs, record assistance
-rather than independent validation, bind the model-specific parser, enforce the
+rather than independent validation, bind the request and capture to the parser, enforce the
 existing journal/budget/queue gates, preserve partial artifacts and prevent resumption
 with a new root. Benchmark claims still require a finalized reference and case-family
 splits. No clinician bundle, questions, existing judge or registered endpoint changes.
