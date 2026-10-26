@@ -587,6 +587,7 @@ def format_markdown_report(
     is_mock: bool = True,
     petri_results: list[dict[str, Any]] | None = None,
     judge_model: str = "claude-haiku-4-5",
+    advice_skipped: bool = False,
 ) -> str:
     """Generate a clean, structured audit report readable by humans and agents."""
     if metrics.unbilled_calls_count > 0:
@@ -603,20 +604,23 @@ def format_markdown_report(
         f"- **Model Requested**: `{model_name}`",
         f"- **Model(s) Served**: {served_str}",
         f"- **Execution Mode**: `{'Offline Mock ($0)' if is_mock else 'Live CI Evaluation'}`",
-        f"- **Total Advice Cases**: {metrics.total_cases}",
     ]
+    if advice_skipped:
+        lines.append("- **Advice Phase**: Skipped (`--skip-advice`); this is a Petri-only report.")
+    else:
+        lines.append(f"- **Total Advice Cases**: {metrics.total_cases}")
 
     if petri_results:
         petri_convs = len({r["conversation_id"] for r in petri_results})
         lines.append(f"- **Total Petri Cases**: {len(petri_results)} assistant turns ({petri_convs} conversations)")
 
-    if metrics.has_ground_truth and metrics.exact_accuracy is not None:
+    if not advice_skipped and metrics.has_ground_truth and metrics.exact_accuracy is not None:
         lines.extend([
             f"- **Exact Tier Accuracy**: {metrics.exact_accuracy * 100:.1f}% ({metrics.exact_tier_matches}/{metrics.total_cases})",
             f"- **Within-1 Tier Accuracy**: {metrics.within_one_accuracy * 100:.1f}% ({metrics.within_one_tier_matches}/{metrics.total_cases})",
             f"- **Multi-Category Brier Score**: {metrics.brier_score:.4f} *(lower is better, 0.0 is perfect)*",
         ])
-    else:
+    elif not advice_skipped:
         lines.extend([
             "- **Ground Truth**: *None provided (archive sampling)*",
             f"- **Predictions Generated**: {metrics.total_cases}/{metrics.total_cases} (100% label coverage)",
@@ -628,7 +632,7 @@ def format_markdown_report(
         "",
     ])
 
-    if metrics.confusion_matrix:
+    if not advice_skipped and metrics.confusion_matrix:
         lines.extend([
             "## Tier Confusion Matrix",
             "",
@@ -643,7 +647,7 @@ def format_markdown_report(
             lines.append(f"| **{label}** | {row_str} |")
         lines.append("")
 
-    if metrics.flag_metrics:
+    if not advice_skipped and metrics.flag_metrics:
         lines.extend([
             "## Binary Flag Performance",
             "",
@@ -657,26 +661,27 @@ def format_markdown_report(
             lines.append(f"| `{fid}` | {m['accuracy']*100:.1f}% | {prec_str} | {sens_str} | {spec_str} |")
         lines.append("")
 
-    judge_label = judge_model.split("/")[-1] if "/" in judge_model else judge_model
-    lines.extend([
-        "## Advice Evaluation Predictions",
-        "",
-        f"| Case ID | Primary Judge ({judge_label}) | Pred Tier (Jev) | Conf | Match? | Tech Score |",
-        "|---|---|---|---|---|---|",
-    ])
-    for cr in case_reports:
-        pj_tier = cr.get("primary_judge_tier") or cr.get("expected_tier")
-        if pj_tier is None:
-            match_symbol = "N/A"
-            gold_str = "N/A"
-        else:
-            gold_str = f"`{pj_tier}`"
-            match_symbol = "MATCH" if cr["predicted_tier"] == pj_tier else "DIFF"
-        score_str = f"{cr['technicality_score']:.1f}" if cr["technicality_score"] is not None else "N/A"
-        lines.append(
-            f"| `{cr['id']}` | {gold_str} | `{cr['predicted_tier']}` | {cr['tier_confidence']:.2f} | {match_symbol} | {score_str} |"
-        )
-    lines.append("")
+    if not advice_skipped:
+        judge_label = judge_model.split("/")[-1] if "/" in judge_model else judge_model
+        lines.extend([
+            "## Advice Evaluation Predictions",
+            "",
+            f"| Case ID | Primary Judge ({judge_label}) | Pred Tier (Jev) | Conf | Match? | Tech Score |",
+            "|---|---|---|---|---|---|",
+        ])
+        for cr in case_reports:
+            pj_tier = cr.get("primary_judge_tier") or cr.get("expected_tier")
+            if pj_tier is None:
+                match_symbol = "N/A"
+                gold_str = "N/A"
+            else:
+                gold_str = f"`{pj_tier}`"
+                match_symbol = "MATCH" if cr["predicted_tier"] == pj_tier else "DIFF"
+            score_str = f"{cr['technicality_score']:.1f}" if cr["technicality_score"] is not None else "N/A"
+            lines.append(
+                f"| `{cr['id']}` | {gold_str} | `{cr['predicted_tier']}` | {cr['tier_confidence']:.2f} | {match_symbol} | {score_str} |"
+            )
+        lines.append("")
 
     if petri_results:
         lines.extend([
@@ -883,6 +888,7 @@ def write_reports(
     petri_results: list[dict[str, Any]] | None = None,
     interrupted_reason: str | None = None,
     judge_model: str = "claude-haiku-4-5",
+    advice_skipped: bool = False,
 ) -> None:
     """Format and write human-readable markdown and structured JSON reports."""
     md_report = format_markdown_report(
@@ -892,6 +898,7 @@ def write_reports(
         is_mock=is_mock,
         petri_results=petri_results,
         judge_model=judge_model,
+        advice_skipped=advice_skipped,
     )
     if interrupted_reason:
         md_report = (
@@ -950,6 +957,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--judge-model", default="claude-haiku-4-5", help="Primary judge model to filter judgments by")
     parser.add_argument("--max-spend", type=float, default=0.25, help="Hard spend ceiling in USD")
     parser.add_argument("--ci-live", action="store_true", help="Gated CI run mode using live OPENROUTER_API_KEY in GitHub Actions")
+    parser.add_argument("--skip-advice", action="store_true",
+                        help="Score the Petri transcripts only: no advice archive and no golden benchmark, so the "
+                             "report's advice cases are empty. For runs whose advice phase another report already "
+                             "covers (scripts/export_jev_calibration.py combines several reports). Needs "
+                             "--petri-transcripts; refuses --archive and --judgments.")
     parser.add_argument("--started-marker",
                         help="A live run writes this file after every check that needs no call has passed, just "
                              "before its first classifier request. The jev-audit workflow's cost sidecar books the "
@@ -959,6 +971,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out-markdown", help="Path to save markdown report")
     parser.add_argument("--out-json", help="Path to save structured JSON report")
     args = parser.parse_args(argv)
+
+    if args.skip_advice and (args.archive or args.judgments):
+        print("Refused: --skip-advice scores no advice responses; drop --archive and --judgments.", file=sys.stderr)
+        return 1
+    if args.skip_advice and not args.petri_transcripts:
+        print("Refused: --skip-advice needs --petri-transcripts; a report with neither phase has nothing in it.",
+              file=sys.stderr)
+        return 1
 
     if args.archive_samples < 0:
         print(f"Refused: --archive-samples must be non-negative (got {args.archive_samples}; use 0 for all).", file=sys.stderr)
@@ -1024,6 +1044,10 @@ def main(argv: list[str] | None = None) -> int:
 
         input_source_desc = f"Archive {args.archive} ({len(cases)} sampled responses, paired with {args.judge_model} judgments: {judg_p is not None})"
         input_sha = hashlib.sha256(arch_p.read_bytes()).hexdigest()
+    elif args.skip_advice:
+        cases = []
+        input_source_desc = "no advice phase (--skip-advice)"
+        input_sha = None
     else:
         golden_path = Path(args.golden)
         if not golden_path.is_file():
@@ -1034,7 +1058,7 @@ def main(argv: list[str] | None = None) -> int:
         input_source_desc = f"Golden benchmark {args.golden} ({len(cases)} cases)"
         input_sha = hashlib.sha256(golden_path.read_bytes()).hexdigest()
 
-    if not cases:
+    if not cases and not args.skip_advice:
         print(f"Refused: No test cases found in input {input_source_desc}.", file=sys.stderr)
         return 1
 
@@ -1199,6 +1223,9 @@ def main(argv: list[str] | None = None) -> int:
             "jev_client_path": str(client_file),
             "evaluator_path": str(eval_file),
             "sha256": classifier_sha,
+            # the commit CI checked out (null outside CI), so the exporter can show which files gave `sha256` without
+            # searching history (export_jev_calibration.resolve_classifier)
+            "commit": os.environ.get("GITHUB_SHA") or None,
         },
         "parameters": {
             "archive_samples": (args.archive_samples if args.archive_samples > 0 else "all") if arch_p else None,
@@ -1310,7 +1337,8 @@ def main(argv: list[str] | None = None) -> int:
             petri_results=petri_results,
         )
 
-    if metrics and case_reports:
+    # a --skip-advice run has no advice rows, so its report is written when it has Petri rows
+    if metrics and (case_reports or petri_results):
         write_reports(
             out_markdown=args.out_markdown,
             out_json=args.out_json,
@@ -1322,6 +1350,7 @@ def main(argv: list[str] | None = None) -> int:
             petri_results=petri_results,
             interrupted_reason=str(interrupted_exc) if interrupted_exc else None,
             judge_model=args.judge_model,
+            advice_skipped=args.skip_advice,
         )
 
     if interrupted_exc:

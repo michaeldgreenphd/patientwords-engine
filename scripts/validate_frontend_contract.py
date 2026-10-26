@@ -27,7 +27,8 @@ import math
 import re
 import subprocess
 import sys
-from pathlib import Path
+from hashlib import sha256
+from pathlib import Path, PurePosixPath
 from typing import Callable, NamedTuple
 
 # File-relative loading also supports importlib callers and invocation from an
@@ -790,6 +791,11 @@ def check_owner_run(rep: Report, site: Path, send_waivers: dict | None = None):
 # one report. The drift payload must carry the per-arm shape: the pooled drift rate it replaced mixed conversations the
 # drift question does not apply to (export_jev_calibration.DRIFT_SPEAKER / DRIFT_REGISTERS; review of 2026-10-13).
 JEV_WRITER = "scripts/export_jev_calibration.py"
+# `source_reports` (2026-10-14) lists every report one export read; absent only for legacy payloads, which carry no
+# run attribution or evaluator equivalence. With one report the digest is the report's; with several it is the
+# sha256 of the sorted digests, one per line (export_jev_calibration.combined_report_sha256), checked here.
+JEV_OPTIONAL_TOP = {"source_reports", "schema_version"}
+JEV_LEGACY_REPORTS = Path(__file__).resolve().parents[1] / "data/jev/legacy_frontend_reports.json"
 JEV_SPECS = {
     "jev_calibration.json": {
         "top": {"generated_utc": str, "source_report_sha256": str, "model_requested": str, "models_served": list,
@@ -1029,8 +1035,274 @@ def _jev_rebuild(rep: Report, name: str, data: dict) -> None:
                             f"{entry.get(field)!r} but the conversations' turns give {value!r}")
 
 
+def _jev_uses_multi_report_format(data: dict) -> bool:
+    """New exporter fields distinguish a damaged combined export from a genuine legacy payload. Check independent
+    fields so deleting both source lists and the run list cannot bypass provenance validation."""
+    prov = data.get("provenance") if isinstance(data.get("provenance"), dict) else {}
+    convs = data.get("conversations") if isinstance(data.get("conversations"), dict) else {}
+    return ("schema_version" in data or "evaluator_equivalence" in prov or "petri_runs" in prov
+            or any(isinstance(conv, dict) and "run" in conv for conv in convs.values()))
+
+
+def _jev_legacy_source_reports(rep: Report) -> dict[str, dict[str, str]]:
+    """Pin each reviewed legacy report to the exact published path and file bytes."""
+    try:
+        doc = json.loads(JEV_LEGACY_REPORTS.read_text(encoding="utf-8"))
+        if not isinstance(doc, dict) or doc.get("schema_version") != "1.0":
+            raise ValueError("expected legacy registry schema_version '1.0'")
+        entries = doc.get("reports")
+        shas = [entry.get("source_report_sha256") for entry in entries if isinstance(entry, dict)] \
+            if isinstance(entries, list) else []
+        if (not isinstance(entries, list) or not entries or len(shas) != len(entries)
+                or not all(isinstance(sha, str) and re.fullmatch(r"[0-9a-f]{64}", sha) for sha in shas)):
+            raise ValueError("reports must name non-empty 64-hex source_report_sha256 identities")
+        if len(set(shas)) != len(shas):
+            raise ValueError("legacy report identities must be distinct")
+        pinned: dict[str, dict[str, str]] = {}
+        for entry in entries:
+            files = entry.get("published_files")
+            if not isinstance(files, list) or not files:
+                raise ValueError("each legacy report needs published_files with paths and digests")
+            paths: dict[str, str] = {}
+            for file in files:
+                if (not isinstance(file, dict) or not isinstance(file.get("path"), str)
+                        or file["path"] not in {f"data/{n}" for n in JEV_SPECS}
+                        or not isinstance(file.get("sha256"), str)
+                        or re.fullmatch(r"[0-9a-f]{64}", file["sha256"]) is None or file["path"] in paths):
+                    raise ValueError("published_files must name distinct Jev paths with 64-hex digests")
+                paths[file["path"]] = file["sha256"]
+            pinned[entry["source_report_sha256"]] = paths
+        return pinned
+    except (OSError, UnicodeDecodeError, ValueError) as exc:
+        rep.err(JEV_LEGACY_REPORTS.name, "$", f"legacy_report_registry_unreadable: {exc}")
+        return {}
+
+
+def _jev_source_reports(rep: Report, name: str, data: dict) -> None:
+    """source_reports must be a non-empty list of distinct report digests whose combined identifier
+    (export_jev_calibration.combined_report_sha256) is the payload's source_report_sha256."""
+    lst = data.get("source_reports")
+    shas = [e.get("sha256") for e in lst if isinstance(e, dict)] if isinstance(lst, list) else []
+    if not isinstance(lst, list) or not lst or len(shas) != len(lst) or not all(
+            isinstance(x, str) and re.fullmatch(r"[0-9a-f]{64}", x) for x in shas) or len(set(shas)) != len(shas):
+        rep.err(name, "$.source_reports", "must be a non-empty list of objects with distinct sha256 digests")
+        return
+    expected = shas[0] if len(shas) == 1 else sha256(
+        "".join(f"{x}\n" for x in sorted(shas)).encode("ascii")).hexdigest()
+    if data.get("source_report_sha256") != expected:
+        rep.err(name, "$.source_report_sha256", f"is not the identifier of the {len(shas)} listed source report(s)")
+    # the row counts decide whether run attribution is required (_jev_petri_runs), so every entry carries both as
+    # non-negative integers; an entry without them could make a combined payload pass as a legacy one (Codex review
+    # of PR #111, round 4)
+    for i, entry in enumerate(lst):
+        for key in ("advice_cases", "petri_turns"):
+            value = entry.get(key)
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                rep.err(name, f"$.source_reports[{i}].{key}", f"must be a non-negative integer, got {value!r}")
+    # ...and they must add up to the payload's own totals, so a count set to 0 cannot hide a run (round 5): the drift
+    # payload pools every report's Petri rows, and the calibration payload is the one advice report's
+    counts_ok = all(isinstance(e.get(k), int) and not isinstance(e.get(k), bool)
+                    for e in lst for k in ("advice_cases", "petri_turns"))
+    if counts_ok and sum(e["advice_cases"] > 0 for e in lst) != 1:
+        rep.err(name, "$.source_reports", "must have exactly one advice source; remaining advice_cases must be zero")
+    head = data.get("headline_metrics") if isinstance(data.get("headline_metrics"), dict) else {}
+    totals = {"petri_register_drift.json": ("petri_turns", "total_assistant_turns"),
+              "jev_calibration.json": ("advice_cases", "total_advice_cases")}
+    if counts_ok and name in totals:
+        key, total_key = totals[name]
+        total = head.get(total_key)
+        if isinstance(total, int) and sum(e[key] for e in lst) != total:
+            rep.err(name, "$.source_reports", f"{key} sum to {sum(e[key] for e in lst)} but headline_metrics."
+                                              f"{total_key} is {total}")
+
+
+JEV_EQUIVALENCE_FILE = Path(__file__).resolve().parents[1] / "data/jev/evaluator_equivalence.json"
+JEV_EQUIVALENCE_HISTORY = JEV_EQUIVALENCE_FILE.parent / "evaluator_equivalence_snapshots"
+
+
+def _jev_equivalence(rep: Report, name: str, data: dict) -> None:
+    """Bind pooling provenance to the reviewed registry bytes as well as checking its graph."""
+    sources = data.get("source_reports")
+    if not isinstance(sources, list) or len(sources) < 2:
+        return
+    path = "$.provenance.evaluator_equivalence"
+    prov = data.get("provenance")
+    block = prov.get("evaluator_equivalence") if isinstance(prov, dict) else None
+
+    def digest(value: object) -> bool:
+        return isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value) is not None
+
+    if not isinstance(block, dict):
+        rep.err(name, path, "required for a pooled export")
+        return
+    if block.get("path") != "data/jev/evaluator_equivalence.json":
+        rep.err(name, path + ".path", "must name the reviewed equivalence registry")
+    evaluators = [s.get("evaluator_sha256") if isinstance(s, dict) else None for s in sources]
+    if not all(digest(e) for e in evaluators):
+        rep.err(name, "$.source_reports", "each pooled report must name its evaluator_sha256")
+        return
+    scores = [s.get("scoring_sha256") for s in sources]
+    if not all(digest(value) for value in scores) or len(set(scores)) != 1:
+        rep.err(name, "$.source_reports", "pooled scoring_sha256 values must be valid 64-hex digests and identical")
+    distinct = set(evaluators)
+    if not digest(block.get("sha256")) and not (block.get("sha256") is None and len(distinct) == 1):
+        rep.err(name, path + ".sha256", "must record the registry digest when different evaluators are pooled")
+    classes = block.get("evaluator_classes")
+    if (not isinstance(classes, dict) or set(classes) != distinct or not all(digest(v) for v in classes.values())
+            or len(set(classes.values())) != 1):
+        rep.err(name, path + ".evaluator_classes", "must map exactly the source evaluators to one digest class")
+        return
+    edges = block.get("applied_equivalences")
+    if not isinstance(edges, list):
+        rep.err(name, path + ".applied_equivalences", "must be a list of reviewed edges")
+        return
+    if block.get("sha256") is not None or len(distinct) > 1:
+        if not digest(block.get("sha256")):
+            return  # the invalid digest was reported above; never use it as a filename
+        try:
+            raw = JEV_EQUIVALENCE_FILE.read_bytes()
+            if sha256(raw).hexdigest() != block["sha256"]:
+                # Only snapshots checked into this reviewed directory can authorize older receipts.
+                raw = (JEV_EQUIVALENCE_HISTORY / f"{block['sha256']}.json").read_bytes()
+                if sha256(raw).hexdigest() != block["sha256"]:
+                    raise ValueError("historical snapshot bytes do not match their digest")
+            registry = json.loads(raw)
+        except (OSError, ValueError) as exc:
+            rep.err(name, path, f"cannot read reviewed registry: {exc}")
+            return
+        entries = registry.get("equivalences") if isinstance(registry, dict) else None
+        if not isinstance(entries, list) or not all(
+                isinstance(e, dict) and digest(e.get("evaluator_sha256")) and digest(e.get("equivalent_to"))
+                for e in entries):
+            rep.err(name, path, "reviewed registry has malformed equivalences")
+            return
+        reviewed: dict[str, str] = {}
+
+        def reviewed_root(value: str) -> str:
+            while reviewed.setdefault(value, value) != value:
+                value = reviewed[value]
+            return value
+
+        for edge in entries:
+            reviewed[reviewed_root(edge["evaluator_sha256"])] = reviewed_root(edge["equivalent_to"])
+        expected_classes = {e: reviewed_root(e) for e in distinct}
+        applied_classes = set(expected_classes.values()) if len(distinct) > 1 else set()
+        expected_edges = [e for e in entries if reviewed_root(e["evaluator_sha256"]) in applied_classes]
+        if (block.get("sha256") != sha256(raw).hexdigest() or classes != expected_classes
+                or edges != expected_edges):
+            rep.err(name, path, "digest, evaluator classes and applied edges must match the reviewed registry")
+    parent: dict[str, str] = {}
+
+    def root(value: str) -> str:
+        while parent.setdefault(value, value) != value:
+            value = parent[value]
+        return value
+
+    for i, edge in enumerate(edges):
+        if (not isinstance(edge, dict) or not digest(edge.get("evaluator_sha256"))
+                or not digest(edge.get("equivalent_to")) or any(
+                    not isinstance(edge.get(k), str) or not edge[k].strip() for k in ("reason", "reviewed_utc"))):
+            rep.err(name, f"{path}.applied_equivalences[{i}]", "needs two digests, a review date and a reason")
+            return
+        parent[root(edge["evaluator_sha256"])] = root(edge["equivalent_to"])
+    if len(distinct) == 1:
+        if edges:
+            rep.err(name, path + ".applied_equivalences", "equal evaluators apply no equivalence")
+    elif ({e: root(e) for e in distinct} != classes
+          or any(root(e) not in set(classes.values()) for e in parent)):
+        rep.err(name, path, "reviewed edges do not reconstruct the source evaluator class")
+
+
+def _jev_petri_runs(rep: Report, name: str, data: dict) -> None:
+    """The drift payload's run attribution (Codex review of PR #111, round 3). A combined export sets
+    provenance.petri_transcripts to null, so provenance.petri_runs and each conversation's `run` are the only mapping
+    from a published conversation to its run: when more than one listed report scored Petri rows they are required,
+    and when present every conversation names a listed run and each run's counts and provenance match its source
+    report. The exact pinned legacy payloads predate these fields and remain accepted."""
+    prov = data.get("provenance") if isinstance(data.get("provenance"), dict) else {}
+    runs = prov.get("petri_runs")
+    sources = data.get("source_reports") if isinstance(data.get("source_reports"), list) else []
+    petri_sources = [e for e in sources if isinstance(e, dict) and isinstance(e.get("petri_turns"), int)
+                     and e["petri_turns"] > 0]
+    if runs is None:
+        if len(petri_sources) > 1 or _jev_uses_multi_report_format(data):
+            rep.err(name, "$.provenance.petri_runs", "missing from a payload using the multi-report format; "
+                    "it is required to reconstruct each conversation's source run")
+        return
+    if not isinstance(runs, list) or not runs or not all(
+            isinstance(r, dict) and isinstance(r.get("run"), str) and r["run"]
+            and isinstance(r.get("conversations"), int) and not isinstance(r.get("conversations"), bool) for r in runs):
+        rep.err(name, "$.provenance.petri_runs", "must be a non-empty list of {run, conversations, ...} objects")
+        return
+    names = [r["run"] for r in runs]
+    if len(set(names)) != len(names):
+        rep.err(name, "$.provenance.petri_runs", "names a run more than once")
+    convs = data.get("conversations") if isinstance(data.get("conversations"), dict) else {}
+    counts: dict[str, int] = {}
+    turns: dict[str, int] = {}
+    for cid, conv in convs.items():
+        run = conv.get("run") if isinstance(conv, dict) else None
+        if run not in names:
+            rep.err(name, f"$.conversations[{cid[:12]}].run", f"{run!r} is not a run listed in provenance.petri_runs")
+            continue
+        counts[run] = counts.get(run, 0) + 1
+        rows = conv.get("turns")
+        if isinstance(rows, list):
+            turns[run] = turns.get(run, 0) + len(rows)
+    for r in runs:
+        if counts.get(r["run"], 0) != r["conversations"]:
+            rep.err(name, "$.provenance.petri_runs", f"run {r['run']!r} lists {r['conversations']} conversation(s) but "
+                                                     f"{counts.get(r['run'], 0)} name it")
+    if len(runs) > 1 and prov.get("petri_transcripts") is not None:
+        rep.err(name, "$.provenance.petri_transcripts", "names one transcripts file although several runs are pooled")
+
+    def digest(value: object) -> bool:
+        return isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value) is not None
+
+    def models(value: object) -> bool:
+        return (isinstance(value, list) and bool(value)
+                and all(isinstance(v, str) and bool(v.strip()) for v in value)
+                and len(set(value)) == len(value))
+
+    by_report = {s["sha256"]: s for s in petri_sources if digest(s.get("sha256"))}
+    used: list[str] = []
+    served: set[str] = set()
+    for i, entry in enumerate(runs):
+        path = f"$.provenance.petri_runs[{i}]"
+        report = entry.get("source_report_sha256")
+        source = by_report.get(report) if isinstance(report, str) else None
+        if source is None:
+            rep.err(name, path + ".source_report_sha256", "must name a source_reports entry with Petri rows")
+            continue
+        used.append(report)
+        transcript = entry.get("path")
+        if (not isinstance(transcript, str) or not transcript.strip()
+                or transcript != source.get("petri_transcripts")
+                or PurePosixPath(transcript).parent.name != entry["run"]):
+            rep.err(name, path + ".path", "must match its source report's transcripts path and parent run")
+        for key, source_key in (("sha256", "petri_transcripts_sha256"),
+                                ("classifier_sha256", "classifier_sha256")):
+            if not digest(entry.get(key)) or entry[key] != source.get(source_key):
+                rep.err(name, path + "." + key, f"must be the 64-hex digest from source_reports.{source_key}")
+        if (not models(entry.get("models_served")) or not models(source.get("petri_models_served"))
+                or set(entry["models_served"]) != set(source["petri_models_served"])):
+            rep.err(name, path + ".models_served", "must match its source report's non-empty distinct Petri models")
+        else:
+            served.update(entry["models_served"])
+        if turns.get(entry["run"], 0) != source["petri_turns"]:
+            rep.err(name, path, "conversation turn count does not match source_reports.petri_turns")
+    if len(used) != len(set(used)) or set(used) != set(by_report):
+        rep.err(name, "$.provenance.petri_runs", "must represent each Petri source report exactly once")
+    if not models(data.get("models_served")) or served != set(data["models_served"]):
+        rep.err(name, "$.provenance.petri_runs", "models_served union does not match the payload")
+
+
 def check_jev_payloads(rep: Report, site: Path) -> None:
     reports: dict[str, str] = {}
+    sources: dict[str, list] = {}
+    versions: dict[str, object] = {}
+    equivalences: dict[str, str] = {}
+    legacy_reports = _jev_legacy_source_reports(rep)
     for name, spec in JEV_SPECS.items():
         if not (site / "data" / name).is_file():
             if name == "jev_calibration.json" and (site / "data" / "petri_register_drift.json").is_file():
@@ -1046,7 +1318,30 @@ def check_jev_payloads(rep: Report, site: Path) -> None:
             continue
         for key, kinds in spec["top"].items():
             _jev_need(rep, name, data, key, kinds, "$", nullable=key in spec["nullable"])
-        known_keys(rep, name, data, set(spec["top"]))
+        known_keys(rep, name, data, set(spec["top"]) | JEV_OPTIONAL_TOP)
+        versions[name] = data.get("schema_version")
+        if "schema_version" in data:
+            if data["schema_version"] != "2.0":
+                rep.err(name, "$.schema_version", "unsupported_jev_schema: expected '2.0'")
+        elif (not isinstance(data.get("source_report_sha256"), str)
+              or data["source_report_sha256"] not in legacy_reports or _jev_uses_multi_report_format(data)):
+            rep.err(name, "$.schema_version", "missing_jev_schema: only reviewed published report identities may "
+                    "use the unversioned legacy shape; regenerate with the current exporter")
+        if "schema_version" not in data and isinstance(data.get("source_report_sha256"), str):
+            pin = legacy_reports.get(data["source_report_sha256"], {}).get(f"data/{name}")
+            try:
+                actual_digest = sha256((site / "data" / name).read_bytes()).hexdigest()
+            except OSError:
+                actual_digest = None
+            if pin is None or pin != actual_digest:
+                rep.err(name, "$.schema_version", "legacy_payload_bytes_mismatch: unversioned compatibility "
+                        "requires the exact reviewed published file; regenerate changed content with the exporter")
+        if "source_reports" in data or _jev_uses_multi_report_format(data):
+            _jev_source_reports(rep, name, data)
+            _jev_equivalence(rep, name, data)
+            prov = data.get("provenance")
+            if isinstance(prov, dict) and "evaluator_equivalence" in prov:
+                equivalences[name] = json.dumps(prov["evaluator_equivalence"], sort_keys=True)
         head = data.get("headline_metrics")
         if isinstance(head, dict):
             for key, kinds in spec["headline"].items():
@@ -1058,6 +1353,8 @@ def check_jev_payloads(rep: Report, site: Path) -> None:
             rep.err(name, "$.is_mock", "a mock run's payload is not a measurement and is not published")
         if isinstance(data.get("source_report_sha256"), str):
             reports[name] = data["source_report_sha256"]
+        if isinstance(data.get("source_reports"), list):
+            sources[name] = data["source_reports"]
         if name == "petri_register_drift.json":
             if isinstance(data.get("by_arm"), list) and not data["by_arm"]:
                 rep.err(name, "$.by_arm", "empty: the payload publishes no per-arm result")
@@ -1122,8 +1419,27 @@ def check_jev_payloads(rep: Report, site: Path) -> None:
                                         "probability >= 0.5")
             _jev_reconcile(rep, name, data)
             _jev_rebuild(rep, name, data)
+            _jev_petri_runs(rep, name, data)
+    # Calibration can carry source rows even when its drift counterpart was omitted from publication.
+    if any(isinstance(entry, dict) and isinstance(entry.get("petri_turns"), int)
+           and not isinstance(entry["petri_turns"], bool) and entry["petri_turns"] > 0
+           for entry in sources.get("jev_calibration.json", [])) and not (
+               site / "data/petri_register_drift.json").is_file():
+        rep.err("petri_register_drift.json", "-", "missing while calibration source_reports list Petri turns")
     if len(set(reports.values())) > 1:
         rep.err(" and ".join(reports), "$.source_report_sha256", "the two Jev payloads come from different reports")
+    if len(versions) > 1 and any(version != next(iter(versions.values())) for version in versions.values()):
+        rep.err(" and ".join(versions), "$.schema_version", "the two Jev payloads use different schema versions")
+    if len(set(equivalences.values())) > 1:
+        rep.err(" and ".join(equivalences), "$.provenance.evaluator_equivalence",
+                "the two Jev payloads record different evaluator-equivalence provenance")
+    listed = {name: json.dumps(lst, sort_keys=True) for name, lst in sources.items()}
+    if len(listed) > 1 and len(set(listed.values())) > 1:
+        rep.err(" and ".join(listed), "$.source_reports", "the two Jev payloads list different source reports")
+    # one exporter run writes both files, so either both list their reports or neither does (payloads exported before
+    # source_reports existed); one without the other is a partial or hand-edited pair (Codex review of PR #111)
+    if len(reports) > 1 and len(sources) == 1:
+        rep.err(" and ".join(reports), "$.source_reports", "only one of the two Jev payloads lists its source reports")
 
 
 # ------------------------------------------------------------------ cross-repo checks
