@@ -43,6 +43,7 @@ publish-site-data skill, which the Routine runs in §5 when new results land.
 |---|---|---|---|---|
 | `action_annotation_messages.py` | Builds Messages request envelopes and replays synthetic transport outcomes; no network/live mode or budget admission | staged | Exclusive external `action_requests.json` / `action_annotations.json`; no measurement or ledger writer | owner or session for offline rehearsal; no CI lane |
 | `action_annotations.py` | Prepares blinded synthetic requests, validates evidence spans and compares annotations with an independent fixture key; no provider calls | staged | New `action_requests.json` or `action_annotations.json` outside Git; never measurement collectors | owner or session for offline rehearsal; no CI lane |
+| `action_annotation_transport.py` | Fixed-endpoint single-attempt Messages transport with write-ahead raw receipts; no CLI, admission or active caller | staged | New `action_annotation_attempts/` outside the engine; never measurement collectors | future reviewed CI only; offline tests inject transport |
 
 ## Ops tooling and the Routine
 
