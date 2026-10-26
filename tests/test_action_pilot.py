@@ -213,6 +213,14 @@ def live_params() -> dict:
             'expected_commit': 'a' * 40, '_nonce': ai.NONCE}
 
 
+def test_owner_authorized_recovery_has_a_distinct_fixed_nonce() -> None:
+    recovery = aa.read_json(ROOT / 'data/action_annotations/recovery_20261026.v1.json')
+    params = {**live_params(), '_nonce': recovery['nonce']}
+    assert recovery['nonce'] != ai.NONCE
+    assert not ap.params_problems(params, ROOT)
+    assert ft.reused_nonce(ap.TRIGGER, params, [{'trigger': ap.TRIGGER, 'nonce': recovery['nonce']}])
+
+
 def test_lane_is_paid_once_and_park_has_no_admission_or_model_work() -> None:
     park = ft.PARK_DEFAULTS[ap.TRIGGER]
     assert not ft.is_paid_fire(ap.TRIGGER, park) and not ap.params_problems(park)
@@ -353,11 +361,14 @@ def test_seal_failure_is_not_suppressed(source_tree: Path, monkeypatch: pytest.M
 
 
 @pytest.fixture
-def ci_tree(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple:
+def ci_tree(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest) -> tuple:
     import os
     import subprocess
 
-    now = datetime(2026, 10, 26, 12, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 10, 26, 13, 0, tzinfo=timezone.utc)
+    recovering = getattr(request, 'param', False)
+    prior = [ap.recovery_receipt(ROOT)['prior_reservation']] if recovering else []
+    nonce = ap.RECOVERY_NONCE if recovering else ai.NONCE
 
     class Clock(datetime):
         @classmethod
@@ -378,21 +389,22 @@ def ci_tree(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple:
 
     git('init', '--bare', str(remote))
     git('init', '-b', 'main')
-    for name in (ai.PLAN, ai.PRICE):
+    for name in (ai.PLAN, ai.PRICE, ap.RECOVERY):
         path = root / name
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes((ROOT / name).read_bytes())
-    write(root / 'ops/dashboard.json', {'spend': {'lifetime_generation_usd': 0}})
-    (root / 'ops/trigger_journal.jsonl').write_text('')
+    write(root / 'ops/dashboard.json', {'spend': {'lifetime_generation_usd': 0,
+          'daily_ceiling_usd': 1.99 if recovering == 'low_budget' else 2.00}})
+    (root / 'ops/trigger_journal.jsonl').write_text(''.join(json.dumps(e) + '\n' for e in prior))
     git('add', '.')
     git('commit', '-m', 'fixture base')
     base = git('rev-parse', 'HEAD')
-    params = {**live_params(), 'expected_commit': base}
+    params = {**live_params(), 'expected_commit': base, '_nonce': nonce}
     write(root / ap.TRIGGER_PATH, params)
     entry = {'trigger': ap.TRIGGER, 'fired_utc': now.isoformat(), 'max_spend': 1, 'resolved': False,
-             'evicted': False, 'nonce': ai.NONCE, 'ref': ft.fire_ref(root), 'lane': 'anthropic',
+             'evicted': False, 'nonce': nonce, 'ref': ft.fire_ref(root), 'lane': 'anthropic',
              'params_sha256': ft.params_digest((root / ap.TRIGGER_PATH).read_text())}
-    (root / 'ops/trigger_journal.jsonl').write_text(json.dumps(entry) + '\n')
+    (root / 'ops/trigger_journal.jsonl').write_text(''.join(json.dumps(e) + '\n' for e in [*prior, entry]))
     git('add', '.')
     git('commit', '-m', 'fixture reservation')
     head = git('rev-parse', 'HEAD')
@@ -423,6 +435,63 @@ def test_ci_admission_still_rejects_another_execution_branch(ci_tree: tuple) -> 
     env['GITHUB_REF'] = 'refs/heads/other'
     with pytest.raises(aa.AnnotationRefusal, match='ci_identity_refused'):
         ap.admit_ci(params, env, root)
+
+
+@pytest.mark.parametrize('ci_tree', [True], indirect=True)
+def test_recovery_admission_keeps_prior_hold_and_records_provenance(ci_tree: tuple) -> None:
+    root, params, env, _ = ci_tree
+    journal = (root / ft.JOURNAL_RELPATH).read_bytes()
+    result = ap.admit_ci(params, env, root)
+    assert result['journal_nonce'] == ap.RECOVERY_NONCE
+    assert result['budget_admission']['held_upper_bound_usd'] == '1.0'
+    assert Decimal(result['budget_admission']['committed_upper_bound_usd']) == 2
+    assert result['recovery']['prior_failure']['workflow_run_id'] == '40320384841'
+    assert result['recovery']['receipt_sha256'] == ap.RECOVERY_SHA256
+    assert (root / ft.JOURNAL_RELPATH).read_bytes() == journal
+
+
+@pytest.mark.parametrize('mutation', ['missing', 'duplicate', 'third', 'resolved', 'evicted', 'amount', 'nonce', 'order'])
+def test_recovery_refuses_changed_or_additional_history(mutation: str) -> None:
+    prior = copy.deepcopy(ap.recovery_receipt(ROOT)['prior_reservation'])
+    current = {**prior, 'nonce': ap.RECOVERY_NONCE}
+    entries = [prior, current]
+    if mutation == 'missing':
+        entries.pop(0)
+    elif mutation in ('duplicate', 'third'):
+        entries.append({**current, 'nonce': ap.RECOVERY_NONCE if mutation == 'duplicate' else 'another'})
+    elif mutation == 'order':
+        entries.reverse()
+    else:
+        key, value = {'resolved': ('resolved', True), 'evicted': ('evicted', True),
+                      'amount': ('max_spend', 0), 'nonce': ('nonce', 'different')}[mutation]
+        prior[key] = value
+    with pytest.raises(aa.AnnotationRefusal, match='recovery_history_mismatch'):
+        ap.campaign_identity(entries, ap.RECOVERY_NONCE, ROOT)
+
+
+def test_recovery_receipt_tampering_is_refused(tmp_path: Path) -> None:
+    write(tmp_path / ap.RECOVERY, {**ap.recovery_receipt(ROOT), 'max_spend_usd': '2.00'})
+    with pytest.raises(aa.AnnotationRefusal, match='input_hash_mismatch'):
+        ap.recovery_receipt(tmp_path)
+
+
+@pytest.mark.parametrize('ci_tree', [True], indirect=True)
+def test_recovery_cannot_reuse_original_or_enable_third_attempt(ci_tree: tuple) -> None:
+    root, params, _, _ = ci_tree
+    entries = ft.load_journal(root / ft.JOURNAL_RELPATH)
+    assert ft.reused_nonce(ap.TRIGGER, params, entries)
+    with pytest.raises(aa.AnnotationRefusal, match='campaign_already_reserved'):
+        ap.campaign_identity(entries, ai.NONCE, root)
+    assert ap.params_problems({**params, '_nonce': ap.RECOVERY_NONCE + '-again'}, root)
+
+
+@pytest.mark.parametrize('ci_tree', ['low_budget'], indirect=True)
+def test_recovery_does_not_relax_daily_budget(ci_tree: tuple, capsys: pytest.CaptureFixture) -> None:
+    root, params, env, _ = ci_tree
+    # Valid synthetic push with $1.99 available, versus $1 original + $1 new hold.
+    with pytest.raises(aa.AnnotationRefusal, match='journal_or_daily_budget_refused'):
+        ap.admit_ci(params, env, root)
+    assert 'ceiling' in capsys.readouterr().err
 
 
 @pytest.mark.parametrize('mutation', ['creation', 'parent', 'head', 'dirty', 'remote', 'code_change', 'replay'])
