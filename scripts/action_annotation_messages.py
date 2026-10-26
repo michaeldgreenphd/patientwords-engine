@@ -1,4 +1,4 @@
-"""Synthetic-only Anthropic Messages preparation/replay. No network client or live mode.
+"""Synthetic-only Messages preparation/replay and offline raw-reply interpretation.
 
 Keep failed attempts visible. A valid response shape is not verified semantics.
 The transport record is a fixture assertion, not authenticated provider evidence.
@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from scripts import action_annotations as aa
+from scripts.action_annotation_transport import Reply, validate_reply
 
 PROTOCOL = aa.CONTRACT / "messages_protocol.v1.json"
 
@@ -170,6 +171,44 @@ def _interpret(row: dict[str, Any], request: dict[str, Any], text: str) -> dict[
         else:
             result.update(status="validated_semantics_unverified", annotation=annotation)
     return result
+
+
+def interpret_reply(reply: Reply, *, expected_model: str, source_text: str) -> dict[str, Any]:
+    """Interpret captured bytes without sending, authenticating, admitting or pricing.
+
+    The caller must bind source/model/request/receipt identities before using this
+    result. Matching literal spans proves neither that the request used this source
+    nor that the proposed labels are correct. Keep the original capture unchanged.
+    """
+    validate_reply(reply)
+    _text(expected_model, "expected_model_required")
+    _text(source_text, "source_text_required")
+    outcome: dict[str, Any] = {
+        "status": "transport_incomplete", "annotation": None, "refusal": None,
+        "usage": None, "usage_status": "unavailable", "message_id": None,
+        "reported_model": None, "stop_reason": None,
+    }
+    if reply.complete:
+        try:
+            body = reply.body.decode("utf-8")
+        except UnicodeDecodeError:
+            outcome["status"] = "invalid_response_encoding"
+        else:
+            outcome = _interpret(
+                {"transport_error": None, "http_status": reply.http_status,
+                 "request_id": reply.request_id, "body": body},
+                {"request": {"body": {"model": expected_model}}}, source_text)
+    # An incomplete body cannot supply trusted usage, even if its prefix parses.
+    # Its exact bytes remain in response.bin; this derived record identifies them.
+    return {
+        "schema_version": "patientwords.action-reply-interpretation/1",
+        "source_binding": "caller_asserted_not_admitted",
+        "source_sha256": aa.digest(source_text.encode("utf-8")), "expected_model": expected_model,
+        "http_status": reply.http_status, "request_id": reply.request_id,
+        "body_complete": reply.complete, "transport_error": reply.error,
+        "raw_body_sha256": aa.digest(reply.body), "raw_body_bytes": len(reply.body),
+        "cost_usd": None, "reservation_release_allowed": False, **outcome,
+    }
 
 
 def replay(document: Any, settings: Any, attempts: Any) -> dict[str, Any]:

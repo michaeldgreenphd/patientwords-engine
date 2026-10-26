@@ -2,7 +2,7 @@
 
 This is the next preparation slice after [action_annotations.md](action_annotations.md).
 It creates deterministic Anthropic Messages request envelopes and replays explicitly
-synthetic transport records. It has no client, credentials, live mode, retry loop,
+synthetic transport records. Its CLI has no client, credentials, live mode, retry loop,
 archive reader, CI workflow or budget admission path. A prepared request is not
 permission to send it. Nothing in this slice changes historical judgments, the
 physician bundle, the next-token endpoint or site payloads.
@@ -84,6 +84,40 @@ or output-preservation refusals exit 2. Prepare/complete replay exits 0. A compl
 replay is explicitly `semantics_unverified`; `uncertain` remains the original
 annotation status, not zero actions or semantic success.
 
+## Raw-reply interpretation library
+
+`interpret_reply(reply, expected_model=..., source_text=...)` accepts the bounded
+`Reply` produced by [the separate transport](action_transport.md). It makes no
+network call, reads no archive or key, and writes nothing. The legacy synthetic
+prepare/replay CLI and its request hashes remain unchanged. This library lets the
+explicit disabled-thinking profile use the same envelope and annotation validator
+without disguising a captured response as a synthetic v1 attempt.
+
+The derived `patientwords.action-reply-interpretation/1` object records raw-byte
+SHA-256/length, HTTP status/request ID, completeness/error, expected model, supplied
+source-text hash, parsed outcome and provider metadata. Keep `response.bin` and the
+original start/request/result receipts; this object neither replaces nor edits them.
+Invalid UTF-8 yields `invalid_response_encoding`. An incomplete transfer always yields
+`transport_incomplete`, with no accepted annotation or usage, even when its received
+prefix happens to be valid JSON. Raw partial bytes remain available for reconciliation.
+Complete replies use the strict parser described above, including exact model identity,
+literal evidence spans, usage presence, stop reasons and unsupported-content refusals.
+
+`source_binding: caller_asserted_not_admitted` is deliberate. The caller must separately
+verify source eligibility, the wire request, immutable receipt hashes and CI origin.
+A matching quote does not prove that a response belongs to this source; this function
+is a parser, not a campaign loader or authentication gate. It does not validate request
+settings, admit an archive source, establish billing or certify correct labels. Every
+outcome retains `cost_usd: null` and `reservation_release_allowed: false`. Additional
+provider usage fields stay intact and unpriced. The original synthetic gate is unchanged;
+there is no new CLI mode accepting research inputs.
+
+Tests exercise the real capture writer with an injected reply, reread its bytes and
+interpret the fixed transport profile. All ten existing fixture outcomes agree with
+the legacy parser. They also reject complete-looking partial responses, invalid UTF-8,
+malformed JSON, mismatched models/spans and invalid transport metadata. These are
+synthetic software checks, not model-generated annotations or provider-access evidence.
+
 ## Offline commands
 
 Reuse the engine developer interpreter. Run from the repository root; create a new
@@ -102,7 +136,8 @@ python -m scripts.action_annotation_messages replay \
   --settings tests/fixtures/action_annotations/messages_settings.json \
   --attempts tests/fixtures/action_annotations/messages_attempts.json \
   --out "$PW_MESSAGES_CHECK/replay/action_annotations.json"
-python -m pytest -q tests/test_action_annotation_messages.py tests/test_action_annotations.py
+python -m pytest -q tests/test_action_annotation_messages.py tests/test_action_annotation_reply.py \
+  tests/test_action_annotation_transport.py tests/test_action_annotations.py
 ```
 
 The ten provider-shaped fixture responses wrap the existing author-written key;
@@ -117,18 +152,20 @@ also exercised. Synthetic usage numbers must never enter the spend ledger.
 1. Independently review this adapter and the existing challenge key; freeze the
    protocol/rubric/schema. Obtain the shared review window before submitting new
    hosted review requests. No upstream package upgrade is required here.
-2. Prepare the previously specified unsealed archive selection: ten matched case
-   families / twenty responses, with exact IDs and source hashes, a fixed selection
-   seed and independent manual labels. Keep failed and already-correct cases;
-   holdouts and physician bundle content remain untouched. This adapter still
-   refuses research-source envelopes, so it does not silently enable that step.
-3. Implement and review the CI-only sender with verified exact model/settings,
+2. Preserve the owner's narrowed assisted-pass selection: the ten existing synthetic
+   challenges and existing R01–R04 responses, with exact source identities and hashes.
+   Preserve independent owner selections separately from machine proposals; those
+   preliminary, non-exhaustive selections are not an accuracy benchmark. The owner
+   requested assistance before further open-ended labeling. Case-family grouping
+   stays with the research team and is needed before later confirmation, not as a new
+   clinician task. The synthetic CLI still refuses research-source envelopes.
+3. Integrate and review the staged CI-only sender and parser with verified exact model/settings,
    raw response/request IDs, immutable per-attempt sidecars and existing queue,
    reservation and ledger integration. Resolve how thinking/content blocks are
    handled for the chosen model before sending anything. Do not add a local live
    flag or use this replay as a budget gate. Unknown usage after a timeout must
    retain its reservation, not count as zero spend.
-4. Price the ten synthetic challenges plus twenty responses within the proposed
+4. Price the ten synthetic challenges plus four responses within the proposed
    **$1 total reservation**, including attempts/required passes. Obtain explicit
    execution approval and use the repository's approved trigger tooling. The
    $50/day and $200/month owner allocation is dedicated to PatientWords but its
