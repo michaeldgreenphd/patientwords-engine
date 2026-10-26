@@ -85,6 +85,10 @@ These ten cases are provisional software fixtures, not clinical ground truth.
 
 ## Next API pilot — specification only, not authorized or wired
 
+The separate [Messages adapter](action_messages.md) now prepares explicit wire-request
+previews and replays synthetic transport records. It adds no sender, budget gate,
+archive eligibility or live execution route; the steps below remain necessary.
+
 1. Independently review this contract and the ten author-written challenge keys
    before looking at model annotations. Freeze rubric, schema, prompts and keys.
 2. In a separate focused integration, add an explicit unsealed archive selection
