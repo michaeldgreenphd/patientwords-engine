@@ -390,7 +390,7 @@ def ci_tree(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple:
     params = {**live_params(), 'expected_commit': base}
     write(root / ap.TRIGGER_PATH, params)
     entry = {'trigger': ap.TRIGGER, 'fired_utc': now.isoformat(), 'max_spend': 1, 'resolved': False,
-             'evicted': False, 'nonce': ai.NONCE, 'ref': 'refs/heads/main', 'lane': 'anthropic',
+             'evicted': False, 'nonce': ai.NONCE, 'ref': ft.fire_ref(root), 'lane': 'anthropic',
              'params_sha256': ft.params_digest((root / ap.TRIGGER_PATH).read_text())}
     (root / 'ops/trigger_journal.jsonl').write_text(json.dumps(entry) + '\n')
     git('add', '.')
@@ -409,10 +409,20 @@ def ci_tree(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple:
 
 def test_ci_admission_uses_real_git_and_existing_budget_gate(ci_tree: tuple) -> None:
     root, params, env, git = ci_tree
+    # The trigger writer records a short branch name; GITHUB_REF is fully qualified.
+    assert ft.load_journal(root / ft.JOURNAL_RELPATH)[0]['ref'] == 'main'
+    assert env['GITHUB_REF'] == 'refs/heads/main'
     result = ap.admit_ci(params, env, root)
     assert result['engine_commit'] == git('rev-parse', 'HEAD')
     assert result['budget_admission']['committed_upper_bound_usd'] == '1'
     assert result['journal_nonce'] == ai.NONCE
+
+
+def test_ci_admission_still_rejects_another_execution_branch(ci_tree: tuple) -> None:
+    root, params, env, _ = ci_tree
+    env['GITHUB_REF'] = 'refs/heads/other'
+    with pytest.raises(aa.AnnotationRefusal, match='ci_identity_refused'):
+        ap.admit_ci(params, env, root)
 
 
 @pytest.mark.parametrize('mutation', ['creation', 'parent', 'head', 'dirty', 'remote', 'code_change', 'replay'])

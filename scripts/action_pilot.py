@@ -82,8 +82,10 @@ def admit_ci(params: dict[str, Any], env: dict[str, str], root: Path = ROOT) -> 
     require(not git('status', '--porcelain', '--untracked-files=normal', root=root), 'dirty_execution_checkout')
     remote = git('ls-remote', 'origin', 'refs/heads/main', root=root).split()
     require(len(remote) == 2 and remote[0] == head, 'main_advanced_before_admission')
+    # The writer journals git's short branch name, as other CI lanes pass ref_name.
+    # Normalize only after the exact refs/heads/main identity check above succeeds.
     args = argparse.Namespace(repo=str(root), trigger=TRIGGER, params_file=None,
-                              push_before=event['before'], ref=env['GITHUB_REF'], run_attempt=1)
+                              push_before=event['before'], ref=env['GITHUB_REF'].removeprefix('refs/heads/'), run_attempt=1)
     require(ft.cmd_budget_gate(args) == 0, 'journal_or_daily_budget_refused')
     entries = ft.load_journal(root / ft.JOURNAL_RELPATH)
     mine = [e for e in entries if e.get('trigger') == TRIGGER and e.get('max_spend') is not None]

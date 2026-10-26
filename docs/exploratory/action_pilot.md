@@ -132,3 +132,13 @@ After the single pass, inspect terminal jobs, raw captures, missing items, usage
 annotation validity and sidecar landing; preserve artifacts locally and report
 cost/limitations. Re-park through the tool only after harvesting; resolve only on
 terminal evidence. Any scale-up, retry or publication is a separate decision.
+
+The first live fire (Actions run `40320384841`, 2026-10-26) was refused before
+transport construction: the worker passed `refs/heads/main` to the budget gate,
+while `fire_trigger.py` journals `main`. The worker now passes the short name
+after enforcing its exact main-ref identity; the regression uses the writer's
+real `fire_ref` result. This fixes admission without relaxing branch binding.
+That failed fire made no API call and produced no result/cost artifact. Its
+reservation and consumed nonce remain unchanged: this code correction does not
+authorize or enable replay, refund the reservation, or declare the pilot complete.
+A separately approved recovery must preserve that failed attempt's evidence.
