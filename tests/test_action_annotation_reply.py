@@ -149,4 +149,3 @@ def test_http_error_missing_id_and_empty_transport_failure(example: tuple) -> No
     assert interpret(example, replace(example[1], request_id=None))["status"] == "missing_request_id"
     failed = interpret(example, at.Reply(None, None, b"", False, "connection_error"))
     assert failed["status"] == "transport_incomplete" and failed["cost_usd"] is None
-
