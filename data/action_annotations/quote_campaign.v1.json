@@ -1,0 +1,62 @@
+{
+  "schema_version": "patientwords.action-quote-campaign/1",
+  "authorized_utc": "2026-10-27",
+  "authorization": "owner_requested_next_step_after_merging_quote_contract",
+  "scope": "one_quote_only_attempt_same_ten_synthetic_challenges_and_R01_through_R04",
+  "nonce": "assisted-action-quotes-20261027-1",
+  "max_spend_usd": "1.00",
+  "retries": 0,
+  "response_format": "patientwords.action-quotes/1",
+  "preparation_sha256": "0cdb60c382868c4e3421a3d31df2a13910a7f7423cf142053b49dbd8a5c4804c",
+  "contract_files": {
+    "data/action_annotations/quote_preparation.v1.json": "0cdb60c382868c4e3421a3d31df2a13910a7f7423cf142053b49dbd8a5c4804c",
+    "scripts/action_quote_annotations.py": "1ffabf1fc7c49d30fa88a073935cda41bccc963f3e450b247ada654543a9dffe",
+    "scripts/action_annotation_messages.py": "232ae934c1303a67a119b7e6723352126f1e2fa73a65fa7ff7e9d10c8fbd0d30",
+    "scripts/action_annotations.py": "a9478c56344bb335a667c416f759fef2f2b8d6c7c275af2273ae0e18f6c3eadb",
+    "data/action_annotations/recovery_20261026.v1.json": "9758535734715f69ae61e587dc69212c9c4405fb07d20b02b87e6ce7341cf67d",
+    "data/action_annotations/runs/action_40344924588.report.json": "93f78c42ce1eb51fe2a9f6e49f395160763e4a7f5b112dfb9e5d19ec70e4a014"
+  },
+  "prior_reservations": [
+    {
+      "trigger": "action-annotate",
+      "fired_utc": "2026-10-26T12:09:31Z",
+      "commit": "",
+      "note": "Owner-authorized one-pass 10 synthetic challenges plus R01-R04; USD1 gross; no retry or expansion",
+      "resolved": false,
+      "evicted": false,
+      "nonce": "assisted-actions-20261025",
+      "params_sha256": "54cc9a5b65f20250728e01602f1f7c814f1dc93f873c5eebf734fd61b3b207d3",
+      "ref": "main",
+      "max_spend": 1.0,
+      "lane": "anthropic"
+    },
+    {
+      "trigger": "action-annotate",
+      "fired_utc": "2026-10-26T14:59:42Z",
+      "commit": "",
+      "note": "Owner-authorized single Anthropic recovery after PR131; same 14 requests; USD1 gross; prior failure retained; no further retry",
+      "resolved": false,
+      "evicted": false,
+      "nonce": "assisted-actions-20261026-recovery-1",
+      "params_sha256": "b97a865d568f46479dc21074635a7d99bc04dce23da22eb5e989b843a6f57c02",
+      "ref": "main",
+      "max_spend": 1.0,
+      "lane": "anthropic"
+    }
+  ],
+  "prior_attempts": [
+    {
+      "run_id": "40320384841",
+      "outcome": "admission_refused_before_transport",
+      "receipt": "data/action_annotations/recovery_20261026.v1.json"
+    },
+    {
+      "run_id": "40344924588",
+      "outcome": "stopped_invalid_annotation",
+      "receipt": "data/action_annotations/runs/action_40344924588.report.json",
+      "raw_response_sha256": "b35b95e04457eb9e1cf112d8d81905721b8f6c20bc681c8d39cc10b08bfe81a9"
+    }
+  ],
+  "budget_policy": "retain_prior_reservations_and_cost_receipt; existing_daily_and_monthly_gates",
+  "interpretation": "assistance_not_independent_accuracy"
+}

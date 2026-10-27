@@ -18,6 +18,7 @@ from scripts import action_annotation_transport as at
 from scripts import action_pilot as ap
 from scripts import action_pilot_budget as ab
 from scripts import action_pilot_inputs as ai
+from scripts import action_quote_annotations as aq
 from scripts import fire_trigger as ft
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -48,7 +49,8 @@ def packet() -> tuple[dict, dict]:
     return {'requests': items}, by_wire
 
 
-def execute(tmp_path: Path, packet: tuple, price: dict, *, send: Any = None, count: Any = None) -> tuple:
+def execute(tmp_path: Path, packet: tuple, price: dict, *, send: Any = None, count: Any = None,
+            identity_extra: dict | None = None) -> tuple:
     calls, counts = [], []
     doc, replies = packet
 
@@ -66,7 +68,8 @@ def execute(tmp_path: Path, packet: tuple, price: dict, *, send: Any = None, cou
             200, 'fixture_count', b'{"input_tokens":1000,"context_management":null}', True, None)
 
     identity = {'execution_day_utc': datetime.now(timezone.utc).date().isoformat(),
-                'inference': {'environment': 'synthetic_fixture'}, 'journal_nonce': ai.NONCE}
+                'inference': {'environment': 'synthetic_fixture'}, 'journal_nonce': ai.NONCE,
+                **(identity_extra or {})}
     report = ap.run(doc, price, identity, tmp_path / 'result', sender, counter)
     return report, calls, counts
 
@@ -365,10 +368,12 @@ def ci_tree(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, request: pytest.Fix
     import os
     import subprocess
 
-    now = datetime(2026, 10, 26, 13, 0, tzinfo=timezone.utc)
     recovering = getattr(request, 'param', False)
-    prior = [ap.recovery_receipt(ROOT)['prior_reservation']] if recovering else []
-    nonce = ap.RECOVERY_NONCE if recovering else ai.NONCE
+    quoting = recovering in ('quotes', 'quotes_low_budget')
+    now = datetime(2026, 10, 27 if quoting else 26, 13, 0, tzinfo=timezone.utc)
+    prior = (ap.quote_campaign(ROOT)['prior_reservations'] if quoting else
+             [ap.recovery_receipt(ROOT)['prior_reservation']] if recovering else [])
+    nonce = ap.QUOTE_NONCE if quoting else ap.RECOVERY_NONCE if recovering else ai.NONCE
 
     class Clock(datetime):
         @classmethod
@@ -389,17 +394,23 @@ def ci_tree(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, request: pytest.Fix
 
     git('init', '--bare', str(remote))
     git('init', '-b', 'main')
-    for name in (ai.PLAN, ai.PRICE, ap.RECOVERY):
+    names = [ai.PLAN, ai.PRICE, ap.RECOVERY]
+    if quoting:
+        names += [ap.QUOTE_CAMPAIGN, *ap.quote_campaign(ROOT)['contract_files']]
+    for name in names:
         path = root / name
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes((ROOT / name).read_bytes())
     write(root / 'ops/dashboard.json', {'spend': {'lifetime_generation_usd': 0,
-          'daily_ceiling_usd': 1.99 if recovering == 'low_budget' else 2.00}})
+          'daily_ceiling_usd': 0.99 if recovering == 'quotes_low_budget' else
+                               1.99 if recovering == 'low_budget' else 2.00}})
     (root / 'ops/trigger_journal.jsonl').write_text(''.join(json.dumps(e) + '\n' for e in prior))
     git('add', '.')
     git('commit', '-m', 'fixture base')
     base = git('rev-parse', 'HEAD')
     params = {**live_params(), 'expected_commit': base, '_nonce': nonce}
+    if quoting:
+        params['plan_sha256'] = ap.QUOTE_CAMPAIGN_SHA256
     write(root / ap.TRIGGER_PATH, params)
     entry = {'trigger': ap.TRIGGER, 'fired_utc': now.isoformat(), 'max_spend': 1, 'resolved': False,
              'evicted': False, 'nonce': nonce, 'ref': ft.fire_ref(root), 'lane': 'anthropic',
@@ -519,3 +530,193 @@ def test_ci_commit_replay_and_remote_binding(ci_tree: tuple, mutation: str) -> N
     write(Path(env['GITHUB_EVENT_PATH']), event)
     with pytest.raises(aa.AnnotationRefusal):
         ap.admit_ci(params, env, root)
+
+
+def quote_params() -> dict:
+    return {**live_params(), 'plan_sha256': ap.QUOTE_CAMPAIGN_SHA256, '_nonce': ap.QUOTE_NONCE}
+
+
+def test_quote_attempt_requires_exact_plan_nonce_pair_and_preserved_contracts(tmp_path: Path) -> None:
+    assert not ap.params_problems(quote_params(), ROOT)
+    assert ft.is_paid_fire(ap.TRIGGER, quote_params())
+    assert ft.reused_nonce(ap.TRIGGER, quote_params(), [{'trigger': ap.TRIGGER, 'nonce': ap.QUOTE_NONCE}])
+    for change in ({'_nonce': ai.NONCE}, {'_nonce': ap.RECOVERY_NONCE},
+                   {'_nonce': ap.QUOTE_NONCE + '-again'}, {'plan_sha256': ai.PLAN_SHA256},
+                   {'plan_sha256': aq.MANIFEST_SHA256}, {'max_spend': '0.01'}):
+        assert ap.params_problems({**quote_params(), **change}, ROOT)
+    assert ap.params_problems(quote_params(), tmp_path) == ['action_plan_or_price_unavailable']
+
+
+@pytest.mark.parametrize('mutation', ['missing', 'duplicate', 'fourth', 'order', 'resolved', 'evicted', 'amount'])
+def test_quote_attempt_refuses_altered_history(mutation: str) -> None:
+    prior = copy.deepcopy(ap.quote_campaign(ROOT)['prior_reservations'])
+    current = {**prior[-1], 'nonce': ap.QUOTE_NONCE}
+    entries = [*prior, current]
+    if mutation == 'missing':
+        entries.pop(0)
+    elif mutation in ('duplicate', 'fourth'):
+        entries.append({**current, 'nonce': ap.QUOTE_NONCE if mutation == 'duplicate' else 'another'})
+    elif mutation == 'order':
+        entries[:2] = reversed(entries[:2])
+    else:
+        field, value = {'resolved': ('resolved', True), 'evicted': ('evicted', True), 'amount': ('max_spend', 0)}[mutation]
+        entries[1][field] = value
+    with pytest.raises(aa.AnnotationRefusal, match='quote_campaign_history_mismatch'):
+        ap.campaign_identity(entries, ap.QUOTE_NONCE, ROOT)
+
+
+@pytest.mark.parametrize('ci_tree', ['quotes'], indirect=True)
+def test_quote_ci_admission_retains_both_holds_and_cost_receipt(ci_tree: tuple) -> None:
+    root, params, env, _ = ci_tree
+    before = (root / ft.JOURNAL_RELPATH).read_bytes()
+    result = ap.admit_ci(params, env, root)
+    assert result['journal_nonce'] == ap.QUOTE_NONCE
+    assert result['quote_campaign']['receipt_sha256'] == ap.QUOTE_CAMPAIGN_SHA256
+    assert [r['run_id'] for r in result['quote_campaign']['prior_attempts']] == ['40320384841', '40344924588']
+    assert Decimal(result['budget_admission']['held_upper_bound_usd']) == 2
+    assert Decimal(result['budget_admission']['committed_upper_bound_usd']) == Decimal('3.0002326')
+    assert (root / ft.JOURNAL_RELPATH).read_bytes() == before
+    # Free park history does not erase or change either paid attempt.
+    entries = ft.load_journal(root / ft.JOURNAL_RELPATH)
+    assert ap.campaign_identity([*entries, {'trigger': ap.TRIGGER, 'nonce': 'park'}], ap.QUOTE_NONCE, root)
+
+
+@pytest.mark.parametrize('ci_tree', ['quotes_low_budget'], indirect=True)
+def test_quote_attempt_keeps_existing_daily_ceiling(ci_tree: tuple) -> None:
+    root, params, env, _ = ci_tree
+    with pytest.raises(aa.AnnotationRefusal, match='journal_or_daily_budget_refused'):
+        ap.admit_ci(params, env, root)
+
+
+@pytest.mark.parametrize('ci_tree', ['quotes'], indirect=True)
+@pytest.mark.parametrize('path', [ap.QUOTE_CAMPAIGN, 'scripts/action_quote_annotations.py',
+                                 'data/action_annotations/runs/action_40344924588.report.json'])
+def test_quote_contract_or_prior_receipt_tampering_refuses(ci_tree: tuple, path: Path | str) -> None:
+    root, params, _, _ = ci_tree
+    with (root / path).open('ab') as stream:
+        stream.write(b' ')
+    assert ap.params_problems(params, root) == ['action_plan_or_price_unavailable']
+
+
+def test_quote_preparation_uses_frozen_request_bytes_and_new_plan(tmp_path: Path) -> None:
+    prepared = aq.prepare(ROOT)
+    packet = ap.prepare_campaign(ap.QUOTE_CAMPAIGN_SHA256, ROOT)
+    assert packet['requests'] == prepared['requests']
+    assert packet['prepared_inputs_sha256'] == aa.digest(aa.encoded(prepared))
+    assert packet['plan_sha256'] == ap.QUOTE_CAMPAIGN_SHA256
+    assert packet['preparation_sha256'] == aq.MANIFEST_SHA256
+    assert packet['response_format'] == aq.FORMAT
+    assert packet['owner_labels_sent'] is False and packet['seal_hits'] == 0
+    assert packet == ap.prepare_campaign(ap.QUOTE_CAMPAIGN_SHA256, ROOT)
+    assert ap.main(['prepare', '--plan-sha256', ap.QUOTE_CAMPAIGN_SHA256, '--out', str(tmp_path / 'prepared')]) == 0
+    assert aa.read_json(tmp_path / 'prepared/inputs.json') == packet
+    with pytest.raises(SystemExit):
+        ap.main(['live', '--plan-sha256', ap.QUOTE_CAMPAIGN_SHA256, '--out', str(tmp_path / 'live')])
+    assert not (tmp_path / 'live').exists()
+
+
+@pytest.fixture
+def quote_packet(packet: tuple) -> tuple:
+    doc, replies = copy.deepcopy(packet)
+    doc.update(plan_sha256=ap.QUOTE_CAMPAIGN_SHA256, response_format=aq.FORMAT,
+               preparation_sha256=aq.MANIFEST_SHA256, prepared_inputs_sha256='fixture_only')
+    for request in doc['requests']:
+        request['response_format'] = aq.FORMAT
+    for body in replies.values():
+        annotation = json.loads(body['content'][0]['text'])
+        annotation['schema_version'] = aq.FORMAT
+        for action in annotation['actions']:
+            for field in ('evidence', 'condition', 'timing'):
+                if action[field] is not None:
+                    action[field] = {'quote': action[field]['quote']}
+        body['content'][0]['text'] = json.dumps(annotation)
+    return doc, replies
+
+
+def quote_identity() -> dict:
+    return {'journal_nonce': ap.QUOTE_NONCE,
+            'quote_campaign': {'receipt_sha256': ap.QUOTE_CAMPAIGN_SHA256}}
+
+
+def test_quote_worker_runs_full_synthetic_pass_and_keeps_cost_contract(
+    tmp_path: Path, quote_packet: tuple, price: dict,
+) -> None:
+    report, calls, counts = execute(tmp_path, quote_packet, price, identity_extra=quote_identity())
+    assert len(calls) == len(counts) == 14 and not report['not_attempted']
+    assert report['status'] == 'complete_semantics_unverified'
+    assert report['schema_version'] == 'patientwords.action-pilot-report/1'
+    assert report['plan_sha256'] == ap.QUOTE_CAMPAIGN_SHA256 and report['response_format'] == aq.FORMAT
+    assert report['unknown_charge'] is False and report['cost_usd'] > 0
+    assert report['inputs_sha256'] == aa.digest((tmp_path / 'result/inputs.json').read_bytes())
+    for row in report['items']:
+        interpreted = row['interpretation']
+        assert interpreted['schema_version'] == 'patientwords.action-reply-interpretation/2'
+        assert interpreted['annotation'] is not None
+        assert interpreted['provider_annotation']['schema_version'] == aq.FORMAT
+        assert interpreted['raw_body_sha256'] == row['capture']['raw_body_sha256']
+    for path, sha in report['artifact_hashes'].items():
+        assert aa.digest((tmp_path / 'result' / path).read_bytes()) == sha
+
+
+@pytest.mark.parametrize('mutation', ['format', 'item_format', 'nonce', 'receipt', 'plan'])
+def test_quote_worker_refuses_mixed_execution_before_any_call(
+    tmp_path: Path, quote_packet: tuple, price: dict, mutation: str,
+) -> None:
+    identity = quote_identity()
+    doc, _ = quote_packet
+    if mutation == 'format':
+        doc['response_format'] = 'patientwords.action-spans/1'
+    elif mutation == 'item_format':
+        doc['requests'][0].pop('response_format')
+    elif mutation == 'nonce':
+        identity['journal_nonce'] = ap.RECOVERY_NONCE
+    elif mutation == 'receipt':
+        identity['quote_campaign'] = {}
+    else:
+        doc['plan_sha256'] = ai.PLAN_SHA256
+    with pytest.raises(aa.AnnotationRefusal, match='execution_binding_mismatch'):
+        execute(tmp_path, quote_packet, price, identity_extra=identity)
+    assert not (tmp_path / 'result').exists()
+
+
+def test_quote_invalid_reply_stops_after_one_and_preserves_raw(
+    tmp_path: Path, quote_packet: tuple, price: dict,
+) -> None:
+    for body in quote_packet[1].values():
+        body['content'][0]['text'] = '{}'
+    report, calls, counts = execute(tmp_path, quote_packet, price, identity_extra=quote_identity())
+    assert len(calls) == 1 and len(counts) == 14 and len(report['not_attempted']) == 13
+    assert report['status'] == 'stopped_incomplete' and report['cost_usd'] > 0
+    assert report['items'][0]['interpretation']['annotation'] is None
+    assert (tmp_path / 'result/action_annotation_attempts' / calls[0] / 'response.bin').is_file()
+
+
+def test_live_cli_selects_quote_packet_before_constructing_transport(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, quote_packet: tuple, price: dict,
+) -> None:
+    params = quote_params()
+    events = []
+    class FakeTransport:
+        def __init__(self, key: str):
+            events.append('client')
+        def __call__(self, wire: dict) -> at.Reply:
+            return at.Reply(200, 'fixture_request', aa.encoded(quote_packet[1][aa.digest(aa.encoded(wire))]), True, None)
+        def count(self, wire: dict) -> at.Reply:
+            return at.Reply(200, 'fixture_count', b'{"input_tokens":1000}', True, None)
+    def prepare(plan: str, root: Path) -> dict:
+        assert plan == ap.QUOTE_CAMPAIGN_SHA256
+        events.append('prepare')
+        return quote_packet[0]
+    # Patch only the CI/source boundary; the actual worker/capture/interpreter run.
+    original_read = aa.read_json
+    monkeypatch.setattr(ap, 'admit_ci', lambda *args: {'execution_day_utc': datetime.now(timezone.utc).date().isoformat(),
+                        'inference': {'environment': 'synthetic_fixture'}, **quote_identity()})
+    monkeypatch.setattr(ap, 'prepare_campaign', prepare)
+    monkeypatch.setattr(ab, 'prices', lambda *args: price)
+    monkeypatch.setattr(at, 'AnthropicTransport', FakeTransport)
+    # Normalizer schema loads remain real; only the trigger is synthetic.
+    monkeypatch.setattr(aa, 'read_json', lambda path: params if Path(path) == ap.ROOT / ap.TRIGGER_PATH
+                        else original_read(path))
+    assert ap.main(['live', '--out', str(tmp_path / 'result')]) == 0
+    assert events == ['prepare', 'client']
+    assert json.loads((tmp_path / 'result/report.json').read_text())['plan_sha256'] == ap.QUOTE_CAMPAIGN_SHA256

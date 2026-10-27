@@ -221,8 +221,8 @@ python -m scripts.action_quote_annotations --out /tmp/pw-action-quotes-new
 python -m pytest -q tests/test_action_quote_annotations.py tests/test_action_annotation_reply.py
 ```
 
-This correction **does not enable another paid run**. The current live campaign
-still accepts only its old frozen plan/consumed identities. Its requests, trigger,
+The quote-contract correction in PR #132 **did not enable another paid run**.
+At that stage the live campaign accepted only its old frozen plan/consumed identities. Its requests, trigger,
 workflow, reservations, price receipt and budget rules are unchanged. A future
 reviewed campaign change must bind the quote plan, interpreter format, new attempt
 identity and preserved prior receipts, with current prices/budgets and a bounded
@@ -235,3 +235,60 @@ its quotations. That transformed object is not a new provider response, repaired
 research result or independent gold label. Tests keep the original failure invalid
 and exercise Unicode, overlapping/repeated/missing quotations, nested context,
 schema-first refusals, legacy compatibility and unchanged live-plan refusal.
+
+
+## One CI-connected quote attempt (owner continuation, 2026-10-27 UTC)
+
+After merging #132 the owner requested the next step. The fixed new campaign is
+`data/action_annotations/quote_campaign.v1.json`, SHA-256
+`af5ebe737664fca846ac9452cf639fbb0ee26fdb83e9f3556763b0326f25906b`,
+with nonce `assisted-action-quotes-20261027-1`. It admits exactly one new $1-bounded
+pass on the same 14 sources and quote requests. No additional sample, retry, model
+change, publication or alteration of historical measurements is included. This
+owner request supplies the bounded continuation authorization; code still needs
+independent review and owner merge before execution. Do not ask for the same
+authorization again once those prerequisites pass.
+
+The receipt pins both earlier reservations unchanged, the landed invalid-response
+cost receipt, original failure receipt, quote preparation and normalization/parser
+source bytes. Admission refuses missing/edited/reordered history, duplicated or
+further paid attempts, and a plan/nonce mismatch. Free park entries may coexist.
+Neither expiry nor the UTC date change erases the old commitments: they remain in
+the conservative monthly bound; the existing daily gate keeps its own documented
+UTC-day accounting. No ceiling, reservation or cost is relaxed.
+
+`action_pilot.prepare_campaign` revalidates the original and new frozen requests.
+The existing live CLI chooses the packet from the admitted trigger, before it
+constructs the provider client. The worker explicitly selects quote interpretation
+and refuses mixed plan/format/attempt identities before any count or send. The
+existing CI owner/ref/first-attempt/source checks, 14-count preflight, $1 full
+reservation, per-call upper bound, stop-on-first-failure, raw capture, additive
+cost landing and no-retry policy remain unchanged. No workflow or trigger-file
+change is needed in the code PR.
+
+Offline preparation, with no key or model calls:
+
+```bash
+python -m scripts.action_pilot prepare \
+  --plan-sha256 af5ebe737664fca846ac9452cf639fbb0ee26fdb83e9f3556763b0326f25906b \
+  --out /tmp/pw-action-quote-campaign-new
+```
+
+The prepared packet is version 2 and identifies the new campaign, response format
+and hash of the quote preparation. The run/cost receipt keeps
+`patientwords.action-pilot-report/1` for the existing ledger consumer; additive
+`response_format`, `inputs_sha256`, `preparation_sha256`, `prepared_inputs_sha256`
+and `quote_campaign` fields identify the change. Item interpretations use version 2
+and retain the provider proposal, normalized annotation and raw/schema/code hashes.
+Legacy preparation and offset interpretation remain unchanged. The unadmitted
+quote-preparation manifest itself is still not a valid trigger plan.
+
+After owner merge: verify exact merged source, terminal queue and retained failure
+receipts, current pricing and daily/monthly capacity. Restore resting state with
+the tool if necessary. Rehearse `fire_trigger.py fire --trigger action-annotate`
+with `mode: run`, this campaign SHA, the new nonce, `max_spend: "1.00"` and the
+exact then-current main as `expected_commit`, using `--dry-run` first. Fire only
+once when all gates pass; never dispatch/rerun manually or replay either old nonce.
+Retain artifacts and costs even on another refusal, then re-park through the tool.
+No next retry is admitted. Label completeness, semantic correctness and clinical
+validity remain unverified until the resulting annotations are independently read.

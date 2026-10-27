@@ -31,6 +31,41 @@ TRIGGER_PATH = Path('.github/trigger/action-annotate.json')
 RECOVERY = Path('data/action_annotations/recovery_20261026.v1.json')
 RECOVERY_SHA256 = '9758535734715f69ae61e587dc69212c9c4405fb07d20b02b87e6ce7341cf67d'
 RECOVERY_NONCE = 'assisted-actions-20261026-recovery-1'
+QUOTE_CAMPAIGN = Path('data/action_annotations/quote_campaign.v1.json')
+QUOTE_CAMPAIGN_SHA256 = 'af5ebe737664fca846ac9452cf639fbb0ee26fdb83e9f3556763b0326f25906b'
+QUOTE_NONCE = 'assisted-action-quotes-20261027-1'
+
+
+def quote_campaign(root: Path) -> dict[str, Any]:
+    """Bind the new format to reviewed code and the preserved earlier failures."""
+    from scripts import action_quote_annotations as quotes
+
+    receipt = inputs.parse(inputs.verified_bytes(root, QUOTE_CAMPAIGN, QUOTE_CAMPAIGN_SHA256))
+    require(receipt['nonce'] == QUOTE_NONCE and receipt['response_format'] == quotes.FORMAT and
+            receipt['preparation_sha256'] == quotes.MANIFEST_SHA256, 'quote_campaign_identity')
+    for path, expected in receipt['contract_files'].items():
+        inputs.verified_bytes(root, path, expected)
+    return receipt
+
+
+def prepare_campaign(plan_sha256: str, root: Path) -> dict[str, Any]:
+    """Prepare one recognized frozen contract; this performs no execution admission."""
+    if plan_sha256 == inputs.PLAN_SHA256:
+        return inputs.prepare(root)
+    require(plan_sha256 == QUOTE_CAMPAIGN_SHA256, 'unknown_campaign_plan')
+    from scripts import action_quote_annotations as quotes
+
+    receipt = quote_campaign(root)
+    prepared = quotes.prepare(root)
+    # Preserve the offline preparation as a separate historical contract, without
+    # presenting its execution_enabled:false as the result of live CI admission.
+    return {'schema_version': 'patientwords.action-pilot-inputs/2',
+            'plan_sha256': QUOTE_CAMPAIGN_SHA256, 'plan': receipt,
+            'preparation_sha256': quotes.MANIFEST_SHA256,
+            'prepared_inputs_sha256': aa.digest(aa.encoded(prepared)),
+            'response_format': quotes.FORMAT, 'requests': prepared['requests'],
+            'seal_registry_count': prepared['seal_registry_count'], 'seal_hits': prepared['seal_hits'],
+            'purpose': prepared['purpose'], 'owner_labels_sent': False}
 
 
 def recovery_receipt(root: Path) -> dict[str, Any]:
@@ -39,8 +74,15 @@ def recovery_receipt(root: Path) -> dict[str, Any]:
 
 
 def campaign_identity(entries: list[dict[str, Any]], nonce: str, root: Path) -> dict[str, Any]:
-    """Retain all paid history; allow only the original or one named recovery."""
+    """Retain all paid history; admit only explicitly reviewed attempt identities."""
     mine = [e for e in entries if e.get('trigger') == TRIGGER and e.get('max_spend') is not None]
+    if nonce == QUOTE_NONCE:
+        receipt = quote_campaign(root)
+        require(len(mine) == 3 and mine[:2] == receipt['prior_reservations'] and
+                mine[2].get('nonce') == nonce, 'quote_campaign_history_mismatch')
+        return {'quote_campaign': {'receipt_sha256': QUOTE_CAMPAIGN_SHA256, 'nonce': nonce,
+                'preparation_sha256': receipt['preparation_sha256'],
+                'prior_attempts': receipt['prior_attempts'], 'prior_reservations_retained': True}}
     if nonce == inputs.NONCE:
         require(len(mine) == 1 and mine[0].get('nonce') == nonce, 'campaign_already_reserved')
         return {}
@@ -72,7 +114,9 @@ def params_problems(params: dict[str, Any], root: Path | None = None) -> list[st
     if params['mode'] == 'park':
         return [] if all(params.get(k) == v for k, v in {
             'plan_sha256': '', 'max_spend': '0', 'expected_commit': ''}.items()) else ['action_park_values']
-    if params.get('plan_sha256') != inputs.PLAN_SHA256 or params.get('_nonce') not in (inputs.NONCE, RECOVERY_NONCE):
+    quote_plan = params.get('plan_sha256') == QUOTE_CAMPAIGN_SHA256 and params.get('_nonce') == QUOTE_NONCE
+    old_plan = params.get('plan_sha256') == inputs.PLAN_SHA256 and params.get('_nonce') in (inputs.NONCE, RECOVERY_NONCE)
+    if not (quote_plan or old_plan):
         return ['action_fixed_plan_and_nonce_required']
     if params.get('max_spend') != '1.00':
         return ['action_full_one_dollar_reservation_required']
@@ -84,6 +128,8 @@ def params_problems(params: dict[str, Any], root: Path | None = None) -> list[st
             budget.prices(root, datetime.now(timezone.utc).date())
             if params['_nonce'] == RECOVERY_NONCE:
                 recovery_receipt(root)
+            if quote_plan:
+                quote_campaign(root)
         except (OSError, ValueError):
             return ['action_plan_or_price_unavailable']
     return []
@@ -163,6 +209,20 @@ def output_path(out: Path) -> Path:
 def run(packet: dict[str, Any], price: dict[str, Any], identity: dict[str, Any], out: Path,
         send: Callable[[dict[str, Any]], at.Reply], count: Callable[[dict[str, Any]], at.Reply]) -> dict[str, Any]:
     """Injectable single-pass worker; only main constructs real provider clients."""
+    plan_sha256 = packet.get('plan_sha256', inputs.PLAN_SHA256)
+    require(plan_sha256 in (inputs.PLAN_SHA256, QUOTE_CAMPAIGN_SHA256), 'unknown_campaign_plan')
+    response_format = 'patientwords.action-spans/1'
+    if plan_sha256 == QUOTE_CAMPAIGN_SHA256:
+        from scripts import action_quote_annotations as quotes
+        response_format = quotes.FORMAT
+        require(packet.get('response_format') == response_format and
+                all(r.get('response_format') == response_format for r in packet['requests']) and
+                identity.get('journal_nonce') == QUOTE_NONCE and
+                identity.get('quote_campaign', {}).get('receipt_sha256') == QUOTE_CAMPAIGN_SHA256,
+                'quote_execution_binding_mismatch')
+    else:
+        require(packet.get('response_format', response_format) == response_format and
+                identity.get('journal_nonce') != QUOTE_NONCE, 'legacy_execution_binding_mismatch')
     out = output_path(out)
     out.mkdir(exist_ok=False, parents=False)
     attempts = out / 'action_annotation_attempts'
@@ -173,12 +233,18 @@ def run(packet: dict[str, Any], price: dict[str, Any], identity: dict[str, Any],
         'task': 'assisted_action_annotation', 'model': price['model'], 'billing_channel': 'anthropic',
         'cost_basis': price['cost_basis'], 'cost_usd': None, 'known_cost_usd': '0', 'reserved_usd': '1.00',
         'reservation_release_allowed': False, 'run_timestamp': datetime.now(timezone.utc).isoformat(),
-        'plan_sha256': inputs.PLAN_SHA256, 'price_sha256': inputs.PRICE_SHA256,
+        'plan_sha256': plan_sha256, 'price_sha256': inputs.PRICE_SHA256,
         'runtime': {'python': platform.python_version(), 'platform': platform.platform(),
                     'transport': 'python_stdlib_http.client', 'sdk_retries': 0},
         'purpose': 'assistance_not_independent_accuracy', 'status': 'started', 'model_calls_attempted': 0,
         'count_calls_attempted': 0, 'count_estimates': [], 'items': [],
         'not_attempted': [r['source_id'] for r in packet['requests']], **identity}
+    if plan_sha256 == QUOTE_CAMPAIGN_SHA256:
+        # Additive fields preserve the cost receipt's version-1 ledger contract.
+        report.update(response_format=response_format,
+                      inputs_sha256=aa.digest(aa.encoded(packet)),
+                      preparation_sha256=packet['preparation_sha256'],
+                      prepared_inputs_sha256=packet['prepared_inputs_sha256'])
     snapshot(out / 'report.json', report)
     total = Decimal(0)
     uncertain = False
@@ -226,7 +292,8 @@ def run(packet: dict[str, Any], price: dict[str, Any], identity: dict[str, Any],
                     captured['request_sha256'] == item['request_sha256'], 'capture_binding_mismatch')
             reply = at.Reply(captured['http_status'], captured['request_id'], raw,
                              captured['body_complete'], captured['transport_error'])
-            interpreted = interpret_reply(reply, expected_model=price['model'], source_text=item['text'])
+            interpreted = interpret_reply(reply, expected_model=price['model'], source_text=item['text'],
+                                          response_format=response_format)
             row = {'source_id': item['source_id'], 'origin': item['origin'], 'capture': captured,
                    'interpretation': interpreted, 'cost_usd': None}
             report['items'].append(row)
@@ -261,18 +328,21 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('mode', choices=['prepare', 'live'])
     parser.add_argument('--out', required=True, type=Path)
+    parser.add_argument('--plan-sha256', help='Offline prepare only; live always reads the admitted trigger')
     args = parser.parse_args(argv)
+    if args.mode == 'live' and args.plan_sha256 is not None:
+        parser.error('live forbids --plan-sha256')
     try:
         if args.mode == 'prepare':
             args.out = output_path(args.out)
-            packet = inputs.prepare(ROOT)
+            packet = prepare_campaign(args.plan_sha256 or inputs.PLAN_SHA256, ROOT)
             args.out.mkdir(exist_ok=False)
             at._write(args.out / 'inputs.json', aa.encoded(packet))
             print('Prepared 14 frozen requests offline; no execution or spend admission.')
             return 0
         params = aa.read_json(ROOT / TRIGGER_PATH)
         identity = admit_ci(params, dict(os.environ))
-        packet = inputs.prepare(ROOT)
+        packet = prepare_campaign(params['plan_sha256'], ROOT)
         price = budget.prices(ROOT, datetime.now(timezone.utc).date())
         client = at.AnthropicTransport(os.environ.get('ANTHROPIC_API_KEY', ''))
         result = run(packet, price, identity, args.out, client, client.count)
