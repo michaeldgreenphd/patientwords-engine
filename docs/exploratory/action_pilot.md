@@ -292,3 +292,59 @@ once when all gates pass; never dispatch/rerun manually or replay either old non
 Retain artifacts and costs even on another refusal, then re-park through the tool.
 No next retry is admitted. Label completeness, semantic correctness and clinical
 validity remain unverified until the resulting annotations are independently read.
+
+## Structured JSON correction (preparation only, 2026-10-27)
+
+The quote attempt above ran as [40510625603](https://github.com/michaeldgreenphd/patientwords-engine/actions/runs/40510625603).
+It stopped on s07: explanatory prose and a Markdown fence made the reply invalid
+JSON. Six earlier synthetic annotations passed structural/literal checks, with
+semantics unverified; seven sources, including all four archived responses, were
+unattempted. Its raw responses and additive cost receipt remain unchanged. No
+classification accuracy, clinical validity or language-register effect follows.
+
+`action_structured_annotations.py` prepares a new, **non-executable** request
+version: `patientwords.action-quotes-json-schema/1`. Only `output_config.format`
+is added. The source selection, prompt bytes, model/settings, quote schema,
+normalizer and final annotation schema stay unchanged. The old request hashes
+still reproduce; the new 14 hashes are frozen separately in
+`data/action_annotations/structured_preparation.v1.json`. No known live plan/nonce
+admits that manifest. No campaign, workflow, trigger, budget or retry rule changes.
+
+```bash
+python -m scripts.action_structured_annotations --out /tmp/pw-action-structured-candidate
+```
+
+This uses existing source/receipt/holdout checks and writes only a new external
+packet. It sends no owner labels and makes no provider calls. Its output must not
+be placed in measurement collectors or represented as completed annotations.
+
+API compatibility checked against official documentation on 2026-10-27:
+[JSON outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs)
+support Haiku 5.5 and `output_config.format` with `type: json_schema`. The existing
+schema uses objects, arrays, strings/nulls, local references, required properties
+and `additionalProperties: false`; no schema constraints are removed or rewritten.
+The [count endpoint](https://platform.claude.com/docs/en/api/messages/count_tokens)
+also accepts `output_config`, which the transport includes for this profile.
+Provider-added format instructions consume tokens; grammar compilation can add
+latency. The existing 120-second deadline remains a refusal boundary, not a reason
+to retry. No live compatibility or latency check has run for this exact request.
+
+The transport accepts only this pinned schema or the unchanged legacy profile.
+It never retries without a schema when counting/generation fails. Output still
+passes the existing strict parser, local schema, literal-quote, context and label
+checks. Refusal/truncation stay failures with usage retained. The normalized data
+contract, ledger consumer and frontend are unchanged; no site migration is needed.
+Token counts remain estimates, usage remains authoritative for rate-based cost,
+and the existing full-context bound/unknown-charge rules are not relaxed.
+
+`structured_failure_regression.json` preserves the original s07 text block and
+raw-response hash. Its bare JSON object is explicitly a synthetic test
+transformation, not a repaired run or reference label. Offline tests demonstrate
+wire/count payloads and continued rejection/validation, not provider adherence or
+semantic correctness. No automatic extraction of fenced JSON is implemented.
+
+Before another paid attempt: review/merge the correction, bind a new bounded
+campaign/nonce to these requests while retaining **all three** prior attempts,
+their reservations and costs, recheck prices/queue/budgets and obtain the owner's
+execution authorization. A code-only merge neither launches nor authorizes a run.
+The failed nonce must never be replayed or rerun through Actions.

@@ -315,3 +315,98 @@ def test_count_endpoint_is_separate_single_attempt_and_shares_inputs(monkeypatch
     assert args == ('POST', '/v1/messages/count_tokens')
     assert json.loads(kwargs['body']) == {k: wire['body'][k] for k in ('model', 'system', 'messages', 'thinking')}
     assert kwargs['headers']['anthropic-version'] == wire['api_version']
+
+
+@pytest.mark.parametrize('operation', ['generate', 'count'])
+def test_structured_schema_reaches_actual_post_without_changing_legacy_profile(
+    monkeypatch: pytest.MonkeyPatch, operation: str,
+) -> None:
+    legacy = at.prepare_wire('system', 'source')
+    wire = at.prepare_wire('system', 'source', output_format='patientwords.action-quotes-json-schema/1')
+    schema = aa.read_json(aa.CONTRACT / 'annotation_quotes.v1.schema.json')
+    assert wire['body']['output_config'] == {
+        'effort': 'medium', 'format': {'type': 'json_schema', 'schema': schema}}
+    unstructured = copy.deepcopy(wire)
+    del unstructured['body']['output_config']['format']
+    assert unstructured == legacy
+    # Count must carry the schema too: provider-injected format instructions cost tokens.
+    conn = Connection(Response(b'{"input_tokens":42}' if operation == 'count' else b'{}'))
+    install(monkeypatch, conn)
+    sender = at.AnthropicTransport('fixture-placeholder')
+    reply = sender.count(wire) if operation == 'count' else sender(wire)
+    assert reply.http_status == 200 and len(conn.calls) == 1 and conn.closed
+    args, kwargs = conn.calls[0]
+    assert args == ('POST', '/v1/messages/count_tokens' if operation == 'count' else '/v1/messages')
+    body = json.loads(kwargs['body'])
+    assert body['output_config'] == wire['body']['output_config']
+    expected = wire['body'] if operation == 'generate' else {
+        k: wire['body'][k] for k in ('model', 'system', 'messages', 'thinking', 'output_config')}
+    assert body == expected
+
+
+@pytest.mark.parametrize('change', ['schema', 'type', 'missing_schema', 'null_format', 'extra', 'effort'])
+@pytest.mark.parametrize('operation', ['generate', 'count', 'capture'])
+def test_structured_profile_changes_refuse_before_network_or_capture(
+    monkeypatch: pytest.MonkeyPatch, root: Path, change: str, operation: str,
+) -> None:
+    wire = at.prepare_wire('system', 'source', output_format=at.STRUCTURED_FORMAT)
+    config = wire['body']['output_config']
+    if change == 'schema':
+        config['format']['schema']['additionalProperties'] = True
+    elif change == 'missing_schema':
+        config['format'].pop('schema')
+    elif change == 'null_format':
+        config['format'] = None
+    elif change == 'type':
+        config['format']['type'] = 'json'
+    else:
+        config['extra' if change == 'extra' else 'effort'] = 'high'
+
+    def forbidden(*args: Any, **kwargs: Any) -> None:
+        pytest.fail('network attempted for an unrecognized profile')
+
+    monkeypatch.setattr(at.http.client, 'HTTPSConnection', forbidden)
+    sender = at.AnthropicTransport('fixture-placeholder')
+    with pytest.raises(aa.AnnotationRefusal):
+        if operation == 'capture':
+            capture(wire, root, sender)
+        elif operation == 'count':
+            sender.count(wire)
+        else:
+            sender(wire)
+    assert not list(root.iterdir())
+
+
+def test_structured_schema_bytes_are_pinned_and_no_fallback(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    wire = at.prepare_wire('system', 'source', output_format=at.STRUCTURED_FORMAT)
+    schema = tmp_path / 'changed.json'
+    schema.write_bytes(at.QUOTE_SCHEMA.read_bytes() + b' ')
+    monkeypatch.setattr(at, 'QUOTE_SCHEMA', schema)
+    with pytest.raises(aa.AnnotationRefusal, match='structured_schema_hash_mismatch'):
+        at.prepare_wire('system', 'source', output_format=at.STRUCTURED_FORMAT)
+    with pytest.raises(aa.AnnotationRefusal):
+        at._wire_bytes(wire)
+    # Legacy mode does not depend on the new provider-format loader.
+    assert at.prepare_wire('system', 'source')['body']['output_config'] == {'effort': 'medium'}
+
+
+@pytest.mark.parametrize('operation', ['generate', 'count'])
+def test_provider_format_rejection_is_one_attempt_no_unstructured_fallback(
+    monkeypatch: pytest.MonkeyPatch, operation: str,
+) -> None:
+    wire = at.prepare_wire('system', 'source', output_format=at.STRUCTURED_FORMAT)
+    conn = Connection(Response(b'{"error":{"type":"invalid_request_error"}}', 400))
+    install(monkeypatch, conn)
+    sender = at.AnthropicTransport('fixture-placeholder')
+    reply = sender.count(wire) if operation == 'count' else sender(wire)
+    assert reply.http_status == 400 and len(conn.calls) == 1 and conn.closed
+    assert 'format' in json.loads(conn.calls[0][1]['body'])['output_config']
+
+
+def test_structured_unknown_format_and_oversized_request_refuse() -> None:
+    with pytest.raises(aa.AnnotationRefusal, match='unsupported_output_format'):
+        at.prepare_wire('system', 'source', output_format='unknown')
+    with pytest.raises(aa.AnnotationRefusal, match='unsupported_request_profile'):
+        at.prepare_wire('system', 'x' * at.MAX_REQUEST_BYTES, output_format=at.STRUCTURED_FORMAT)

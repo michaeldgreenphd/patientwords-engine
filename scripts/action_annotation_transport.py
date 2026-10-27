@@ -21,6 +21,9 @@ from scripts import action_annotations as aa
 MAX_BODY_BYTES = 4 * 1024 * 1024
 MAX_REQUEST_BYTES = 1024 * 1024
 TIMEOUT_SECONDS = 120
+STRUCTURED_FORMAT = 'patientwords.action-quotes-json-schema/1'
+QUOTE_SCHEMA = aa.CONTRACT / 'annotation_quotes.v1.schema.json'
+QUOTE_SCHEMA_SHA256 = '1dd60212f4c5d96349425090894270e2a8dc08430e6bf285226ca3012047ccc0'
 
 
 @dataclass(frozen=True)
@@ -57,8 +60,18 @@ def validate_reply(reply: Reply) -> None:
         raise aa.AnnotationRefusal("invalid_transport_reply")
 
 
-def prepare_wire(system: str, text: str) -> dict[str, Any]:
-    """Explicit proposed text-only profile; does not admit or label source origin."""
+def _structured_format() -> dict[str, Any]:
+    """One reviewed schema, unchanged: no arbitrary schemas or lossy SDK rewriting."""
+    raw = QUOTE_SCHEMA.read_bytes()
+    if aa.digest(raw) != QUOTE_SCHEMA_SHA256:
+        raise aa.AnnotationRefusal('structured_schema_hash_mismatch')
+    return {'type': 'json_schema', 'schema': json.loads(raw)}
+
+
+def prepare_wire(system: str, text: str, *, output_format: str | None = None) -> dict[str, Any]:
+    """Build legacy or explicit structured-quote wire bytes; no execution admission."""
+    if output_format not in (None, STRUCTURED_FORMAT):
+        raise aa.AnnotationRefusal('unsupported_output_format')
     for value in (system, text):
         if not isinstance(value, str) or not value.strip():
             raise aa.AnnotationRefusal("request_text_required")
@@ -66,6 +79,8 @@ def prepare_wire(system: str, text: str) -> dict[str, Any]:
             "body": {"model": "claude-haiku-5-5", "max_tokens": 8192, "stream": False,
                      "thinking": {"type": "disabled"}, "output_config": {"effort": "medium"},
                      "system": system, "messages": [{"role": "user", "content": [{"type": "text", "text": text}]}]}}
+    if output_format == STRUCTURED_FORMAT:
+        wire['body']['output_config']['format'] = _structured_format()
     _wire_bytes(wire)
     return wire
 
@@ -81,6 +96,8 @@ def _wire_bytes(wire: Any) -> bytes:
                              "thinking": {"type": "disabled"}, "output_config": {"effort": "medium"},
                              "system": system,
                              "messages": [{"role": "user", "content": [{"type": "text", "text": text}]}]}}
+        if 'format' in body.get('output_config', {}):
+            expected['body']['output_config']['format'] = _structured_format()
         if not all(isinstance(v, str) and v.strip() for v in (text, system)):
             raise ValueError
         # Compare canonical bytes, not Python equality (False == 0, 8192 == 8192.0).
@@ -115,6 +132,10 @@ class AnthropicTransport:
         """One free count request for the same inputs; no generation or retries."""
         _wire_bytes(wire)
         body = {k: wire["body"][k] for k in ("model", "system", "messages", "thinking")}
+        if 'format' in wire['body']['output_config']:
+            # Count the very same format instructions as generation. A count error
+            # is a failure, never permission to strip the schema and retry.
+            body['output_config'] = wire['body']['output_config']
         return self._post("/v1/messages/count_tokens", wire["api_version"], aa.encoded(body))
 
     def _post(self, path: str, version: str, body: bytes) -> Reply:
