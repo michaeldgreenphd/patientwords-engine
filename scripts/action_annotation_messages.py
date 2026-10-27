@@ -113,7 +113,8 @@ def _attempt(row: Any, request: dict[str, Any]) -> None:
             raise aa.AnnotationRefusal("response_body_encoding") from exc
 
 
-def _interpret(row: dict[str, Any], request: dict[str, Any], text: str) -> dict[str, Any]:
+def _interpret(row: dict[str, Any], request: dict[str, Any], text: str,
+               response_format: str = 'patientwords.action-spans/1') -> dict[str, Any]:
     result: dict[str, Any] = {"status": "transport_error", "annotation": None, "refusal": None,
                               "usage": None, "usage_status": "unavailable", "message_id": None,
                               "reported_model": None, "stop_reason": None}
@@ -165,7 +166,12 @@ def _interpret(row: dict[str, Any], request: dict[str, Any], text: str) -> dict[
             return result
         try:
             annotation = _parse(content[0]["text"])
-            aa.validate_annotation(annotation, text)
+            if response_format == 'patientwords.action-quotes/1':
+                from scripts.action_quote_annotations import normalize
+                result['provider_annotation'] = annotation
+                annotation = normalize(annotation, text)
+            else:
+                aa.validate_annotation(annotation, text)
         except (ValueError, TypeError, KeyError) as exc:
             result.update(status="invalid_annotation", refusal=str(exc))
         else:
@@ -173,13 +179,16 @@ def _interpret(row: dict[str, Any], request: dict[str, Any], text: str) -> dict[
     return result
 
 
-def interpret_reply(reply: Reply, *, expected_model: str, source_text: str) -> dict[str, Any]:
+def interpret_reply(reply: Reply, *, expected_model: str, source_text: str,
+                    response_format: str = 'patientwords.action-spans/1') -> dict[str, Any]:
     """Interpret captured bytes without sending, authenticating, admitting or pricing.
 
     The caller must bind source/model/request/receipt identities before using this
     result. Matching literal spans proves neither that the request used this source
     nor that the proposed labels are correct. Keep the original capture unchanged.
     """
+    if response_format not in ('patientwords.action-spans/1', 'patientwords.action-quotes/1'):
+        raise aa.AnnotationRefusal('unsupported_response_format')
     validate_reply(reply)
     _text(expected_model, "expected_model_required")
     _text(source_text, "source_text_required")
@@ -197,10 +206,10 @@ def interpret_reply(reply: Reply, *, expected_model: str, source_text: str) -> d
             outcome = _interpret(
                 {"transport_error": None, "http_status": reply.http_status,
                  "request_id": reply.request_id, "body": body},
-                {"request": {"body": {"model": expected_model}}}, source_text)
+                {"request": {"body": {"model": expected_model}}}, source_text, response_format)
     # An incomplete body cannot supply trusted usage, even if its prefix parses.
     # Its exact bytes remain in response.bin; this derived record identifies them.
-    return {
+    result = {
         "schema_version": "patientwords.action-reply-interpretation/1",
         "source_binding": "caller_asserted_not_admitted",
         "source_sha256": aa.digest(source_text.encode("utf-8")), "expected_model": expected_model,
@@ -209,6 +218,16 @@ def interpret_reply(reply: Reply, *, expected_model: str, source_text: str) -> d
         "raw_body_sha256": aa.digest(reply.body), "raw_body_bytes": len(reply.body),
         "cost_usd": None, "reservation_release_allowed": False, **outcome,
     }
+    if response_format == 'patientwords.action-quotes/1':
+        from scripts import action_quote_annotations as quotes
+        result.update(schema_version='patientwords.action-reply-interpretation/2',
+                      response_format=response_format,
+                      normalization={'method': 'unique_literal_quotes_unicode_codepoints/1',
+                                     'implementation_sha256': aa.digest(Path(quotes.__file__).read_bytes()),
+                                     'provider_schema_sha256': aa.digest((aa.ROOT / quotes.SCHEMA).read_bytes()),
+                                     'normalized_schema_sha256': aa.digest(
+                                         (aa.CONTRACT / 'annotation.v1.schema.json').read_bytes())})
+    return result
 
 
 def replay(document: Any, settings: Any, attempts: Any) -> dict[str, Any]:
