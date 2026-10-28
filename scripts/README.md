@@ -50,6 +50,7 @@ publish-site-data skill, which the Routine runs in §5 when new results land.
 | `action_pilot_budget.py` | Validates dated prices, token usage, next-call bound and conservative allocation | staged | None; unknown costs refuse | action_pilot and trigger admission |
 | `action_quote_annotations.py` | Derives exact unambiguous quote positions into the unchanged annotation schema; prepares the same 14 sources with a separately frozen quote-only contract | staged | Exclusive external candidate `inputs.json`; no execution admission or cost writer | owner or session for offline preparation; not wired into the live campaign |
 | `action_structured_annotations.py` | Freezes the same 14 quote requests with an explicit provider JSON schema; preserves historical requests and local validation | staged | Exclusive external candidate `inputs.json`; no live campaign or cost writer | owner or session for offline preparation only |
+| `export_action_review.py` | Replays a landed action artifact into separate clinical/extraction draft bundles for the private app | staged | New external preview bundles and private provenance; no calls or publication | owner or session for offline PI preparation |
 
 ## Ops tooling and the Routine
 

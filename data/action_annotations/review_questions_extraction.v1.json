@@ -1,0 +1,143 @@
+{
+  "schema": "patientwords-evidence-review-questions/1",
+  "version": "evidence-extraction/1-draft",
+  "status": "PI preview; question wording not approved for collection",
+  "scales": {
+    "assessment": {
+      "type": "nominal",
+      "options": [
+        {
+          "value": "accurate",
+          "label": "Accurate"
+        },
+        {
+          "value": "partly",
+          "label": "Partly accurate"
+        },
+        {
+          "value": "inaccurate",
+          "label": "Inaccurate"
+        }
+      ],
+      "abstain": {
+        "value": "cant_judge",
+        "label": "I cannot judge this from the information given"
+      }
+    },
+    "context": {
+      "type": "nominal",
+      "options": [
+        {
+          "value": "enough",
+          "label": "Enough to make a judgment"
+        },
+        {
+          "value": "missing",
+          "label": "Important information is missing"
+        }
+      ],
+      "abstain": {
+        "value": "cant_judge",
+        "label": "I cannot judge this from the information given"
+      }
+    },
+    "appropriateness": {
+      "type": "nominal",
+      "options": [
+        {
+          "value": "appropriate",
+          "label": "Appropriate given the information"
+        },
+        {
+          "value": "minor",
+          "label": "Some changes would improve it"
+        },
+        {
+          "value": "major",
+          "label": "Important changes are needed"
+        }
+      ],
+      "abstain": {
+        "value": "cant_judge",
+        "label": "I cannot judge this from the information given"
+      }
+    },
+    "coverage": {
+      "type": "nominal",
+      "options": [
+        {
+          "value": "none_noticed",
+          "label": "I did not notice an omitted action"
+        },
+        {
+          "value": "omission",
+          "label": "At least one action is missing"
+        }
+      ],
+      "abstain": {
+        "value": "cant_judge",
+        "label": "I cannot judge this from the information given"
+      }
+    },
+    "free_text": {
+      "type": "text",
+      "options": [],
+      "max_length": 4000
+    }
+  },
+  "question_sets": {
+    "evidence_extraction_v1": {
+      "family": "evidence",
+      "questions": [
+        {
+          "id": "capture",
+          "text": "Does the machine summary correctly capture the actions stated in the response?",
+          "scale": "assessment",
+          "required": true,
+          "phase": "blind"
+        },
+        {
+          "id": "context_preserved",
+          "text": "Does it preserve who acts, what is discouraged, and any stated timing or conditions?",
+          "scale": "assessment",
+          "required": true,
+          "phase": "blind"
+        },
+        {
+          "id": "coverage",
+          "text": "Does the summary omit any explicit action?",
+          "scale": "coverage",
+          "required": true,
+          "phase": "blind"
+        },
+        {
+          "id": "correction",
+          "text": "If something is wrong or missing, copy the relevant words and describe the correction.",
+          "scale": "free_text",
+          "required": false,
+          "phase": "blind"
+        }
+      ]
+    }
+  },
+  "notes": {
+    "label": "Additional comments (optional)",
+    "max_length": 4000
+  },
+  "instructions": {
+    "version": "evidence-extraction-preview-1",
+    "welcome": [
+      "PatientWords studies whether AI assistants respond differently when the same situation is described in everyday words or clinical terms.",
+      "This is a private preview for discussion with the PI. These are simulated questions and model outputs, not patient testimony or advice to follow.",
+      "Your responses here are practice feedback, not study ratings. Do not enter names or other identifying details."
+    ],
+    "consent": "I understand this is a preview and will not enter identifying information.",
+    "families": {
+      "evidence": [
+        "Compare the full response with the machine summary below it. The summary may be wrong or incomplete.",
+        "Check what the response actually says, including conditions and advice against an action. This task does not ask whether the advice is clinically appropriate.",
+        "No stated timing or condition means the classifier found none explicitly stated; it does not mean none is needed."
+      ]
+    }
+  }
+}

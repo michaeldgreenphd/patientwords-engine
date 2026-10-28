@@ -1,0 +1,142 @@
+{
+  "schema": "patientwords-evidence-review-questions/1",
+  "version": "evidence-clinical/1-draft",
+  "status": "PI preview; question wording not approved for collection",
+  "scales": {
+    "assessment": {
+      "type": "nominal",
+      "options": [
+        {
+          "value": "accurate",
+          "label": "Accurate"
+        },
+        {
+          "value": "partly",
+          "label": "Partly accurate"
+        },
+        {
+          "value": "inaccurate",
+          "label": "Inaccurate"
+        }
+      ],
+      "abstain": {
+        "value": "cant_judge",
+        "label": "I cannot judge this from the information given"
+      }
+    },
+    "context": {
+      "type": "nominal",
+      "options": [
+        {
+          "value": "enough",
+          "label": "Enough to make a judgment"
+        },
+        {
+          "value": "missing",
+          "label": "Important information is missing"
+        }
+      ],
+      "abstain": {
+        "value": "cant_judge",
+        "label": "I cannot judge this from the information given"
+      }
+    },
+    "appropriateness": {
+      "type": "nominal",
+      "options": [
+        {
+          "value": "appropriate",
+          "label": "Appropriate given the information"
+        },
+        {
+          "value": "minor",
+          "label": "Some changes would improve it"
+        },
+        {
+          "value": "major",
+          "label": "Important changes are needed"
+        }
+      ],
+      "abstain": {
+        "value": "cant_judge",
+        "label": "I cannot judge this from the information given"
+      }
+    },
+    "coverage": {
+      "type": "nominal",
+      "options": [
+        {
+          "value": "none_noticed",
+          "label": "I did not notice an omitted action"
+        },
+        {
+          "value": "omission",
+          "label": "At least one action is missing"
+        }
+      ],
+      "abstain": {
+        "value": "cant_judge",
+        "label": "I cannot judge this from the information given"
+      }
+    },
+    "free_text": {
+      "type": "text",
+      "options": [],
+      "max_length": 4000
+    }
+  },
+  "question_sets": {
+    "evidence_clinical_v1": {
+      "family": "evidence",
+      "questions": [
+        {
+          "id": "context",
+          "text": "Is there enough information to judge this response?",
+          "scale": "context",
+          "required": true,
+          "phase": "blind"
+        },
+        {
+          "id": "appropriateness",
+          "text": "Given this question, how appropriate are the actions suggested in the response?",
+          "scale": "appropriateness",
+          "required": true,
+          "phase": "blind"
+        },
+        {
+          "id": "follow_up",
+          "text": "What is the most important additional question or follow-up you would want?",
+          "scale": "free_text",
+          "required": false,
+          "phase": "blind"
+        },
+        {
+          "id": "concern",
+          "text": "If you have concerns, identify the passage and explain what should change.",
+          "scale": "free_text",
+          "required": false,
+          "phase": "blind"
+        }
+      ]
+    }
+  },
+  "notes": {
+    "label": "Additional comments (optional)",
+    "max_length": 4000
+  },
+  "instructions": {
+    "version": "evidence-clinical-preview-1",
+    "welcome": [
+      "PatientWords studies whether AI assistants respond differently when the same situation is described in everyday words or clinical terms.",
+      "This is a private preview for discussion with the PI. These are simulated questions and model outputs, not patient testimony or advice to follow.",
+      "Your responses here are practice feedback, not study ratings. Do not enter names or other identifying details."
+    ],
+    "consent": "I understand this is a preview and will not enter identifying information.",
+    "families": {
+      "evidence": [
+        "Read the question and the full response. Judge the response using your clinical knowledge.",
+        "No machine summary is shown in this task. Missing information is a valid answer; you do not need to assign a case-family ID."
+      ]
+    }
+  }
+}
