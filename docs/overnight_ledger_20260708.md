@@ -785,3 +785,4 @@ patching smoke run 1 = failure; diagnosis below after log pull.
 - run_38434195912_1.report.json · $0.2266 · alias · accepted — · —
 - jev_audit_40322061091_1.report.json · $0.1000 · typesafe/jev-1.13 · accepted — · —
 - action_40344924588.report.json · $0.0002 · claude-haiku-5-5 · accepted — · 2026-10-26T15:03:30.827284+00:00
+- action_40510625603.report.json · $0.0016 · claude-haiku-5-5 · accepted — · 2026-10-27T13:25:29.688089+00:00
