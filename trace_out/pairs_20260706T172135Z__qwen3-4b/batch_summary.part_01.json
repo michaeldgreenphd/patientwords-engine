@@ -1,0 +1,263 @@
+{
+  "mode": "2panel",
+  "backend": "logits",
+  "graph_model": "qwen3-4b",
+  "source_set": null,
+  "generation_params": {},
+  "start_index": 1,
+  "pairs_requested": 2,
+  "completed": true,
+  "screen_targets": null,
+  "inference": {
+    "method": "logits",
+    "hf_id": "Qwen/Qwen3-4B",
+    "dtype": "bfloat16",
+    "revision": "1cfa9a7208912126459214e8b04321603b3df60c",
+    "revision_pinned": "1cfa9a7208912126459214e8b04321603b3df60c",
+    "environment": {
+      "python": "3.11.17",
+      "platform": "Linux-7.0.0-1017-azure-x86_64-with-glibc2.39",
+      "engine_sha": "3381da1c579c",
+      "runner_image": "20261026.354.1",
+      "torch": "2.13.0+cpu",
+      "transformers": "5.14.1",
+      "accelerate": "1.14.0"
+    }
+  },
+  "results": [
+    {
+      "index": 1,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My arrhythmia has been acting up all week, so I should probably call my",
+        "patient": "My ticker's been acting up all week, so I should probably call my"
+      },
+      "target_token": "Output \" cardi\"",
+      "probabilities": {
+        "clinical": 0.0589,
+        "patient": 0.0
+      },
+      "language_penalty": -0.0589,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.9212
+          ],
+          [
+            "Output \" cardi\"",
+            0.0589
+          ],
+          [
+            "Output \" physician\"",
+            0.0048
+          ],
+          [
+            "Output \" card\"",
+            0.0021
+          ],
+          [
+            "Output \" PC\"",
+            0.0018
+          ],
+          [
+            "Output \" primary\"",
+            0.0016
+          ],
+          [
+            "Output \" GP\"",
+            0.0013
+          ],
+          [
+            "Output \" provider\"",
+            0.0013
+          ],
+          [
+            "Output \" doc\"",
+            0.0007
+          ],
+          [
+            "Output \" health\"",
+            0.0006
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" broker\"",
+            0.9658
+          ],
+          [
+            "Output \" stock\"",
+            0.0257
+          ],
+          [
+            "Output \" mom\"",
+            0.0011
+          ],
+          [
+            "Output \" brokerage\"",
+            0.001
+          ],
+          [
+            "Output \" financial\"",
+            0.0007
+          ],
+          [
+            "Output \" bank\"",
+            0.0004
+          ],
+          [
+            "Output \" analyst\"",
+            0.0004
+          ],
+          [
+            "Output \" dad\"",
+            0.0004
+          ],
+          [
+            "Output \" brother\"",
+            0.0003
+          ],
+          [
+            "Output \" tech\"",
+            0.0002
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. But",
+          "cardi": "cardiologist.",
+          "physician": "physician. I",
+          "card": "cardiology clinic"
+        },
+        "patient": {
+          "broker": "broker.",
+          "stock": "stock broker.",
+          "mom": "mom and tell",
+          "brokerage": "brokerage. But"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 2,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My dad's been showing signs of dementia, so we think he should visit a",
+        "patient": "My dad's been forgetting where he puts his keys all the time, so we think he should visit a"
+      },
+      "target_token": "Output \" neuro\"",
+      "probabilities": {
+        "clinical": 0.2127,
+        "patient": 0.082
+      },
+      "language_penalty": -0.1307,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.3974
+          ],
+          [
+            "Output \" neuro\"",
+            0.2127
+          ],
+          [
+            "Output \" specialist\"",
+            0.1462
+          ],
+          [
+            "Output \" memory\"",
+            0.0691
+          ],
+          [
+            "Output \" ger\"",
+            0.0691
+          ],
+          [
+            "Output \" dementia\"",
+            0.0254
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.0064
+          ],
+          [
+            "Output \" medical\"",
+            0.0064
+          ],
+          [
+            "Output \" physician\"",
+            0.0064
+          ],
+          [
+            "Output \" clinic\"",
+            0.006
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.7775
+          ],
+          [
+            "Output \" neuro\"",
+            0.082
+          ],
+          [
+            "Output \" memory\"",
+            0.0723
+          ],
+          [
+            "Output \" specialist\"",
+            0.0342
+          ],
+          [
+            "Output \" ger\"",
+            0.0076
+          ],
+          [
+            "Output \" professional\"",
+            0.0059
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.0036
+          ],
+          [
+            "Output \" therapist\"",
+            0.0019
+          ],
+          [
+            "Output \" physician\"",
+            0.0015
+          ],
+          [
+            "Output \" Memory\"",
+            0.0013
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. What",
+          "neuro": "neurologist",
+          "specialist": "specialist. What",
+          "memory": "memory clinic."
+        },
+        "patient": {
+          "doctor": "doctor. But",
+          "neuro": "neurologist",
+          "memory": "memory clinic.",
+          "specialist": "specialist. What"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    }
+  ]
+}
