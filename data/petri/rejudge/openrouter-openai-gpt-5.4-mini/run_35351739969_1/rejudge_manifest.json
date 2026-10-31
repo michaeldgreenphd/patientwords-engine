@@ -1,0 +1,160 @@
+{
+  "rejudge_manifest_version": "0.1",
+  "mode": "rejudge",
+  "exploratory": true,
+  "rehearsal": false,
+  "created_utc": "2026-10-31T11:16:01Z",
+  "source": {
+    "run_stem": "run_35351739969_1",
+    "run_id": "Spki9YWaME4UjKW53dUYrB",
+    "eval_id": "h8bLwrUvspm6ZfNxzKbCjz",
+    "manifest_sha256": "af82a15be5fd7439ae1e704de4de2b18373ccaf01bebaa80b9c390d367973685",
+    "chain_manifest_sha256": "f4fcdfb737cc9075d71faf2c20157e7e626203a0b8bf469206ec82da888585ac",
+    "transcripts_sha256": "0e7d5c6535c5d4179f9c59c8a011e11f11b19b3751b5f2b38f6bb1188f0e7c6b",
+    "judgments_sha256": "4b9acc345330975fdab9dc0480a0b1d9c44c73b8300c0129fcfc7fa7b532cf70",
+    "judge_of_record": {
+      "judge_model": "claude-haiku-4-5",
+      "judge_max_tokens": 300,
+      "temperature": 0.0,
+      "planned": 92,
+      "judged": 80,
+      "null": 1,
+      "not_applicable": 11,
+      "truncated": false,
+      "cost_usd": 0.068302
+    }
+  },
+  "judge": {
+    "judge_model": "openrouter:openai/gpt-5.4-mini",
+    "judge_slug": "openrouter-openai-gpt-5.4-mini",
+    "inspect_name": "openrouter/openai/gpt-5.4-mini",
+    "billing_channel": "openrouter",
+    "price_source": "registry:openrouter:pricing",
+    "input_per_mtok": 0.8,
+    "output_per_mtok": 4.75,
+    "judge_max_tokens": 300,
+    "temperature": 0.0,
+    "max_spend_usd": 1.3,
+    "fire_judge_max_spend_usd": 1.3,
+    "fire_spent_before_usd": 0.0
+  },
+  "instrument": {
+    "outcome_registry": {
+      "ref": "docs/framework/outcome_dimensions.draft.json",
+      "sha256": "ea2042a3e71ecc592398ca8643b39fd8b89d90ebf2b1caf0900484ce764c2f3a"
+    },
+    "rubric": {
+      "ref": "data/advice_rubric.draft.json",
+      "sha256": "eb6bb9d6870f7193121e507419d95c45f5d1487247a5140fcf4a7fd315f35509",
+      "digest": "bd4aa5596b81"
+    },
+    "prompt_files": {
+      "docs/framework/judge_prompts/outcomes/evidence_update.draft.json": {
+        "digest": "063848fcb4fb",
+        "sha256": "02112e1add8342118ef251a6b63471fe7cd755f817203bdfb4030876efcb55eb",
+        "git_blob": "72710eba15bb6f1dbff28de0e3c86c2f526480b6",
+        "source": "checkout",
+        "commit": "5a228f1634e587ef303b8fa33978c49e7ae15230"
+      },
+      "docs/framework/judge_prompts/outcomes/recommendation_specificity.draft.json": {
+        "digest": "a6e974dd6f84",
+        "sha256": "50015076b760277b25ae2a2da2bd7111f34c75396e850ab3e98a735f5f9b0241",
+        "git_blob": "94115a440ac30f21da5b631943255d21130b8d7a",
+        "source": "checkout",
+        "commit": "5a228f1634e587ef303b8fa33978c49e7ae15230"
+      },
+      "docs/framework/judge_prompts/outcomes/safety_netting_persistence.draft.json": {
+        "digest": "4f4173235be1",
+        "sha256": "6a807d13357b5bd8a7d73f06214f9645a58b174d05bb69bf150ccdeef0c60706",
+        "git_blob": "145193a3535c3e1c1fc1682a4d9eb6d7b3beba84",
+        "source": "checkout",
+        "commit": "5a228f1634e587ef303b8fa33978c49e7ae15230"
+      },
+      "docs/framework/judge_prompts/outcomes/safety_netting_presence.draft.json": {
+        "digest": "24db7e24cc12",
+        "sha256": "e6e5ca2e63d5f59c416c9ca546f9d558cfef70393726507cf0a9367bc53152a7",
+        "git_blob": "605f0b4c67a203162c0dac6246df6fa7d297c6a1",
+        "source": "checkout",
+        "commit": "5a228f1634e587ef303b8fa33978c49e7ae15230"
+      },
+      "docs/framework/judge_prompts/outcomes/tool_evidence_use.draft.json": {
+        "digest": "9b602c4c77cb",
+        "sha256": "ee20eb0e0a2bdc2541466092f6d044bddf9695e2f8e2be720c98f1d32823f743",
+        "git_blob": "f4b6fae5a1a5bfa254e13a8f9a262254eaa6b8d9",
+        "source": "checkout",
+        "commit": "5a228f1634e587ef303b8fa33978c49e7ae15230"
+      }
+    },
+    "plan_sha256": "ac7ef25ed3b1c3b2063998ec87634848b9fc92eeca926577d1daf57f5be8ef84",
+    "planned": 92,
+    "parity_with_judge_of_record": "exact",
+    "historical": {
+      "instrument": "historical",
+      "basis": "replay of the judge of record's rows: its judgments, its not-applicable reasons, and each prompt rebuilt from the prompt-file version its row records, checked digest for digest against the row",
+      "judgments_replayed": 92,
+      "calls": 81,
+      "not_applicable": 11,
+      "contexts_recovered_by_digest": 9,
+      "archived_prompt_files": [],
+      "archive_index": {
+        "ref": "docs/framework/judge_prompts/historical/index.json",
+        "sha256": "5c3f87c951bb56cae48c8a05fe6b37595eec12a6fdac208b3fdc1b89f515f9d5"
+      }
+    }
+  },
+  "fire": {
+    "workflow_run_id": "41195967134",
+    "workflow_run_attempt": "1",
+    "commit": "5a228f1634e587ef303b8fa33978c49e7ae15230",
+    "journal_nonce": "xj-r4-historical-gpt54mini-20261031",
+    "source_runs": [
+      "run_35351739969_1",
+      "run_35801345137_1"
+    ],
+    "position": 1
+  },
+  "counts": {
+    "planned": 92,
+    "keys": 92,
+    "judged": 81,
+    "null": 0,
+    "not_applicable": 11,
+    "null_share": 0.0,
+    "truncated": false,
+    "stopped_early": false,
+    "call_failures": 0,
+    "calls_without_usage": 0,
+    "judge_of_record_null_share": 0.012346
+  },
+  "estimate": {
+    "calls": 81,
+    "recorded_input_tokens": 54327,
+    "recorded_output_tokens": 2795,
+    "calls_without_recorded_usage": 0,
+    "price_source": "registry:openrouter:pricing",
+    "input_per_mtok": 0.8,
+    "output_per_mtok": 4.75,
+    "expected_usd": 0.056738,
+    "worst_case_usd": 0.158887,
+    "last_call_headroom_usd": 0.005515,
+    "assumption": "the new judge's token counts are close to the judge of record's recorded ones"
+  },
+  "cost_usd": 0.0474655,
+  "artifacts": {
+    "judgments": {
+      "path": "judgments.jsonl",
+      "sha256": "e80292e1b6b67c38731345cad8556ca2bb9c826a84b090e35bb96cdf4d9590b9",
+      "rows": 92
+    },
+    "analysis_rows": {
+      "path": "analysis_rows.jsonl",
+      "sha256": "bd4bfcc4ae0b22a8d094734d68c1b61c4be3ab07b7522844ce9779e1b9f10b5a",
+      "rows": 92
+    },
+    "judge_report": {
+      "path": "run_35351739969_1.rejudge_41195967134.judge.report.json",
+      "sha256": "5fdb7bb02ce4993327800776c27ec0e0bed9eb2e3952d614649d0655774ad74e"
+    }
+  },
+  "manifest_sha256": "038f2c6cc9569cf3d2428d98faf842346104171fc5a0ff435fa160eb8f3eaa74"
+}
