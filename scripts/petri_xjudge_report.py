@@ -144,7 +144,16 @@ def tier_rank() -> dict[str, int]:
 # ------------------------------------------------------------------ agreement
 
 def identity(row: dict) -> tuple:
-    return (row["tree_id"], row["branch_id"], row["turn_id"], row.get("exchange_index"), row["kind"], row["key"])
+    """A judgment's identity: the assistant turn (tree, branch, turn) and the dimension. `exchange_index` is left out:
+    it is derived from the turn, and rows written before the field existed carry null there (the wave-1 pilot,
+    run_35351739969_1), so including it kept those rows from pairing with their re-grades."""
+    return (row["tree_id"], row["branch_id"], row["turn_id"], row["kind"], row["key"])
+
+
+def is_final(row: dict) -> bool:
+    """Whether a row is the final judgment of its exchange. Rows written before `final_in_exchange` existed carry
+    null (or no key): that schema had one reply per exchange, so they are final. Only an explicit false is interim."""
+    return row.get("final_in_exchange") is not False
 
 
 def usable(row: dict) -> bool:
@@ -197,8 +206,8 @@ def bootstrap_ci(clusters: dict[str, list], stat, reps: int, rng: random.Random)
 
 def pair_judges(first: JudgeSet, second: JudgeSet) -> dict[str, Any]:
     """Pair two judges' rows over one source run on the judgment's identity, final-in-exchange rows only."""
-    a = {identity(r): r for r in first.rows if r.get("final_in_exchange", True)}
-    b = {identity(r): r for r in second.rows if r.get("final_in_exchange", True)}
+    a = {identity(r): r for r in first.rows if is_final(r)}
+    b = {identity(r): r for r in second.rows if is_final(r)}
     shared = sorted(set(a) & set(b), key=str)
     digest_mismatch = [k for k in shared if a[k].get("rendered_sha256") != b[k].get("rendered_sha256")]
     paired = [(a[k], b[k]) for k in shared if k not in set(digest_mismatch)]
@@ -279,7 +288,7 @@ def equity_contrast(js: JudgeSet, pairs_spec: dict, ranks: dict[str, int],
     for r in js.rows:
         if (r["kind"], r["key"]) != ("tier", "response_only") or r.get("branch_id") != "root":
             continue
-        if not r.get("final_in_exchange", True):
+        if not is_final(r):
             continue
         tiers[(r["seed_id"], r["condition_id"])][int(r["exchange_index"])] = (
             str(r["value"]) if usable(r) and str(r["value"]) in ranks else None)

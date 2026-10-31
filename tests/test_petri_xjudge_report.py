@@ -213,3 +213,15 @@ def test_a_rejudge_with_no_equity_rows_still_enters_an_equity_run(tmp_path):
     assert set(by_judge) == {"a", "b"}
     assert by_judge["a"]["equity"]["held_after_pivot"] is True
     assert by_judge["b"]["equity"]["held_after_pivot"] is None and by_judge["b"]["equity"]["missing_from_pivot"] == 3
+
+
+def test_rows_written_before_the_exchange_fields_existed_still_pair():
+    """The wave-1 pilot's judge-of-record rows carry null exchange_index and null final_in_exchange; they were left
+    out of every comparison until 2026-10-31, while the re-grades of the same run carry both fields."""
+    old = xj.JudgeSet("run_1", "a", "judge_of_record", "x", Path("a"),
+                      [row(exchange_index=None, final_in_exchange=None, value="urgent")])
+    new = xj.JudgeSet("run_1", "b", "rejudge", "y", Path("b"), [row(exchange_index=1, value="emergency")])
+    p = xj.pair_judges(old, new)
+    assert len(p["paired"]) == 1 and p["only_first"] == 0 and p["only_second"] == 0
+    assert xj.is_final({"final_in_exchange": None}) and xj.is_final({})
+    assert not xj.is_final({"final_in_exchange": False})
