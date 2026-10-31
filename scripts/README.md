@@ -193,6 +193,7 @@ out.
 | `build_patient_lexicon.py` | A reviewable lay-to-clinical lexicon draft from the CHV flatfiles | one-off and done | `data/patient_lexicon.draft.json`, `data/misspelling_candidates.draft.json` | session, 2026-07-13 |
 | `build_steer_spec.py` | The steering-100 spec | one-off and done | `data/steer_spec_100_20260728.json` | session, 2026-07-28 |
 | `derive_context_pairs.py` | Context-inoculation pairs from a 2panel batch | one-off and done | `<batch>__context.json` and `.report.json` beside the source (`data/simulated/urgency_downgrades_20260707T1__context.*`) | session, 2026-07-07 |
+| `derive_lens_pairs.py` | J-lens reader pairs from dialect and 4-quadrant batches: baseline vs each dialect variant, quadrant A vs B, C and D | one-off and done | `<batch>__lenspairs.json` and `.report.json` beside each source (`data/simulated/dialects_*__lenspairs.*`, `data/simulated/quadrants_*__lenspairs.*`) | session, 2026-10-31 |
 | `jsteer_rebuild.py` | Rebuilds lost steering summary rows from committed raw responses, never overwriting a part | operator tool | the missing `jsteer_summary` parts | owner or session, when a steering run dies before its summary flush (first used 2026-07-28) |
 
 ## PatientAgentBench integration

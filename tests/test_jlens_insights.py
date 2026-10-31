@@ -140,6 +140,24 @@ def test_drift_sentinel_dirs_excluded_from_census(tmp_path):
     assert len(per_model["gemma-2-2b"]) == 1  # only the real census row survives
 
 
+def test_lenspairs_dirs_excluded_from_census(tmp_path):
+    # Dialect and quadrant comparisons (scripts/derive_lens_pairs.py) compare a
+    # clinical prompt with a dialect variant or quadrant cell, not a patient
+    # wording; they must not enter the formation census.
+    root = tmp_path / "trace_out"
+    write_summary(root, "setA", "gemma-2-2b", [
+        result(1, [(1, "y")] * 3, [(2, "y")] * 3),
+    ])
+    write_summary(root, "dialects_20260708T215356Z__lenspairs", "gemma-2-2b", [
+        result(1, [(1, "y")] * 3, [(1, "y")] * 3),
+    ])
+    write_summary(root, "quadrants_20260729T151007Z__lenspairs", "gemma-2-2b", [
+        result(1, [(1, "y")] * 3, [(1, "y")] * 3),
+    ])
+    per_model, _holdout_excluded = collect(root)
+    assert len(per_model["gemma-2-2b"]) == 1
+
+
 # --- holdout seal wiring (tierb_split.sealed_pair), synthetic prompts only ---------------
 # tests/test_tierb_split.py pins these hashes: symptom 4 and 13 hash holdout, 0 and 1 explore.
 HOLD_A, HOLD_B = "The patient reports symptom 4.", "The patient reports symptom 13."
