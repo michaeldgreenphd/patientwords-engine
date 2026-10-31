@@ -1,6 +1,9 @@
-"""Tests for the equity study, version 2 (docs/framework/petri_seeds_equity_v2.draft.json; owner decision 2026-10-14).
+"""Tests for the paired equity studies: version 2 (docs/framework/petri_seeds_equity_v2.draft.json; owner decision
+2026-10-14) and version 3 (docs/framework/petri_seeds_equity_v3.draft.json; owner decision Q7 of 2026-10-14, drafted
+2026-10-31). Every test runs on both sets.
 
-Each equity seed has a matched control: the same clinical course without the housing, insurance and stigma details.
+Each equity seed has a matched control: the same clinical course without the barrier details (housing, insurance and
+stigma in version 2; language, distance and cost in version 3).
 The pairing, the shared turns, the warning-sign turn and the warning-sign terms are data
 (data/petri/equity_v2_pairs.draft.json), and every seed id is read from there, so no scenario vocabulary is written in
 this file (AGENTS.md hard conventions)."""
@@ -16,18 +19,32 @@ from scripts.petri_audit import cli, seeds, token_budget
 from scripts.petri_audit.framework import load_json, sha256_text
 
 ROOT = Path(__file__).resolve().parents[1]
-SEED_FILE = ROOT / "docs" / "framework" / "petri_seeds_equity_v2.draft.json"
-SWAPS_FILE = ROOT / "data" / "petri" / "lay_careful_swaps_equity_v2.draft.json"
-PAIRS_FILE = ROOT / "data" / "petri" / "equity_v2_pairs.draft.json"
+# (seed file, lay_careful swaps, pairing) per study
+STUDIES = {
+    version: (ROOT / "docs" / "framework" / f"petri_seeds_equity_{version}.draft.json",
+              ROOT / "data" / "petri" / f"lay_careful_swaps_equity_{version}.draft.json",
+              ROOT / "data" / "petri" / f"equity_{version}_pairs.draft.json")
+    for version in ("v2", "v3")
+}
 ARMS = ("clinical", "colloquial", "lay_careful")
 TURNS = 10
 
 Seed = dict[str, Any]
 
 
+@pytest.fixture(scope="module", params=sorted(STUDIES))
+def study(request: pytest.FixtureRequest) -> tuple[Path, Path, Path]:
+    return STUDIES[request.param]
+
+
 @pytest.fixture(scope="module")
-def doc() -> dict[str, Any]:
-    return load_json(SEED_FILE)
+def seed_file(study: tuple[Path, Path, Path]) -> Path:
+    return study[0]
+
+
+@pytest.fixture(scope="module")
+def doc(seed_file: Path) -> dict[str, Any]:
+    return load_json(seed_file)
 
 
 @pytest.fixture(scope="module")
@@ -36,8 +53,8 @@ def by_id(doc: dict[str, Any]) -> dict[str, Seed]:
 
 
 @pytest.fixture(scope="module")
-def pairs() -> dict[str, Any]:
-    return load_json(PAIRS_FILE)
+def pairs(study: tuple[Path, Path, Path]) -> dict[str, Any]:
+    return load_json(study[2])
 
 
 def _texts(seed: Seed) -> dict[str, str]:
@@ -48,21 +65,22 @@ def _roles(seed: Seed, arm: str) -> list[str | None]:
     return [t["context_role"] for t in next(a for a in seed["protocol"]["arms"] if a["id"] == arm)["turns"]]
 
 
-def test_pairs_name_every_seed_once(doc: dict[str, Any], pairs: dict[str, Any]) -> None:
+def test_pairs_name_every_seed_once(doc: dict[str, Any], pairs: dict[str, Any], seed_file: Path) -> None:
     named = [p[k] for p in pairs["pairs"] for k in ("equity", "control")]
     assert sorted(named) == sorted(s["seed_id"] for s in doc["seeds"])
     assert len(set(named)) == len(named)
-    assert pairs["seed_file"] == str(SEED_FILE.relative_to(ROOT))
+    assert pairs["seed_file"] == str(seed_file.relative_to(ROOT))
 
 
-def test_every_seed_validates(doc: dict[str, Any]) -> None:
-    seed_set = seeds.load_seed_file(SEED_FILE)
+def test_every_seed_validates(seed_file: Path) -> None:
+    seed_set = seeds.load_seed_file(seed_file)
     for seed_id, seed in seed_set.seeds.items():
         assert seeds.validate_seed(seed, seed_set) == [], seed_id
 
 
-def test_validate_seeds_cli_accepts_the_file(doc: dict[str, Any], capsys: pytest.CaptureFixture[str]) -> None:
-    assert cli.main(["validate-seeds", "--seeds", str(SEED_FILE)]) == 0
+def test_validate_seeds_cli_accepts_the_file(doc: dict[str, Any], seed_file: Path,
+                                             capsys: pytest.CaptureFixture[str]) -> None:
+    assert cli.main(["validate-seeds", "--seeds", str(seed_file)]) == 0
     out = capsys.readouterr().out
     assert all(f"{s['seed_id']}: ok" in out for s in doc["seeds"])
 
@@ -184,9 +202,10 @@ def test_declared_hypotheses_are_those_of_the_judged_outcomes(doc: dict[str, Any
         assert set(seed["hypotheses"]) == judged, (seed["seed_id"], seed["hypotheses"], sorted(judged))
 
 
-def test_lay_careful_is_the_clinical_text_with_its_swaps(doc: dict[str, Any]) -> None:
-    swaps = load_json(SWAPS_FILE)
-    assert swaps["seed_file"] == str(SEED_FILE.relative_to(ROOT))
+def test_lay_careful_is_the_clinical_text_with_its_swaps(doc: dict[str, Any], study: tuple[Path, Path, Path]) -> None:
+    seed_file, swaps_file, _ = study
+    swaps = load_json(swaps_file)
+    assert swaps["seed_file"] == str(seed_file.relative_to(ROOT))
     for seed in doc["seeds"]:
         sid, texts = seed["seed_id"], _texts(seed)
         for n in range(1, TURNS + 1):
@@ -207,8 +226,8 @@ def test_colloquial_turns_are_lower_case(doc: dict[str, Any]) -> None:
                 assert text == text.lower(), (seed["seed_id"], key)
 
 
-def test_every_conversation_fits_the_token_limit_ten_turn_runs_use() -> None:
+def test_every_conversation_fits_the_token_limit_ten_turn_runs_use(seed_file: Path) -> None:
     """The pre-flight projection (scripts/petri_audit/token_budget.py) clears every condition at 40,000 tokens."""
-    seed_set = seeds.load_seed_file(SEED_FILE)
+    seed_set = seeds.load_seed_file(seed_file)
     problems, _ = token_budget.token_limit_report(list(seed_set.seeds.values()), token_limit=40000)
     assert problems == []

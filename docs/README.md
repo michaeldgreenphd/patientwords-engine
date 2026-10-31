@@ -15,6 +15,7 @@ add a document.
 | `docs/exploratory/action_transport.md` | Single-attempt transport, raw receipt contract and remaining CI admission requirements; no active execution route. |
 | `docs/exploratory/action_annotations.md` | Offline evidence-linked action annotation contract, synthetic rehearsal and separately gated API pilot plan. |
 | `docs/exploratory/method_readiness_20261024.md` | Dated method wiring/pin check and remaining gates; no upgrade or retrospective remeasurement. |
+| `docs/exploratory/xjudge_20261031.md` | Exploratory cross-vendor judging (campaign `xjudge-v1`) and the equity v2 pilot on Claude Haiku 4.5 and GPT-5.4 mini: judge agreement, the judge-by-target shift, advice after the warning sign, and owner decisions. |
 | `docs/exploratory/review_preparation_20261016.md` | Final review heads, push/PR safety audit, tests and remaining execution blockers. |
 | `docs/exploratory/baseline_ci.md` | Manual-only baseline wiring, blocked readiness, owner/default-branch prerequisites and later dispatch inputs. |
 | `docs/exploratory/communication_plan.md` | Draft public question, endpoint-safe explanations, selection policy and later comprehension checklist. |
