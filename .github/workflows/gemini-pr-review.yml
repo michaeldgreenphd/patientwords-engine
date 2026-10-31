@@ -28,9 +28,10 @@ jobs:
     runs-on: ubuntu-latest
     # Only eligible jobs enter the group; unrelated/unauthorized comments cannot
     # cancel an active review. Automatic and manual reviews share the same group.
-    # Queue rather than cancel: agents post `@codex review` right after each push, and
-    # cancelling would throw away the push's half-finished review and start it again,
-    # while a queued run for a head that has meanwhile been reviewed exits at once.
+    # Never cancel a running review: agents post `@codex review` right after each push, and
+    # cancelling would throw away the push's half-finished review and start it again. GitHub
+    # keeps one run waiting behind it and a newer request replaces that waiting run; every run
+    # reviews the current head, and one for a head reviewed meanwhile exits at once.
     concurrency:
       group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.event.issue.number }}
       cancel-in-progress: false

@@ -148,11 +148,13 @@ A comment from an owner, member or collaborator containing `@gemini-cli` or
 and bots cannot start reviews. Agents post `@codex review` after every push, so
 every run except an `@gemini-cli` request, automatic runs included, skips a head that
 already has a completed Gemini review (the sticky comment records
-`<!-- gemini-reviewed-sha: <sha> -->`); `@gemini-cli` always starts one. Eligible jobs share a workflow-name/PR-number concurrency group that queues
-rather than cancels (`cancel-in-progress: false`): agents post `@codex review` right
-after each push, and cancelling would discard the push's half-finished review and start
-it again, while a queued run for a head reviewed in the meantime exits at the resolve
-step. A review that finishes after a newer push is not posted (the publisher checks
+`<!-- gemini-reviewed-sha: <sha> -->`); `@gemini-cli` always starts one. Eligible jobs share a workflow-name/PR-number concurrency group with
+`cancel-in-progress: false`: a running review is never cancelled, since agents post
+`@codex review` right after each push and cancelling would discard the push's
+half-finished review and start it again. GitHub keeps one run waiting behind it, and a
+newer request replaces the waiting run (observed 2026-10-31, patientwords#23); every run
+reviews the PR's current head, so the survivor covers it, and a waiting run for a head
+reviewed in the meantime exits at the resolve step. A review that finishes after a newer push is not posted (the publisher checks
 the current head), and a manually cancelled run posts nothing (the publisher runs on
 `!cancelled()`). Unrelated comments never enter the group.
 The job has a 25-minute timeout and the review step a 15-minute one, bounding
