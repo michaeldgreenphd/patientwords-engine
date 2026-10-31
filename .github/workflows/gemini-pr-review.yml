@@ -28,9 +28,12 @@ jobs:
     runs-on: ubuntu-latest
     # Only eligible jobs enter the group; unrelated/unauthorized comments cannot
     # cancel an active review. Automatic and manual reviews share the same group.
+    # Queue rather than cancel: agents post `@codex review` right after each push, and
+    # cancelling would throw away the push's half-finished review and start it again,
+    # while a queued run for a head that has meanwhile been reviewed exits at once.
     concurrency:
       group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.event.issue.number }}
-      cancel-in-progress: true
+      cancel-in-progress: false
     # The primary review step stops at 10 minutes and the fallback at 3. The job limit also
     # covers setup (PR lookup, two checkouts, diff, ripgrep) and the publisher, so it keeps at
     # least 5 minutes beyond both review steps: a cancelled job could not report the failure.
@@ -41,8 +44,13 @@ jobs:
       GEMINI_CLI_TRUST_WORKSPACE: "true"
       PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
       REVIEW_MARKER: '<!-- gemini-macro-review -->'
+      # Repository Actions variables override either model without editing this file.
+      PRIMARY_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-3.8-flash' }}
+      FALLBACK_MODEL: ${{ vars.GEMINI_FALLBACK_MODEL || 'gemini-3.5-flash-lite' }}
       # Shared by the primary and fallback review steps: read/search tools only, no MCP
       # servers, hooks, skills or local environment files, and a 40-turn session cap.
+      # maxAttempts 3 (the CLI's default is 10): ten backed-off retries under a 503 storm took
+      # about 8 minutes of the 10-minute step in michaeldgreenphd/clinical-trial-populations.
       GEMINI_SETTINGS: |
         {
           "tools": {"core": ["read_file", "read_many_files", "list_directory", "glob", "grep_search"]},
@@ -50,7 +58,8 @@ jobs:
           "hooksConfig": {"enabled": false},
           "skills": {"enabled": false},
           "advanced": {"ignoreLocalEnv": true},
-          "model": {"maxSessionTurns": 40}
+          "model": {"maxSessionTurns": 40},
+          "general": {"maxAttempts": 3}
         }
       # The instructions only; the "Embed the review evidence in the prompt" step appends
       # the evidence files, and both review steps receive that step's output.
@@ -71,8 +80,9 @@ jobs:
         Use file search and reads across BOTH repositories to inspect the diff
         alongside all relevant UNMODIFIED callers, consumers, fixtures and specs.
         Trace exported fields and their statistical/provenance meanings end to end.
-        The session is capped at 40 model turns. Batch related searches and
-        file reads, and return the final review by the thirty-ninth turn. Prioritize
+        The session is capped at 40 model turns. Batch related searches, read
+        several related files in one read_many_files call, and return the final
+        review by the thirty-ninth turn. Prioritize
         consumers of changed contracts; if the budget prevents completion,
         explicitly report incomplete coverage instead of claiming verification.
         Never duplicate Codex's hunk-level syntax, type or isolated logic checks.
@@ -261,7 +271,7 @@ jobs:
         uses: google-github-actions/run-gemini-cli@v0
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
-          gemini_model: ${{ vars.GEMINI_MODEL || 'gemini-3.8-flash' }}
+          gemini_model: ${{ env.PRIMARY_MODEL }}
           # Gemini reads evidence only. The publisher below is the sole writer.
           settings: ${{ env.GEMINI_SETTINGS }}
           prompt: ${{ steps.prompt.outputs.text }}
@@ -270,11 +280,11 @@ jobs:
         id: gemini_fallback
         # Only for 429 quota and 503 high-demand errors (the free tier's quota is per model);
         # any other failure, such as a bad key, is reported without spending another call.
-        # Opt-in: set the repository variable GEMINI_FALLBACK_MODEL to a model the key can use.
-        # There is no default, because Google retires model IDs (gemini-2.5-flash was refused
-        # as "no longer available to new users" on 2026-10-31).
+        # The default is gemini-3.5-flash-lite: the earlier default, gemini-2.5-flash, was refused
+        # as "no longer available to new users" on 2026-10-31, so a retired ID must be replaced here
+        # or overridden with the repository variable GEMINI_FALLBACK_MODEL.
         if: >-
-          ${{ !cancelled() && steps.pr.outputs.eligible == 'true' && vars.GEMINI_FALLBACK_MODEL != '' &&
+          ${{ !cancelled() && steps.pr.outputs.eligible == 'true' && env.FALLBACK_MODEL != env.PRIMARY_MODEL &&
           steps.gemini.outcome == 'failure' &&
           (contains(steps.gemini.outputs.error, '429') || contains(steps.gemini.outputs.error, '503') ||
            contains(steps.gemini.outputs.error, 'RESOURCE_EXHAUSTED') ||
@@ -284,7 +294,7 @@ jobs:
         uses: google-github-actions/run-gemini-cli@v0
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
-          gemini_model: ${{ vars.GEMINI_FALLBACK_MODEL }}
+          gemini_model: ${{ env.FALLBACK_MODEL }}
           settings: ${{ env.GEMINI_SETTINGS }}
           prompt: ${{ steps.prompt.outputs.text }}
 
@@ -301,7 +311,6 @@ jobs:
           FALLBACK_OUTCOME: ${{ steps.gemini_fallback.outcome }}
           FALLBACK_SUMMARY: ${{ steps.gemini_fallback.outputs.summary }}
           FALLBACK_ERROR: ${{ steps.gemini_fallback.outputs.error }}
-          FALLBACK_MODEL: ${{ vars.GEMINI_FALLBACK_MODEL }}
           REVIEWED_SHA: ${{ steps.pr.outputs.head_sha }}
         run: |
           set -euo pipefail
@@ -352,17 +361,18 @@ jobs:
               exit 1
             fi
             # Each step's error without the CLI's startup noise and stack frames, kept short.
+            # The text is posted publicly, so anything shaped like a Google API key is removed.
             brief() {
               { grep -v -E '^(Warning: 256-color|YOLO mode is enabled|\[STARTUP\])|^[[:space:]]+at ' <<< "$1" || true; } \
-                | head -c 700
+                | sed -E 's/AIza[0-9A-Za-z_-]{20,}/[redacted]/g' | head -c 700
             }
             primary_reason=$(brief "${PRIMARY_ERROR:-}")
             [[ -n "$primary_reason" ]] || primary_reason="No error output (the step timed out, was cancelled, or returned an empty review)."
             if [[ -n "${FALLBACK_OUTCOME:-}" && "$FALLBACK_OUTCOME" != "skipped" ]]; then
               fallback_reason=$(brief "${FALLBACK_ERROR:-}")
               [[ -n "$fallback_reason" ]] || fallback_reason="No error output."
-            elif [[ -z "${FALLBACK_MODEL:-}" ]]; then
-              fallback_reason="Not run: the repository variable GEMINI_FALLBACK_MODEL is not set."
+            elif [[ "${FALLBACK_MODEL:-}" == "${PRIMARY_MODEL:-}" ]]; then
+              fallback_reason="Not run: the fallback model is the primary model."
             else
               fallback_reason="Not run: the primary error was not a quota or availability error."
             fi

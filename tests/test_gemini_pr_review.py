@@ -56,6 +56,9 @@ def test_review_budget_and_failure_do_not_publish_success(review_job: dict) -> N
         "tools": {"core": ["read_file", "read_many_files", "list_directory", "glob", "grep_search"]},
         "mcp": {"allowed": []}, "hooksConfig": {"enabled": False}, "skills": {"enabled": False},
         "advanced": {"ignoreLocalEnv": True}, "model": {"maxSessionTurns": 40},
+        # the CLI's default of 10 backed-off retries spent about 8 minutes of the step under a 503 storm
+        # (michaeldgreenphd/clinical-trial-populations), leaving the fallback no time
+        "general": {"maxAttempts": 3},
     }
     primary, fallback = _step(review_job, step_id="gemini"), _step(review_job, step_id="gemini_fallback")
     for step in (primary, fallback):
@@ -67,12 +70,15 @@ def test_review_budget_and_failure_do_not_publish_success(review_job: dict) -> N
     assert primary["timeout-minutes"] == 10 and fallback["timeout-minutes"] == 3
     assert review_job["timeout-minutes"] == 20
     assert review_job["timeout-minutes"] - (primary["timeout-minutes"] + fallback["timeout-minutes"]) >= 5
-    # opt-in, no default model: the live run of 2026-10-31 found the requested default, gemini-2.5-flash, refused
-    # as "no longer available to new users", so a hard-coded ID can silently break the fallback
-    assert fallback["with"]["gemini_model"] == "${{ vars.GEMINI_FALLBACK_MODEL }}"
+    # the live run of 2026-10-31 found the earlier default, gemini-2.5-flash, refused as "no longer available to new
+    # users"; the owner set gemini-3.5-flash-lite, and repository variables still override either model
+    assert review_job["env"]["PRIMARY_MODEL"] == "${{ vars.GEMINI_MODEL || 'gemini-3.8-flash' }}"
+    assert review_job["env"]["FALLBACK_MODEL"] == "${{ vars.GEMINI_FALLBACK_MODEL || 'gemini-3.5-flash-lite' }}"
+    assert primary["with"]["gemini_model"] == "${{ env.PRIMARY_MODEL }}"
+    assert fallback["with"]["gemini_model"] == "${{ env.FALLBACK_MODEL }}"
     # the fallback spends a call only after a quota or availability error, never after e.g. a bad key
     condition = fallback["if"]
-    assert "vars.GEMINI_FALLBACK_MODEL != ''" in condition
+    assert "env.FALLBACK_MODEL != env.PRIMARY_MODEL" in condition
     assert "steps.gemini.outcome == 'failure'" in condition
     assert all(f"contains(steps.gemini.outputs.error, '{code}')" in condition
                for code in ("429", "503", "RESOURCE_EXHAUSTED", "UNAVAILABLE", "quota"))
@@ -148,6 +154,13 @@ def test_oversized_diff_is_cut_at_a_line_boundary(review_job: dict, tmp_path: Pa
     assert prompt.rstrip("\n").endswith(" review-context/pr.diff =====")
 
 
+def test_runs_for_one_pr_queue_instead_of_cancelling(review_job: dict) -> None:
+    """Agents post `@codex review` right after each push. Cancelling would discard the push's half-finished review
+    and start it again; a queued run for a head that has meanwhile been reviewed exits at the resolve step."""
+    assert review_job["concurrency"]["cancel-in-progress"] is False
+    assert review_job["concurrency"]["group"].startswith("${{ github.workflow }}-")
+
+
 def test_review_triggers_match_the_agents_review_request(workflow: dict) -> None:
     """Agents post `@codex review` on every PR open and push (docs/agent_reference.md), often on drafts, and never
     `@gemini-cli`; and the owner may mark a draft ready and merge seconds later, before the ready_for_review run
@@ -216,6 +229,7 @@ def _run_step(script: str, tmp_path: Path, *, comments: list, pr: dict, env: dic
 
 def _publish(review_job: dict, tmp_path: Path, comments: list, **outcomes: str) -> tuple[int, Path]:
     env = {"GITHUB_EVENT_NAME": "issue_comment", "REVIEWED_SHA": HEAD, "FALLBACK_MODEL": "fallback-model-x",
+           "PRIMARY_MODEL": "primary-model-x",
            "PRIMARY_OUTCOME": "", "PRIMARY_SUMMARY": "", "PRIMARY_ERROR": "",
            "FALLBACK_OUTCOME": "", "FALLBACK_SUMMARY": "", "FALLBACK_ERROR": "", **outcomes}
     pr = {"state": "open", "draft": False, "head": {"sha": HEAD}}
@@ -281,11 +295,23 @@ def test_diagnostic_reports_both_errors_without_cli_noise(review_job: dict, tmp_
     assert all(noise not in body for noise in ("256-color", "YOLO mode", "[STARTUP]", "classifyGoogleError"))
 
 
-def test_diagnostic_says_when_no_fallback_model_is_configured(review_job: dict, tmp_path: Path) -> None:
+def test_diagnostic_says_why_the_fallback_did_not_run(review_job: dict, tmp_path: Path) -> None:
     rc, fake = _publish(review_job, tmp_path, [], PRIMARY_OUTCOME="failure", PRIMARY_ERROR="429 quota",
-                        FALLBACK_MODEL="", FALLBACK_OUTCOME="")
+                        FALLBACK_MODEL="primary-model-x", FALLBACK_OUTCOME="skipped")
     assert rc == 1
-    assert "GEMINI_FALLBACK_MODEL is not set" in _body(fake / "posted.json")
+    assert "Not run: the fallback model is the primary model." in _body(fake / "posted.json")
+    rc, fake = _publish(review_job, tmp_path, [], PRIMARY_OUTCOME="failure", PRIMARY_ERROR="400 bad request",
+                        FALLBACK_OUTCOME="skipped")
+    assert "Not run: the primary error was not a quota or availability error." in _body(fake / "posted.json")
+
+
+def test_diagnostic_redacts_api_keys(review_job: dict, tmp_path: Path) -> None:
+    """The diagnostic is posted on a public PR; an error that echoes a request URL must not carry the key."""
+    key = "AIza" + "Sy" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7"  # shaped like a key, not a real one
+    rc, fake = _publish(review_job, tmp_path, [], PRIMARY_OUTCOME="failure",
+                        PRIMARY_ERROR=f"GET https://generativelanguage.googleapis.com/v1/models?key={key} 403")
+    body = _body(fake / "posted.json")
+    assert rc == 1 and key not in body and "key=[redacted] 403" in body
 
 
 def test_publisher_keeps_a_completed_review_of_the_same_head(review_job: dict, tmp_path: Path) -> None:

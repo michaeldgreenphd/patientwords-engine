@@ -148,18 +148,23 @@ A comment from an owner, member or collaborator containing `@gemini-cli` or
 and bots cannot start reviews. Agents post `@codex review` after every push, so
 that comment re-reviews only a head without a completed Gemini review (the sticky
 comment records `<!-- gemini-reviewed-sha: <sha> -->`); `@gemini-cli` always starts
-one. Eligible jobs share a
-workflow-name/PR-number concurrency group with cancellation, so rapid pushes
-replace stale reviews and unrelated comments do not cancel active reviews. A run
-cancelled that way posts nothing (the publisher runs on `!cancelled()`); the newer run
-reports.
+one. Eligible jobs share a workflow-name/PR-number concurrency group that queues
+rather than cancels (`cancel-in-progress: false`): agents post `@codex review` right
+after each push, and cancelling would discard the push's half-finished review and start
+it again, while a queued run for a head reviewed in the meantime exits at the resolve
+step. A review that finishes after a newer push is not posted (the publisher checks
+the current head), and a manually cancelled run posts nothing (the publisher runs on
+`!cancelled()`). Unrelated comments never enter the group.
 The job has a 20-minute timeout and the review step a 10-minute one, bounding
 runner time and quota use while leaving the publisher time to report a failure.
-After a 429 quota or 503 availability error, one retry runs on the model named by
-the repository variable `GEMINI_FALLBACK_MODEL`, limited to 3 minutes, when that
-variable is set; there is no default, because Google retires model IDs (it refused
-`gemini-2.5-flash` as unavailable to new users on 2026-10-31). Other errors are not
-retried. ripgrep is installed before the CLI runs.
+The CLI retries a failed request at most 3 times (`general.maxAttempts`; its default
+of 10 backed-off retries took about 8 minutes of the step under a 503 storm in
+`michaeldgreenphd/clinical-trial-populations`). After a 429 quota or 503 availability
+error, one review runs on the fallback model, `gemini-3.5-flash-lite` unless the
+repository variable `GEMINI_FALLBACK_MODEL` names another, limited to 3 minutes. The
+earlier default, `gemini-2.5-flash`, was refused as unavailable to new users on
+2026-10-31; Google retires model IDs, so replace a refused default here or override it
+with the variable. Other errors are not retried. ripgrep is installed before the CLI runs.
 The root checkout retains full commit history with `filter: blob:none`, avoiding
 old artifact downloads while materializing every file at the reviewed head.
 Diff generation fetches historical blobs on demand and retains the true merge base.
