@@ -31,9 +31,10 @@ jobs:
     concurrency:
       group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.event.issue.number }}
       cancel-in-progress: true
-    # The primary review step stops at 10 minutes and the fallback at 3, so the publisher
-    # still has time to report a failure on the PR before the job itself is cancelled.
-    timeout-minutes: 15
+    # The primary review step stops at 10 minutes and the fallback at 3. The job limit also
+    # covers setup (PR lookup, two checkouts, diff, ripgrep) and the publisher, so it keeps at
+    # least 5 minutes beyond both review steps: a cancelled job could not report the failure.
+    timeout-minutes: 20
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GEMINI_TRUST_WORKSPACE: "true"

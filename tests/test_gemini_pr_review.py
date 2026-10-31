@@ -45,8 +45,9 @@ PUBLISHER = "Create or update the sticky PR review comment"
 
 
 def test_review_budget_and_failure_do_not_publish_success(review_job: dict) -> None:
-    """80 turns can exhaust the observed 20-request allowance in one review. The step timeouts leave the job
-    (15 minutes) time to retry with the fallback model and for the publisher to report a failure."""
+    """80 turns can exhaust the observed 20-request allowance in one review. The job limit covers setup and the
+    publisher as well as both review steps, so it must keep a reserve beyond them, or a slow setup lets GitHub
+    cancel the job before the always() publisher reports the failure (Codex on patientwords#21)."""
     settings = json.loads(review_job["env"]["GEMINI_SETTINGS"])
     assert settings == {
         "tools": {"core": ["read_file", "read_many_files", "list_directory", "glob", "grep_search"]},
@@ -61,8 +62,8 @@ def test_review_budget_and_failure_do_not_publish_success(review_job: dict) -> N
         # the publisher reports a failure and fails the job; continuing lets it and the fallback run
         assert step["continue-on-error"] is True
     assert primary["timeout-minutes"] == 10 and fallback["timeout-minutes"] == 3
-    assert review_job["timeout-minutes"] == 15
-    assert primary["timeout-minutes"] + fallback["timeout-minutes"] < review_job["timeout-minutes"]
+    assert review_job["timeout-minutes"] == 20
+    assert review_job["timeout-minutes"] - (primary["timeout-minutes"] + fallback["timeout-minutes"]) >= 5
     assert "${{ vars.GEMINI_FALLBACK_MODEL || 'gemini-2.5-flash' }}" == fallback["with"]["gemini_model"]
     # the fallback spends a call only after a quota or availability error, never after e.g. a bad key
     condition = fallback["if"]

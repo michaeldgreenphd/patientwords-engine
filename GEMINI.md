@@ -151,8 +151,8 @@ comment records `<!-- gemini-reviewed-sha: <sha> -->`); `@gemini-cli` always sta
 one. Eligible jobs share a
 workflow-name/PR-number concurrency group with cancellation, so rapid pushes
 replace stale reviews and unrelated comments do not cancel active reviews.
-The job has a 15-minute timeout and the review step a 10-minute one, bounding
-runner time and quota use. After a 429 quota or 503 availability error, one retry
+The job has a 20-minute timeout and the review step a 10-minute one, bounding
+runner time and quota use while leaving the publisher time to report a failure. After a 429 quota or 503 availability error, one retry
 runs on `vars.GEMINI_FALLBACK_MODEL` (default `gemini-2.5-flash`), limited to
 3 minutes; other errors are not retried. ripgrep is installed before the CLI runs.
 The root checkout retains full commit history with `filter: blob:none`, avoiding
