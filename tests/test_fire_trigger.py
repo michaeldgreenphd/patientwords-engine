@@ -1023,7 +1023,7 @@ def test_committed_campaign_file_holds_the_owner_approved_limits():
     spec = budgets["xjudge-v1"]
     assert ft.campaign_spec_problem("xjudge-v1", spec) is None
     assert spec["total_usd_by_lane"] == {"anthropic": 200.0} and spec["monthly_usd"] == 200.0
-    assert spec["daily_ceiling_usd"] == {"openrouter": 20.0}
+    assert spec["daily_ceiling_usd"] == {"anthropic": 20.0, "openrouter": 20.0}
     assert "verbatim" in spec["reason"] and "Option A" in spec["reason"]
 
 
