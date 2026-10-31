@@ -939,11 +939,11 @@ def _with_round_summaries(plan: dict, rows_by_round: list[dict[str, dict]],
     """For a copy of the plan that a test builds: record a closing export for each of its first rounds, one per entry
     of rows_by_round, and return the summaries the suite then reads for them, by path, holding what the gate reads of
     a summary (its inputs.export and inputs.bundle, and its items rows). Each export is dated on its round's closing
-    date unless closed_utc is given, so the early-close counts (_early_close_refusal) are not checked."""
+    date in force unless closed_utc is given, so the early-close counts (_early_close_refusal) are not checked."""
     out = {}
     for n, (rnd, rows) in enumerate(zip(plan["physician_realism_gate"]["rounds"], rows_by_round, strict=False), start=1):
         rnd["closing_export"].update(sha256=f"{n:064x}",
-                                     closed_utc=closed_utc or f"{rnd['closing_date']}T{n:02d}:00:00.000Z")
+                                     closed_utc=closed_utc or f"{_closing_date_in_force(rnd)}T{n:02d}:00:00.000Z")
         out[_summary_path(rnd)] = {
             "inputs": {"export": {"sha256": rnd["closing_export"]["sha256"],
                                   "exported_utc": rnd["closing_export"]["closed_utc"]},
@@ -2039,8 +2039,13 @@ def test_the_gate_refuses_a_closing_export_taken_after_the_closing_date_in_force
 
     from scripts.import_verification_ratings import main as import_main
 
-    rnd = plan["physician_realism_gate"]["rounds"][0]
-    assert rnd["closing_date"] == "2026-10-31" and rnd["closing_date_extensions"] == []
+    recorded_round = plan["physician_realism_gate"]["rounds"][0]
+    # The owner's extension of 2026-10-31 (A6.9 approval record): closing_date keeps the registered date.
+    assert recorded_round["closing_date"] == "2026-10-31"
+    assert recorded_round["closing_date_extensions"] == [{"recorded_on": "2026-10-31", "closing_date": "2027-01-31"}]
+    assert _closing_date_in_force(recorded_round) == "2027-01-31"
+    # The checks below exercise the registered date itself, so they use the round as it was before any extension.
+    rnd = {**recorded_round, "closing_date_extensions": []}
     assert _closing_date_in_force(rnd) == "2026-10-31"
 
     def summarise(exported_utc: str) -> dict:
@@ -2120,7 +2125,8 @@ def test_the_gate_refuses_a_closing_export_taken_after_the_closing_date_in_force
     assert "`closing_export.closed_utc` with the end, 23:59:59Z (UTC), of its closing date in force" in compares
     assert "a round's close time falls after the end of its closing date in force" in refuses
     assert "was recorded after the closing date it replaces or sets no later one" in refuses
-    assert "`physician_realism_gate.rounds[0].closing_date_extensions`: none." in record
+    assert ("`physician_realism_gate.rounds[0].closing_date_extensions`: - 2026-10-31: the closing date in force, "
+            "2026-10-31, is extended to 2027-01-31.") in record
     assert "no later than the end, 23:59:59Z, of the closing date in force" in record
     line = _clarification(record, "- The deadline:")
     assert "18:59:59 CDT" in line and line.rstrip().endswith("this changes neither the rule nor which items pass.")
@@ -2138,8 +2144,10 @@ def test_an_early_closing_export_counts_only_once_every_item_has_both_counts(pla
     from scripts.import_verification_ratings import main as import_main
 
     gate = plan["physician_realism_gate"]
-    rnd = gate["rounds"][0]
+    # The registered date, before the owner's extension of 2026-10-31: the cases below are dated around it.
+    rnd = {**gate["rounds"][0], "closing_date_extensions": []}
     in_force = _closing_date_in_force(rnd)
+    assert in_force == "2026-10-31"
     bundle = load_json(ROOT / rnd["bundle"])
     # The questions each advice set's items have are the ones A6.9's table says the gate reads.
     prereg = PREREG.read_text(encoding="utf-8")
