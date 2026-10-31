@@ -136,6 +136,9 @@ Tufte, minimal structure, direct labels, readable at thumbnail size.
   downstream callers, data provenance and `patientwords-engine` ↔ `patientwords`
   contract sync. It reports only cross-file findings with both changed and untouched
   evidence; it never duplicates Codex's local syntax, type or isolated logic checks.
+- **Triggers** (`.github/workflows/gemini-pr-review.yml`): Gemini runs on non-draft PRs
+  automatically, and on any PR when an owner, member or collaborator comments
+  `@codex review` (once per head) or `@gemini-cli` (always).
 
 ## Code Review Rules
 

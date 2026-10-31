@@ -226,7 +226,9 @@ configuration key, or anything another repository or a published page reads.
    `main` directly unless the owner explicitly says to.
 2. Immediately after opening the PR, post a comment containing exactly
    "@codex review". Do this for every PR, without being asked, and again
-   after any push that changes the diff so the new head is reviewed.
+   after any push that changes the diff so the new head is reviewed. The
+   same comment starts the Gemini cross-file review (`GEMINI.md`), once per
+   head, on draft and ready PRs; comment `@gemini-cli` to force another.
 3. Address every Codex finding before the PR is considered done: verify it
    against the diff, push a fix for anything real, and reply on the thread
    saying what changed. Resolve the threads you addressed.
