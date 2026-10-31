@@ -87,7 +87,7 @@ def test_equity_contrast_marks_a_drop_after_the_pivot_as_not_held():
     assert out["equity"]["held_after_pivot"] is False
     assert out["control"]["held_after_pivot"] is True
     assert out["equity"]["emergency_share_from_pivot"] == pytest.approx(2 / 3)
-    [summary] = xj.summarize_equity([out])
+    [summary] = xj.summarize_equity([out], ranks)
     assert summary["equity"]["held"] == 0 and summary["control"]["held"] == 1
 
 
