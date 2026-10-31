@@ -3967,3 +3967,77 @@ def test_the_default_root_logits_fire_is_unchanged(repo):
     assert ft.logits_eval_params_problems(params) == []
     assert fire(repo, trigger="logits-eval", params=params) == 0
     assert "output_root" not in json.loads(trigger_path(repo, "logits-eval").read_text(encoding="utf-8"))
+
+
+def test_budget_gate_takes_the_campaign_from_its_own_reservation_across_midnight(repo, tmp_path, capsys, monkeypatch):
+    """Codex on PR #137, two findings. (1) The workflows pass the params job's outputs as --params-file, which hold
+    only each workflow's default keys, so `_campaign` never reached the gate: a campaign fire cleared locally under
+    the campaign's daily ceiling and was refused in CI under the standing one, and the campaign's own limits were
+    never checked server-side. The gate now takes the campaign from this push's own reservation. (2) The gate left
+    its own reservation out only when it was held today, so a fire reserved at 23:59 and gated at 00:01 UTC was
+    counted twice against the campaign's totals, which are not limited to one day."""
+    _write_campaigns(repo, xj=dict(_CAMPAIGN, total_usd_by_lane={"anthropic": 6.0},
+                                   daily_ceiling_usd={"anthropic": 20.0}))
+    clock = [datetime(2026, 10, 14, 23, 59, tzinfo=timezone.utc)]
+    monkeypatch.setattr(ft, "utc_now", lambda: clock[0])
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    git = _git_repo(repo)
+    journal_path(repo).write_text("", encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-qm", "base")
+    before = git("rev-parse", "HEAD").stdout.strip()
+    fired_params = {"task": "pairs", "num": "5", "anthropic_model": "claude-haiku-4-5", "max_spend": "5.0",
+                    "_campaign": "xj", "_nonce": "xj1"}
+    assert fire(repo, "scenario-generation", fired_params, note="campaign fire") == 0
+    git("add", "-A")
+    git("commit", "-qm", "Fire scenario-generation: campaign fire")
+    # what the workflow passes: its params job's outputs, with the defaults filled in and no `_campaign`
+    resolved = dict(G4_LANES["scenario-generation"][1], max_spend="5.0")
+    assert "_campaign" not in resolved
+    pf = tmp_path / "resolved.json"
+    pf.write_text(json.dumps(resolved), encoding="utf-8")
+
+    def gate(before_sha):
+        return ft.main(["budget-gate", "--repo", str(repo), "--trigger", "scenario-generation", "--params-file",
+                        str(pf), "--push-before", before_sha, "--ref", "main", "--run-attempt", "1"])
+
+    capsys.readouterr()
+    # (1) the same day: the campaign comes from the reservation, so its $20 daily ceiling clears 5.00, which the
+    # standing $2 ceiling would refuse
+    assert gate(before) == 0, capsys.readouterr().err
+    out = capsys.readouterr().out
+    assert "campaign 'xj' taken from this push's own reservation" in out
+    assert "campaign xj daily ceiling 20.00" in out
+    # (2) after midnight UTC the reservation is still this push's own: 5.00 counted once against the $6 total,
+    # not 5.00 + 5.00
+    clock[0] = datetime(2026, 10, 15, 0, 1, tzinfo=timezone.utc)
+    assert gate(before) == 0, capsys.readouterr().err
+    assert "taken from this push's own reservation" in capsys.readouterr().out
+    # with no push binding there is no reservation to read the campaign from: the standing $2 ceiling applies,
+    # which is never looser
+    assert gate("") == 6
+    assert "daily ceiling 2.00" in capsys.readouterr().err
+
+
+def test_publish_syncs_the_entrys_campaign_from_the_published_params(tmp_path, capsys):
+    """Codex on PR #137: publish corrected the entry's commitment, lane, nonce and digest from the trigger file it
+    pushes, but not its campaign, so a fire tagged during recovery escaped its campaign's totals."""
+    origin, clone = _publish_fixture(tmp_path)
+    write_dashboard(clone, spent=0.0)
+    _write_campaigns(clone, xj=_CAMPAIGN)
+    _commit(clone, "dashboard and campaign budgets")
+    subprocess.run(["git", "-C", str(clone), "push", "-q", "origin", "main"], check=True)
+    params = {"task": "pairs", "num": "5", "max_spend": "1.0", "_campaign": "xj"}
+    (clone / ".github" / "trigger" / "scenario-generation.json").write_text(json.dumps(params) + "\n",
+                                                                            encoding="utf-8")
+    fired = ft.iso_utc(ft.utc_now())
+    _append_journal(clone / "ops" / "trigger_journal.jsonl",
+                    _journal_line("scenario-generation", fired, max_spend=1.0, lane="anthropic"))
+    _commit(clone, "Fire scenario-generation: tagged after the entry was written")
+    assert ft.main(["publish", "--repo", str(clone)]) == 0
+    assert "campaign None -> 'xj'" in capsys.readouterr().out
+    entries = [json.loads(ln) for ln in _origin_main_files(origin, tmp_path)["ops/trigger_journal.jsonl"].splitlines()
+               if ln.strip()]
+    mine = [e for e in entries if e.get("fired_utc") == fired]
+    assert len(mine) == 1 and mine[0]["campaign"] == "xj"
+    assert ft.campaign_held(entries, "xj", lane="anthropic") == 1.0
