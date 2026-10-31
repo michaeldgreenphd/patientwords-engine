@@ -225,3 +225,30 @@ def test_rows_written_before_the_exchange_fields_existed_still_pair():
     assert len(p["paired"]) == 1 and p["only_first"] == 0 and p["only_second"] == 0
     assert xj.is_final({"final_in_exchange": None}) and xj.is_final({})
     assert not xj.is_final({"final_in_exchange": False})
+
+
+def test_legacy_finality_is_recovered_from_the_transcript(tmp_path):
+    """Codex review of PR #140: the wave-1 pilot's tool-use conversation has interim replies inside an exchange, and
+    its judge-of-record rows carry null finality, so reading null as final counted seven interim rows as unmatched."""
+    transcript = {"conversation_id": "c1", "turns": [
+        {"turn_id": 1, "role": "user"}, {"turn_id": 2, "role": "assistant"}, {"turn_id": 3, "role": "tool"},
+        {"turn_id": 4, "role": "assistant"}, {"turn_id": 5, "role": "user"}, {"turn_id": 6, "role": "assistant"}]}
+    path = tmp_path / "transcripts.jsonl"
+    path.write_text(json.dumps(transcript) + "\n", encoding="utf-8")
+    rows = [row(turn_id=t, exchange_index=None, final_in_exchange=None) for t in (2, 4, 6)]
+    assert xj.recover_legacy_exchange_fields(rows, path) == 3
+    assert [(r["exchange_index"], r["final_in_exchange"]) for r in rows] == [(1, False), (1, True), (2, True)]
+    assert [xj.is_final(r) for r in rows] == [False, True, True]
+
+
+def test_the_wave1_pilot_pairs_without_unmatched_interim_rows():
+    runs = ROOT / "data" / "petri" / "runs"
+    rejudge = ROOT / "data" / "petri" / "rejudge" / "openrouter-openai-gpt-5.4-mini" / "run_35351739969_1"
+    if not (runs / "run_35351739969_1" / "transcripts.jsonl").is_file() or not rejudge.is_dir():
+        pytest.skip("the wave-1 pilot or its re-grade is not in this checkout")
+    [record] = [js for js in xj.load_judge_sets([runs], []) if js.stem == "run_35351739969_1"]
+    regrade = xj.JudgeSet("run_35351739969_1", "b", "rejudge", "y", rejudge / "judgments.jsonl",
+                          xj.read_jsonl(rejudge / "judgments.jsonl"))
+    p = xj.pair_judges(record, regrade)
+    assert p["only_first"] == 0 and p["only_second"] == 0 and p["digest_mismatch"] == 0
+    assert not any(r.get("final_in_exchange") is None for r in record.rows)
