@@ -143,11 +143,18 @@ source/fixture hashes and sample/pilot/exploratory/domain-review disclosures.
 
 `.github/workflows/gemini-pr-review.yml` automatically reviews open, non-draft,
 same-repository, non-bot PRs, including when a draft is marked ready for review.
-Owners, members and collaborators can request `@gemini-cli` reviews on draft or
-ready PRs; external commenters cannot start reviews. Eligible jobs share a
+A comment from an owner, member or collaborator containing `@gemini-cli` or
+`@codex review` also starts a review, on draft or ready PRs; external commenters
+and bots cannot start reviews. Agents post `@codex review` after every push, so
+that comment re-reviews only a head without a completed Gemini review (the sticky
+comment records `<!-- gemini-reviewed-sha: <sha> -->`); `@gemini-cli` always starts
+one. Eligible jobs share a
 workflow-name/PR-number concurrency group with cancellation, so rapid pushes
 replace stale reviews and unrelated comments do not cancel active reviews.
-Each review job has a 10-minute timeout to bound runner time and quota use.
+The job has a 15-minute timeout and the review step a 10-minute one, bounding
+runner time and quota use. After a 429 quota or 503 availability error, one retry
+runs on `vars.GEMINI_FALLBACK_MODEL` (default `gemini-2.5-flash`), limited to
+3 minutes; other errors are not retried. ripgrep is installed before the CLI runs.
 The root checkout retains full commit history with `filter: blob:none`, avoiding
 old artifact downloads while materializing every file at the reviewed head.
 Diff generation fetches historical blobs on demand and retains the true merge base.
@@ -166,7 +173,11 @@ retains every modified path so an excluded file cannot be cited as untouched.
 The workflow supplies read/search tools only. Its separate publisher checks the
 current PR head, searches all comment pages for a `github-actions[bot]` comment
 prefixed with `<!-- gemini-macro-review -->`, then updates it or creates one.
-Human comments and comments from other bots are never overwritten.
+Human comments and comments from other bots are never overwritten. When neither
+model completes a review, the publisher still runs: it writes a short diagnostic
+with the error into that comment (marked `<!-- gemini-review-failed: <sha> -->`),
+unless the comment already holds a completed review of the same head, and then
+fails the check.
 
 Both `GEMINI_TRUST_WORKSPACE` and `GEMINI_CLI_TRUST_WORKSPACE` are explicitly true.
 The workspace-trust setup follows

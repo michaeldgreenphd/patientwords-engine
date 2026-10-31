@@ -20,7 +20,7 @@ WORKFLOW = Path(".github/workflows/gemini-pr-review.yml")
 
 
 @pytest.fixture(params=["engine", "frontend"])
-def review_job(request: pytest.FixtureRequest) -> dict:
+def workflow(request: pytest.FixtureRequest) -> dict:
     root = ROOT
     if request.param == "frontend":
         explicit = os.environ.get("PW_SITE_ROOT")
@@ -29,21 +29,206 @@ def review_job(request: pytest.FixtureRequest) -> dict:
             pytest.skip("companion patientwords checkout is absent")
         assert explicit is None or explicit, "PW_SITE_ROOT must not be empty"
         assert root.is_dir(), f"missing companion checkout: {root}"
-    return yaml.safe_load((root / WORKFLOW).read_text())["jobs"]["review"]
+    return yaml.safe_load((root / WORKFLOW).read_text())
+
+
+@pytest.fixture
+def review_job(workflow: dict) -> dict:
+    return workflow["jobs"]["review"]
+
+
+def _step(job: dict, *, step_id: str | None = None, name: str | None = None) -> dict:
+    return next(s for s in job["steps"] if (step_id and s.get("id") == step_id) or (name and s.get("name") == name))
+
+
+PUBLISHER = "Create or update the sticky PR review comment"
 
 
 def test_review_budget_and_failure_do_not_publish_success(review_job: dict) -> None:
-    """80 turns can exhaust the observed 20-request allowance in one review."""
-    gemini = next(step for step in review_job["steps"] if step.get("id") == "gemini")
-    settings = json.loads(gemini["with"]["settings"])
-    assert 0 < settings["model"]["maxSessionTurns"] <= 8
-    assert review_job["timeout-minutes"] <= 10
-    assert not gemini.get("continue-on-error", False)
-    # The default success() guard must remain: quota/turn-limit errors cannot
-    # cause the publisher to overwrite an earlier review with partial output.
+    """80 turns can exhaust the observed 20-request allowance in one review. The step timeouts leave the job
+    (15 minutes) time to retry with the fallback model and for the publisher to report a failure."""
+    settings = json.loads(review_job["env"]["GEMINI_SETTINGS"])
+    assert settings == {
+        "tools": {"core": ["read_file", "read_many_files", "list_directory", "glob", "grep_search"]},
+        "mcp": {"allowed": []}, "hooksConfig": {"enabled": False}, "skills": {"enabled": False},
+        "advanced": {"ignoreLocalEnv": True}, "model": {"maxSessionTurns": 8},
+    }
+    primary, fallback = _step(review_job, step_id="gemini"), _step(review_job, step_id="gemini_fallback")
+    for step in (primary, fallback):
+        assert step["uses"] == "google-github-actions/run-gemini-cli@v0"
+        assert step["with"]["settings"] == "${{ env.GEMINI_SETTINGS }}"
+        assert step["with"]["prompt"] == "${{ env.GEMINI_REVIEW_PROMPT }}"
+        # the publisher reports a failure and fails the job; continuing lets it and the fallback run
+        assert step["continue-on-error"] is True
+    assert primary["timeout-minutes"] == 10 and fallback["timeout-minutes"] == 3
+    assert review_job["timeout-minutes"] == 15
+    assert primary["timeout-minutes"] + fallback["timeout-minutes"] < review_job["timeout-minutes"]
+    assert "${{ vars.GEMINI_FALLBACK_MODEL || 'gemini-2.5-flash' }}" == fallback["with"]["gemini_model"]
+    # the fallback spends a call only after a quota or availability error, never after e.g. a bad key
+    condition = fallback["if"]
+    assert "steps.gemini.outcome == 'failure'" in condition
+    assert all(f"contains(steps.gemini.outputs.error, '{code}')" in condition
+               for code in ("429", "503", "RESOURCE_EXHAUSTED", "UNAVAILABLE", "quota"))
     publisher = review_job["steps"][-1]
-    assert publisher["name"] == "Create or update the sticky PR review comment"
-    assert publisher["if"] == "steps.pr.outputs.eligible == 'true'"
+    assert publisher["name"] == PUBLISHER
+    assert publisher["if"] == "always() && steps.pr.outputs.eligible == 'true'"
+    assert "8 model turns" in review_job["env"]["GEMINI_REVIEW_PROMPT"] or "eight model turns" in \
+        review_job["env"]["GEMINI_REVIEW_PROMPT"]
+
+
+def test_review_triggers_match_the_agents_review_request(workflow: dict) -> None:
+    """Agents post `@codex review` on every PR open and push (docs/agent_reference.md), often on drafts, and never
+    `@gemini-cli`; and the owner may mark a draft ready and merge seconds later, before the ready_for_review run
+    starts. So the authorized comment trigger accepts either mention, and the comment path reviews drafts."""
+    on = workflow[True]
+    assert set(on["pull_request"]["types"]) == {"opened", "synchronize", "reopened", "ready_for_review"}
+    assert on["issue_comment"]["types"] == ["created"]
+    job_if = workflow["jobs"]["review"]["if"]
+    assert "contains(github.event.comment.body, '@gemini-cli') ||" in job_if
+    assert "contains(github.event.comment.body, '@codex review')" in job_if
+    assert "github.event.comment.user.type != 'Bot'" in job_if
+    assert '["OWNER", "MEMBER", "COLLABORATOR"]' in job_if
+    resolve = _step(workflow["jobs"]["review"], step_id="pr")["run"]
+    assert '($event != "pull_request" or .draft != true)' in resolve, "only automatic reviews skip drafts"
+
+
+def test_ripgrep_is_ensured_before_the_cli(review_job: dict) -> None:
+    names = [s.get("id") or s["name"] for s in review_job["steps"]]
+    rg = names.index("Ensure ripgrep for the CLI's search tool")
+    assert rg < names.index("gemini") < names.index("gemini_fallback") < names.index(PUBLISHER)
+    assert "apt-get install -y -qq ripgrep" in review_job["steps"][rg]["run"]
+
+
+_FAKE_GH = r"""#!/usr/bin/env bash
+set -euo pipefail
+args="$*"
+input=$(sed -n 's#.*--input \([^ ]*\).*#\1#p' <<< "$args")
+case "$args" in
+  *"--method PATCH"*) id=$(sed -n 's#.*issues/comments/\([0-9]*\).*#\1#p' <<< "$args"); cp "$input" "$FAKE/patched_$id.json" ;;
+  *"--method POST"*) cp "$input" "$FAKE/posted.json" ;;
+  *"/comments"*) cat "$FAKE/comments.json" ;;
+  *"/pulls/"*) cat "$FAKE/pr.json" ;;
+  *) echo "unexpected gh call: $args" >&2; exit 9 ;;
+esac
+"""
+_FAKE_GIT = """#!/usr/bin/env bash
+[[ "$1" == "ls-remote" ]] || { echo "unexpected git call: $*" >&2; exit 9; }
+printf '%s\trefs/heads/main\n' "cccccccccccccccccccccccccccccccccccccccc"
+"""
+HEAD = "a" * 40
+MARKER = "<!-- gemini-macro-review -->"
+
+
+def _bot(comment_id: int, body: str, user: str = "github-actions[bot]", kind: str = "Bot") -> dict:
+    return {"id": comment_id, "body": body, "user": {"login": user, "type": kind}}
+
+
+def _run_step(script: str, tmp_path: Path, *, comments: list, pr: dict, env: dict) -> tuple[int, Path]:
+    if shutil.which("jq") is None:
+        pytest.skip("workflow shell regression requires jq")
+    fake = tmp_path / "fake"
+    fake.mkdir(exist_ok=True)
+    for name, body in (("gh", _FAKE_GH), ("git", _FAKE_GIT)):
+        (fake / name).write_text(body)
+        (fake / name).chmod(0o755)
+    (fake / "comments.json").write_text(json.dumps([comments]))
+    (fake / "pr.json").write_text(json.dumps(pr))
+    output = tmp_path / "github_output"
+    output.write_text("")
+    full_env = {**os.environ, "PATH": f"{fake}:{os.environ['PATH']}", "FAKE": str(fake), "RUNNER_TEMP": str(tmp_path),
+                "GITHUB_REPOSITORY": "owner/repo", "PR_NUMBER": "7", "GITHUB_OUTPUT": str(output),
+                "REVIEW_MARKER": MARKER, "COMPANION_REPO": "owner/companion", **env}
+    proc = subprocess.run(["bash", "-c", script], env=full_env, text=True, capture_output=True)
+    return proc.returncode, fake
+
+
+def _publish(review_job: dict, tmp_path: Path, comments: list, **outcomes: str) -> tuple[int, Path]:
+    env = {"GITHUB_EVENT_NAME": "issue_comment", "REVIEWED_SHA": HEAD, "FALLBACK_MODEL": "gemini-2.5-flash",
+           "PRIMARY_OUTCOME": "", "PRIMARY_SUMMARY": "", "PRIMARY_ERROR": "",
+           "FALLBACK_OUTCOME": "", "FALLBACK_SUMMARY": "", "FALLBACK_ERROR": "", **outcomes}
+    pr = {"state": "open", "draft": False, "head": {"sha": HEAD}}
+    return _run_step(_step(review_job, name=PUBLISHER)["run"], tmp_path, comments=comments, pr=pr, env=env)
+
+
+def _body(path: Path) -> str:
+    return json.loads(path.read_text())["body"]
+
+
+def test_publisher_posts_the_review_and_records_its_head(review_job: dict, tmp_path: Path) -> None:
+    rc, fake = _publish(review_job, tmp_path, [], PRIMARY_OUTCOME="success",
+                        PRIMARY_SUMMARY=f"{MARKER}\n\nNo cross-file regressions found.")
+    assert rc == 0
+    body = _body(fake / "posted.json")
+    assert body.startswith(MARKER) and f"<!-- gemini-reviewed-sha: {HEAD} -->" in body
+    assert body.endswith("No cross-file regressions found.") and "fallback" not in body
+
+
+def test_publisher_uses_a_successful_fallback_and_says_so(review_job: dict, tmp_path: Path) -> None:
+    old = _bot(11, f"{MARKER}\n<!-- gemini-reviewed-sha: {'b' * 40} -->\n\nolder review")
+    rc, fake = _publish(review_job, tmp_path, [old], PRIMARY_OUTCOME="failure",
+                        PRIMARY_ERROR='{"code":429,"message":"quota"}', FALLBACK_OUTCOME="success",
+                        FALLBACK_SUMMARY="Fallback review text.")
+    assert rc == 0
+    body = _body(fake / "patched_11.json")
+    assert "fallback model `gemini-2.5-flash`" in body and body.endswith("Fallback review text.")
+    assert f"<!-- gemini-reviewed-sha: {HEAD} -->" in body
+
+
+def test_publisher_reports_a_failure_on_the_pr_and_fails_the_job(review_job: dict, tmp_path: Path) -> None:
+    """503/429/timeout failures used to skip the publisher, leaving nothing on the PR thread."""
+    old = _bot(11, f"{MARKER}\n<!-- gemini-reviewed-sha: {'b' * 40} -->\n\nreview of an older head")
+    reason = '{"code":503,"message":"UNAVAILABLE: high demand ```injected``` ' + "x" * 3000 + '"}'
+    rc, fake = _publish(review_job, tmp_path, [old], PRIMARY_OUTCOME="failure", PRIMARY_ERROR=reason,
+                        FALLBACK_OUTCOME="failure", FALLBACK_ERROR=reason)
+    assert rc == 1
+    body = _body(fake / "patched_11.json")
+    assert body.startswith(MARKER) and f"<!-- gemini-review-failed: {HEAD} -->" in body
+    assert "gemini-reviewed-sha" not in body, "a failure must not mark the head as reviewed"
+    assert "did not complete" in body and "UNAVAILABLE: high demand" in body and "@gemini-cli" in body
+    assert body.count("```") == 2, "error text cannot close the code block"
+    assert len(body) < 2200
+
+
+def test_publisher_keeps_a_completed_review_of_the_same_head(review_job: dict, tmp_path: Path) -> None:
+    done = _bot(11, f"{MARKER}\n<!-- gemini-reviewed-sha: {HEAD} -->\n\ncompleted review")
+    rc, fake = _publish(review_job, tmp_path, [done], PRIMARY_OUTCOME="failure", PRIMARY_ERROR="429 quota")
+    assert rc == 1
+    assert not list(fake.glob("patched_*.json")) and not (fake / "posted.json").exists()
+
+
+def test_publisher_never_overwrites_a_human_comment(review_job: dict, tmp_path: Path) -> None:
+    human = _bot(5, f"{MARKER} quoted by a person", user="owner", kind="User")
+    rc, fake = _publish(review_job, tmp_path, [human], PRIMARY_OUTCOME="success", PRIMARY_SUMMARY="Review.")
+    assert rc == 0 and (fake / "posted.json").exists() and not list(fake.glob("patched_*.json"))
+
+
+def test_publisher_treats_an_empty_review_as_a_failure(review_job: dict, tmp_path: Path) -> None:
+    rc, fake = _publish(review_job, tmp_path, [], PRIMARY_OUTCOME="success", PRIMARY_SUMMARY=f"  {MARKER}  ")
+    assert rc == 1
+    assert "did not complete" in _body(fake / "posted.json")
+
+
+def _resolve(review_job: dict, tmp_path: Path, body: str, comments: list, draft: bool = False) -> tuple[int, str]:
+    pr = {"state": "open", "draft": draft, "head": {"sha": HEAD, "ref": "feature", "repo": {"full_name": "owner/repo"}},
+          "base": {"sha": "b" * 40}, "user": {"type": "User"}}
+    env = {"GITHUB_EVENT_NAME": "issue_comment", "EVENT_HEAD_SHA": "", "COMMENT_BODY": body}
+    rc, _ = _run_step(_step(review_job, step_id="pr")["run"], tmp_path, comments=comments, pr=pr, env=env)
+    return rc, (tmp_path / "github_output").read_text()
+
+
+def test_codex_review_comment_reviews_once_per_head(review_job: dict, tmp_path: Path) -> None:
+    """`@codex review` after every push starts Gemini too, but not again for a head it already reviewed; a failed
+    attempt does not count as a review, and `@gemini-cli` always reviews. Drafts are reviewed on request."""
+    rc, out = _resolve(review_job, tmp_path, "@codex review", [], draft=True)
+    assert rc == 0 and "eligible=true" in out and f"head_sha={HEAD}" in out
+    reviewed = _bot(11, f"{MARKER}\n<!-- gemini-reviewed-sha: {HEAD} -->\n\nreview")
+    rc, out = _resolve(review_job, tmp_path, "@codex review please", [reviewed])
+    assert rc == 0 and "eligible=true" not in out
+    failed = _bot(11, f"{MARKER}\n<!-- gemini-review-failed: {HEAD} -->\n\nfailed")
+    rc, out = _resolve(review_job, tmp_path, "@codex review", [failed])
+    assert rc == 0 and "eligible=true" in out
+    rc, out = _resolve(review_job, tmp_path, "@gemini-cli", [reviewed])
+    assert rc == 0 and "eligible=true" in out
 
 
 def test_filtered_history_keeps_true_pr_diff(review_job: dict, tmp_path: Path) -> None:
