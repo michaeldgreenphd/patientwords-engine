@@ -107,3 +107,28 @@ def test_report_on_landed_runs_pairs_nothing_without_a_rejudge(tmp_path):
     assert code == 0
     report = json.loads((tmp_path / "out" / "xjudge_report.json").read_text(encoding="utf-8"))
     assert report["agreement"] == [] and report["bootstrap_seed"] == xj.DEFAULT_SEED
+
+
+def test_judge_family_ignores_the_route():
+    assert xj.judge_family("claude-haiku-4-5") == xj.judge_family("openrouter:anthropic/claude-haiku-4.5")
+    assert xj.judge_family("anthropic:claude-haiku-5-5") == xj.judge_family("openrouter:anthropic/claude-haiku-5.5")
+    assert xj.judge_family("openrouter:openai/gpt-5.4-mini") == "gpt-5-4-mini"
+
+
+def test_shift_by_target_reports_the_difference_between_targets():
+    a = {"run": "r1", "target": "t1", "first": "claude-haiku-4-5", "second": "openrouter:openai/gpt-5.4-mini",
+         "clusters": {"c1": [(2, 2), (2, 3)], "c2": [(3, 3)]}}
+    b = {"run": "r2", "target": "t2", "first": "openrouter:anthropic/claude-haiku-4.5",
+         "second": "openrouter:openai/gpt-5.4-mini", "clusters": {"c3": [(1, 3)], "c4": [(2, 3)]}}
+    [group] = xj.shift_by_target([a, b], reps=200, rng=random.Random(3))
+    assert [r["mean_step"] for r in group["runs"]] == [pytest.approx(1 / 3), pytest.approx(1.5)]
+    [d] = group["differences"]
+    assert d["difference_b_minus_a"] == pytest.approx(1.5 - 1 / 3)
+    assert d["ci95"] is not None and d["ci95"][0] <= d["difference_b_minus_a"] <= d["ci95"][1]
+
+
+def test_shift_by_target_skips_runs_with_the_same_target():
+    a = {"run": "r1", "target": "t", "first": "a", "second": "b", "clusters": {"c1": [(1, 2)]}}
+    b = {"run": "r2", "target": "t", "first": "a", "second": "b", "clusters": {"c2": [(1, 1)]}}
+    [group] = xj.shift_by_target([a, b], reps=10, rng=random.Random(1))
+    assert group["differences"] == []

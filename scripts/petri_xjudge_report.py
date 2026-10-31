@@ -68,6 +68,7 @@ class JudgeSet:
     origin: str                  # the directory the file came from
     path: Path
     rows: list[dict] = field(default_factory=list)
+    target: str | None = None    # the source run's target (its manifest's models.target.inspect_name)
 
 
 def sha256_file(path: Path) -> str:
@@ -103,6 +104,36 @@ def load_judge_sets(runs_dirs: Iterable[Path], rejudge_dirs: Iterable[Path]) -> 
                 sets.append(JudgeSet(path.parent.name, single_judge(rows, path), "rejudge", str(rejudge_dir),
                                      path, rows))
     return sets
+
+
+def run_target(run_dir: Path) -> str | None:
+    """The source run's target model, from its manifest; None when the manifest is absent or names none."""
+    path = run_dir / "manifest.json"
+    if not path.is_file():
+        return None
+    target = (json.loads(path.read_text(encoding="utf-8")).get("models") or {}).get("target") or {}
+    return target.get("inspect_name") or target.get("model")
+
+
+def attach_targets(sets: list[JudgeSet]) -> None:
+    """Give every judge set its source run's target: a judge of record reads the manifest beside its judgments, and
+    a re-grade takes the target of the judge-of-record set with the same stem."""
+    by_stem: dict[str, str] = {}
+    for js in sets:
+        if js.role == "judge_of_record":
+            js.target = run_target(js.path.parent)
+            if js.target:
+                by_stem[js.stem] = js.target
+    for js in sets:
+        if js.target is None:
+            js.target = by_stem.get(js.stem)
+
+
+def judge_family(spec: str) -> str:
+    """A judge spec without its route: `claude-haiku-4-5`, `anthropic:claude-haiku-4-5` and
+    `openrouter:anthropic/claude-haiku-4.5` are one model. Used only to line up the same judge pair across runs whose
+    judges of record were reached by different routes; every table still names the exact spec."""
+    return spec.split(":", 1)[-1].split("/")[-1].replace(".", "-").lower()
 
 
 def tier_rank() -> dict[str, int]:
@@ -293,9 +324,52 @@ def fmt(x: Any, digits: int = 2) -> str:
     return f"{x:.{digits}f}" if isinstance(x, float) else str(x)
 
 
+def mean_step(pairs: list[tuple[int, int]]) -> float | None:
+    return (sum(y - x for x, y in pairs) / len(pairs)) if pairs else None
+
+
+def shift_by_target(cells: list[dict], reps: int, rng: random.Random) -> list[dict]:
+    """For each judge pair (by `judge_family`), the response-only tier shift (second minus first) on each run, and for
+    each two runs with different targets the difference in shift, with a percentile interval from resampling each
+    run's conversations independently. A difference away from zero means the two judges' disagreement depends on
+    who wrote the replies, which is what a judge's preference for its own vendor's replies would look like (it is not
+    the only explanation: the runs also differ in their transcripts)."""
+    groups: dict[tuple[str, str], list[dict]] = defaultdict(list)
+    for c in cells:
+        groups[(judge_family(c["first"]), judge_family(c["second"]))].append(c)
+    out = []
+    for (fa, fb), cs in sorted(groups.items()):
+        runs = [{"run": c["run"], "target": c["target"], "first": c["first"], "second": c["second"],
+                 "pairs": sum(len(v) for v in c["clusters"].values()), "conversations": len(c["clusters"]),
+                 "mean_step": mean_step([p for v in c["clusters"].values() for p in v])} for c in cs]
+        diffs = []
+        for i in range(len(cs)):
+            for j in range(i + 1, len(cs)):
+                a, b = cs[i], cs[j]
+                if not a["target"] or not b["target"] or a["target"] == b["target"]:
+                    continue
+                ka, kb = sorted(a["clusters"]), sorted(b["clusters"])
+                draws = []
+                for _ in range(reps if len(ka) > 1 and len(kb) > 1 else 0):
+                    pa = [p for k in (rng.choice(ka) for _ in ka) for p in a["clusters"][k]]
+                    pb = [p for k in (rng.choice(kb) for _ in kb) for p in b["clusters"][k]]
+                    ma, mb = mean_step(pa), mean_step(pb)
+                    if ma is not None and mb is not None:
+                        draws.append(mb - ma)
+                point = (None if runs[i]["mean_step"] is None or runs[j]["mean_step"] is None
+                         else runs[j]["mean_step"] - runs[i]["mean_step"])
+                diffs.append({"run_a": a["run"], "target_a": a["target"], "run_b": b["run"], "target_b": b["target"],
+                              "difference_b_minus_a": point,
+                              "ci95": (percentile(draws, 0.025), percentile(draws, 0.975)) if draws else None})
+        out.append({"first_family": fa, "second_family": fb, "runs": runs, "differences": diffs})
+    return out
+
+
 def build_report(sets: list[JudgeSet], seed: int, reps: int) -> dict[str, Any]:
     ranks = tier_rank()
     rng = random.Random(seed)
+    attach_targets(sets)
+    cells: list[dict] = []
     by_stem: dict[str, list[JudgeSet]] = defaultdict(list)
     for js in sets:
         by_stem[js.stem].append(js)
@@ -308,6 +382,13 @@ def build_report(sets: list[JudgeSet], seed: int, reps: int) -> dict[str, Any]:
         comparisons += [(others[i], others[j]) for i in range(len(others)) for j in range(i + 1, len(others))]
         for first, second in comparisons:
             p = pair_judges(first, second)
+            clusters: dict[str, list[tuple[int, int]]] = defaultdict(list)
+            for ra, rb in p["paired"]:
+                if ((ra["kind"], ra["key"]) == ("tier", "response_only") and usable(ra) and usable(rb)
+                        and ra["value"] in ranks and rb["value"] in ranks):
+                    clusters[ra["conversation_id"]].append((ranks[ra["value"]], ranks[rb["value"]]))
+            cells.append({"run": stem, "target": first.target, "first": first.judge, "second": second.judge,
+                          "clusters": clusters})
             agreement.append({"run": stem, "first": first.judge, "first_origin": first.origin,
                               "second": second.judge, "second_origin": second.origin,
                               "only_first": p["only_first"], "only_second": p["only_second"],
@@ -321,9 +402,10 @@ def build_report(sets: list[JudgeSet], seed: int, reps: int) -> dict[str, Any]:
         "status": "exploratory (campaign xjudge-v1); not a registered analysis and not a study claim",
         "commit": git_commit(), "bootstrap_seed": seed, "bootstrap_reps": reps,
         "tier_order": sorted(ranks, key=ranks.get),
-        "inputs": [{"run": js.stem, "judge": js.judge, "role": js.role, "origin": js.origin,
+        "inputs": [{"run": js.stem, "target": js.target, "judge": js.judge, "role": js.role, "origin": js.origin,
                     "path": str(js.path), "sha256": sha256_file(js.path), "rows": len(js.rows)} for js in sets],
         "agreement": agreement,
+        "shift_by_target": shift_by_target(cells, reps, rng),
         "equity_contrast": equity_rows,
         "equity_summary": summarize_equity(equity_rows, ranks),
     }
@@ -333,9 +415,9 @@ def render_markdown(report: dict[str, Any]) -> str:
     lines = ["# Petri cross-vendor judging report (exploratory)", "",
              f"Status: {report['status']}. Commit {report['commit']}; bootstrap seed {report['bootstrap_seed']}, "
              f"{report['bootstrap_reps']} conversation-level resamples.", "", "## Inputs", "",
-             "| Run | Judge | Role | Rows | Origin |", "|---|---|---|---|---|"]
+             "| Run | Target | Judge | Role | Rows | Origin |", "|---|---|---|---|---|---|"]
     for i in report["inputs"]:
-        lines.append(f"| {i['run']} | `{i['judge']}` | {i['role']} | {i['rows']} | {i['origin']} |")
+        lines.append(f"| {i['run']} | `{i['target']}` | `{i['judge']}` | {i['role']} | {i['rows']} | {i['origin']} |")
     lines += ["", "## Judge agreement", ""]
     for a in report["agreement"]:
         lines += [f"### {a['run']}: `{a['first']}` vs `{a['second']}`", "",
@@ -352,6 +434,22 @@ def render_markdown(report: dict[str, Any]) -> str:
                 f"{fmt(d.get('mean_step_ci95'))} | {fmt(d.get('second_higher'))} / {fmt(d.get('second_lower'))} | "
                 f"{d['not_applicable_disagreements']} |")
         lines.append("")
+    shifts = [g for g in report["shift_by_target"] if g["differences"]]
+    if shifts:
+        lines += ["## Judge shift by target", "",
+                  "Response-only tier, second judge minus first, per run; the difference between two runs with "
+                  "different targets, with an interval from resampling each run's conversations.", ""]
+        for g in shifts:
+            lines += [f"### `{g['first_family']}` vs `{g['second_family']}`", "",
+                      "| Run | Target | First | Second | Pairs | Mean step |", "|---|---|---|---|---|---|"]
+            for r in g["runs"]:
+                lines.append(f"| {r['run']} | `{r['target']}` | `{r['first']}` | `{r['second']}` | {r['pairs']} | "
+                             f"{fmt(r['mean_step'])} |")
+            lines += ["", "| Run A (target) | Run B (target) | B − A [95% CI] |", "|---|---|---|"]
+            for d in g["differences"]:
+                lines.append(f"| {d['run_a']} (`{d['target_a']}`) | {d['run_b']} (`{d['target_b']}`) | "
+                             f"{fmt(d['difference_b_minus_a'])} {fmt(d['ci95'])} |")
+            lines.append("")
     if report["equity_summary"]:
         lines += ["## Equity v2: advice after the warning sign", "",
                   "Held = every reply after the pivot exchange ranks at or above the pivot reply's tier. "
