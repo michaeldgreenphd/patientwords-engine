@@ -128,9 +128,9 @@ lane, and advance by chaining — resolve the landed run, then fire the next.
   raises that lane's daily ceiling for the campaign's own fires only. An unknown or malformed
   campaign refuses the fire. Like a missing `max_spend`, a campaign refusal is exit 4 and
   never overridable. The journal entry records the campaign, and `publish` re-syncs it from
-  the trigger file it pushes. In CI, `budget-gate` takes the campaign from the push's own
-  reservation, because the workflows' params outputs drop `_campaign`; with no such reservation
-  (a dispatch or a re-run) the standing ceilings apply. Every entry quotes the owner's
+  the trigger file it pushes. In CI, `budget-gate` reads the campaign from the trigger file
+  the run was fired with, because the workflows' params outputs drop `_campaign`; a replay of
+  campaign-tagged bytes is checked against the campaign with its earlier reservation still counted. Every entry quotes the owner's
   words; never add or raise one without them.
 - The guard counts committed spend = landed today on that lane + the commitment held by
   every paid entry fired today on it, resolved or expired alike; only eviction releases

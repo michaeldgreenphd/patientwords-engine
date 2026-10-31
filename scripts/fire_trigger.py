@@ -4504,14 +4504,25 @@ def cmd_budget_gate(args):
                   "replay, a re-run, or no --push-before/--ref/--run-attempt to bind one), so every held commitment "
                   "is counted")
     # The workflows pass the params job's outputs as --params-file, and those hold only the keys in each workflow's
-    # defaults, so `_campaign` never reaches the gate that way (Codex on PR #137). The campaign is taken instead
-    # from this push's own reservation, which cmd_fire wrote with the campaign and which is bound to this trigger
-    # file's digest, this ref and this push. With no such reservation (a dispatch, a re-run, an unreadable
-    # binding) the fire is checked against the standing ceilings alone, which is never looser.
-    if budget_params.get("_campaign") in (None, "") and own_reservation is not None \
-            and own_reservation.get("campaign") not in (None, ""):
-        budget_params = dict(budget_params, _campaign=str(own_reservation["campaign"]))
-        print(f"budget-gate: campaign {budget_params['_campaign']!r} taken from this push's own reservation")
+    # defaults, so `_campaign` never reaches the gate that way (Codex on PR #137). The campaign is read from the
+    # trigger file in the checkout - the bytes that fired this run - whether or not this push's own reservation
+    # was found: a merge or replay restoring campaign-tagged bytes has no own reservation, and the standing ceiling
+    # alone can be looser than a campaign whose allocation is spent (Codex's second round on PR #137). Such a
+    # replay is then checked against the campaign with its earlier reservation still counted, which fails closed.
+    # Only when the trigger file cannot be read is the own reservation's campaign used.
+    if budget_params.get("_campaign") in (None, ""):
+        campaign, source = None, None
+        try:
+            on_disk = json.loads(trigger_on_disk.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            on_disk = None
+        if isinstance(on_disk, dict) and on_disk.get("_campaign") not in (None, ""):
+            campaign, source = str(on_disk["_campaign"]), "the trigger file this run was fired with"
+        elif own_reservation is not None and own_reservation.get("campaign") not in (None, ""):
+            campaign, source = str(own_reservation["campaign"]), "this push's own reservation"
+        if campaign is not None:
+            budget_params = dict(budget_params, _campaign=campaign)
+            print(f"budget-gate: campaign {campaign!r} taken from {source}")
     dashboard = load_dashboard(repo / DASHBOARD_RELPATH)
     overrides = load_budget_overrides(repo / OVERRIDES_RELPATH)
     kind, reason = budget_check(budget_params, dashboard, today,

@@ -4006,17 +4006,19 @@ def test_budget_gate_takes_the_campaign_from_its_own_reservation_across_midnight
     # standing $2 ceiling would refuse
     assert gate(before) == 0, capsys.readouterr().err
     out = capsys.readouterr().out
-    assert "campaign 'xj' taken from this push's own reservation" in out
+    assert "campaign 'xj' taken from the trigger file this run was fired with" in out
     assert "campaign xj daily ceiling 20.00" in out
     # (2) after midnight UTC the reservation is still this push's own: 5.00 counted once against the $6 total,
     # not 5.00 + 5.00
     clock[0] = datetime(2026, 10, 15, 0, 1, tzinfo=timezone.utc)
     assert gate(before) == 0, capsys.readouterr().err
-    assert "taken from this push's own reservation" in capsys.readouterr().out
-    # with no push binding there is no reservation to read the campaign from: the standing $2 ceiling applies,
-    # which is never looser
+    assert "taken from the trigger file this run was fired with" in capsys.readouterr().out
+    # a push whose own reservation cannot be established (a replay or merge restoring these bytes, or no binding)
+    # is still checked against the campaign, read from the trigger file, with the earlier reservation counted:
+    # 5.00 + 5.00 against the $6 total is refused, although the standing $2 ceiling alone would see nothing held
+    # today (Codex's second round on PR #137)
     assert gate("") == 6
-    assert "daily ceiling 2.00" in capsys.readouterr().err
+    assert "would exceed its total 6.00" in capsys.readouterr().err
 
 
 def test_publish_syncs_the_entrys_campaign_from_the_published_params(tmp_path, capsys):
@@ -4041,3 +4043,34 @@ def test_publish_syncs_the_entrys_campaign_from_the_published_params(tmp_path, c
     mine = [e for e in entries if e.get("fired_utc") == fired]
     assert len(mine) == 1 and mine[0]["campaign"] == "xj"
     assert ft.campaign_held(entries, "xj", lane="anthropic") == 1.0
+
+
+def test_budget_gate_enforces_a_spent_campaign_on_a_push_without_its_own_reservation(repo, tmp_path, capsys,
+                                                                                      monkeypatch):
+    """Codex's second round on PR #137: with the campaign taken only from the push's own reservation, a merge or
+    replay restoring campaign-tagged bytes had none, so the gate fell back to the standing ceiling, which is not
+    stricter than a campaign whose allocation is spent: a restored $1 fire under a fully committed campaign cleared
+    under the $2 daily ceiling. The campaign is now read from the trigger file the run was fired with."""
+    _write_campaigns(repo, xj=dict(_CAMPAIGN, total_usd_by_lane={"anthropic": 1.5}))
+    monkeypatch.setattr(ft, "utc_now", lambda: datetime(2026, 10, 14, 12, 0, tzinfo=timezone.utc))
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    git = _git_repo(repo)
+    journal_path(repo).write_text("", encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-qm", "base")
+    fired_params = {"task": "pairs", "num": "5", "anthropic_model": "claude-haiku-4-5", "max_spend": "1.0",
+                    "_campaign": "xj", "_nonce": "xj-replay"}
+    assert fire(repo, "scenario-generation", fired_params, note="campaign fire") == 0
+    git("add", "-A")
+    git("commit", "-qm", "Fire scenario-generation: campaign fire")
+    pf = tmp_path / "resolved.json"
+    pf.write_text(json.dumps(dict(G4_LANES["scenario-generation"][1], max_spend="1.0")), encoding="utf-8")
+    capsys.readouterr()
+    # the replay: no own reservation can be established, so the earlier 1.00 keeps counting; 1.00 + 1.00 passes
+    # the campaign's 1.50 total, although it fits the standing $2 daily ceiling exactly
+    rc = ft.main(["budget-gate", "--repo", str(repo), "--trigger", "scenario-generation", "--params-file", str(pf),
+                  "--push-before", "", "--ref", "main", "--run-attempt", "1"])
+    assert rc == 6
+    captured = capsys.readouterr()
+    assert "taken from the trigger file this run was fired with" in captured.out
+    assert "would exceed its total 1.50" in captured.err
