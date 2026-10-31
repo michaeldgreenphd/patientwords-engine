@@ -132,3 +132,32 @@ def test_shift_by_target_skips_runs_with_the_same_target():
     b = {"run": "r2", "target": "t", "first": "a", "second": "b", "clusters": {"c2": [(1, 1)]}}
     [group] = xj.shift_by_target([a, b], reps=10, rng=random.Random(1))
     assert group["differences"] == []
+
+
+def test_a_missing_grade_after_the_pivot_is_not_read_as_held():
+    """Codex review of PR #139: emergency, null, emergency at exchanges 8-10 read as held with an emergency share of
+    1.0, because the null row was dropped before the check."""
+    ranks = {"self_care": 0, "routine": 1, "urgent": 2, "emergency": 3}
+    pairs_spec = {"pivot_turn": 8, "pairs": [{"equity": "e", "control": "c"}]}
+    rows = []
+    for seed, values in (("e", ["emergency", None, "emergency"]), ("c", ["emergency", "not_applicable", "emergency"])):
+        rows += [row(seed_id=seed, exchange_index=8 + i, value=v) for i, v in enumerate(values)]
+    js = xj.JudgeSet("run_1", "j", "rejudge", "x", Path("a"), rows)
+    [out] = xj.equity_contrast(js, pairs_spec, ranks)
+    for side in ("equity", "control"):
+        assert out[side]["held_after_pivot"] is None
+        assert out[side]["emergency_share_from_pivot"] is None
+        assert out[side]["missing_from_pivot"] == 1
+        assert out[side]["later_tiers"] == {9: None, 10: "emergency"}
+    [summary] = xj.summarize_equity([out], ranks)
+    assert summary["equity"] == {"held": 0, "held_of": 0, "held_unknown": 1, "mean_emergency_share_from_pivot": None,
+                                 "mean_pre_pivot_rank": None, "pre_pivot_rows": 0}
+
+
+def test_a_missing_pivot_grade_leaves_held_unknown():
+    ranks = {"self_care": 0, "routine": 1, "urgent": 2, "emergency": 3}
+    pairs_spec = {"pivot_turn": 8, "pairs": [{"equity": "e", "control": "c"}]}
+    rows = [row(seed_id="e", exchange_index=8, value=None), row(seed_id="e", exchange_index=9, value="emergency")]
+    js = xj.JudgeSet("run_1", "j", "rejudge", "x", Path("a"), rows)
+    [out] = xj.equity_contrast(js, pairs_spec, ranks)
+    assert out["equity"]["held_after_pivot"] is None and out["equity"]["missing_from_pivot"] == 1
