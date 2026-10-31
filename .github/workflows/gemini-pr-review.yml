@@ -224,8 +224,12 @@ jobs:
         id: gemini_fallback
         # Only for 429 quota and 503 high-demand errors (the free tier's quota is per model);
         # any other failure, such as a bad key, is reported without spending another call.
+        # Opt-in: set the repository variable GEMINI_FALLBACK_MODEL to a model the key can use.
+        # There is no default, because Google retires model IDs (gemini-2.5-flash was refused
+        # as "no longer available to new users" on 2026-10-31).
         if: >-
-          ${{ always() && steps.pr.outputs.eligible == 'true' && steps.gemini.outcome == 'failure' &&
+          ${{ always() && steps.pr.outputs.eligible == 'true' && vars.GEMINI_FALLBACK_MODEL != '' &&
+          steps.gemini.outcome == 'failure' &&
           (contains(steps.gemini.outputs.error, '429') || contains(steps.gemini.outputs.error, '503') ||
            contains(steps.gemini.outputs.error, 'RESOURCE_EXHAUSTED') ||
            contains(steps.gemini.outputs.error, 'UNAVAILABLE') || contains(steps.gemini.outputs.error, 'quota')) }}
@@ -234,7 +238,7 @@ jobs:
         uses: google-github-actions/run-gemini-cli@v0
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
-          gemini_model: ${{ vars.GEMINI_FALLBACK_MODEL || 'gemini-2.5-flash' }}
+          gemini_model: ${{ vars.GEMINI_FALLBACK_MODEL }}
           settings: ${{ env.GEMINI_SETTINGS }}
           prompt: ${{ env.GEMINI_REVIEW_PROMPT }}
 
@@ -249,7 +253,7 @@ jobs:
           FALLBACK_OUTCOME: ${{ steps.gemini_fallback.outcome }}
           FALLBACK_SUMMARY: ${{ steps.gemini_fallback.outputs.summary }}
           FALLBACK_ERROR: ${{ steps.gemini_fallback.outputs.error }}
-          FALLBACK_MODEL: ${{ vars.GEMINI_FALLBACK_MODEL || 'gemini-2.5-flash' }}
+          FALLBACK_MODEL: ${{ vars.GEMINI_FALLBACK_MODEL }}
           REVIEWED_SHA: ${{ steps.pr.outputs.head_sha }}
         run: |
           set -euo pipefail
@@ -299,15 +303,29 @@ jobs:
               echo "::error::Gemini review did not complete; kept the completed review already posted for $REVIEWED_SHA."
               exit 1
             fi
-            reason="${FALLBACK_ERROR:-}"
-            [[ -n "$reason" ]] || reason="${PRIMARY_ERROR:-}"
-            [[ -n "$reason" ]] || reason="No error output (the step timed out, was cancelled, or returned an empty review)."
-            jq -n --arg marker "$REVIEW_MARKER" --arg sha "$REVIEWED_SHA" --arg reason "$reason" \
-              --arg primary "$PRIMARY_OUTCOME" --arg fallback "${FALLBACK_OUTCOME:-skipped}" \
-              '{body: ($marker + "\n<!-- gemini-review-failed: " + $sha + " -->\n\n"
-                + "**Gemini cross-file review did not complete** for `" + $sha + "` (primary: " + $primary
-                + ", fallback: " + (if $fallback == "" then "skipped" else $fallback end) + ").\n\n"
-                + "```text\n" + ($reason | gsub("```"; "\u0027\u0027\u0027") | .[0:1500]) + "\n```\n\n"
+            # Each step's error without the CLI's startup noise and stack frames, kept short.
+            brief() {
+              { grep -v -E '^(Warning: 256-color|YOLO mode is enabled|\[STARTUP\])|^[[:space:]]+at ' <<< "$1" || true; } \
+                | head -c 700
+            }
+            primary_reason=$(brief "${PRIMARY_ERROR:-}")
+            [[ -n "$primary_reason" ]] || primary_reason="No error output (the step timed out, was cancelled, or returned an empty review)."
+            if [[ -n "${FALLBACK_OUTCOME:-}" && "$FALLBACK_OUTCOME" != "skipped" ]]; then
+              fallback_reason=$(brief "${FALLBACK_ERROR:-}")
+              [[ -n "$fallback_reason" ]] || fallback_reason="No error output."
+            elif [[ -z "${FALLBACK_MODEL:-}" ]]; then
+              fallback_reason="Not run: the repository variable GEMINI_FALLBACK_MODEL is not set."
+            else
+              fallback_reason="Not run: the primary error was not a quota or availability error."
+            fi
+            jq -n --arg marker "$REVIEW_MARKER" --arg sha "$REVIEWED_SHA" \
+              --arg primary "$primary_reason" --arg fallback "$fallback_reason" --arg model "${FALLBACK_MODEL:-}" \
+              'def block: "```text\n" + (gsub("```"; "\u0027\u0027\u0027")) + "\n```";
+               {body: ($marker + "\n<!-- gemini-review-failed: " + $sha + " -->\n\n"
+                + "**Gemini cross-file review did not complete** for `" + $sha + "`.\n\n"
+                + "Primary model:\n" + ($primary | block) + "\n\n"
+                + "Fallback model" + (if $model == "" then "" else " `" + $model + "`" end) + ":\n"
+                + ($fallback | block) + "\n\n"
                 + "Comment `@gemini-cli` to retry once the cause is resolved.")}' \
               > "$RUNNER_TEMP/gemini-review-comment.json"
           fi

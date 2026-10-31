@@ -152,9 +152,12 @@ one. Eligible jobs share a
 workflow-name/PR-number concurrency group with cancellation, so rapid pushes
 replace stale reviews and unrelated comments do not cancel active reviews.
 The job has a 20-minute timeout and the review step a 10-minute one, bounding
-runner time and quota use while leaving the publisher time to report a failure. After a 429 quota or 503 availability error, one retry
-runs on `vars.GEMINI_FALLBACK_MODEL` (default `gemini-2.5-flash`), limited to
-3 minutes; other errors are not retried. ripgrep is installed before the CLI runs.
+runner time and quota use while leaving the publisher time to report a failure.
+After a 429 quota or 503 availability error, one retry runs on the model named by
+the repository variable `GEMINI_FALLBACK_MODEL`, limited to 3 minutes, when that
+variable is set; there is no default, because Google retires model IDs (it refused
+`gemini-2.5-flash` as unavailable to new users on 2026-10-31). Other errors are not
+retried. ripgrep is installed before the CLI runs.
 The root checkout retains full commit history with `filter: blob:none`, avoiding
 old artifact downloads while materializing every file at the reviewed head.
 Diff generation fetches historical blobs on demand and retains the true merge base.
@@ -175,7 +178,7 @@ current PR head, searches all comment pages for a `github-actions[bot]` comment
 prefixed with `<!-- gemini-macro-review -->`, then updates it or creates one.
 Human comments and comments from other bots are never overwritten. When neither
 model completes a review, the publisher still runs: it writes a short diagnostic
-with the error into that comment (marked `<!-- gemini-review-failed: <sha> -->`),
+with each model's error into that comment (marked `<!-- gemini-review-failed: <sha> -->`),
 unless the comment already holds a completed review of the same head, and then
 fails the check.
 

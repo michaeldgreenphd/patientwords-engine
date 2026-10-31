@@ -64,9 +64,12 @@ def test_review_budget_and_failure_do_not_publish_success(review_job: dict) -> N
     assert primary["timeout-minutes"] == 10 and fallback["timeout-minutes"] == 3
     assert review_job["timeout-minutes"] == 20
     assert review_job["timeout-minutes"] - (primary["timeout-minutes"] + fallback["timeout-minutes"]) >= 5
-    assert "${{ vars.GEMINI_FALLBACK_MODEL || 'gemini-2.5-flash' }}" == fallback["with"]["gemini_model"]
+    # opt-in, no default model: the live run of 2026-10-31 found the requested default, gemini-2.5-flash, refused
+    # as "no longer available to new users", so a hard-coded ID can silently break the fallback
+    assert fallback["with"]["gemini_model"] == "${{ vars.GEMINI_FALLBACK_MODEL }}"
     # the fallback spends a call only after a quota or availability error, never after e.g. a bad key
     condition = fallback["if"]
+    assert "vars.GEMINI_FALLBACK_MODEL != ''" in condition
     assert "steps.gemini.outcome == 'failure'" in condition
     assert all(f"contains(steps.gemini.outputs.error, '{code}')" in condition
                for code in ("429", "503", "RESOURCE_EXHAUSTED", "UNAVAILABLE", "quota"))
@@ -144,7 +147,7 @@ def _run_step(script: str, tmp_path: Path, *, comments: list, pr: dict, env: dic
 
 
 def _publish(review_job: dict, tmp_path: Path, comments: list, **outcomes: str) -> tuple[int, Path]:
-    env = {"GITHUB_EVENT_NAME": "issue_comment", "REVIEWED_SHA": HEAD, "FALLBACK_MODEL": "gemini-2.5-flash",
+    env = {"GITHUB_EVENT_NAME": "issue_comment", "REVIEWED_SHA": HEAD, "FALLBACK_MODEL": "fallback-model-x",
            "PRIMARY_OUTCOME": "", "PRIMARY_SUMMARY": "", "PRIMARY_ERROR": "",
            "FALLBACK_OUTCOME": "", "FALLBACK_SUMMARY": "", "FALLBACK_ERROR": "", **outcomes}
     pr = {"state": "open", "draft": False, "head": {"sha": HEAD}}
@@ -171,7 +174,7 @@ def test_publisher_uses_a_successful_fallback_and_says_so(review_job: dict, tmp_
                         FALLBACK_SUMMARY="Fallback review text.")
     assert rc == 0
     body = _body(fake / "patched_11.json")
-    assert "fallback model `gemini-2.5-flash`" in body and body.endswith("Fallback review text.")
+    assert "fallback model `fallback-model-x`" in body and body.endswith("Fallback review text.")
     assert f"<!-- gemini-reviewed-sha: {HEAD} -->" in body
 
 
@@ -186,8 +189,35 @@ def test_publisher_reports_a_failure_on_the_pr_and_fails_the_job(review_job: dic
     assert body.startswith(MARKER) and f"<!-- gemini-review-failed: {HEAD} -->" in body
     assert "gemini-reviewed-sha" not in body, "a failure must not mark the head as reviewed"
     assert "did not complete" in body and "UNAVAILABLE: high demand" in body and "@gemini-cli" in body
-    assert body.count("```") == 2, "error text cannot close the code block"
+    assert body.count("```") == 4, "error text cannot close either code block"
     assert len(body) < 2200
+
+
+# What the first live run (patientwords-engine run 41159982695, 2026-10-31) returned: CLI noise, the error line and
+# a stack, from a primary quota failure and a fallback whose model ID Google had retired.
+_LIVE_NOISE = ("Warning: 256-color support not detected.\nYOLO mode is enabled. All tool calls will be automatically "
+               "approved.\n[STARTUP] Phase 'cleanup_ops' was started but never ended. Skipping metrics.\n")
+_STACK = "\n    at classifyGoogleError (file:///bundle/chunk.js:1:2)\n    at retryWithBackoff (file:///bundle/chunk.js:3:4)"
+
+
+def test_diagnostic_reports_both_errors_without_cli_noise(review_job: dict, tmp_path: Path) -> None:
+    primary = _LIVE_NOISE + "TerminalQuotaError: You have exhausted your daily quota on this model." + _STACK
+    fallback = _LIVE_NOISE + ("ModelNotFoundError: This model models/old-model is no longer available to new "
+                              "users.") + _STACK
+    rc, fake = _publish(review_job, tmp_path, [], PRIMARY_OUTCOME="failure", PRIMARY_ERROR=primary,
+                        FALLBACK_OUTCOME="failure", FALLBACK_ERROR=fallback)
+    assert rc == 1
+    body = _body(fake / "posted.json")
+    assert "exhausted your daily quota" in body and "no longer available to new users" in body
+    assert "Fallback model `fallback-model-x`" in body
+    assert all(noise not in body for noise in ("256-color", "YOLO mode", "[STARTUP]", "classifyGoogleError"))
+
+
+def test_diagnostic_says_when_no_fallback_model_is_configured(review_job: dict, tmp_path: Path) -> None:
+    rc, fake = _publish(review_job, tmp_path, [], PRIMARY_OUTCOME="failure", PRIMARY_ERROR="429 quota",
+                        FALLBACK_MODEL="", FALLBACK_OUTCOME="")
+    assert rc == 1
+    assert "GEMINI_FALLBACK_MODEL is not set" in _body(fake / "posted.json")
 
 
 def test_publisher_keeps_a_completed_review_of_the_same_head(review_job: dict, tmp_path: Path) -> None:
