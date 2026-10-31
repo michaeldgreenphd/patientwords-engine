@@ -146,9 +146,9 @@ same-repository, non-bot PRs, including when a draft is marked ready for review.
 A comment from an owner, member or collaborator containing `@gemini-cli` or
 `@codex review` also starts a review, on draft or ready PRs; external commenters
 and bots cannot start reviews. Agents post `@codex review` after every push, so
-that comment re-reviews only a head without a completed Gemini review (the sticky
-comment records `<!-- gemini-reviewed-sha: <sha> -->`); `@gemini-cli` always starts
-one. Eligible jobs share a workflow-name/PR-number concurrency group that queues
+every run except an `@gemini-cli` request, automatic runs included, skips a head that
+already has a completed Gemini review (the sticky comment records
+`<!-- gemini-reviewed-sha: <sha> -->`); `@gemini-cli` always starts one. Eligible jobs share a workflow-name/PR-number concurrency group that queues
 rather than cancels (`cancel-in-progress: false`): agents post `@codex review` right
 after each push, and cancelling would discard the push's half-finished review and start
 it again, while a queued run for a head reviewed in the meantime exits at the resolve

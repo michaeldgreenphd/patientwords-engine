@@ -319,6 +319,16 @@ def test_diagnostic_says_why_the_fallback_did_not_run(review_job: dict, tmp_path
     assert "Not run: the primary error was not a quota or availability error." in _body(fake / "posted.json")
 
 
+def test_diagnostic_survives_a_long_error(review_job: dict, tmp_path: Path) -> None:
+    """Codex on engine#141: the redaction sed took SIGPIPE when head stopped reading a long error, and pipefail
+    aborted the publisher before it posted. About 98 kB exceeds the 64 KiB pipe buffer, so the broken pipe is
+    certain, and stays under the 131072-byte limit on one environment string that the runner's value also has."""
+    rc, fake = _publish(review_job, tmp_path, [], PRIMARY_OUTCOME="failure",
+                        PRIMARY_ERROR="429 RESOURCE_EXHAUSTED " + "detail " * 14_000)
+    assert rc == 1 and (fake / "posted.json").exists()
+    assert "429 RESOURCE_EXHAUSTED" in _body(fake / "posted.json")
+
+
 def test_diagnostic_redacts_api_keys(review_job: dict, tmp_path: Path) -> None:
     """The diagnostic is posted on a public PR; an error that echoes a request URL must not carry the key."""
     key = "AIza" + "Sy" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7"  # shaped like a key, not a real one
@@ -347,10 +357,11 @@ def test_publisher_treats_an_empty_review_as_a_failure(review_job: dict, tmp_pat
     assert "did not complete" in _body(fake / "posted.json")
 
 
-def _resolve(review_job: dict, tmp_path: Path, body: str, comments: list, draft: bool = False) -> tuple[int, str]:
+def _resolve(review_job: dict, tmp_path: Path, body: str, comments: list, draft: bool = False,
+             event: str = "issue_comment") -> tuple[int, str]:
     pr = {"state": "open", "draft": draft, "head": {"sha": HEAD, "ref": "feature", "repo": {"full_name": "owner/repo"}},
           "base": {"sha": "b" * 40}, "user": {"type": "User"}}
-    env = {"GITHUB_EVENT_NAME": "issue_comment", "EVENT_HEAD_SHA": "", "COMMENT_BODY": body}
+    env = {"GITHUB_EVENT_NAME": event, "EVENT_HEAD_SHA": HEAD if event == "pull_request" else "", "COMMENT_BODY": body}
     rc, _ = _run_step(_step(review_job, step_id="pr")["run"], tmp_path, comments=comments, pr=pr, env=env)
     return rc, (tmp_path / "github_output").read_text()
 
@@ -367,6 +378,17 @@ def test_codex_review_comment_reviews_once_per_head(review_job: dict, tmp_path: 
     rc, out = _resolve(review_job, tmp_path, "@codex review", [failed])
     assert rc == 0 and "eligible=true" in out
     rc, out = _resolve(review_job, tmp_path, "@gemini-cli", [reviewed])
+    assert rc == 0 and "eligible=true" in out
+
+
+def test_queued_automatic_run_skips_a_reviewed_head(review_job: dict, tmp_path: Path) -> None:
+    """Codex on engine#141: runs now queue, so a ready_for_review run queued behind a manual review of the same head
+    reached Gemini again, because only comment events checked for a completed review."""
+    reviewed = _bot(11, f"{MARKER}\n<!-- gemini-reviewed-sha: {HEAD} -->\n\nreview")
+    rc, out = _resolve(review_job, tmp_path, "", [reviewed], event="pull_request")
+    assert rc == 0 and "eligible=true" not in out
+    failed = _bot(11, f"{MARKER}\n<!-- gemini-review-failed: {HEAD} -->\n\nfailed")
+    rc, out = _resolve(review_job, tmp_path, "", [failed], event="pull_request")
     assert rc == 0 and "eligible=true" in out
 
 

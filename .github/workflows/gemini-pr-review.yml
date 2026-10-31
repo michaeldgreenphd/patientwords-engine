@@ -125,9 +125,11 @@ jobs:
             exit 0
           fi
           # Agents post `@codex review` after every push, so that comment also starts this
-          # review; but it re-reviews only a head without a completed Gemini review, so
-          # repeated requests do not spend the daily quota. `@gemini-cli` always reviews.
-          if [[ "$GITHUB_EVENT_NAME" == "issue_comment" && "$COMMENT_BODY" != *"@gemini-cli"* ]]; then
+          # review. Every run except an `@gemini-cli` request skips a head that already has a
+          # completed Gemini review, so repeated requests do not spend quota twice; this covers
+          # pull_request runs too, because runs queue (an automatic run queued behind a manual
+          # review of the same head would otherwise review it again; Codex on engine#141).
+          if [[ "$GITHUB_EVENT_NAME" != "issue_comment" || "$COMMENT_BODY" != *"@gemini-cli"* ]]; then
             gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments?per_page=100" \
               > "$RUNNER_TEMP/gemini-prior-comments.json"
             if jq -e --arg marker "$REVIEW_MARKER" --arg reviewed "<!-- gemini-reviewed-sha: $head_sha -->" \
@@ -366,8 +368,10 @@ jobs:
             # Each step's error without the CLI's startup noise and stack frames, kept short.
             # The text is posted publicly, so anything shaped like a Google API key is removed.
             brief() {
-              { grep -v -E '^(Warning: 256-color|YOLO mode is enabled|\[STARTUP\])|^[[:space:]]+at ' <<< "$1" || true; } \
-                | sed -E 's/AIza[0-9A-Za-z_-]{20,}/[redacted]/g' | head -c 700
+              # `|| true` covers grep finding nothing and the SIGPIPE either stage gets when head
+              # stops reading; under pipefail that would abort the publisher (Codex on engine#141).
+              { grep -v -E '^(Warning: 256-color|YOLO mode is enabled|\[STARTUP\])|^[[:space:]]+at ' <<< "$1" \
+                | sed -E 's/AIza[0-9A-Za-z_-]{20,}/[redacted]/g' || true; } | head -c 700
             }
             primary_reason=$(brief "${PRIMARY_ERROR:-}")
             [[ -n "$primary_reason" ]] || primary_reason="No error output (the step timed out, was cancelled, or returned an empty review)."
