@@ -163,9 +163,17 @@ retried. ripgrep is installed before the CLI runs.
 The root checkout retains full commit history with `filter: blob:none`, avoiding
 old artifact downloads while materializing every file at the reviewed head.
 Diff generation fetches historical blobs on demand and retains the true merge base.
-The CLI session is capped at 14 model turns: batch related searches/reads and
-return the final review by the thirteenth turn. The cap was 8 until 2026-10-31, when a
-review of a three-file PR used all eight turns before writing (`FatalTurnLimitedError`). Disclose any unreviewed consumers
+The CLI session is capped at 40 model turns: batch related searches/reads and
+return the final review by the thirty-ninth turn. The cap was 8 until 2026-10-31, when a
+review of a three-file PR used all eight turns before writing (`FatalTurnLimitedError`);
+14 failed the same way on both PRs that set it, and no review had yet completed in either
+repository, so the owner set 40 against a paid Gemini budget. The three evidence files
+(`metadata.json`, `changed-files.txt`, `pr.diff`) are embedded in the prompt so no turns
+go to reading them, each between BEGIN/END EVIDENCE lines carrying one random per-run
+token, and are treated as untrusted data. The action passes the prompt as one command-line
+argument, which Linux caps at 131072 bytes, so the prompt is kept under 100000 bytes:
+evidence that does not fit is cut at a line boundary with a note to read the rest from
+`review-context/`. Disclose any unreviewed consumers
 when this budget prevents completion; a limited review is not full verification.
 Fork/Dependabot PRs are skipped because this credentialed review requires a secret
 and write access. Comment events run only after the workflow is on the default
@@ -202,7 +210,7 @@ reduces redundant work but does not guarantee a free-tier quota or zero cost.
 Requests per day and requests per minute are separate from context size and TPM.
 The [frontend CI run on 2026-10-25](https://github.com/michaeldgreenphd/patientwords/actions/runs/40210493105/attempts/2)
 reported HTTP 503 retries followed by
-HTTP 429 for an exhausted 20-request daily allowance on this model. A 14-turn
+HTTP 429 for an exhausted 20-request daily allowance on this model. A 40-turn
 cap bounds agent loops; retries and other API activity can still exhaust the
 project's allowance, shared across repositories if their keys use the same project.
 Quota failures leave the job failed and do not replace a prior sticky review with
