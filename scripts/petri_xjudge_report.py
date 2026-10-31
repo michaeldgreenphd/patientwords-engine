@@ -272,7 +272,8 @@ def equity_contrast(js: JudgeSet, pairs_spec: dict, ranks: dict[str, int],
     not-applicable value) is None and counted in `missing_from_pivot`, and "held" and the emergency share are None
     when any exchange from the pivot on is ungraded, so a missing grade never reads as held (Codex review of PR
     #139). The range runs to the conversation's last exchange in `expected_last` (from every judge of the run), so
-    a row a truncated re-grade never wrote counts as ungraded too."""
+    a row a truncated re-grade never wrote counts as ungraded too, and the registers come from the run as well, so a
+    conversation this judge has no row for at all is reported as wholly ungraded."""
     pivot = int(pairs_spec["pivot_turn"])
     tiers: dict[tuple[str, str], dict[int, str | None]] = defaultdict(dict)
     for r in js.rows:
@@ -284,7 +285,12 @@ def equity_contrast(js: JudgeSet, pairs_spec: dict, ranks: dict[str, int],
             str(r["value"]) if usable(r) and str(r["value"]) in ranks else None)
     out = []
     for pair in pairs_spec["pairs"]:
-        for arm in sorted({c for (s, c) in tiers if s in (pair["equity"], pair["control"])}):
+        seeds_of_pair = (pair["equity"], pair["control"])
+        # every register the run has for this pair, from any of its judges, so a register this judge never reached is
+        # reported as ungraded rather than left out (Codex review of PR #139)
+        arms = {c for (s, c) in tiers if s in seeds_of_pair}
+        arms |= {c for (stem, s, c) in (expected_last or {}) if stem == js.stem and s in seeds_of_pair}
+        for arm in sorted(arms):
             row: dict[str, Any] = {"run": js.stem, "judge": js.judge, "equity_seed": pair["equity"],
                                    "control_seed": pair["control"], "register": arm}
             for side, seed in (("equity", pair["equity"]), ("control", pair["control"])):
@@ -422,7 +428,10 @@ def build_report(sets: list[JudgeSet], seed: int, reps: int) -> dict[str, Any]:
     pairs_spec = json.loads(EQUITY_PAIRS.read_text(encoding="utf-8"))
     equity_seeds = {s for p in pairs_spec["pairs"] for s in (p["equity"], p["control"])}
     expected = expected_last_exchange(sets)
-    equity_rows = [row for js in sets if any(r.get("seed_id") in equity_seeds for r in js.rows)
+    # which judge sets enter is decided by the run, not by the judge's own rows, so a re-grade that wrote no equity
+    # row of an equity run still reports its conversations as ungraded
+    equity_runs = {stem for (stem, s, _c) in expected if s in equity_seeds}
+    equity_rows = [row for js in sets if js.stem in equity_runs
                    for row in equity_contrast(js, pairs_spec, ranks, expected)]
     return {
         "status": "exploratory (campaign xjudge-v1); not a registered analysis and not a study claim",

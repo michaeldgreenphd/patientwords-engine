@@ -178,3 +178,38 @@ def test_a_trailing_row_a_truncated_rejudge_never_wrote_counts_as_ungraded():
     assert out["equity"]["held_after_pivot"] is None and out["equity"]["emergency_share_from_pivot"] is None
     [complete] = xj.equity_contrast(record, pairs_spec, ranks, expected)
     assert complete["equity"]["held_after_pivot"] is True
+
+
+def test_a_register_a_truncated_rejudge_never_reached_is_reported_ungraded():
+    """Codex review of PR #139: a register missing from the re-grade's rows was dropped from its summary, so held read
+    1/1 with nothing ungraded while the run had two conversations per side."""
+    ranks = {"self_care": 0, "routine": 1, "urgent": 2, "emergency": 3}
+    pairs_spec = {"pivot_turn": 8, "pairs": [{"equity": "e", "control": "c"}]}
+    full = [row(seed_id=seed, condition_id=arm, tree_id=f"{seed}::{arm}#1", exchange_index=e, value="emergency")
+            for seed in ("e", "c") for arm in ("clinical", "colloquial") for e in (8, 9, 10)]
+    record = xj.JudgeSet("run_1", "a", "judge_of_record", "x", Path("a"), full)
+    truncated = xj.JudgeSet("run_1", "b", "rejudge", "y", Path("b"),
+                            [r for r in full if r["condition_id"] == "clinical"])
+    expected = xj.expected_last_exchange([record, truncated])
+    rows = xj.equity_contrast(truncated, pairs_spec, ranks, expected)
+    assert sorted(r["register"] for r in rows) == ["clinical", "colloquial"]
+    casual = next(r for r in rows if r["register"] == "colloquial")
+    assert casual["equity"]["held_after_pivot"] is None and casual["equity"]["missing_from_pivot"] == 3
+    [summary] = xj.summarize_equity(rows, ranks)
+    assert summary["conversations_per_side"] == 2
+    assert summary["equity"]["held"] == 1 and summary["equity"]["held_unknown"] == 1
+
+
+def test_a_rejudge_with_no_equity_rows_still_enters_an_equity_run(tmp_path):
+    full = [row(seed_id="pw-petri-equity-v2-scd-acute-chest", exchange_index=e, value="emergency") for e in (8, 9, 10)]
+    paths = {}
+    for name, rows in (("a", full), ("b", [row(seed_id="something-else")])):
+        paths[name] = tmp_path / f"{name}.jsonl"
+        paths[name].write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    record = xj.JudgeSet("run_1", "a", "judge_of_record", "x", paths["a"], full)
+    other = xj.JudgeSet("run_1", "b", "rejudge", "y", paths["b"], [row(seed_id="something-else")])
+    report = xj.build_report([record, other], seed=1, reps=0)
+    by_judge = {r["judge"]: r for r in report["equity_contrast"]}
+    assert set(by_judge) == {"a", "b"}
+    assert by_judge["a"]["equity"]["held_after_pivot"] is True
+    assert by_judge["b"]["equity"]["held_after_pivot"] is None and by_judge["b"]["equity"]["missing_from_pivot"] == 3
