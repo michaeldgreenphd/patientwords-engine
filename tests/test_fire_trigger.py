@@ -1001,6 +1001,132 @@ def test_inflight_lane_filter_and_override_scope():
     assert ft.budget_check(orl, dash, today, overrides=ov, trigger="advice-eval")[0] == "ceiling"
 
 
+# ---- campaign budgets: owner-approved limits for one experiment's fires (2026-10-31) ----
+
+_CAMPAIGN = {"lanes": ["anthropic", "openrouter"], "total_usd_by_lane": {"anthropic": 200.0},
+             "monthly_usd": 200.0, "daily_ceiling_usd": {"openrouter": 20.0}, "reason": "owner (test)"}
+
+
+def _write_campaigns(root, **campaigns):
+    (root / "ops").mkdir(parents=True, exist_ok=True)
+    (root / "ops" / "campaign_budgets.json").write_text(json.dumps(campaigns), encoding="utf-8")
+
+
+def _campaign_entry(lane, amount, fired, campaign="xj", **extra):
+    return {"trigger": "advice-eval", "fired_utc": ft.iso_utc(fired), "resolved": True, "evicted": False,
+            "max_spend": amount, "lane": lane, "campaign": campaign, **extra}
+
+
+def test_committed_campaign_file_holds_the_owner_approved_limits():
+    root = Path(__file__).resolve().parents[1]
+    budgets = ft.load_campaign_budgets(root / ft.CAMPAIGNS_RELPATH)
+    spec = budgets["xjudge-v1"]
+    assert ft.campaign_spec_problem("xjudge-v1", spec) is None
+    assert spec["total_usd_by_lane"] == {"anthropic": 200.0} and spec["monthly_usd"] == 200.0
+    assert spec["daily_ceiling_usd"] == {"anthropic": 20.0, "openrouter": 20.0}
+    assert "verbatim" in spec["reason"] and "Option A" in spec["reason"]
+
+
+def test_campaign_raises_the_openrouter_daily_ceiling_for_its_own_fires_only(tmp_path):
+    _write_campaigns(tmp_path, xj=_CAMPAIGN)
+    today = ft.utc_now().strftime("%Y-%m-%d")
+    dash = {"spend": {"today": {"date": today, "anthropic_usd": 0.0, "openrouter_usd": 4.0, "spent_usd": 4.0}}}
+    orl = {"models": "openai:openai/x", "max_spend": "12.0"}
+    # untagged: the standing $10 OpenRouter ceiling refuses 12 + 4
+    assert ft.budget_check(orl, dash, today, trigger="advice-eval", repo=tmp_path)[0] == "ceiling"
+    # tagged: the campaign's $20 daily ceiling applies, and the day's landed spend still counts
+    kind, reason = ft.budget_check(dict(orl, _campaign="xj"), dash, today, trigger="advice-eval", repo=tmp_path)
+    assert kind == "ok" and "campaign xj daily ceiling 20.00" in reason
+    big = dict(orl, _campaign="xj", max_spend="17.0")
+    assert ft.budget_check(big, dash, today, trigger="advice-eval", repo=tmp_path)[0] == "ceiling"
+    # the campaign sets no Anthropic daily ceiling, so an Anthropic fire keeps the standing $2
+    anth = {"models": "anthropic:claude-x", "max_spend": "3.0", "_campaign": "xj"}
+    assert ft.budget_check(anth, dash, today, trigger="advice-eval", repo=tmp_path)[0] == "ceiling"
+
+
+def test_campaign_total_and_monthly_limits_refuse_and_are_never_overridable(tmp_path):
+    _write_campaigns(tmp_path, xj=_CAMPAIGN)
+    now = ft.utc_now()
+    today = now.strftime("%Y-%m-%d")
+    last_month = now.replace(day=1) - timedelta(days=2)
+    # a day ceiling high enough that only the campaign's limits decide (today's held entries count against it too)
+    ov = {today: {"ceiling_usd": 500.0, "reason": "owner (test)"}}
+    anth = {"models": "anthropic:claude-x", "max_spend": "6.0", "_campaign": "xj"}
+    # $195 already committed on the Anthropic lane in earlier months: the $200 total refuses 6 more, allows 5
+    held = [_campaign_entry("anthropic", 195.0, last_month)]
+    kind, reason = ft.budget_check(anth, {}, today, entries=held, overrides=ov, trigger="advice-eval", repo=tmp_path)
+    assert kind == "invalid" and "would exceed its total 200.00" in reason and "never overridable" in reason
+    assert ft.budget_check(dict(anth, max_spend="5.0"), {}, today, entries=held, overrides=ov,
+                           trigger="advice-eval", repo=tmp_path)[0] == "ok"
+    # the monthly limit counts both lanes in this UTC month only; evicted and other campaigns' entries hold nothing
+    month = [_campaign_entry("openrouter", 150.0, now), _campaign_entry("anthropic", 45.0, now),
+             _campaign_entry("anthropic", 90.0, now, evicted=True), _campaign_entry("anthropic", 90.0, now, "other"),
+             _campaign_entry("openrouter", 100.0, last_month)]
+    kind, reason = ft.budget_check(anth, {}, today, entries=month, overrides=ov, trigger="advice-eval",
+                                   repo=tmp_path)
+    assert kind == "invalid" and "monthly limit 200.00" in reason
+    assert ft.budget_check(dict(anth, max_spend="5.0"), {}, today, entries=month, overrides=ov,
+                           trigger="advice-eval", repo=tmp_path)[0] == "ok"
+
+
+def test_campaign_problems_refuse_the_fire(tmp_path):
+    today = ft.utc_now().strftime("%Y-%m-%d")
+    anth = {"models": "anthropic:claude-x", "max_spend": "1.0", "_campaign": "xj"}
+    # no campaign file, or a campaign it does not name
+    assert ft.budget_check(anth, {}, today, trigger="advice-eval", repo=tmp_path)[0] == "invalid"
+    _write_campaigns(tmp_path, other=_CAMPAIGN)
+    kind, reason = ft.budget_check(anth, {}, today, trigger="advice-eval", repo=tmp_path)
+    assert kind == "invalid" and "'xj' is not in" in reason
+    # a lane the campaign does not cover
+    _write_campaigns(tmp_path, xj=dict(_CAMPAIGN, lanes=["openrouter"], total_usd_by_lane={}))
+    assert "not the anthropic lane" in ft.budget_check(anth, {}, today, trigger="advice-eval", repo=tmp_path)[1]
+    # malformed amounts or maps never fall back to a looser limit
+    for bad in (dict(_CAMPAIGN, monthly_usd=0), dict(_CAMPAIGN, monthly_usd=True),
+                dict(_CAMPAIGN, total_usd_by_lane={"anthropic": "inf"}),
+                dict(_CAMPAIGN, daily_ceiling_usd={"elsewhere": 5.0}), dict(_CAMPAIGN, lanes=[])):
+        _write_campaigns(tmp_path, xj=bad)
+        assert ft.budget_check(anth, {}, today, trigger="advice-eval", repo=tmp_path)[0] == "invalid", bad
+    # an untagged fire never reads the file
+    plain = {"models": "anthropic:claude-x", "max_spend": "1.0"}
+    assert ft.budget_check(plain, {}, today, trigger="advice-eval", repo=tmp_path)[0] == "ok"
+
+
+def test_fire_journals_the_campaign_and_counts_it_against_the_next_fire(repo):
+    _write_campaigns(repo, xj=dict(_CAMPAIGN, total_usd_by_lane={"anthropic": 1.5}))
+    first = {"task": "pairs", "max_spend": "1.0", "_campaign": "xj", "_nonce": "c1"}
+    assert fire(repo, "scenario-generation", first) == 0
+    entry = json.loads(journal_path(repo).read_text(encoding="utf-8").splitlines()[-1])
+    assert entry["campaign"] == "xj" and entry["lane"] == "anthropic" and entry["max_spend"] == 1.0
+    # the journalled 1.00 plus another 1.00 passes the campaign's 1.50 total: refused, and nothing is written
+    second = {"task": "pairs", "max_spend": "1.0", "_campaign": "xj", "_nonce": "c2"}
+    assert fire(repo, "scenario-generation", second) == 4
+    assert fire(repo, "scenario-generation", second, extra=["--override-budget"]) == 4
+    assert len(journal_path(repo).read_text(encoding="utf-8").splitlines()) == 1
+
+
+def test_budget_gate_applies_campaign_limits_server_side(repo, tmp_path, capsys):
+    pf = tmp_path / "params.json"
+    pf.write_text('{"model_selection": "claude-haiku-4-5", "max_spend": "0.25", "_campaign": "unknown"}',
+                  encoding="utf-8")
+    rc = ft.main(["budget-gate", "--repo", str(repo), "--trigger", "model-evaluation", "--params-file", str(pf)])
+    assert rc == 6
+    assert "claims campaign 'unknown' but no journal reservation" in capsys.readouterr().err
+
+
+def test_budget_gate_does_not_lend_a_disk_campaign_to_a_dispatch(repo, tmp_path, capsys):
+    """Codex's third round on PR #137: on a workflow_dispatch the resolved params come from the dispatch inputs,
+    not the checked-out trigger file, so the file's campaign must not raise the ceiling for unrelated work."""
+    _write_campaigns(repo, xj=dict(_CAMPAIGN, daily_ceiling_usd={"anthropic": 20.0}))
+    (repo / TRIGGER_SUBDIR / "scenario-generation.json").write_text(
+        json.dumps({"task": "advice-nat", "max_spend": "1.0", "_campaign": "xj"}), encoding="utf-8")
+    pf = tmp_path / "dispatch.json"
+    pf.write_text(json.dumps({"task": "pairs", "max_spend": "5.0"}), encoding="utf-8")
+    rc = ft.main(["budget-gate", "--repo", str(repo), "--trigger", "scenario-generation", "--params-file", str(pf)])
+    assert rc == 6
+    captured = capsys.readouterr()
+    assert "this run has no push" in captured.out and "daily ceiling 2.00" in captured.err
+
+
 # ---- advice-eval billing parts: judge and translator are booked too (2026-10-01) ----
 
 _ORL = "openai:openai/x,openrouter:google/y"
@@ -3855,3 +3981,118 @@ def test_the_default_root_logits_fire_is_unchanged(repo):
     assert ft.logits_eval_params_problems(params) == []
     assert fire(repo, trigger="logits-eval", params=params) == 0
     assert "output_root" not in json.loads(trigger_path(repo, "logits-eval").read_text(encoding="utf-8"))
+
+
+def test_budget_gate_takes_the_campaign_from_its_own_reservation_across_midnight(repo, tmp_path, capsys, monkeypatch):
+    """Codex on PR #137, two findings. (1) The workflows pass the params job's outputs as --params-file, which hold
+    only each workflow's default keys, so `_campaign` never reached the gate: a campaign fire cleared locally under
+    the campaign's daily ceiling and was refused in CI under the standing one, and the campaign's own limits were
+    never checked server-side. The gate now takes the campaign from this push's own reservation. (2) The gate left
+    its own reservation out only when it was held today, so a fire reserved at 23:59 and gated at 00:01 UTC was
+    counted twice against the campaign's totals, which are not limited to one day."""
+    _write_campaigns(repo, xj=dict(_CAMPAIGN, total_usd_by_lane={"anthropic": 6.0},
+                                   daily_ceiling_usd={"anthropic": 20.0}))
+    clock = [datetime(2026, 10, 14, 23, 59, tzinfo=timezone.utc)]
+    monkeypatch.setattr(ft, "utc_now", lambda: clock[0])
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    git = _git_repo(repo)
+    journal_path(repo).write_text("", encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-qm", "base")
+    before = git("rev-parse", "HEAD").stdout.strip()
+    fired_params = {"task": "pairs", "num": "5", "anthropic_model": "claude-haiku-4-5", "max_spend": "5.0",
+                    "_campaign": "xj", "_nonce": "xj1"}
+    assert fire(repo, "scenario-generation", fired_params, note="campaign fire") == 0
+    git("add", "-A")
+    git("commit", "-qm", "Fire scenario-generation: campaign fire")
+    # what the workflow passes: its params job's outputs, with the defaults filled in and no `_campaign`
+    resolved = dict(G4_LANES["scenario-generation"][1], max_spend="5.0")
+    assert "_campaign" not in resolved
+    pf = tmp_path / "resolved.json"
+    pf.write_text(json.dumps(resolved), encoding="utf-8")
+
+    def gate(before_sha):
+        return ft.main(["budget-gate", "--repo", str(repo), "--trigger", "scenario-generation", "--params-file",
+                        str(pf), "--push-before", before_sha, "--ref", "main", "--run-attempt", "1"])
+
+    capsys.readouterr()
+    # (1) the same day: the campaign comes from the reservation, so its $20 daily ceiling clears 5.00, which the
+    # standing $2 ceiling would refuse
+    assert gate(before) == 0, capsys.readouterr().err
+    out = capsys.readouterr().out
+    assert "campaign 'xj' granted through this push's own reservation" in out
+    assert "campaign xj daily ceiling 20.00" in out
+    # (2) after midnight UTC the reservation is still this push's own: 5.00 counted once against the $6 total,
+    # not 5.00 + 5.00
+    clock[0] = datetime(2026, 10, 15, 0, 1, tzinfo=timezone.utc)
+    assert gate(before) == 0, capsys.readouterr().err
+    assert "granted through this push's own reservation" in capsys.readouterr().out
+    # a run with no push (a dispatch) is not granted the campaign named by the file on disk: standing $2 ceiling
+    assert gate("") == 6
+    assert "daily ceiling 2.00" in capsys.readouterr().err
+
+
+def test_publish_syncs_the_entrys_campaign_from_the_published_params(tmp_path, capsys):
+    """Codex on PR #137: publish corrected the entry's commitment, lane, nonce and digest from the trigger file it
+    pushes, but not its campaign, so a fire tagged during recovery escaped its campaign's totals."""
+    origin, clone = _publish_fixture(tmp_path)
+    write_dashboard(clone, spent=0.0)
+    _write_campaigns(clone, xj=_CAMPAIGN)
+    _commit(clone, "dashboard and campaign budgets")
+    subprocess.run(["git", "-C", str(clone), "push", "-q", "origin", "main"], check=True)
+    params = {"task": "pairs", "num": "5", "max_spend": "1.0", "_campaign": "xj"}
+    (clone / ".github" / "trigger" / "scenario-generation.json").write_text(json.dumps(params) + "\n",
+                                                                            encoding="utf-8")
+    fired = ft.iso_utc(ft.utc_now())
+    _append_journal(clone / "ops" / "trigger_journal.jsonl",
+                    _journal_line("scenario-generation", fired, max_spend=1.0, lane="anthropic"))
+    _commit(clone, "Fire scenario-generation: tagged after the entry was written")
+    assert ft.main(["publish", "--repo", str(clone)]) == 0
+    assert "campaign None -> 'xj'" in capsys.readouterr().out
+    entries = [json.loads(ln) for ln in _origin_main_files(origin, tmp_path)["ops/trigger_journal.jsonl"].splitlines()
+               if ln.strip()]
+    mine = [e for e in entries if e.get("fired_utc") == fired]
+    assert len(mine) == 1 and mine[0]["campaign"] == "xj"
+    assert ft.campaign_held(entries, "xj", lane="anthropic") == 1.0
+
+
+def test_budget_gate_enforces_a_spent_campaign_on_a_push_without_its_own_reservation(repo, tmp_path, capsys,
+                                                                                      monkeypatch):
+    """Codex's second round on PR #137: with the campaign taken only from the push's own reservation, a merge or
+    replay restoring campaign-tagged bytes had none, so the gate fell back to the standing ceiling, which is not
+    stricter than a campaign whose allocation is spent: a restored $1 fire under a fully committed campaign cleared
+    under the $2 daily ceiling. The campaign is now read from the trigger file the run was fired with."""
+    _write_campaigns(repo, xj=dict(_CAMPAIGN, total_usd_by_lane={"anthropic": 1.5}))
+    monkeypatch.setattr(ft, "utc_now", lambda: datetime(2026, 10, 14, 12, 0, tzinfo=timezone.utc))
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    git = _git_repo(repo)
+    journal_path(repo).write_text("", encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-qm", "base")
+    fired_params = {"task": "pairs", "num": "5", "anthropic_model": "claude-haiku-4-5", "max_spend": "1.0",
+                    "_campaign": "xj", "_nonce": "xj-replay"}
+    assert fire(repo, "scenario-generation", fired_params, note="campaign fire") == 0
+    git("add", "-A")
+    git("commit", "-qm", "Fire scenario-generation: campaign fire")
+    pf = tmp_path / "resolved.json"
+    pf.write_text(json.dumps(dict(G4_LANES["scenario-generation"][1], max_spend="1.0")), encoding="utf-8")
+    capsys.readouterr()
+    fired = git("rev-parse", "HEAD").stdout.strip()
+
+    def gate(before_sha, attempt="1"):
+        return ft.main(["budget-gate", "--repo", str(repo), "--trigger", "scenario-generation", "--params-file",
+                        str(pf), "--push-before", before_sha, "--ref", "main", "--run-attempt", attempt])
+
+    # a replay or merge restoring these bytes: the reservation was already on the ref before this push, so the
+    # push has none of its own and is refused, whatever room the campaign or the standing ceiling has left; each
+    # campaign execution must hold its own reservation, or repeated replays would never be counted (Codex's second
+    # and third rounds on PR #137)
+    for _ in range(2):
+        assert gate(fired) == 6
+        assert "no journal reservation of this push is tagged with it" in capsys.readouterr().err
+    # an Actions re-run (attempt 2) of the real fire push is refused the same way
+    base = git("rev-parse", "HEAD~1").stdout.strip()
+    assert gate(base, attempt="2") == 6
+    assert "no journal reservation of this push is tagged with it" in capsys.readouterr().err
+    # ...and the fire push itself, first attempt, is granted the campaign
+    assert gate(base) == 0, capsys.readouterr().err

@@ -121,6 +121,18 @@ lane, and advance by chaining — resolve the landed run, then fire the next.
   `reason` (`docs/operators_handbook.md` §6): never add one without them. A fire that
   bills only OpenRouter counts against `spend.openrouter_daily_ceiling_usd` (default
   $10), which the overrides file never raises.
+- **Campaign limits.** A fire with `"_campaign": "<name>"` in its params must also fit that
+  campaign's entry in `ops/campaign_budgets.json`: its lane must be one of the campaign's,
+  the campaign's committed total on the lane may not pass `total_usd_by_lane`, its committed
+  total across lanes in the UTC month may not pass `monthly_usd`, and `daily_ceiling_usd`
+  raises that lane's daily ceiling for the campaign's own fires only. An unknown or malformed
+  campaign refuses the fire. Like a missing `max_spend`, a campaign refusal is exit 4 and
+  never overridable. The journal entry records the campaign, and `publish` re-syncs it from
+  the trigger file it pushes. In CI, `budget-gate` grants a campaign only through the push's
+  own fresh reservation tagged with it (the workflows' params outputs drop `_campaign`). A push
+  carrying campaign-tagged bytes without one (a merge, replay or re-run) is refused: every
+  campaign execution needs its own reservation. A dispatch gets the standing ceilings. Every entry quotes the owner's
+  words; never add or raise one without them.
 - The guard counts committed spend = landed today on that lane + the commitment held by
   every paid entry fired today on it, resolved or expired alike; only eviction releases
   one (since 2026-09-23 — resolving no longer frees budget). That includes a fire whose

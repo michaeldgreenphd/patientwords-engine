@@ -1827,6 +1827,10 @@ def _petri_lane(params: dict) -> str:
 JOURNAL_RELPATH = Path("ops") / "trigger_journal.jsonl"
 DASHBOARD_RELPATH = Path("ops") / "dashboard.json"
 OVERRIDES_RELPATH = Path("ops") / "budget_overrides.json"
+# Owner-approved campaign budgets (2026-10-31): a fire whose params carry `_campaign` draws on that campaign's own
+# limits as well as the daily ceiling. See load_campaign_budgets and campaign_budget_check.
+CAMPAIGNS_RELPATH = Path("ops") / "campaign_budgets.json"
+CAMPAIGN_LANES = ("anthropic", "openrouter")
 TRIGGER_DIR_RELPATH = Path(".github") / "trigger"
 GIT_HOOKS_RELPATH = Path(".githooks")
 PUSH_BACKOFF_SECONDS = (2, 4, 8, 16)
@@ -2244,6 +2248,9 @@ def entry_holds_spend(entry, today, lane="anthropic"):
     (YYYY-MM-DD, UTC) on `lane`: a paid entry (a PAID_TRIGGERS fire, or a paid
     circuit-trace fire with its imputed commitment) on that lane,
     with a usable max_spend, not evicted, and fired on `today` in UTC.
+    `today=None` drops the day test (a paid reservation on `lane` made on any
+    day), which budget-gate uses to find its own reservation for the campaign
+    totals, whose sums are not limited to one day.
 
     Deliberately NOT a function of `resolved` or of the expiry window. Until
     2026-09-23 the daily sum counted only ACTIVE entries, so a resolve or the
@@ -2275,7 +2282,7 @@ def entry_holds_spend(entry, today, lane="anthropic"):
     if parse_max_spend(entry.get("max_spend")) is None:
         return False
     fired = parse_utc(entry.get("fired_utc"))
-    return fired is not None and fired.astimezone(timezone.utc).strftime("%Y-%m-%d") == today
+    return fired is not None and (today is None or fired.astimezone(timezone.utc).strftime("%Y-%m-%d") == today)
 
 
 def inflight_max_spend(entries, today, now=None, expire_hours=None, lane="anthropic"):
@@ -2291,13 +2298,110 @@ def inflight_max_spend(entries, today, now=None, expire_hours=None, lane="anthro
     return total
 
 
+def load_campaign_budgets(path):
+    """Owner-approved campaign budgets: {"<campaign>": {"lanes": [...], "monthly_usd": N,
+    "total_usd_by_lane": {lane: N}, "daily_ceiling_usd": {lane: N}, "reason": "..."}}.
+
+    Like the dated overrides, the authorization travels with the file in git, and each entry quotes the owner's
+    words in its `reason`. Missing or malformed file means no campaigns: a fire that names one is then refused
+    (campaign_budget_check), never charged to the standing ceiling alone.
+    """
+    try:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _positive_usd(value):
+    """A finite amount > 0 as float, else None (bools are not amounts)."""
+    if isinstance(value, bool):
+        return None
+    try:
+        amount = float(value)
+    except (TypeError, ValueError):
+        return None
+    return amount if math.isfinite(amount) and amount > 0 else None
+
+
+def campaign_spec_problem(name, spec):
+    """Why a campaign entry cannot be used, or None. Every amount must be a finite number > 0, every lane one of
+    CAMPAIGN_LANES, and the per-lane maps may name only the campaign's own lanes: a malformed entry refuses the
+    fire rather than falling back to a looser limit."""
+    if not isinstance(spec, dict):
+        return f"campaign {name!r} is not in {CAMPAIGNS_RELPATH} (or the file is missing or malformed)"
+    lanes = spec.get("lanes")
+    if not isinstance(lanes, list) or not lanes or any(lane not in CAMPAIGN_LANES for lane in lanes):
+        return f"campaign {name!r} needs `lanes`, a non-empty list drawn from {list(CAMPAIGN_LANES)}"
+    if _positive_usd(spec.get("monthly_usd")) is None:
+        return f"campaign {name!r} needs `monthly_usd`, a finite number > 0"
+    for key in ("total_usd_by_lane", "daily_ceiling_usd"):
+        block = spec.get(key, {})
+        if not isinstance(block, dict) or any(
+                lane not in lanes or _positive_usd(amount) is None for lane, amount in block.items()):
+            return f"campaign {name!r}: `{key}` must map only the campaign's lanes to finite numbers > 0"
+    return None
+
+
+def campaign_held(entries, name, lane=None, month=None):
+    """The commitments the journal holds for campaign `name`: every entry tagged with it that is not evicted and
+    records a usable max_spend, on `lane` (any lane when None) and fired in UTC `month` (YYYY-MM; any month when
+    None). Resolved and expired entries count: a reservation is spend until the run is shown not to have happened,
+    which only eviction shows (entry_holds_spend). Reservations, not landed cost, so the sum is an upper bound."""
+    total = 0.0
+    for entry in entries:
+        if entry.get("campaign") != name or entry.get("evicted") is True:
+            continue
+        amount = parse_max_spend(entry.get("max_spend"))
+        if amount is None:
+            continue
+        if lane is not None and entry.get("lane", "anthropic") != lane:
+            continue
+        if month is not None:
+            fired = parse_utc(entry.get("fired_utc"))
+            if fired is None or fired.astimezone(timezone.utc).strftime("%Y-%m") != month:
+                continue
+        total += amount
+    return total
+
+
+def campaign_budget_check(name, spec, lane, commitment, entries, today):
+    """(problem, daily_ceiling) for a fire tagged with campaign `name` on `lane`.
+
+    problem is None when the fire fits the campaign; otherwise it names the limit and is never overridable:
+    the lane must be one of the campaign's, the campaign's committed total on this lane plus this fire must stay
+    within `total_usd_by_lane[lane]` (when set), and its committed total across lanes in this UTC month plus this
+    fire within `monthly_usd`. daily_ceiling is the campaign's own daily ceiling for the lane, or None; the caller
+    takes the larger of it and the standing ceiling, and the day's committed spend on the lane is still counted
+    in full."""
+    problem = campaign_spec_problem(name, spec)
+    if problem:
+        return problem, None
+    if lane not in spec["lanes"]:
+        return f"campaign {name!r} covers lanes {spec['lanes']}, not the {lane} lane this fire bills", None
+    total_cap = _positive_usd(spec.get("total_usd_by_lane", {}).get(lane))
+    if total_cap is not None:
+        held = campaign_held(entries, name, lane=lane)
+        if commitment + held > total_cap + 1e-9:
+            return (f"campaign {name!r}: commitment {commitment:.2f} + {held:.2f} already committed on the {lane} "
+                    f"lane would exceed its total {total_cap:.2f} USD"), None
+    month = today[:7]
+    monthly_cap = _positive_usd(spec["monthly_usd"])
+    held_month = campaign_held(entries, name, month=month)
+    if commitment + held_month > monthly_cap + 1e-9:
+        return (f"campaign {name!r}: commitment {commitment:.2f} + {held_month:.2f} already committed in {month} "
+                f"would exceed its monthly limit {monthly_cap:.2f} USD"), None
+    return None, _positive_usd(spec.get("daily_ceiling_usd", {}).get(lane))
+
+
 def budget_check(params, dashboard, today, entries=(), now=None, expire_hours=DEFAULT_EXPIRE_HOURS,
                  overrides=None, trigger=None, repo=None):
     """(kind, reason) against the daily spend ceiling for a paid trigger.
 
     kind is "ok", "ceiling" (over the daily ceiling - the only refusal
-    --override-budget may bypass), or "invalid" (missing/unusable max_spend -
-    never overridable). Committed spend = landed (spend.today.spent_usd when
+    --override-budget may bypass), or "invalid" (missing/unusable max_spend, or
+    a `_campaign` fire outside its campaign's limits - never overridable; see
+    campaign_budget_check). Committed spend = landed (spend.today.spent_usd when
     spend.today.date equals `today`) + held today (every paid journal entry
     fired on `today` and not evicted, resolved or not; see entry_holds_spend).
     Tolerates a missing/partial dashboard: ceiling defaults to
@@ -2361,6 +2465,17 @@ def budget_check(params, dashboard, today, entries=(), now=None, expire_hours=DE
                 override_note = f" [owner ceiling override for {today}: {ov.get('reason', 'no reason recorded')}]"
             except (KeyError, TypeError, ValueError):
                 pass  # malformed override: fail closed to the standing ceiling
+    campaign = params.get("_campaign")
+    if campaign not in (None, ""):
+        campaign = str(campaign)
+        root = Path(repo) if repo else Path(__file__).resolve().parents[1]
+        spec = load_campaign_budgets(root / CAMPAIGNS_RELPATH).get(campaign)
+        problem, campaign_daily = campaign_budget_check(campaign, spec, lane, max_spend, entries, today)
+        if problem:
+            return "invalid", problem + " (campaign limits are never overridable)"
+        if campaign_daily is not None and campaign_daily > ceiling:
+            ceiling = campaign_daily
+            override_note += f" [campaign {campaign} daily ceiling {campaign_daily:.2f}]"
     today_rec = spend.get("today")
     landed = 0.0
     if isinstance(today_rec, dict) and today_rec.get("date") == today:
@@ -2952,6 +3067,8 @@ def cmd_fire(args):
     if max_spend is not None:
         entry["max_spend"] = max_spend  # the commitment budget_check counts for the whole UTC day of this fire
         entry["lane"] = fire_lane(args.trigger, params)  # which prepaid key the commitment holds
+        if params.get("_campaign") not in (None, ""):
+            entry["campaign"] = str(params["_campaign"])  # campaign_held sums this fire against the campaign's limits
         if args.trigger in ("advice-eval", "petri-audit") and judge_is_on(params):
             entry["secondary_judge"] = secondary_judge_reservation(params)
     if args.dry_run:
@@ -3623,10 +3740,20 @@ def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Names
             corrections.append(f"max_spend {fire.get('max_spend')!r} -> {expected_spend!r}, "
                                f"lane {fire.get('lane')!r} -> {expected_lane!r}")
             fire["max_spend"], fire["lane"] = expected_spend, expected_lane
-    elif "max_spend" in fire or "lane" in fire:
+        # ...and the campaign it is charged to, from the published params too, or a fire tagged (or re-tagged)
+        # during recovery would escape its campaign's totals (campaign_held; Codex on PR #137)
+        expected_campaign = str(params["_campaign"]) if params.get("_campaign") not in (None, "") else None
+        if fire.get("campaign") != expected_campaign:
+            corrections.append(f"campaign {fire.get('campaign')!r} -> {expected_campaign!r}")
+            if expected_campaign is None:
+                fire.pop("campaign", None)
+            else:
+                fire["campaign"] = expected_campaign
+    elif "max_spend" in fire or "lane" in fire or "campaign" in fire:
         corrections.append("max_spend/lane removed: not a paid fire")
         fire.pop("max_spend", None)
         fire.pop("lane", None)
+        fire.pop("campaign", None)
     # The nonce is the join key between this entry and the cost sidecar the run lands, and the run takes it from
     # the TRIGGER FILE, not from here. The supported recovery for a nonce another session took is to re-nonce the
     # trigger file and publish again - which left the entry on the old value, so the sidecar carried one nonce and
@@ -3942,7 +4069,8 @@ def journal_reservation_problems(trigger, params, entries, now=None, expire_hour
     return problems
 
 
-def pushed_fire_entry(repo: Path, trigger: str, entries: list[dict], *, digest: str | None, lane: str, today: str,
+def pushed_fire_entry(repo: Path, trigger: str, entries: list[dict], *, digest: str | None, lane: str,
+                      today: str | None,
                       before: str | None, ref: str | None, attempt: str | None) -> dict | None:
     """The journal entry THIS push added for THIS fire of a paid lane with no nonce contract, or None.
 
@@ -3958,8 +4086,9 @@ def pushed_fire_entry(repo: Path, trigger: str, entries: list[dict], *, digest: 
     An entry qualifies only when all of these hold, so anything not provably this push's own fire keeps counting:
     - its trigger matches and its params_sha256 equals `digest`, the digest of the trigger file in the checkout
       (the bytes CI runs; Codex round 9 on PR #28);
-    - it holds spend today on `lane`, the lane budget_check will sum (entry_holds_spend), so exactly what was
-      counted is what is removed;
+    - it holds spend on `lane`, the lane budget_check will sum (entry_holds_spend), today when `today` is given,
+      or on any day when it is None (budget-gate passes None so a reservation made before midnight UTC is still
+      found for the campaign totals; today's held sum never counted it, so removing it there changes nothing);
     - it records `ref`, the branch CI is running on: a fire commit merged or cherry-picked onto a second branch is a
       second run there, and the entry belongs to the branch it was fired on (Codex round 11 on PR #28);
     - it is absent from the journal at `before`, the push's previous tip. `cmd_fire` writes the entry and the
@@ -4344,21 +4473,29 @@ def cmd_budget_gate(args):
     today = now.strftime("%Y-%m-%d")
     lane = fire_lane(args.trigger, budget_params)       # the lane budget_check will sum, so the test below matches it
     mine = reservation_entries(args.trigger, params, entries)
+    own_reservation = None
     if mine is not None:
-        if len(mine) == 1 and entry_holds_spend(mine[0], today, lane):
+        # any day, not only today (campaign_held sums every day, Codex on PR #137): leaving out an entry fired on
+        # another UTC day changes nothing in today's held sum, which never counted it
+        if len(mine) == 1 and entry_holds_spend(mine[0], None, lane):
             # removed only when the day's sum counts it, so exactly what was counted is removed. That is no longer
             # the same as ACTIVE (2026-09-23): the sum also holds entries resolved or expired earlier today, and an
             # active entry fired before midnight UTC is not in today's sum at all. The reservation check above still
             # demands an active one; this is only about not counting it twice.
             held = mine[0]
+            own_reservation = held
             entries = [e for e in entries if e is not held]
     else:
         # the other paid lanes have no nonce, so their own entry is found by what this push added (G4, 2026-09-23;
         # see pushed_fire_entry). Whatever cannot be shown to be this push's fire keeps counting.
-        own = pushed_fire_entry(repo, args.trigger, entries, digest=digest, lane=lane, today=today,
+        # today=None: the push's own reservation is found whatever UTC day it was made on, so a fire reserved at
+        # 23:59 and gated at 00:01 is not counted twice against its campaign (Codex on PR #137); today's held sum
+        # is unchanged, because an entry fired on another day was never in it
+        own = pushed_fire_entry(repo, args.trigger, entries, digest=digest, lane=lane, today=None,
                                 before=getattr(args, "push_before", None), ref=getattr(args, "ref", None),
                                 attempt=getattr(args, "run_attempt", None))
         if own is not None:
+            own_reservation = own
             entries = [e for e in entries if e is not own]
             print(f"budget-gate: this push's own {args.trigger} journal entry (fired {own.get('fired_utc')}) is left "
                   "out of today's held sum; the params' commitment stands in for it")
@@ -4366,6 +4503,43 @@ def cmd_budget_gate(args):
             print(f"budget-gate: no {args.trigger} journal entry is shown to be this push's own fire (a dispatch, a "
                   "replay, a re-run, or no --push-before/--ref/--run-attempt to bind one), so every held commitment "
                   "is counted")
+    # Campaign runs (Codex on PR #137, three rounds). The workflows pass the params job's outputs as --params-file,
+    # and those hold only each workflow's default keys, so `_campaign` never arrives that way; and a campaign's
+    # limits are sound only when every execution holds its own journal reservation, because campaign_held counts
+    # reservations, not runs. So a campaign is granted only through this push's own reservation (found above,
+    # bound to the trigger file's digest, this ref, this push and its first attempt) when that reservation is
+    # tagged with the campaign the run claims:
+    # - claimed by --params-file, or by the checked-out trigger file on a push run, with no such reservation (a
+    #   merge, replay or re-run of campaign-tagged bytes, or an unreadable binding): refused, since nothing would
+    #   record this execution against the campaign;
+    # - claimed only by the trigger file on a run with no push (a workflow_dispatch, whose resolved params come
+    #   from its inputs, not that file): not granted; the run is checked against the standing ceilings like any
+    #   untagged fire.
+    explicit = budget_params.get("_campaign")
+    explicit = str(explicit) if explicit not in (None, "") else None
+    try:
+        on_disk = json.loads(trigger_on_disk.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        on_disk = None
+    disk = on_disk.get("_campaign") if isinstance(on_disk, dict) else None
+    disk = str(disk) if disk not in (None, "") else None
+    claimed = explicit or disk
+    if claimed is not None:
+        reserved = own_reservation.get("campaign") if own_reservation is not None else None
+        is_push = bool((getattr(args, "push_before", None) or "").strip())
+        if reserved == claimed:
+            budget_params = dict(budget_params, _campaign=claimed)
+            print(f"budget-gate: campaign {claimed!r} granted through this push's own reservation")
+        elif explicit is not None or is_push:
+            print(f"budget-gate: REFUSED - this run claims campaign {claimed!r} but no journal reservation of "
+                  "this push is tagged with it (a merge, replay or re-run of campaign-tagged bytes, or an "
+                  "unreadable binding); every campaign execution needs its own reservation, so fire it again "
+                  "with fire_trigger.py", file=sys.stderr)
+            return 6
+        else:
+            budget_params = {k: v for k, v in budget_params.items() if k != "_campaign"}
+            print(f"budget-gate: the trigger file names campaign {claimed!r}, but this run has no push (a "
+                  "dispatch runs its own inputs), so it is checked against the standing ceilings")
     dashboard = load_dashboard(repo / DASHBOARD_RELPATH)
     overrides = load_budget_overrides(repo / OVERRIDES_RELPATH)
     kind, reason = budget_check(budget_params, dashboard, today,

@@ -75,7 +75,10 @@ ignores them), and refuses paid fires that would breach the daily operational ce
 fire billed only to OpenRouter), counting landed spend **and** the `max_spend` every
 paid fire made that UTC day, resolved or expired alike, until eviction
 (`entry_holds_spend`; hold rules, including a deliberate fail-closed double count:
-`docs/operators_handbook.md` §6).
+`docs/operators_handbook.md` §6). A fire tagged `"_campaign": "<name>"` must also fit
+that campaign's owner-approved limits in `ops/campaign_budgets.json` (a total per lane, a
+monthly total, and optionally a higher daily ceiling for its own fires); the fire path and
+the CI `budget-gate` both apply them, and they are never overridable.
 `scripts/ledger_update.py` is the only writer of spend numbers
 (`ops/dashboard.json` + the ledger). `ops/dashboard.json` is **committed**
 only by the daily Routine session (`ops/README.md`, `docs/routine_standing_prompt.md`):

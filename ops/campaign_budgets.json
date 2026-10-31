@@ -1,0 +1,12 @@
+{
+ "_": "Owner-approved campaign budgets (scripts/fire_trigger.py campaign_budget_check). A paid fire whose params carry \"_campaign\": \"<name>\" is checked against that campaign's limits as well as the daily ceiling: its lane must be one of `lanes`; the campaign's committed total on that lane may not pass `total_usd_by_lane`; its committed total across lanes in one UTC month may not pass `monthly_usd`; and `daily_ceiling_usd` raises the lane's daily ceiling for the campaign's fires only. Committed = the max_spend reservations of the campaign's journal entries that are not evicted (an upper bound on spend). Each entry quotes the owner's words in `reason`. A fire with no `_campaign` is unaffected.",
+ "xjudge-v1": {
+  "description": "Exploratory cross-vendor judging: an OpenAI judge (via OpenRouter) as a secondary judge next to Claude, and OpenAI-written stimuli graded by Claude. Not part of any registered analysis.",
+  "approved_on": "2026-10-31",
+  "reason": "Owner in chat 2026-10-31, verbatim: 'I think having an open AI judge via open router and then also have open AI stimuli judged by claude is the hapy medium. You can adjust the fire trigger to raise the open router to $20 a day and then $200 a month and the claude to $200 for this experiment too.' Then: 'a, yes fire on main, $200 total, $200 can be spent monthly for these new fires.' Then, choosing limits that apply to this experiment's fires only: 'Option A, go ahead with the budget PR'. Then, 2026-10-31: 'set the Claude daily limit to $20 for the experiment'.",
+  "lanes": ["anthropic", "openrouter"],
+  "total_usd_by_lane": {"anthropic": 200.0},
+  "monthly_usd": 200.0,
+  "daily_ceiling_usd": {"anthropic": 20.0, "openrouter": 20.0}
+ }
+}
