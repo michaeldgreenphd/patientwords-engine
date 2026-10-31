@@ -1661,7 +1661,13 @@ their own before it.
 - Closing date extensions (A6.9, "Extending the closing date"), each on its
   own dated line, written before the closing date it replaces, and by the
   same edit appended to the wave-3 plan's
-  `physician_realism_gate.rounds[0].closing_date_extensions`: none.
+  `physician_realism_gate.rounds[0].closing_date_extensions`:
+  - 2026-10-31: the closing date in force, 2026-10-31, is extended to
+    2027-01-31. Recorded at about 2026-10-31T00:30Z, before 2026-10-31
+    passed. The owner's words, in the agent session: "extend to 2027-01-31
+    please." No physician other than the owner's test accounts had a login
+    for round 1, and no rating existed, so the extension was decided on
+    counts only (none), never on realism scores.
 - Excluded physicians (to fill before the export is imported, by one dated
   edit that also fills the wave-3 plan's
   `physician_realism_gate.rounds[0].expected_exclusions` with the same values),
