@@ -34,10 +34,11 @@ jobs:
     concurrency:
       group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.event.issue.number }}
       cancel-in-progress: false
-    # The primary review step stops at 10 minutes and the fallback at 3. The job limit also
-    # covers setup (PR lookup, two checkouts, diff, ripgrep) and the publisher, so it keeps at
-    # least 5 minutes beyond both review steps: a cancelled job could not report the failure.
-    timeout-minutes: 20
+    # The primary review step stops at 15 minutes (40-turn sessions that ran out took up to
+    # 4.4 minutes, so 80 turns can pass 10) and the fallback at 3. The job limit also covers
+    # setup (PR lookup, two checkouts, diff, ripgrep) and the publisher, so it keeps at least
+    # 5 minutes beyond both review steps: a cancelled job could not report the failure.
+    timeout-minutes: 25
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GEMINI_TRUST_WORKSPACE: "true"
@@ -48,7 +49,7 @@ jobs:
       PRIMARY_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-3.8-flash' }}
       FALLBACK_MODEL: ${{ vars.GEMINI_FALLBACK_MODEL || 'gemini-3.5-flash-lite' }}
       # Shared by the primary and fallback review steps: read/search tools only, no MCP
-      # servers, hooks, skills or local environment files, and a 40-turn session cap.
+      # servers, hooks, skills or local environment files, and an 80-turn session cap.
       # maxAttempts 3 (the CLI's default is 10): ten backed-off retries under a 503 storm took
       # about 8 minutes of the 10-minute step in michaeldgreenphd/clinical-trial-populations.
       GEMINI_SETTINGS: |
@@ -58,7 +59,7 @@ jobs:
           "hooksConfig": {"enabled": false},
           "skills": {"enabled": false},
           "advanced": {"ignoreLocalEnv": true},
-          "model": {"maxSessionTurns": 40},
+          "model": {"maxSessionTurns": 80},
           "general": {"maxAttempts": 3}
         }
       # The instructions only; the "Embed the review evidence in the prompt" step appends
@@ -80,9 +81,11 @@ jobs:
         Use file search and reads across BOTH repositories to inspect the diff
         alongside all relevant UNMODIFIED callers, consumers, fixtures and specs.
         Trace exported fields and their statistical/provenance meanings end to end.
-        The session is capped at 40 model turns. Batch related searches, read
-        several related files in one read_many_files call, and return the final
-        review by the thirty-ninth turn. Prioritize
+        The session is capped at 80 model turns, and a session that reaches the
+        cap is lost with nothing posted. Aim to finish in about 40: after roughly
+        30 turns of searching and reading, stop exploring and write the review,
+        listing the consumers you did not inspect. Batch related searches and read
+        several related files in one read_many_files call. Prioritize
         consumers of changed contracts; if the budget prevents completion,
         explicitly report incomplete coverage instead of claiming verification.
         Never duplicate Codex's hunk-level syntax, type or isolated logic checks.
@@ -272,7 +275,7 @@ jobs:
         # A failure is reported by the publisher below, which then fails the job; the step
         # timeout leaves the job time to retry with the fallback model and to report.
         continue-on-error: true
-        timeout-minutes: 10
+        timeout-minutes: 15
         uses: google-github-actions/run-gemini-cli@v0
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
