@@ -1,0 +1,93 @@
+{
+  "journal_nonce": "xj-r3-w2-gpt54mini-20261031",
+  "workflow_run_id": "41168177397",
+  "judge_model": "openrouter:anthropic/claude-haiku-5.5",
+  "reservation": {
+    "judge_model": "openrouter:anthropic/claude-haiku-5.5",
+    "max_spend_usd": 0.6625,
+    "primary_judge_model": "openrouter:openai/gpt-5.4-mini",
+    "primary_max_spend_usd": 5.0,
+    "primary_price_per_mtok": [
+      0.8,
+      4.75
+    ],
+    "secondary_price_per_mtok": [
+      0.106,
+      0.53
+    ],
+    "price_ratio": 0.1325,
+    "allocation_basis": "max(input_price_ratio, output_price_ratio); round_up_microdollar"
+  },
+  "source_runs": [
+    "run_35812312136_1",
+    "run_35937014168_1",
+    "run_36076994201_1"
+  ],
+  "status": "truncated",
+  "reason": "secondary_failed:ValueError",
+  "transport_retry_policy": "no_sdk_retries; outer_attempts_metered",
+  "reused_sources": [],
+  "outcome": {
+    "results": [
+      {
+        "run_stem": "run_35812312136_1",
+        "status": "complete",
+        "out_dir": "data/petri/rejudge/openrouter-anthropic-claude-haiku-5.5/run_35812312136_1",
+        "cost_usd": 0.22697695,
+        "counts": {
+          "planned": 1590,
+          "keys": 1590,
+          "judged": 1296,
+          "null": 66,
+          "not_applicable": 228,
+          "null_share": 0.048458,
+          "truncated": false,
+          "stopped_early": false,
+          "call_failures": 0,
+          "calls_without_usage": 0,
+          "judge_of_record_null_share": 0.000735
+        }
+      },
+      {
+        "run_stem": "run_35937014168_1",
+        "status": "complete",
+        "out_dir": "data/petri/rejudge/openrouter-anthropic-claude-haiku-5.5/run_35937014168_1",
+        "cost_usd": 0.22908519,
+        "counts": {
+          "planned": 1595,
+          "keys": 1595,
+          "judged": 1313,
+          "null": 61,
+          "not_applicable": 221,
+          "null_share": 0.044396,
+          "truncated": false,
+          "stopped_early": false,
+          "call_failures": 0,
+          "calls_without_usage": 0,
+          "judge_of_record_null_share": 0.002911
+        }
+      },
+      {
+        "run_stem": "run_36076994201_1",
+        "status": "truncated",
+        "out_dir": "data/petri/rejudge/openrouter-anthropic-claude-haiku-5.5/run_36076994201_1",
+        "cost_usd": 0.20518081,
+        "counts": {
+          "planned": 1590,
+          "keys": 1424,
+          "judged": 1173,
+          "null": 57,
+          "not_applicable": 194,
+          "null_share": 0.046341,
+          "truncated": true,
+          "stopped_early": true,
+          "call_failures": 0,
+          "calls_without_usage": 0,
+          "judge_of_record_null_share": 0.002203
+        }
+      }
+    ],
+    "aborted": false,
+    "spent_usd": 0.66124295
+  }
+}
