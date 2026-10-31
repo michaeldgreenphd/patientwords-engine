@@ -1827,6 +1827,10 @@ def _petri_lane(params: dict) -> str:
 JOURNAL_RELPATH = Path("ops") / "trigger_journal.jsonl"
 DASHBOARD_RELPATH = Path("ops") / "dashboard.json"
 OVERRIDES_RELPATH = Path("ops") / "budget_overrides.json"
+# Owner-approved campaign budgets (2026-10-31): a fire whose params carry `_campaign` draws on that campaign's own
+# limits as well as the daily ceiling. See load_campaign_budgets and campaign_budget_check.
+CAMPAIGNS_RELPATH = Path("ops") / "campaign_budgets.json"
+CAMPAIGN_LANES = ("anthropic", "openrouter")
 TRIGGER_DIR_RELPATH = Path(".github") / "trigger"
 GIT_HOOKS_RELPATH = Path(".githooks")
 PUSH_BACKOFF_SECONDS = (2, 4, 8, 16)
@@ -2291,13 +2295,110 @@ def inflight_max_spend(entries, today, now=None, expire_hours=None, lane="anthro
     return total
 
 
+def load_campaign_budgets(path):
+    """Owner-approved campaign budgets: {"<campaign>": {"lanes": [...], "monthly_usd": N,
+    "total_usd_by_lane": {lane: N}, "daily_ceiling_usd": {lane: N}, "reason": "..."}}.
+
+    Like the dated overrides, the authorization travels with the file in git, and each entry quotes the owner's
+    words in its `reason`. Missing or malformed file means no campaigns: a fire that names one is then refused
+    (campaign_budget_check), never charged to the standing ceiling alone.
+    """
+    try:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _positive_usd(value):
+    """A finite amount > 0 as float, else None (bools are not amounts)."""
+    if isinstance(value, bool):
+        return None
+    try:
+        amount = float(value)
+    except (TypeError, ValueError):
+        return None
+    return amount if math.isfinite(amount) and amount > 0 else None
+
+
+def campaign_spec_problem(name, spec):
+    """Why a campaign entry cannot be used, or None. Every amount must be a finite number > 0, every lane one of
+    CAMPAIGN_LANES, and the per-lane maps may name only the campaign's own lanes: a malformed entry refuses the
+    fire rather than falling back to a looser limit."""
+    if not isinstance(spec, dict):
+        return f"campaign {name!r} is not in {CAMPAIGNS_RELPATH} (or the file is missing or malformed)"
+    lanes = spec.get("lanes")
+    if not isinstance(lanes, list) or not lanes or any(lane not in CAMPAIGN_LANES for lane in lanes):
+        return f"campaign {name!r} needs `lanes`, a non-empty list drawn from {list(CAMPAIGN_LANES)}"
+    if _positive_usd(spec.get("monthly_usd")) is None:
+        return f"campaign {name!r} needs `monthly_usd`, a finite number > 0"
+    for key in ("total_usd_by_lane", "daily_ceiling_usd"):
+        block = spec.get(key, {})
+        if not isinstance(block, dict) or any(
+                lane not in lanes or _positive_usd(amount) is None for lane, amount in block.items()):
+            return f"campaign {name!r}: `{key}` must map only the campaign's lanes to finite numbers > 0"
+    return None
+
+
+def campaign_held(entries, name, lane=None, month=None):
+    """The commitments the journal holds for campaign `name`: every entry tagged with it that is not evicted and
+    records a usable max_spend, on `lane` (any lane when None) and fired in UTC `month` (YYYY-MM; any month when
+    None). Resolved and expired entries count: a reservation is spend until the run is shown not to have happened,
+    which only eviction shows (entry_holds_spend). Reservations, not landed cost, so the sum is an upper bound."""
+    total = 0.0
+    for entry in entries:
+        if entry.get("campaign") != name or entry.get("evicted") is True:
+            continue
+        amount = parse_max_spend(entry.get("max_spend"))
+        if amount is None:
+            continue
+        if lane is not None and entry.get("lane", "anthropic") != lane:
+            continue
+        if month is not None:
+            fired = parse_utc(entry.get("fired_utc"))
+            if fired is None or fired.astimezone(timezone.utc).strftime("%Y-%m") != month:
+                continue
+        total += amount
+    return total
+
+
+def campaign_budget_check(name, spec, lane, commitment, entries, today):
+    """(problem, daily_ceiling) for a fire tagged with campaign `name` on `lane`.
+
+    problem is None when the fire fits the campaign; otherwise it names the limit and is never overridable:
+    the lane must be one of the campaign's, the campaign's committed total on this lane plus this fire must stay
+    within `total_usd_by_lane[lane]` (when set), and its committed total across lanes in this UTC month plus this
+    fire within `monthly_usd`. daily_ceiling is the campaign's own daily ceiling for the lane, or None; the caller
+    takes the larger of it and the standing ceiling, and the day's committed spend on the lane is still counted
+    in full."""
+    problem = campaign_spec_problem(name, spec)
+    if problem:
+        return problem, None
+    if lane not in spec["lanes"]:
+        return f"campaign {name!r} covers lanes {spec['lanes']}, not the {lane} lane this fire bills", None
+    total_cap = _positive_usd(spec.get("total_usd_by_lane", {}).get(lane))
+    if total_cap is not None:
+        held = campaign_held(entries, name, lane=lane)
+        if commitment + held > total_cap + 1e-9:
+            return (f"campaign {name!r}: commitment {commitment:.2f} + {held:.2f} already committed on the {lane} "
+                    f"lane would exceed its total {total_cap:.2f} USD"), None
+    month = today[:7]
+    monthly_cap = _positive_usd(spec["monthly_usd"])
+    held_month = campaign_held(entries, name, month=month)
+    if commitment + held_month > monthly_cap + 1e-9:
+        return (f"campaign {name!r}: commitment {commitment:.2f} + {held_month:.2f} already committed in {month} "
+                f"would exceed its monthly limit {monthly_cap:.2f} USD"), None
+    return None, _positive_usd(spec.get("daily_ceiling_usd", {}).get(lane))
+
+
 def budget_check(params, dashboard, today, entries=(), now=None, expire_hours=DEFAULT_EXPIRE_HOURS,
                  overrides=None, trigger=None, repo=None):
     """(kind, reason) against the daily spend ceiling for a paid trigger.
 
     kind is "ok", "ceiling" (over the daily ceiling - the only refusal
-    --override-budget may bypass), or "invalid" (missing/unusable max_spend -
-    never overridable). Committed spend = landed (spend.today.spent_usd when
+    --override-budget may bypass), or "invalid" (missing/unusable max_spend, or
+    a `_campaign` fire outside its campaign's limits - never overridable; see
+    campaign_budget_check). Committed spend = landed (spend.today.spent_usd when
     spend.today.date equals `today`) + held today (every paid journal entry
     fired on `today` and not evicted, resolved or not; see entry_holds_spend).
     Tolerates a missing/partial dashboard: ceiling defaults to
@@ -2361,6 +2462,17 @@ def budget_check(params, dashboard, today, entries=(), now=None, expire_hours=DE
                 override_note = f" [owner ceiling override for {today}: {ov.get('reason', 'no reason recorded')}]"
             except (KeyError, TypeError, ValueError):
                 pass  # malformed override: fail closed to the standing ceiling
+    campaign = params.get("_campaign")
+    if campaign not in (None, ""):
+        campaign = str(campaign)
+        root = Path(repo) if repo else Path(__file__).resolve().parents[1]
+        spec = load_campaign_budgets(root / CAMPAIGNS_RELPATH).get(campaign)
+        problem, campaign_daily = campaign_budget_check(campaign, spec, lane, max_spend, entries, today)
+        if problem:
+            return "invalid", problem + " (campaign limits are never overridable)"
+        if campaign_daily is not None and campaign_daily > ceiling:
+            ceiling = campaign_daily
+            override_note += f" [campaign {campaign} daily ceiling {campaign_daily:.2f}]"
     today_rec = spend.get("today")
     landed = 0.0
     if isinstance(today_rec, dict) and today_rec.get("date") == today:
@@ -2952,6 +3064,8 @@ def cmd_fire(args):
     if max_spend is not None:
         entry["max_spend"] = max_spend  # the commitment budget_check counts for the whole UTC day of this fire
         entry["lane"] = fire_lane(args.trigger, params)  # which prepaid key the commitment holds
+        if params.get("_campaign") not in (None, ""):
+            entry["campaign"] = str(params["_campaign"])  # campaign_held sums this fire against the campaign's limits
         if args.trigger in ("advice-eval", "petri-audit") and judge_is_on(params):
             entry["secondary_judge"] = secondary_judge_reservation(params)
     if args.dry_run:

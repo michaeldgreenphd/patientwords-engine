@@ -1001,6 +1001,118 @@ def test_inflight_lane_filter_and_override_scope():
     assert ft.budget_check(orl, dash, today, overrides=ov, trigger="advice-eval")[0] == "ceiling"
 
 
+# ---- campaign budgets: owner-approved limits for one experiment's fires (2026-10-31) ----
+
+_CAMPAIGN = {"lanes": ["anthropic", "openrouter"], "total_usd_by_lane": {"anthropic": 200.0},
+             "monthly_usd": 200.0, "daily_ceiling_usd": {"openrouter": 20.0}, "reason": "owner (test)"}
+
+
+def _write_campaigns(root, **campaigns):
+    (root / "ops").mkdir(parents=True, exist_ok=True)
+    (root / "ops" / "campaign_budgets.json").write_text(json.dumps(campaigns), encoding="utf-8")
+
+
+def _campaign_entry(lane, amount, fired, campaign="xj", **extra):
+    return {"trigger": "advice-eval", "fired_utc": ft.iso_utc(fired), "resolved": True, "evicted": False,
+            "max_spend": amount, "lane": lane, "campaign": campaign, **extra}
+
+
+def test_committed_campaign_file_holds_the_owner_approved_limits():
+    root = Path(__file__).resolve().parents[1]
+    budgets = ft.load_campaign_budgets(root / ft.CAMPAIGNS_RELPATH)
+    spec = budgets["xjudge-v1"]
+    assert ft.campaign_spec_problem("xjudge-v1", spec) is None
+    assert spec["total_usd_by_lane"] == {"anthropic": 200.0} and spec["monthly_usd"] == 200.0
+    assert spec["daily_ceiling_usd"] == {"openrouter": 20.0}
+    assert "verbatim" in spec["reason"] and "Option A" in spec["reason"]
+
+
+def test_campaign_raises_the_openrouter_daily_ceiling_for_its_own_fires_only(tmp_path):
+    _write_campaigns(tmp_path, xj=_CAMPAIGN)
+    today = ft.utc_now().strftime("%Y-%m-%d")
+    dash = {"spend": {"today": {"date": today, "anthropic_usd": 0.0, "openrouter_usd": 4.0, "spent_usd": 4.0}}}
+    orl = {"models": "openai:openai/x", "max_spend": "12.0"}
+    # untagged: the standing $10 OpenRouter ceiling refuses 12 + 4
+    assert ft.budget_check(orl, dash, today, trigger="advice-eval", repo=tmp_path)[0] == "ceiling"
+    # tagged: the campaign's $20 daily ceiling applies, and the day's landed spend still counts
+    kind, reason = ft.budget_check(dict(orl, _campaign="xj"), dash, today, trigger="advice-eval", repo=tmp_path)
+    assert kind == "ok" and "campaign xj daily ceiling 20.00" in reason
+    big = dict(orl, _campaign="xj", max_spend="17.0")
+    assert ft.budget_check(big, dash, today, trigger="advice-eval", repo=tmp_path)[0] == "ceiling"
+    # the campaign sets no Anthropic daily ceiling, so an Anthropic fire keeps the standing $2
+    anth = {"models": "anthropic:claude-x", "max_spend": "3.0", "_campaign": "xj"}
+    assert ft.budget_check(anth, dash, today, trigger="advice-eval", repo=tmp_path)[0] == "ceiling"
+
+
+def test_campaign_total_and_monthly_limits_refuse_and_are_never_overridable(tmp_path):
+    _write_campaigns(tmp_path, xj=_CAMPAIGN)
+    now = ft.utc_now()
+    today = now.strftime("%Y-%m-%d")
+    last_month = now.replace(day=1) - timedelta(days=2)
+    # a day ceiling high enough that only the campaign's limits decide (today's held entries count against it too)
+    ov = {today: {"ceiling_usd": 500.0, "reason": "owner (test)"}}
+    anth = {"models": "anthropic:claude-x", "max_spend": "6.0", "_campaign": "xj"}
+    # $195 already committed on the Anthropic lane in earlier months: the $200 total refuses 6 more, allows 5
+    held = [_campaign_entry("anthropic", 195.0, last_month)]
+    kind, reason = ft.budget_check(anth, {}, today, entries=held, overrides=ov, trigger="advice-eval", repo=tmp_path)
+    assert kind == "invalid" and "would exceed its total 200.00" in reason and "never overridable" in reason
+    assert ft.budget_check(dict(anth, max_spend="5.0"), {}, today, entries=held, overrides=ov,
+                           trigger="advice-eval", repo=tmp_path)[0] == "ok"
+    # the monthly limit counts both lanes in this UTC month only; evicted and other campaigns' entries hold nothing
+    month = [_campaign_entry("openrouter", 150.0, now), _campaign_entry("anthropic", 45.0, now),
+             _campaign_entry("anthropic", 90.0, now, evicted=True), _campaign_entry("anthropic", 90.0, now, "other"),
+             _campaign_entry("openrouter", 100.0, last_month)]
+    kind, reason = ft.budget_check(anth, {}, today, entries=month, overrides=ov, trigger="advice-eval",
+                                   repo=tmp_path)
+    assert kind == "invalid" and "monthly limit 200.00" in reason
+    assert ft.budget_check(dict(anth, max_spend="5.0"), {}, today, entries=month, overrides=ov,
+                           trigger="advice-eval", repo=tmp_path)[0] == "ok"
+
+
+def test_campaign_problems_refuse_the_fire(tmp_path):
+    today = ft.utc_now().strftime("%Y-%m-%d")
+    anth = {"models": "anthropic:claude-x", "max_spend": "1.0", "_campaign": "xj"}
+    # no campaign file, or a campaign it does not name
+    assert ft.budget_check(anth, {}, today, trigger="advice-eval", repo=tmp_path)[0] == "invalid"
+    _write_campaigns(tmp_path, other=_CAMPAIGN)
+    kind, reason = ft.budget_check(anth, {}, today, trigger="advice-eval", repo=tmp_path)
+    assert kind == "invalid" and "'xj' is not in" in reason
+    # a lane the campaign does not cover
+    _write_campaigns(tmp_path, xj=dict(_CAMPAIGN, lanes=["openrouter"], total_usd_by_lane={}))
+    assert "not the anthropic lane" in ft.budget_check(anth, {}, today, trigger="advice-eval", repo=tmp_path)[1]
+    # malformed amounts or maps never fall back to a looser limit
+    for bad in (dict(_CAMPAIGN, monthly_usd=0), dict(_CAMPAIGN, monthly_usd=True),
+                dict(_CAMPAIGN, total_usd_by_lane={"anthropic": "inf"}),
+                dict(_CAMPAIGN, daily_ceiling_usd={"elsewhere": 5.0}), dict(_CAMPAIGN, lanes=[])):
+        _write_campaigns(tmp_path, xj=bad)
+        assert ft.budget_check(anth, {}, today, trigger="advice-eval", repo=tmp_path)[0] == "invalid", bad
+    # an untagged fire never reads the file
+    plain = {"models": "anthropic:claude-x", "max_spend": "1.0"}
+    assert ft.budget_check(plain, {}, today, trigger="advice-eval", repo=tmp_path)[0] == "ok"
+
+
+def test_fire_journals_the_campaign_and_counts_it_against_the_next_fire(repo):
+    _write_campaigns(repo, xj=dict(_CAMPAIGN, total_usd_by_lane={"anthropic": 1.5}))
+    first = {"task": "pairs", "max_spend": "1.0", "_campaign": "xj", "_nonce": "c1"}
+    assert fire(repo, "scenario-generation", first) == 0
+    entry = json.loads(journal_path(repo).read_text(encoding="utf-8").splitlines()[-1])
+    assert entry["campaign"] == "xj" and entry["lane"] == "anthropic" and entry["max_spend"] == 1.0
+    # the journalled 1.00 plus another 1.00 passes the campaign's 1.50 total: refused, and nothing is written
+    second = {"task": "pairs", "max_spend": "1.0", "_campaign": "xj", "_nonce": "c2"}
+    assert fire(repo, "scenario-generation", second) == 4
+    assert fire(repo, "scenario-generation", second, extra=["--override-budget"]) == 4
+    assert len(journal_path(repo).read_text(encoding="utf-8").splitlines()) == 1
+
+
+def test_budget_gate_applies_campaign_limits_server_side(repo, tmp_path, capsys):
+    pf = tmp_path / "params.json"
+    pf.write_text('{"model_selection": "claude-haiku-4-5", "max_spend": "0.25", "_campaign": "unknown"}',
+                  encoding="utf-8")
+    rc = ft.main(["budget-gate", "--repo", str(repo), "--trigger", "model-evaluation", "--params-file", str(pf)])
+    assert rc == 6
+    assert "campaign 'unknown'" in capsys.readouterr().err
+
+
 # ---- advice-eval billing parts: judge and translator are booked too (2026-10-01) ----
 
 _ORL = "openai:openai/x,openrouter:google/y"

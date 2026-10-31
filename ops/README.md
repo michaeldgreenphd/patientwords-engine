@@ -19,6 +19,7 @@ reads each of them. None of these is archived.
 | `dashboard.json` | the dashboard's data (contract below) | the Routine only (single-writer rule below) |
 | `trigger_journal.jsonl` | one row per fire, parks included; `resolve` marks a row resolved in place, and rows are never deleted | `scripts/fire_trigger.py` |
 | `budget_overrides.json` | owner-authorized ceiling raises, each for one UTC day, with the authorization quoted | by hand, on the owner's words; read by `scripts/fire_trigger.py` |
+| `campaign_budgets.json` | owner-approved limits for one experiment's fires (those tagged `_campaign`): a total per lane, a monthly total, an optional daily ceiling for its own fires; the authorization quoted | by hand, on the owner's words; read by `scripts/fire_trigger.py` (`campaign_budget_check`) |
 | `disclosure_log.jsonl` | append-only log of every vendor reproducibility pack version | `scripts/advice_eval.py repro-pack`, `scripts/petri_audit/repro_pack.py` |
 | `dashboard.html` | the dashboard page | hand edits |
 | `dashboard.sample.json` | a fully populated example of the contract; `tests/test_ledger_update.py` reads it | hand edits |
