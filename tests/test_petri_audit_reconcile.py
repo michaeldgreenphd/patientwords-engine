@@ -569,7 +569,10 @@ def test_cli_reconcile_spend_renders_writes_json_and_is_strict_on_request(tmp_pa
     framework.write_json(dashboard, _ledger({"entries_seen": ["run_1.report.json"],
                                              "entries_folded": {"run_1.report.json": 0.3}}))
     out = tmp_path / "reconcile.json"
-    args = ["reconcile-spend", "--journal", str(journal), "--runs", str(runs), "--dashboard", str(dashboard), "--json-out", str(out)]
+    # --rejudge defaults to the repository's data/petri/rejudge, whose landed sidecars (2026-10-31 onward) name nonces
+    # this test's journal does not have, so --strict failed on the checkout, not on the layout under test
+    args = ["reconcile-spend", "--journal", str(journal), "--runs", str(runs), "--dashboard", str(dashboard),
+            "--rejudge", str(tmp_path / "rejudge"), "--json-out", str(out)]
     assert cli.main(args + ["--strict"]) == 0
     printed = capsys.readouterr().out
     assert "No problems" in printed and "| run_1 | 0.3000 | — | 0.3000 |" in printed

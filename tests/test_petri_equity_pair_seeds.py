@@ -15,7 +15,7 @@ from typing import Any
 
 import pytest
 
-from scripts.petri_audit import cli, seeds, token_budget
+from scripts.petri_audit import checks, cli, framework, judge_runner, seeds, token_budget, transcripts
 from scripts.petri_audit.framework import load_json, sha256_text
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -168,6 +168,87 @@ def test_matched_pairs_share_the_clinical_course(by_id: dict[str, Seed], pairs: 
                     assert eq[key] == ctl[key], (pair["equity"], key)
                 else:
                     assert eq[key] != ctl[key], (pair["equity"], key)
+
+
+def test_both_arms_of_a_pair_judge_barrier_help_against_the_same_obstacle(
+        by_id: dict[str, Seed], pairs: dict[str, Any]) -> None:
+    """barrier_help (drafted 2026-10-31) keeps the arm hidden only if the equity seed and its control give the judge
+    the same obstacle text: the control, which never states the obstacle, then gives the rate at which that help
+    appears unprompted. A pair judges it in both seeds or in neither."""
+    for pair in pairs["pairs"]:
+        eq, ctl = by_id[pair["equity"]], by_id[pair["control"]]
+        judged = {"barrier_help" in s["judge"]["outcome_dimensions"] for s in (eq, ctl)}
+        assert len(judged) == 1, pair["equity"]
+        if judged == {True}:
+            refs = [next(c["text_ref"] for c in s["judge"]["supplied_contexts"] if c["dimension_id"] == "barrier_help")
+                    for s in (eq, ctl)]
+            obstacle = [_texts(s)[ref] for s, ref in zip((eq, ctl), refs)]
+            assert obstacle[0] == obstacle[1] and obstacle[0].strip(), pair["equity"]
+
+
+def test_barrier_help_without_an_obstacle_is_refused(seed_file: Path) -> None:
+    seed_set = seeds.load_seed_file(seed_file)
+    seed = next((s for s in seed_set.seeds.values() if "barrier_help" in s["judge"]["outcome_dimensions"]), None)
+    if seed is None:
+        pytest.skip("this study does not judge barrier_help")
+    broken = {**seed, "judge": {**seed["judge"], "supplied_contexts": [
+        c for c in seed["judge"]["supplied_contexts"] if c["dimension_id"] != "barrier_help"]}}
+    assert "barrier_help is judged but no obstacle is supplied as context" in seeds.validate_seed(broken, seed_set)
+
+
+def test_a_first_turn_pressure_mark_is_refused_only_for_a_dimension_that_needs_the_reply_before_it(
+        seed_file: Path) -> None:
+    """Codex on engine#142: the immediate gate's first-turn check assumed every such dimension compares against the
+    reply before the marked turn. safety_netting_persistence does, so a mark on the first user turn alone measures
+    nothing and is refused; barrier_help is judged against the supplied obstacle and measures that first reply."""
+    seed_set = seeds.load_seed_file(seed_file)
+    seed = next((s for s in seed_set.seeds.values() if "barrier_help" in s["judge"]["outcome_dimensions"]), None)
+    if seed is None:
+        pytest.skip("this study does not judge barrier_help")
+    arms = [{**arm, "turns": [{**t, "context_role": "pressure" if i == 0 else None} for i, t in enumerate(arm["turns"])]}
+            for arm in seed["protocol"]["arms"]]
+    moved = {**seed, "protocol": {**seed["protocol"], "arms": arms}}
+    problems = seeds.validate_seed(moved, seed_set)
+    first_turn_only = "marks context_role 'pressure' only on the first user turn"
+    assert any(p.startswith("safety_netting_persistence is judged") and first_turn_only in p for p in problems)
+    assert not any(p.startswith("barrier_help is judged") and first_turn_only in p for p in problems)
+
+
+def _barrier_help_plans(seed: Seed, reply: str) -> list[judge_runner.JudgePlan]:
+    texts = _texts(seed)
+    arm = next(a for a in seed["protocol"]["arms"] if a["id"] == "clinical")
+    messages = []
+    for i, turn in enumerate(arm["turns"], 1):
+        messages += [{"role": "user", "text": texts[turn["text_ref"]], "id": f"u{i}"},
+                     {"role": "assistant", "text": reply, "id": f"a{i}"}]
+    record = transcripts.build_record(messages, conversation_id="c" * 64, source_system="inspect_petri",
+                                      source_model="mockllm/model", model_version="mockllm",
+                                      captured_utc="2026-10-31T00:00:00Z", user_is="patient",
+                                      import_utc="2026-10-31T00:00:00Z", importer_sha=None,
+                                      run_manifest_sha256="a" * 64, run_manifest_ref=None)
+    gated = judge_runner.gated_turn_ids_for(record, seed, checks.ROOT_BRANCH, "clinical")
+    plans = judge_runner.plan_record(record, seed, outcomes=framework.load_json(framework.OUTCOME_REGISTRY),
+                                     rubric=judge_runner.load_rubric(), branched_from_turn_id=None,
+                                     gated_turn_ids=gated)
+    return [p for p in plans if p.key == "barrier_help"]
+
+
+def test_barrier_help_judges_the_replies_to_the_pressure_turns_blind_to_the_arm(
+        by_id: dict[str, Seed], pairs: dict[str, Any]) -> None:
+    """Only the replies that answer a pressure turn are judged, against the obstacle, and the judge's prompt for the
+    same reply is byte-identical whether the reply came from the equity seed or its control."""
+    pair = next((p for p in pairs["pairs"] if "barrier_help" in by_id[p["equity"]]["judge"]["outcome_dimensions"]),
+                None)
+    if pair is None:
+        pytest.skip("this study does not judge barrier_help")
+    eq, ctl = (_barrier_help_plans(by_id[pair[k]], "reply text") for k in ("equity", "control"))
+    pressure = [i for i, role in enumerate(_roles(by_id[pair["equity"]], "clinical"), 1) if role == "pressure"]
+    assert pressure and [p.exchange_index for p in eq if p.prompt is not None] == pressure
+    assert {p.not_applicable_reason for p in eq if p.prompt is None} == {"this reply does not answer a pressure turn"}
+    obstacle = _texts(by_id[pair["equity"]])["obstacle"]
+    judged = [p for p in eq if p.prompt is not None]
+    assert all(obstacle in p.prompt and "reply text" in p.prompt for p in judged)
+    assert [p.prompt for p in judged] == [p.prompt for p in ctl if p.prompt is not None]
 
 
 def _one_span_deleted(longer: str, shorter: str) -> bool:

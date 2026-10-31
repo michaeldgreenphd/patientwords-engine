@@ -148,14 +148,16 @@ A comment from an owner, member or collaborator containing `@gemini-cli` or
 and bots cannot start reviews. Agents post `@codex review` after every push, so
 every run except an `@gemini-cli` request, automatic runs included, skips a head that
 already has a completed Gemini review (the sticky comment records
-`<!-- gemini-reviewed-sha: <sha> -->`); `@gemini-cli` always starts one. Eligible jobs share a workflow-name/PR-number concurrency group that queues
-rather than cancels (`cancel-in-progress: false`): agents post `@codex review` right
-after each push, and cancelling would discard the push's half-finished review and start
-it again, while a queued run for a head reviewed in the meantime exits at the resolve
-step. A review that finishes after a newer push is not posted (the publisher checks
+`<!-- gemini-reviewed-sha: <sha> -->`); `@gemini-cli` always starts one. Eligible jobs share a workflow-name/PR-number concurrency group with
+`cancel-in-progress: false`: a running review is never cancelled, since agents post
+`@codex review` right after each push and cancelling would discard the push's
+half-finished review and start it again. GitHub keeps one run waiting behind it, and a
+newer request replaces the waiting run (observed 2026-10-31, patientwords#23); every run
+reviews the PR's current head, so the survivor covers it, and a waiting run for a head
+reviewed in the meantime exits at the resolve step. A review that finishes after a newer push is not posted (the publisher checks
 the current head), and a manually cancelled run posts nothing (the publisher runs on
 `!cancelled()`). Unrelated comments never enter the group.
-The job has a 20-minute timeout and the review step a 10-minute one, bounding
+The job has a 25-minute timeout and the review step a 15-minute one, bounding
 runner time and quota use while leaving the publisher time to report a failure.
 The CLI retries a failed request at most 3 times (`general.maxAttempts`; its default
 of 10 backed-off retries took about 8 minutes of the step under a 503 storm in
@@ -168,11 +170,17 @@ with the variable. Other errors are not retried. ripgrep is installed before the
 The root checkout retains full commit history with `filter: blob:none`, avoiding
 old artifact downloads while materializing every file at the reviewed head.
 Diff generation fetches historical blobs on demand and retains the true merge base.
-The CLI session is capped at 40 model turns: batch related searches/reads and
-return the final review by the thirty-ninth turn. The cap was 8 until 2026-10-31, when a
-review of a three-file PR used all eight turns before writing (`FatalTurnLimitedError`);
-14 failed the same way on both PRs that set it, and no review had yet completed in either
-repository, so the owner set 40 against a paid Gemini budget. The three evidence files
+The CLI session is capped at 80 model turns, and the prompt asks for the review after
+roughly 30 turns of searching and reading, with unreviewed consumers listed: a session that
+reaches the cap is lost with nothing posted. The cap was 8 until 2026-10-31, when a review
+of a three-file PR used all eight turns before writing (`FatalTurnLimitedError`); 14 failed
+the same way on both PRs that set it; at 40 most reviews completed, but one run ran out on
+an engine#141 head (`65998d28`) and two on the nine-file engine#142 head (`a0e434a`); the
+owner then set 80 with the stopping rule, against a paid Gemini budget. The review step's limit is 15 minutes and the job's 25.
+Exit criterion (owner decision 2026-10-31): once the 80-turn workflow is on `main` in both
+repositories, count the next five PRs whose Gemini review runs; if two or more end without a
+posted review, turn the automatic review off and rely on Codex, keeping `@gemini-cli` for
+reviews on request or removing the workflow. The three evidence files
 (`metadata.json`, `changed-files.txt`, `pr.diff`) are embedded in the prompt so no turns
 go to reading them, each between BEGIN/END EVIDENCE lines carrying one random per-run
 token, and are treated as untrusted data. The action passes the prompt as one command-line
@@ -215,7 +223,7 @@ reduces redundant work but does not guarantee a free-tier quota or zero cost.
 Requests per day and requests per minute are separate from context size and TPM.
 The [frontend CI run on 2026-10-25](https://github.com/michaeldgreenphd/patientwords/actions/runs/40210493105/attempts/2)
 reported HTTP 503 retries followed by
-HTTP 429 for an exhausted 20-request daily allowance on this model. A 40-turn
+HTTP 429 for an exhausted 20-request daily allowance on this model. An 80-turn
 cap bounds agent loops; retries and other API activity can still exhaust the
 project's allowance, shared across repositories if their keys use the same project.
 Quota failures leave the job failed and do not replace a prior sticky review with

@@ -47,15 +47,16 @@ PUBLISHER = "Create or update the sticky PR review comment"
 def test_review_budget_and_failure_do_not_publish_success(review_job: dict) -> None:
     """Every model turn is one request, and an uncapped session (up to 80 turns before be476d3a) could spend a
     20-request allowance in one review, so the session is capped. The cap was 8 until 2026-10-31, when a three-file
-    review ended in FatalTurnLimitedError before writing; 14 failed the same way on both PRs that set it, so it is 40,
-    which the owner's paid Gemini budget allows. The job limit covers setup and the publisher
+    review ended in FatalTurnLimitedError before writing; 14 failed the same way on both PRs that set it; 40 ran out
+    on engine#142, so it is 80 with a prompt rule to write the review after about 30 turns, which the owner's paid
+    Gemini budget allows. The job limit covers setup and the publisher
     as well as both review steps, so it must keep a reserve beyond them, or a slow setup lets GitHub cancel the job
     before the publisher reports the failure (Codex on patientwords#21)."""
     settings = json.loads(review_job["env"]["GEMINI_SETTINGS"])
     assert settings == {
         "tools": {"core": ["read_file", "read_many_files", "list_directory", "glob", "grep_search"]},
         "mcp": {"allowed": []}, "hooksConfig": {"enabled": False}, "skills": {"enabled": False},
-        "advanced": {"ignoreLocalEnv": True}, "model": {"maxSessionTurns": 40},
+        "advanced": {"ignoreLocalEnv": True}, "model": {"maxSessionTurns": 80},
         # the CLI's default of 10 backed-off retries spent about 8 minutes of the step under a 503 storm
         # (michaeldgreenphd/clinical-trial-populations), leaving the fallback no time
         "general": {"maxAttempts": 3},
@@ -67,8 +68,8 @@ def test_review_budget_and_failure_do_not_publish_success(review_job: dict) -> N
         assert step["with"]["prompt"] == "${{ steps.prompt.outputs.text }}"
         # the publisher reports a failure and fails the job; continuing lets it and the fallback run
         assert step["continue-on-error"] is True
-    assert primary["timeout-minutes"] == 10 and fallback["timeout-minutes"] == 3
-    assert review_job["timeout-minutes"] == 20
+    assert primary["timeout-minutes"] == 15 and fallback["timeout-minutes"] == 3
+    assert review_job["timeout-minutes"] == 25
     assert review_job["timeout-minutes"] - (primary["timeout-minutes"] + fallback["timeout-minutes"]) >= 5
     # the live run of 2026-10-31 found the earlier default, gemini-2.5-flash, refused as "no longer available to new
     # users"; the owner set gemini-3.5-flash-lite, and repository variables still override either model
@@ -88,8 +89,10 @@ def test_review_budget_and_failure_do_not_publish_success(review_job: dict) -> N
     # output" diagnostic on 2026-10-31 (run 41198275188); a failed or step-timed-out review is still reported
     assert publisher["if"] == "${{ !cancelled() && steps.pr.outputs.eligible == 'true' }}"
     assert condition.startswith("${{ !cancelled() &&") and "always()" not in condition
-    assert "capped at 40 model turns" in review_job["env"]["GEMINI_REVIEW_PROMPT"]
-    assert "by the thirty-ninth turn" in review_job["env"]["GEMINI_REVIEW_PROMPT"]
+    prompt = review_job["env"]["GEMINI_REVIEW_PROMPT"]
+    assert "capped at 80 model turns" in prompt
+    # a session cut off at the cap posts nothing, so the prompt asks for the review well before it
+    assert "after roughly\n30 turns of searching and reading, stop exploring and write the review" in prompt
 
 
 EMBED = "Embed the review evidence in the prompt"
