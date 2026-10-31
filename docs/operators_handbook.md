@@ -241,8 +241,9 @@ say in any record which evidence was used.
   for its own fires on a lane. These count the max_spend reservations of the
   campaign's non-evicted journal entries, never refuse less than the daily
   ceiling does, and are never overridable. Untagged fires are unaffected.
-  In CI the gate reads the campaign from the trigger file the run was
-  fired with, so a replay of a campaign fire is still held to its limits.
+  In CI the gate grants a campaign only through the push's own fresh
+  reservation; a merge, replay or re-run of campaign-tagged bytes is
+  refused, and a dispatch gets the standing ceilings.
   Every paid run writes a `.report.json` sidecar with its cost.
   `scripts/ledger_update.py` is the only spend writer.
 - No paid fire without the owner's explicit words. No `--override-budget`,

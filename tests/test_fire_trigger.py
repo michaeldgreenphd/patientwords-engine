@@ -1110,7 +1110,21 @@ def test_budget_gate_applies_campaign_limits_server_side(repo, tmp_path, capsys)
                   encoding="utf-8")
     rc = ft.main(["budget-gate", "--repo", str(repo), "--trigger", "model-evaluation", "--params-file", str(pf)])
     assert rc == 6
-    assert "campaign 'unknown'" in capsys.readouterr().err
+    assert "claims campaign 'unknown' but no journal reservation" in capsys.readouterr().err
+
+
+def test_budget_gate_does_not_lend_a_disk_campaign_to_a_dispatch(repo, tmp_path, capsys):
+    """Codex's third round on PR #137: on a workflow_dispatch the resolved params come from the dispatch inputs,
+    not the checked-out trigger file, so the file's campaign must not raise the ceiling for unrelated work."""
+    _write_campaigns(repo, xj=dict(_CAMPAIGN, daily_ceiling_usd={"anthropic": 20.0}))
+    (repo / TRIGGER_SUBDIR / "scenario-generation.json").write_text(
+        json.dumps({"task": "advice-nat", "max_spend": "1.0", "_campaign": "xj"}), encoding="utf-8")
+    pf = tmp_path / "dispatch.json"
+    pf.write_text(json.dumps({"task": "pairs", "max_spend": "5.0"}), encoding="utf-8")
+    rc = ft.main(["budget-gate", "--repo", str(repo), "--trigger", "scenario-generation", "--params-file", str(pf)])
+    assert rc == 6
+    captured = capsys.readouterr()
+    assert "this run has no push" in captured.out and "daily ceiling 2.00" in captured.err
 
 
 # ---- advice-eval billing parts: judge and translator are booked too (2026-10-01) ----
@@ -4006,19 +4020,16 @@ def test_budget_gate_takes_the_campaign_from_its_own_reservation_across_midnight
     # standing $2 ceiling would refuse
     assert gate(before) == 0, capsys.readouterr().err
     out = capsys.readouterr().out
-    assert "campaign 'xj' taken from the trigger file this run was fired with" in out
+    assert "campaign 'xj' granted through this push's own reservation" in out
     assert "campaign xj daily ceiling 20.00" in out
     # (2) after midnight UTC the reservation is still this push's own: 5.00 counted once against the $6 total,
     # not 5.00 + 5.00
     clock[0] = datetime(2026, 10, 15, 0, 1, tzinfo=timezone.utc)
     assert gate(before) == 0, capsys.readouterr().err
-    assert "taken from the trigger file this run was fired with" in capsys.readouterr().out
-    # a push whose own reservation cannot be established (a replay or merge restoring these bytes, or no binding)
-    # is still checked against the campaign, read from the trigger file, with the earlier reservation counted:
-    # 5.00 + 5.00 against the $6 total is refused, although the standing $2 ceiling alone would see nothing held
-    # today (Codex's second round on PR #137)
+    assert "granted through this push's own reservation" in capsys.readouterr().out
+    # a run with no push (a dispatch) is not granted the campaign named by the file on disk: standing $2 ceiling
     assert gate("") == 6
-    assert "would exceed its total 6.00" in capsys.readouterr().err
+    assert "daily ceiling 2.00" in capsys.readouterr().err
 
 
 def test_publish_syncs_the_entrys_campaign_from_the_published_params(tmp_path, capsys):
@@ -4066,11 +4077,22 @@ def test_budget_gate_enforces_a_spent_campaign_on_a_push_without_its_own_reserva
     pf = tmp_path / "resolved.json"
     pf.write_text(json.dumps(dict(G4_LANES["scenario-generation"][1], max_spend="1.0")), encoding="utf-8")
     capsys.readouterr()
-    # the replay: no own reservation can be established, so the earlier 1.00 keeps counting; 1.00 + 1.00 passes
-    # the campaign's 1.50 total, although it fits the standing $2 daily ceiling exactly
-    rc = ft.main(["budget-gate", "--repo", str(repo), "--trigger", "scenario-generation", "--params-file", str(pf),
-                  "--push-before", "", "--ref", "main", "--run-attempt", "1"])
-    assert rc == 6
-    captured = capsys.readouterr()
-    assert "taken from the trigger file this run was fired with" in captured.out
-    assert "would exceed its total 1.50" in captured.err
+    fired = git("rev-parse", "HEAD").stdout.strip()
+
+    def gate(before_sha, attempt="1"):
+        return ft.main(["budget-gate", "--repo", str(repo), "--trigger", "scenario-generation", "--params-file",
+                        str(pf), "--push-before", before_sha, "--ref", "main", "--run-attempt", attempt])
+
+    # a replay or merge restoring these bytes: the reservation was already on the ref before this push, so the
+    # push has none of its own and is refused, whatever room the campaign or the standing ceiling has left; each
+    # campaign execution must hold its own reservation, or repeated replays would never be counted (Codex's second
+    # and third rounds on PR #137)
+    for _ in range(2):
+        assert gate(fired) == 6
+        assert "no journal reservation of this push is tagged with it" in capsys.readouterr().err
+    # an Actions re-run (attempt 2) of the real fire push is refused the same way
+    base = git("rev-parse", "HEAD~1").stdout.strip()
+    assert gate(base, attempt="2") == 6
+    assert "no journal reservation of this push is tagged with it" in capsys.readouterr().err
+    # ...and the fire push itself, first attempt, is granted the campaign
+    assert gate(base) == 0, capsys.readouterr().err

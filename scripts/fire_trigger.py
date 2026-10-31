@@ -4503,26 +4503,43 @@ def cmd_budget_gate(args):
             print(f"budget-gate: no {args.trigger} journal entry is shown to be this push's own fire (a dispatch, a "
                   "replay, a re-run, or no --push-before/--ref/--run-attempt to bind one), so every held commitment "
                   "is counted")
-    # The workflows pass the params job's outputs as --params-file, and those hold only the keys in each workflow's
-    # defaults, so `_campaign` never reaches the gate that way (Codex on PR #137). The campaign is read from the
-    # trigger file in the checkout - the bytes that fired this run - whether or not this push's own reservation
-    # was found: a merge or replay restoring campaign-tagged bytes has no own reservation, and the standing ceiling
-    # alone can be looser than a campaign whose allocation is spent (Codex's second round on PR #137). Such a
-    # replay is then checked against the campaign with its earlier reservation still counted, which fails closed.
-    # Only when the trigger file cannot be read is the own reservation's campaign used.
-    if budget_params.get("_campaign") in (None, ""):
-        campaign, source = None, None
-        try:
-            on_disk = json.loads(trigger_on_disk.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            on_disk = None
-        if isinstance(on_disk, dict) and on_disk.get("_campaign") not in (None, ""):
-            campaign, source = str(on_disk["_campaign"]), "the trigger file this run was fired with"
-        elif own_reservation is not None and own_reservation.get("campaign") not in (None, ""):
-            campaign, source = str(own_reservation["campaign"]), "this push's own reservation"
-        if campaign is not None:
-            budget_params = dict(budget_params, _campaign=campaign)
-            print(f"budget-gate: campaign {campaign!r} taken from {source}")
+    # Campaign runs (Codex on PR #137, three rounds). The workflows pass the params job's outputs as --params-file,
+    # and those hold only each workflow's default keys, so `_campaign` never arrives that way; and a campaign's
+    # limits are sound only when every execution holds its own journal reservation, because campaign_held counts
+    # reservations, not runs. So a campaign is granted only through this push's own reservation (found above,
+    # bound to the trigger file's digest, this ref, this push and its first attempt) when that reservation is
+    # tagged with the campaign the run claims:
+    # - claimed by --params-file, or by the checked-out trigger file on a push run, with no such reservation (a
+    #   merge, replay or re-run of campaign-tagged bytes, or an unreadable binding): refused, since nothing would
+    #   record this execution against the campaign;
+    # - claimed only by the trigger file on a run with no push (a workflow_dispatch, whose resolved params come
+    #   from its inputs, not that file): not granted; the run is checked against the standing ceilings like any
+    #   untagged fire.
+    explicit = budget_params.get("_campaign")
+    explicit = str(explicit) if explicit not in (None, "") else None
+    try:
+        on_disk = json.loads(trigger_on_disk.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        on_disk = None
+    disk = on_disk.get("_campaign") if isinstance(on_disk, dict) else None
+    disk = str(disk) if disk not in (None, "") else None
+    claimed = explicit or disk
+    if claimed is not None:
+        reserved = own_reservation.get("campaign") if own_reservation is not None else None
+        is_push = bool((getattr(args, "push_before", None) or "").strip())
+        if reserved == claimed:
+            budget_params = dict(budget_params, _campaign=claimed)
+            print(f"budget-gate: campaign {claimed!r} granted through this push's own reservation")
+        elif explicit is not None or is_push:
+            print(f"budget-gate: REFUSED - this run claims campaign {claimed!r} but no journal reservation of "
+                  "this push is tagged with it (a merge, replay or re-run of campaign-tagged bytes, or an "
+                  "unreadable binding); every campaign execution needs its own reservation, so fire it again "
+                  "with fire_trigger.py", file=sys.stderr)
+            return 6
+        else:
+            budget_params = {k: v for k, v in budget_params.items() if k != "_campaign"}
+            print(f"budget-gate: the trigger file names campaign {claimed!r}, but this run has no push (a "
+                  "dispatch runs its own inputs), so it is checked against the standing ceilings")
     dashboard = load_dashboard(repo / DASHBOARD_RELPATH)
     overrides = load_budget_overrides(repo / OVERRIDES_RELPATH)
     kind, reason = budget_check(budget_params, dashboard, today,
