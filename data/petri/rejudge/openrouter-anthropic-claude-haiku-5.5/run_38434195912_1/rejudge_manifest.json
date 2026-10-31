@@ -1,0 +1,132 @@
+{
+  "rejudge_manifest_version": "0.1",
+  "mode": "rejudge",
+  "exploratory": true,
+  "rehearsal": false,
+  "created_utc": "2026-10-31T04:19:40Z",
+  "judge_role": "secondary",
+  "source": {
+    "run_stem": "run_38434195912_1",
+    "run_id": "5fuuwSiLvg9LxDqXym8byC",
+    "eval_id": "7XsE6rFYwXtNtMLdX9h892",
+    "manifest_sha256": "9befd37e1bbfb6e00b02472623d482467b3da579ce9ff54192cb960ccb8c6a56",
+    "chain_manifest_sha256": "6e8cd6cc8e22dbb7402cc4d9cbbc788ed23fe8669b3eaee18a026e796d76c36a",
+    "transcripts_sha256": "5a5bfd81373c39c6df42a914c6a11c7d04962543bbebfe7b54186c96edd313a6",
+    "judgments_sha256": "71d385ff832980dda1316471b20c61b6cb699acc17d26a4b305edcbcd3c77150",
+    "judge_of_record": {
+      "judge_model": "claude-haiku-4-5",
+      "judge_max_tokens": 300,
+      "temperature": 0.0,
+      "planned": 354,
+      "judged": 300,
+      "null": 0,
+      "not_applicable": 54,
+      "truncated": false,
+      "cost_usd": 0.421715
+    }
+  },
+  "judge": {
+    "judge_model": "openrouter:anthropic/claude-haiku-5.5",
+    "judge_slug": "openrouter-anthropic-claude-haiku-5.5",
+    "inspect_name": "openrouter/anthropic/claude-haiku-5.5",
+    "billing_channel": "openrouter",
+    "price_source": "registry:openrouter:pricing",
+    "input_per_mtok": 0.106,
+    "output_per_mtok": 0.53,
+    "judge_max_tokens": 300,
+    "temperature": 0.0,
+    "max_spend_usd": 0.0795,
+    "fire_judge_max_spend_usd": 0.0795,
+    "fire_spent_before_usd": 0.0,
+    "temperature_sent": null,
+    "temperature_omitted": "OpenRouter spelling of claude-haiku-5-5; omit the non-default sampling parameter as on the direct route (R4, 2026-10-15).",
+    "thinking_sent": "disabled",
+    "thinking_disabled": "OpenRouter Petri judge sends reasoning.effort none and provider.require_parameters true; https://openrouter.ai/docs/guides/best-practices/reasoning-tokens (verified 2026-10-15). The small judge allowance is for the answer, so reasoning must be disabled, not merely excluded from the returned content."
+  },
+  "instrument": {
+    "outcome_registry": {
+      "ref": "docs/framework/outcome_dimensions.draft.json",
+      "sha256": "ea2042a3e71ecc592398ca8643b39fd8b89d90ebf2b1caf0900484ce764c2f3a"
+    },
+    "rubric": {
+      "ref": "data/advice_rubric.draft.json",
+      "sha256": "eb6bb9d6870f7193121e507419d95c45f5d1487247a5140fcf4a7fd315f35509",
+      "digest": "bd4aa5596b81"
+    },
+    "prompt_files": {
+      "docs/framework/judge_prompts/outcomes/recommendation_specificity.draft.json": {
+        "digest": "a6e974dd6f84",
+        "sha256": "50015076b760277b25ae2a2da2bd7111f34c75396e850ab3e98a735f5f9b0241"
+      },
+      "docs/framework/judge_prompts/outcomes/safety_netting_baseline_persistence.draft.json": {
+        "digest": "89c364059cb8",
+        "sha256": "0afbf007c78aba8767855cc907000c2054ee25e073c4bb0438568dce88c416a0"
+      },
+      "docs/framework/judge_prompts/outcomes/safety_netting_persistence.draft.json": {
+        "digest": "4f4173235be1",
+        "sha256": "6a807d13357b5bd8a7d73f06214f9645a58b174d05bb69bf150ccdeef0c60706"
+      },
+      "docs/framework/judge_prompts/outcomes/safety_netting_presence.draft.json": {
+        "digest": "24db7e24cc12",
+        "sha256": "e6e5ca2e63d5f59c416c9ca546f9d558cfef70393726507cf0a9367bc53152a7"
+      }
+    },
+    "plan_sha256": "32d6e4347db148027c3890e4f26be7f87306e3793923e09ce2efaa30073ba02c",
+    "planned": 354,
+    "parity_with_judge_of_record": "exact"
+  },
+  "fire": {
+    "workflow_run_id": "41167249634",
+    "workflow_run_attempt": "1",
+    "commit": "e8982162262b558db808e9925305741823b6c357",
+    "journal_nonce": "xj-r2-eq02-gpt54mini-20261031",
+    "source_runs": [
+      "run_38434195912_1"
+    ],
+    "position": 1
+  },
+  "counts": {
+    "planned": 354,
+    "keys": 354,
+    "judged": 277,
+    "null": 23,
+    "not_applicable": 54,
+    "null_share": 0.076667,
+    "truncated": false,
+    "stopped_early": false,
+    "call_failures": 0,
+    "calls_without_usage": 0,
+    "judge_of_record_null_share": 0.0
+  },
+  "estimate": {
+    "calls": 300,
+    "recorded_input_tokens": 375175,
+    "recorded_output_tokens": 9308,
+    "calls_without_recorded_usage": 0,
+    "price_source": "registry:openrouter:pricing",
+    "input_per_mtok": 0.106,
+    "output_per_mtok": 0.53,
+    "expected_usd": 0.044702,
+    "worst_case_usd": 0.087469,
+    "last_call_headroom_usd": 0.002626,
+    "assumption": "the new judge's token counts are close to the judge of record's recorded ones"
+  },
+  "cost_usd": 0.06195965,
+  "artifacts": {
+    "judgments": {
+      "path": "judgments.jsonl",
+      "sha256": "8650f1bb5eb0acc82767ee09a41df2712e8abddc3b37ff45ae1ca415cd9567b1",
+      "rows": 354
+    },
+    "analysis_rows": {
+      "path": "analysis_rows.jsonl",
+      "sha256": "98a4ca268c1d6ac6cd8399d51a9ac448d218e77a65b3955f8edf12437c836253",
+      "rows": 354
+    },
+    "judge_report": {
+      "path": "run_38434195912_1.rejudge_41167249634_secondary.judge.report.json",
+      "sha256": "ed44ecb9be9c6b4d8b047eb0e6a49088f36376248f878f64e7f2722cac4ba1c7"
+    }
+  },
+  "manifest_sha256": "bedad90a5f17ba041602a65da3a1314a7b17e9ac8e3e2856a1c2eceeb09b5cf1"
+}
