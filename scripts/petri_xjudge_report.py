@@ -43,6 +43,7 @@ import hashlib
 import json
 import random
 import subprocess
+import sys
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -87,6 +88,32 @@ def single_judge(rows: list[dict], path: Path) -> str:
     return str(next(iter(judges)))
 
 
+def recover_legacy_exchange_fields(rows: list[dict], transcripts_path: Path) -> int:
+    """Fill `exchange_index` and `final_in_exchange` on rows written before those fields existed (they carry null; the
+    wave-1 pilot, run_35351739969_1), from the committed transcript's turn structure, with the same numbering the
+    historical replay uses (`scripts/petri_audit/historical.py` `_structure`). A tool-use conversation has interim
+    replies inside an exchange, so null does not mean final (Codex review of PR #140). Returns how many rows were
+    filled; rows whose conversation the transcript does not hold are left as they are."""
+    if not any(r.get("final_in_exchange") is None for r in rows) or not transcripts_path.is_file():
+        return 0
+    try:
+        from scripts.petri_audit.historical import _structure
+    except ModuleNotFoundError:  # run as a file path: the repository root is not on sys.path
+        sys.path.insert(0, str(ROOT))
+        from scripts.petri_audit.historical import _structure
+
+    structure = {rec["conversation_id"]: _structure(rec)[0] for rec in read_jsonl(transcripts_path)}
+    filled = 0
+    for r in rows:
+        if r.get("final_in_exchange") is not None:
+            continue
+        found = structure.get(r.get("conversation_id"), {}).get(r.get("turn_id"))
+        if found is not None:
+            _, r["exchange_index"], r["final_in_exchange"] = found
+            filled += 1
+    return filled
+
+
 def load_judge_sets(runs_dirs: Iterable[Path], rejudge_dirs: Iterable[Path]) -> list[JudgeSet]:
     """Judge-of-record judgments under each runs dir (`<stem>/judgments.jsonl`) and every re-grade under each rejudge
     dir (`<slug>/<stem>/judgments.jsonl`). A file with more than one judge model is refused."""
@@ -95,6 +122,7 @@ def load_judge_sets(runs_dirs: Iterable[Path], rejudge_dirs: Iterable[Path]) -> 
         for path in sorted(runs_dir.glob("run_*/judgments.jsonl")):
             rows = read_jsonl(path)
             if rows:
+                recover_legacy_exchange_fields(rows, path.parent / "transcripts.jsonl")
                 sets.append(JudgeSet(path.parent.name, single_judge(rows, path), "judge_of_record", str(runs_dir),
                                      path, rows))
     for rejudge_dir in rejudge_dirs:
@@ -144,7 +172,17 @@ def tier_rank() -> dict[str, int]:
 # ------------------------------------------------------------------ agreement
 
 def identity(row: dict) -> tuple:
-    return (row["tree_id"], row["branch_id"], row["turn_id"], row.get("exchange_index"), row["kind"], row["key"])
+    """A judgment's identity: the assistant turn (tree, branch, turn) and the dimension. `exchange_index` is left out:
+    it is derived from the turn, and rows written before the field existed carry null there (the wave-1 pilot,
+    run_35351739969_1), so including it kept those rows from pairing with their re-grades."""
+    return (row["tree_id"], row["branch_id"], row["turn_id"], row["kind"], row["key"])
+
+
+def is_final(row: dict) -> bool:
+    """Whether a row is the final judgment of its exchange. Rows written before `final_in_exchange` existed carry
+    null; `recover_legacy_exchange_fields` fills them from the transcript when the run has one. A row still null
+    after that (no transcript) is taken as final and counted in the report's `legacy_rows_assumed_final`."""
+    return row.get("final_in_exchange") is not False
 
 
 def usable(row: dict) -> bool:
@@ -197,8 +235,8 @@ def bootstrap_ci(clusters: dict[str, list], stat, reps: int, rng: random.Random)
 
 def pair_judges(first: JudgeSet, second: JudgeSet) -> dict[str, Any]:
     """Pair two judges' rows over one source run on the judgment's identity, final-in-exchange rows only."""
-    a = {identity(r): r for r in first.rows if r.get("final_in_exchange", True)}
-    b = {identity(r): r for r in second.rows if r.get("final_in_exchange", True)}
+    a = {identity(r): r for r in first.rows if is_final(r)}
+    b = {identity(r): r for r in second.rows if is_final(r)}
     shared = sorted(set(a) & set(b), key=str)
     digest_mismatch = [k for k in shared if a[k].get("rendered_sha256") != b[k].get("rendered_sha256")]
     paired = [(a[k], b[k]) for k in shared if k not in set(digest_mismatch)]
@@ -279,7 +317,7 @@ def equity_contrast(js: JudgeSet, pairs_spec: dict, ranks: dict[str, int],
     for r in js.rows:
         if (r["kind"], r["key"]) != ("tier", "response_only") or r.get("branch_id") != "root":
             continue
-        if not r.get("final_in_exchange", True):
+        if not is_final(r):
             continue
         tiers[(r["seed_id"], r["condition_id"])][int(r["exchange_index"])] = (
             str(r["value"]) if usable(r) and str(r["value"]) in ranks else None)
@@ -438,7 +476,9 @@ def build_report(sets: list[JudgeSet], seed: int, reps: int) -> dict[str, Any]:
         "commit": git_commit(), "bootstrap_seed": seed, "bootstrap_reps": reps,
         "tier_order": sorted(ranks, key=ranks.get),
         "inputs": [{"run": js.stem, "target": js.target, "judge": js.judge, "role": js.role, "origin": js.origin,
-                    "path": str(js.path), "sha256": sha256_file(js.path), "rows": len(js.rows)} for js in sets],
+                    "path": str(js.path), "sha256": sha256_file(js.path), "rows": len(js.rows),
+                    "legacy_rows_assumed_final": sum(r.get("final_in_exchange") is None for r in js.rows)}
+                   for js in sets],
         "agreement": agreement,
         "shift_by_target": shift_by_target(cells, reps, rng),
         "equity_contrast": equity_rows,
