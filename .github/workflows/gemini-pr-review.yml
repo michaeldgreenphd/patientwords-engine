@@ -42,7 +42,7 @@ jobs:
       PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
       REVIEW_MARKER: '<!-- gemini-macro-review -->'
       # Shared by the primary and fallback review steps: read/search tools only, no MCP
-      # servers, hooks, skills or local environment files, and an eight-turn session cap.
+      # servers, hooks, skills or local environment files, and a 14-turn session cap.
       GEMINI_SETTINGS: |
         {
           "tools": {"core": ["read_file", "read_many_files", "list_directory", "glob", "grep_search"]},
@@ -50,7 +50,7 @@ jobs:
           "hooksConfig": {"enabled": false},
           "skills": {"enabled": false},
           "advanced": {"ignoreLocalEnv": true},
-          "model": {"maxSessionTurns": 8}
+          "model": {"maxSessionTurns": 14}
         }
       GEMINI_REVIEW_PROMPT: |
         Read AGENTS.md and GEMINI.md first and adopt their repository conventions
@@ -64,8 +64,8 @@ jobs:
         Use file search and reads across BOTH repositories to inspect the diff
         alongside all relevant UNMODIFIED callers, consumers, fixtures and specs.
         Trace exported fields and their statistical/provenance meanings end to end.
-        The session is capped at eight model turns. Batch related searches and
-        file reads, and return the final review by the seventh turn. Prioritize
+        The session is capped at 14 model turns. Batch related searches and
+        file reads, and return the final review by the thirteenth turn. Prioritize
         consumers of changed contracts; if the budget prevents completion,
         explicitly report incomplete coverage instead of claiming verification.
         Never duplicate Codex's hunk-level syntax, type or isolated logic checks.
@@ -228,7 +228,7 @@ jobs:
         # There is no default, because Google retires model IDs (gemini-2.5-flash was refused
         # as "no longer available to new users" on 2026-10-31).
         if: >-
-          ${{ always() && steps.pr.outputs.eligible == 'true' && vars.GEMINI_FALLBACK_MODEL != '' &&
+          ${{ !cancelled() && steps.pr.outputs.eligible == 'true' && vars.GEMINI_FALLBACK_MODEL != '' &&
           steps.gemini.outcome == 'failure' &&
           (contains(steps.gemini.outputs.error, '429') || contains(steps.gemini.outputs.error, '503') ||
            contains(steps.gemini.outputs.error, 'RESOURCE_EXHAUSTED') ||
@@ -243,9 +243,11 @@ jobs:
           prompt: ${{ env.GEMINI_REVIEW_PROMPT }}
 
       - name: Create or update the sticky PR review comment
-        # always(): a failed or timed-out review is still reported on the PR. The head check
-        # below keeps a cancelled, superseded run from posting about an obsolete head.
-        if: always() && steps.pr.outputs.eligible == 'true'
+        # !cancelled(): a failed review, or one whose step hit its own time limit, is still
+        # reported on the PR, while a run cancelled because a newer one superseded it in the
+        # concurrency group posts nothing (it posted "no error output" on 2026-10-31, run
+        # 41198275188); the newer run reports. The head check below is a second guard.
+        if: ${{ !cancelled() && steps.pr.outputs.eligible == 'true' }}
         env:
           PRIMARY_OUTCOME: ${{ steps.gemini.outcome }}
           PRIMARY_SUMMARY: ${{ steps.gemini.outputs.summary }}

@@ -150,7 +150,9 @@ that comment re-reviews only a head without a completed Gemini review (the stick
 comment records `<!-- gemini-reviewed-sha: <sha> -->`); `@gemini-cli` always starts
 one. Eligible jobs share a
 workflow-name/PR-number concurrency group with cancellation, so rapid pushes
-replace stale reviews and unrelated comments do not cancel active reviews.
+replace stale reviews and unrelated comments do not cancel active reviews. A run
+cancelled that way posts nothing (the publisher runs on `!cancelled()`); the newer run
+reports.
 The job has a 20-minute timeout and the review step a 10-minute one, bounding
 runner time and quota use while leaving the publisher time to report a failure.
 After a 429 quota or 503 availability error, one retry runs on the model named by
@@ -161,8 +163,9 @@ retried. ripgrep is installed before the CLI runs.
 The root checkout retains full commit history with `filter: blob:none`, avoiding
 old artifact downloads while materializing every file at the reviewed head.
 Diff generation fetches historical blobs on demand and retains the true merge base.
-The CLI session is capped at eight model turns: batch related searches/reads and
-return the final review by the seventh turn. Disclose any unreviewed consumers
+The CLI session is capped at 14 model turns: batch related searches/reads and
+return the final review by the thirteenth turn. The cap was 8 until 2026-10-31, when a
+review of a three-file PR used all eight turns before writing (`FatalTurnLimitedError`). Disclose any unreviewed consumers
 when this budget prevents completion; a limited review is not full verification.
 Fork/Dependabot PRs are skipped because this credentialed review requires a secret
 and write access. Comment events run only after the workflow is on the default
@@ -199,8 +202,8 @@ reduces redundant work but does not guarantee a free-tier quota or zero cost.
 Requests per day and requests per minute are separate from context size and TPM.
 The [frontend CI run on 2026-10-25](https://github.com/michaeldgreenphd/patientwords/actions/runs/40210493105/attempts/2)
 reported HTTP 503 retries followed by
-HTTP 429 for an exhausted 20-request daily allowance on this model. An eight-turn
-cap reduces agent loops; retries and other API activity can still exhaust the
+HTTP 429 for an exhausted 20-request daily allowance on this model. A 14-turn
+cap bounds agent loops; retries and other API activity can still exhaust the
 project's allowance, shared across repositories if their keys use the same project.
 Quota failures leave the job failed and do not replace a prior sticky review with
 a success summary. Inspect the action log and the project's

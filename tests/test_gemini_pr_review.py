@@ -47,12 +47,13 @@ PUBLISHER = "Create or update the sticky PR review comment"
 def test_review_budget_and_failure_do_not_publish_success(review_job: dict) -> None:
     """80 turns can exhaust the observed 20-request allowance in one review. The job limit covers setup and the
     publisher as well as both review steps, so it must keep a reserve beyond them, or a slow setup lets GitHub
-    cancel the job before the always() publisher reports the failure (Codex on patientwords#21)."""
+    cancel the job before the publisher reports the failure (Codex on patientwords#21). Eight turns proved too few on
+    2026-10-31: a three-file review ended in FatalTurnLimitedError before writing, so the cap is 14."""
     settings = json.loads(review_job["env"]["GEMINI_SETTINGS"])
     assert settings == {
         "tools": {"core": ["read_file", "read_many_files", "list_directory", "glob", "grep_search"]},
         "mcp": {"allowed": []}, "hooksConfig": {"enabled": False}, "skills": {"enabled": False},
-        "advanced": {"ignoreLocalEnv": True}, "model": {"maxSessionTurns": 8},
+        "advanced": {"ignoreLocalEnv": True}, "model": {"maxSessionTurns": 14},
     }
     primary, fallback = _step(review_job, step_id="gemini"), _step(review_job, step_id="gemini_fallback")
     for step in (primary, fallback):
@@ -75,9 +76,12 @@ def test_review_budget_and_failure_do_not_publish_success(review_job: dict) -> N
                for code in ("429", "503", "RESOURCE_EXHAUSTED", "UNAVAILABLE", "quota"))
     publisher = review_job["steps"][-1]
     assert publisher["name"] == PUBLISHER
-    assert publisher["if"] == "always() && steps.pr.outputs.eligible == 'true'"
-    assert "8 model turns" in review_job["env"]["GEMINI_REVIEW_PROMPT"] or "eight model turns" in \
-        review_job["env"]["GEMINI_REVIEW_PROMPT"]
+    # !cancelled(), not always(): a superseded run, cancelled by the concurrency group, posted a misleading "no error
+    # output" diagnostic on 2026-10-31 (run 41198275188); a failed or step-timed-out review is still reported
+    assert publisher["if"] == "${{ !cancelled() && steps.pr.outputs.eligible == 'true' }}"
+    assert condition.startswith("${{ !cancelled() &&") and "always()" not in condition
+    assert "capped at 14 model turns" in review_job["env"]["GEMINI_REVIEW_PROMPT"]
+    assert "by the thirteenth turn" in review_job["env"]["GEMINI_REVIEW_PROMPT"]
 
 
 def test_review_triggers_match_the_agents_review_request(workflow: dict) -> None:
