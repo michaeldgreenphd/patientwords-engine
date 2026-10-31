@@ -161,6 +161,20 @@ def test_runs_for_one_pr_queue_instead_of_cancelling(review_job: dict) -> None:
     assert review_job["concurrency"]["group"].startswith("${{ github.workflow }}-")
 
 
+def test_every_section_fits_when_an_early_one_is_cut(review_job: dict, tmp_path: Path) -> None:
+    """Codex on patientwords#22: each section reserved room only for its own BEGIN/END lines and note, so a
+    changed-file list that used the whole budget left the diff's lines and note over the limit (2,500 paths and a
+    large diff made a 100,144-byte prompt), the size check failed the step and no review ran."""
+    paths = "".join(f"data/simulated/batch_{i:05d}/scenario_with_a_long_descriptive_name.json\n" for i in range(2500))
+    diff = "".join(f"+line {i:06d}\n" for i in range(20000))
+    prompt, stdout = _embed(review_job, tmp_path, {"metadata.json": "{}\n", "changed-files.txt": paths,
+                                                   "pr.diff": diff})
+    assert len(prompt.encode("utf-8")) <= 100_000
+    for name in ("changed-files.txt", "pr.diff"):
+        assert f"read the rest of review-context/{name} with read_file." in prompt
+        assert prompt.count(f" review-context/{name} =====") == 2  # its BEGIN and END lines
+
+
 def test_review_triggers_match_the_agents_review_request(workflow: dict) -> None:
     """Agents post `@codex review` on every PR open and push (docs/agent_reference.md), often on drafts, and never
     `@gemini-cli`; and the owner may mark a draft ready and merge seconds later, before the ready_for_review run

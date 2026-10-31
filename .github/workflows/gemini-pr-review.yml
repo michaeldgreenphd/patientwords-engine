@@ -217,10 +217,13 @@ jobs:
           token=$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')
           prompt="$RUNNER_TEMP/gemini-prompt.txt"
           printf '%s\n' "$GEMINI_REVIEW_PROMPT" > "$prompt"
+          # Sections not yet written; each keeps 400 bytes for its BEGIN, TRUNCATED and END
+          # lines, so a list that uses the whole budget still leaves the diff's lines room.
+          left=3
           embed() {
             local file=$1 room
-            # 400 bytes cover this section's BEGIN, TRUNCATED and END lines.
-            room=$(( limit - $(wc -c < "$prompt") - 400 ))
+            room=$(( limit - $(wc -c < "$prompt") - 400 * left ))
+            left=$(( left - 1 ))
             (( room > 0 )) || room=0
             printf '\n===== BEGIN EVIDENCE %s %s =====\n' "$token" "$file" >> "$prompt"
             if (( $(wc -c < "$file") <= room )); then
