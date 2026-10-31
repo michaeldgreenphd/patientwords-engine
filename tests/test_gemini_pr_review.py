@@ -45,10 +45,11 @@ PUBLISHER = "Create or update the sticky PR review comment"
 
 
 def test_review_budget_and_failure_do_not_publish_success(review_job: dict) -> None:
-    """80 turns can exhaust the observed 20-request allowance in one review. The job limit covers setup and the
-    publisher as well as both review steps, so it must keep a reserve beyond them, or a slow setup lets GitHub
-    cancel the job before the publisher reports the failure (Codex on patientwords#21). Eight turns proved too few on
-    2026-10-31: a three-file review ended in FatalTurnLimitedError before writing, so the cap is 14."""
+    """Every model turn is one request, and an uncapped session (up to 80 turns before be476d3a) could spend a
+    20-request allowance in one review, so the session is capped. The cap was 8 until 2026-10-31, when a three-file
+    review ended in FatalTurnLimitedError before writing; it is now 14. The job limit covers setup and the publisher
+    as well as both review steps, so it must keep a reserve beyond them, or a slow setup lets GitHub cancel the job
+    before the publisher reports the failure (Codex on patientwords#21)."""
     settings = json.loads(review_job["env"]["GEMINI_SETTINGS"])
     assert settings == {
         "tools": {"core": ["read_file", "read_many_files", "list_directory", "glob", "grep_search"]},
