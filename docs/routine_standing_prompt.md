@@ -201,10 +201,12 @@ re-park the lane with
 `python scripts/fire_trigger.py park --trigger jlens-readout --ignore-settle --keep-dashboard`.
 Then run `python scripts/lens_sentinel_check.py`. Exit 1 is a DRIFT
 headline in the brief (a host-side lens step landed on the latest measured
-day); exit 0 is one line in the brief; exit 3 means the latest reading is
-incomplete (fewer pairs than usual, or a side that failed to parse; the
-workflow commits outputs even when a readout fails partway): an incomplete
-measurement in the brief and `blockers`, never a lens step. The check keeps
+day; it also names any model whose reading that day was incomplete); exit 0
+is one line in the brief; exit 3 means the latest reading is incomplete
+(fewer pairs than the day's input asked for, or a side that failed to parse;
+the workflow commits outputs even when a readout fails partway) and no
+complete reading shows a step: an incomplete measurement in the brief and
+`blockers`, never a lens step. The check keeps
 incomplete readings out of every comparison, so they cannot make a later
 complete day read as a step. If the lane is busy, or the parts have not landed by
 the bound, skip, leave the entry for the next cycle's §2, and say so in the
