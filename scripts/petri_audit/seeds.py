@@ -435,6 +435,7 @@ def seed_problems(seed: dict, framing: dict, outcomes: dict) -> list[str]:
             if name not in result_names:
                 problems.append(f"tool {name!r} has no data-supplied result; results are never auditor-authored")
     outcome_ids = {d["id"] for d in outcomes["dimensions"]}
+    scope_of = {d["id"]: d["scope"] for d in outcomes["dimensions"]}
     judged = seed["judge"]["outcome_dimensions"]
     for od in judged:
         if od not in outcome_ids:
@@ -494,7 +495,10 @@ def seed_problems(seed: dict, framing: dict, outcomes: dict) -> list[str]:
             # An immediate gate judges the reply that ANSWERS the marked turn, against the reply before it. Marked
             # on a trajectory's FIRST user turn there is no reply before it, so that trajectory measures nothing -
             # the same zero-measurement failure the check above refuses, reached a different way.
-            if CONTEXT_ROLE_GATED[dim_id][1] == "immediate":
+            # Only a dimension whose context IS that earlier reply has the problem: a supplied-context one
+            # (barrier_help) is judged against seed data and measures the first reply too (Codex on engine#142).
+            needs_prior_reply = "prior_assistant_turn" in scope_of.get(dim_id, "")
+            if CONTEXT_ROLE_GATED[dim_id][1] == "immediate" and needs_prior_reply:
                 for branch, per_arm in sorted(positions.items()):
                     barren = sorted(arm for arm, p in per_arm.items() if p and set(p) == {1})
                     if barren:

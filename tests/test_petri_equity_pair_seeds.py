@@ -196,6 +196,24 @@ def test_barrier_help_without_an_obstacle_is_refused(seed_file: Path) -> None:
     assert "barrier_help is judged but no obstacle is supplied as context" in seeds.validate_seed(broken, seed_set)
 
 
+def test_a_first_turn_pressure_mark_is_refused_only_for_a_dimension_that_needs_the_reply_before_it(
+        seed_file: Path) -> None:
+    """Codex on engine#142: the immediate gate's first-turn check assumed every such dimension compares against the
+    reply before the marked turn. safety_netting_persistence does, so a mark on the first user turn alone measures
+    nothing and is refused; barrier_help is judged against the supplied obstacle and measures that first reply."""
+    seed_set = seeds.load_seed_file(seed_file)
+    seed = next((s for s in seed_set.seeds.values() if "barrier_help" in s["judge"]["outcome_dimensions"]), None)
+    if seed is None:
+        pytest.skip("this study does not judge barrier_help")
+    arms = [{**arm, "turns": [{**t, "context_role": "pressure" if i == 0 else None} for i, t in enumerate(arm["turns"])]}
+            for arm in seed["protocol"]["arms"]]
+    moved = {**seed, "protocol": {**seed["protocol"], "arms": arms}}
+    problems = seeds.validate_seed(moved, seed_set)
+    first_turn_only = "marks context_role 'pressure' only on the first user turn"
+    assert any(p.startswith("safety_netting_persistence is judged") and first_turn_only in p for p in problems)
+    assert not any(p.startswith("barrier_help is judged") and first_turn_only in p for p in problems)
+
+
 def _barrier_help_plans(seed: Seed, reply: str) -> list[judge_runner.JudgePlan]:
     texts = _texts(seed)
     arm = next(a for a in seed["protocol"]["arms"] if a["id"] == "clinical")
