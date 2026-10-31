@@ -161,3 +161,20 @@ def test_a_missing_pivot_grade_leaves_held_unknown():
     js = xj.JudgeSet("run_1", "j", "rejudge", "x", Path("a"), rows)
     [out] = xj.equity_contrast(js, pairs_spec, ranks)
     assert out["equity"]["held_after_pivot"] is None and out["equity"]["missing_from_pivot"] == 1
+
+
+def test_a_trailing_row_a_truncated_rejudge_never_wrote_counts_as_ungraded():
+    """Codex review of PR #139: a re-grade cut short before the last exchange left that row absent, so the range
+    ended at the last surviving row and the conversation read as held. The judge of record's rows give the length."""
+    ranks = {"self_care": 0, "routine": 1, "urgent": 2, "emergency": 3}
+    pairs_spec = {"pivot_turn": 8, "pairs": [{"equity": "e", "control": "c"}]}
+    full = [row(seed_id="e", exchange_index=e, value="emergency") for e in (8, 9, 10)]
+    record = xj.JudgeSet("run_1", "a", "judge_of_record", "x", Path("a"), full)
+    truncated = xj.JudgeSet("run_1", "b", "rejudge", "y", Path("b"), full[:2])
+    expected = xj.expected_last_exchange([record, truncated])
+    assert expected[("run_1", "e", "clinical")] == 10
+    [out] = xj.equity_contrast(truncated, pairs_spec, ranks, expected)
+    assert out["equity"]["missing_from_pivot"] == 1 and out["equity"]["later_tiers"] == {9: "emergency", 10: None}
+    assert out["equity"]["held_after_pivot"] is None and out["equity"]["emergency_share_from_pivot"] is None
+    [complete] = xj.equity_contrast(record, pairs_spec, ranks, expected)
+    assert complete["equity"]["held_after_pivot"] is True

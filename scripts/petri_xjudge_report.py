@@ -248,7 +248,22 @@ def agreement_table(paired_rows: list[tuple[dict, dict]], ranks: dict[str, int],
 
 # ------------------------------------------------------------------ equity contrast
 
-def equity_contrast(js: JudgeSet, pairs_spec: dict, ranks: dict[str, int]) -> list[dict]:
+def expected_last_exchange(sets: list[JudgeSet]) -> dict[tuple[str, str, str], int]:
+    """The last root-branch exchange each conversation has, over every judge set of its run and every kind and key:
+    (stem, seed, condition) -> exchange. A re-grade that stopped early has fewer rows than its source conversation,
+    so its own rows cannot say how long the conversation was (Codex review of PR #139)."""
+    last: dict[tuple[str, str, str], int] = {}
+    for js in sets:
+        for r in js.rows:
+            if r.get("branch_id") != "root" or r.get("exchange_index") is None:
+                continue
+            key = (js.stem, r["seed_id"], r["condition_id"])
+            last[key] = max(last.get(key, 0), int(r["exchange_index"]))
+    return last
+
+
+def equity_contrast(js: JudgeSet, pairs_spec: dict, ranks: dict[str, int],
+                    expected_last: dict[tuple[str, str, str], int] | None = None) -> list[dict]:
     """Per pair and register: the response-only tier at the pivot exchange and each later one, equity against control.
 
     Exchanges are the controller's `exchange_index` on the root branch; the pivot exchange is the pairing's
@@ -256,7 +271,8 @@ def equity_contrast(js: JudgeSet, pairs_spec: dict, ranks: dict[str, int]) -> li
     pivot reply's. Every exchange the conversation has a tier row for keeps its place: an ungraded one (a null or
     not-applicable value) is None and counted in `missing_from_pivot`, and "held" and the emergency share are None
     when any exchange from the pivot on is ungraded, so a missing grade never reads as held (Codex review of PR
-    #139)."""
+    #139). The range runs to the conversation's last exchange in `expected_last` (from every judge of the run), so
+    a row a truncated re-grade never wrote counts as ungraded too."""
     pivot = int(pairs_spec["pivot_turn"])
     tiers: dict[tuple[str, str], dict[int, str | None]] = defaultdict(dict)
     for r in js.rows:
@@ -273,7 +289,7 @@ def equity_contrast(js: JudgeSet, pairs_spec: dict, ranks: dict[str, int]) -> li
                                    "control_seed": pair["control"], "register": arm}
             for side, seed in (("equity", pair["equity"]), ("control", pair["control"])):
                 series = tiers.get((seed, arm), {})
-                last = max(series, default=0)
+                last = max(max(series, default=0), (expected_last or {}).get((js.stem, seed, arm), 0))
                 from_pivot = list(range(pivot, last + 1)) if last >= pivot else []
                 values = [series.get(e) for e in from_pivot]
                 complete = bool(values) and all(v is not None for v in values)
@@ -405,8 +421,9 @@ def build_report(sets: list[JudgeSet], seed: int, reps: int) -> dict[str, Any]:
                               "dimensions": agreement_table(p["paired"], ranks, reps, rng)})
     pairs_spec = json.loads(EQUITY_PAIRS.read_text(encoding="utf-8"))
     equity_seeds = {s for p in pairs_spec["pairs"] for s in (p["equity"], p["control"])}
+    expected = expected_last_exchange(sets)
     equity_rows = [row for js in sets if any(r.get("seed_id") in equity_seeds for r in js.rows)
-                   for row in equity_contrast(js, pairs_spec, ranks)]
+                   for row in equity_contrast(js, pairs_spec, ranks, expected)]
     return {
         "status": "exploratory (campaign xjudge-v1); not a registered analysis and not a study claim",
         "commit": git_commit(), "bootstrap_seed": seed, "bootstrap_reps": reps,
