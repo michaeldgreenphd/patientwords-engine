@@ -199,15 +199,14 @@ plus `--keep-dashboard`. WAIT on it as in §3b (5-minute `git pull` polls,
 `trace_out/drift_sentinel_<today>__jlens_<model>/`, resolve the entry and
 re-park the lane with
 `python scripts/fire_trigger.py park --trigger jlens-readout --ignore-settle --keep-dashboard`.
-Before reading any verdict, check the readout is complete: each model's part
-holds all 3 sentinel pairs, each with `parse_status` `ok` on both sides (the
-workflow commits outputs even when a readout fails partway, and
-`scripts/lens_sentinel_check.py` fingerprints `results` without checking
-them). An incomplete readout is an incomplete measurement in the brief and
-`blockers`, never a lens step. When it is complete, run
-`python scripts/lens_sentinel_check.py`: exit 1 is a DRIFT headline in the
-brief (a host-side lens step landed on the latest measured day); exit 0 is
-one line in the brief. If the lane is busy, or the parts have not landed by
+Then run `python scripts/lens_sentinel_check.py`. Exit 1 is a DRIFT
+headline in the brief (a host-side lens step landed on the latest measured
+day); exit 0 is one line in the brief; exit 3 means the latest reading is
+incomplete (fewer pairs than usual, or a side that failed to parse; the
+workflow commits outputs even when a readout fails partway): an incomplete
+measurement in the brief and `blockers`, never a lens step. The check keeps
+incomplete readings out of every comparison, so they cannot make a later
+complete day read as a step. If the lane is busy, or the parts have not landed by
 the bound, skip, leave the entry for the next cycle's §2, and say so in the
 brief. A deferred reading gets its completeness check and verdict when §2
 harvests it, BEFORE this cycle's §3f fires: the check reports a step only on

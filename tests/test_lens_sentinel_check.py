@@ -13,13 +13,14 @@ from pathlib import Path
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "lens_sentinel_check.py"
 
 
-def write_day(root: Path, day: str, model: str, tops: list[str], ranks: list[int | None]):
+def write_day(root: Path, day: str, model: str, tops: list[str], ranks: list[int | None],
+              pairs: int = 1, status: dict | None = None):
     run_dir = root / f"drift_sentinel_{day}__jlens_{model}"
     run_dir.mkdir(parents=True)
     layers = [{"layer": i, "top1": token, "target_rank": rank, "match": None}
               for i, (token, rank) in enumerate(zip(tops, ranks))]
-    results = [{"index": 1, "target_token": " placeholder",
-                "depth": {"clinical": layers, "patient": layers}}]
+    results = [{"index": i, "target_token": " placeholder", "depth": {"clinical": layers, "patient": layers},
+                **({"parse_status": status} if status is not None else {})} for i in range(1, pairs + 1)]
     (run_dir / "jlens_summary.part_01.json").write_text(
         json.dumps({"results": results}), encoding="utf-8")
 
@@ -91,3 +92,30 @@ def test_cross_host_divergence_is_reported(tmp_path):
     assert "DIVERGE since 20260731" in out
     assert payload["cross_host_identical"] == {
         "20260714": True, "20260731": False, "20260821": False}
+
+
+OK = {"clinical": "ok", "patient": "ok"}
+
+
+def test_an_incomplete_day_never_enters_the_comparison(tmp_path):
+    """Codex on engine#143: the workflow commits a partial readout, and a complete -> partial -> complete series
+    with unchanged readings read as a step on the final, complete day. The partial day is listed, not compared."""
+    root = tmp_path / "trace_out"
+    write_day(root, "20261101", "m", ["a", "b"], [1, 2], pairs=3, status=OK)
+    write_day(root, "20261102", "m", ["a", "b"], [1, 2], pairs=2, status=OK)            # one pair missing
+    write_day(root, "20261103", "m", ["a", "b"], [1, 2], pairs=3, status=OK)
+    code, out, payload = run(tmp_path)
+    assert code == 0, out
+    assert payload["per_model"]["m"]["steps"] == []
+    assert payload["per_model"]["m"]["days_measured"] == ["20261101", "20261103"]
+    assert payload["incomplete"]["m"]["20261102"] == {"pairs": 2, "expected_pairs": 3, "all_parsed": True}
+
+
+def test_an_incomplete_latest_reading_is_no_verdict(tmp_path):
+    root = tmp_path / "trace_out"
+    write_day(root, "20261101", "m", ["a", "b"], [1, 2], pairs=3, status=OK)
+    write_day(root, "20261102", "m", ["a", "b"], [1, 2], pairs=3, status=OK)
+    write_day(root, "20261103", "m", ["x", "y"], [1, 2], pairs=3, status={"clinical": "ok", "patient": "no response"})
+    code, out, payload = run(tmp_path)
+    assert code == 3 and "INCOMPLETE" in out and "DRIFT" not in out
+    assert payload["incomplete"]["m"]["20261103"]["all_parsed"] is False

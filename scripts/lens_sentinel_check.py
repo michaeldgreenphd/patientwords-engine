@@ -21,7 +21,10 @@ No medical vocabulary lives in this file. $0, offline, read-only.
 
 Exit 0 = no new step since the previous measured day; exit 1 = a step landed
 on the latest day (the DRIFT headline the brief must carry); exit 2 = nothing
-to compare.
+to compare; exit 3 = the latest reading is incomplete (fewer pairs than the
+model's usual count, or a side that failed to parse): no verdict. Incomplete
+readings stay on disk and are listed in the series file, but never enter a
+comparison.
 """
 from __future__ import annotations
 
@@ -40,8 +43,17 @@ except ImportError:
 DIR_PATTERN = re.compile(r"drift_sentinel_(\d{8})__jlens_(.+)$")
 
 
+def _status_ok(status) -> bool:
+    """A pair's parse_status: per-side dict, one string, or absent (pre-status readouts)."""
+    if status is None:
+        return True
+    if isinstance(status, dict):
+        return bool(status) and all(v == "ok" for v in status.values())
+    return status == "ok"
+
+
 def _fingerprint(run_dir: Path):
-    """(canonical-json, target_rank_hits, layers_read) for one dated readout.
+    """(canonical-json, target_rank_hits, layers_read, n_pairs, all_ok) for one dated readout.
 
     The canonical form drops nothing from `results`: a host-side change to any
     per-layer top1 token is exactly the signal we are watching for. Summary
@@ -63,7 +75,27 @@ def _fingerprint(run_dir: Path):
                 layers += 1
                 if layer.get("target_rank") is not None:
                     hits += 1
-    return json.dumps(rows, sort_keys=True), hits, layers
+    n_pairs = len({row.get("index") for row in rows})
+    all_ok = all(_status_ok(row.get("parse_status")) for row in rows)
+    return json.dumps(rows, sort_keys=True), hits, layers, n_pairs, all_ok
+
+
+def split_incomplete(days: dict):
+    """(complete_days, incomplete) — a reading is complete when it holds the model's usual pair count (the most
+    common count across its days) and every pair parsed on both sides. The workflow commits outputs even when a
+    readout fails partway, so a partial reading must not enter any comparison: as the latest day it would read as
+    a step, and as history it would make the next complete day read as one (Codex on engine#143)."""
+    complete, incomplete = {}, {}
+    for model, by_date in days.items():
+        counts = [fp[3] for fp in by_date.values()]
+        expected = max(set(counts), key=lambda c: (counts.count(c), c)) if counts else 0
+        for date, fp in by_date.items():
+            if fp[3] == expected and fp[4]:
+                complete.setdefault(model, {})[date] = fp
+            else:
+                incomplete.setdefault(model, {})[date] = {"pairs": fp[3], "expected_pairs": expected,
+                                                           "all_parsed": fp[4]}
+    return complete, incomplete
 
 
 def collect(trace_root: Path):
@@ -117,25 +149,36 @@ def main():
     parser.add_argument("--out", default="ops/lens_sentinel_series.json")
     args = parser.parse_args()
 
-    days = collect(Path(args.trace_root))
-    if not days:
+    every = collect(Path(args.trace_root))
+    if not every:
         print("lens sentinel: no dated lens readouts found")
         return 2
+    days, incomplete = split_incomplete(every)
+    latest_any = max(date for by_date in every.values() for date in by_date)
 
     per_model = steps(days)
     agreement = cross_host(days)
     all_dates = sorted({date for by_date in days.values() for date in by_date})
-    latest = all_dates[-1]
+    latest = all_dates[-1] if all_dates else None
 
     payload = {"pairs_file": "data/simulated/drift_sentinel.json",
                "models": sorted(days),
                "days_measured": all_dates,
                "per_model": per_model,
                "cross_host_identical": agreement,
+               "incomplete": incomplete,
                "_provenance": provenance("lens_sentinel_check.py")}
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+    late = {model: by_date[latest_any] for model, by_date in incomplete.items() if latest_any in by_date}
+    if late:
+        detail = "; ".join(f"{model} {info['pairs']}/{info['expected_pairs']} pairs"
+                           f"{'' if info['all_parsed'] else ', a side failed to parse'}" for model, info in late.items())
+        print(f"lens sentinel: INCOMPLETE reading on {latest_any} — {detail}; no verdict (an incomplete "
+              "measurement, not a lens step)")
+        return 3
 
     new_steps = [(model, move) for model, info in per_model.items()
                  for move in info["steps"] if move["date"] == latest]
