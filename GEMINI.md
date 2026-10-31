@@ -174,7 +174,11 @@ reaches the cap is lost with nothing posted. The cap was 8 until 2026-10-31, whe
 of a three-file PR used all eight turns before writing (`FatalTurnLimitedError`); 14 failed
 the same way on both PRs that set it; at 40 most reviews completed, but one run ran out on
 an engine#141 head (`65998d28`) and two on the nine-file engine#142 head (`a0e434a`); the
-owner then set 80 with the stopping rule, against a paid Gemini budget. The review step's limit is 15 minutes and the job's 25. The three evidence files
+owner then set 80 with the stopping rule, against a paid Gemini budget. The review step's limit is 15 minutes and the job's 25.
+Exit criterion (owner decision 2026-10-31): once the 80-turn workflow is on `main` in both
+repositories, count the next five PRs whose Gemini review runs; if two or more end without a
+posted review, turn the automatic review off and rely on Codex, keeping `@gemini-cli` for
+reviews on request or removing the workflow. The three evidence files
 (`metadata.json`, `changed-files.txt`, `pr.diff`) are embedded in the prompt so no turns
 go to reading them, each between BEGIN/END EVIDENCE lines carrying one random per-run
 token, and are treated as untrusted data. The action passes the prompt as one command-line
