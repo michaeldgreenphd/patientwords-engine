@@ -1441,11 +1441,12 @@ def test_every_id_of_every_source_is_refused_in_an_example():
     sources = _study_ids()
     assert all(sources.values()), {k: len(v) for k, v in sources.items()}
     # A Petri text key that is one plain word is an ordinary English word, not an id shape, and refusing it would
-    # refuse ordinary text, so _study_ids leaves it out. There is one; a new one shows here.
+    # refuse ordinary text, so _study_ids leaves it out. There are two; a new one shows here. `obstacle` is the
+    # barrier_help context of the equity v3 seeds (2026-10-31).
     plain = {t["key"] for path in (ROOT / "docs" / "framework").glob("petri_seeds*.json")
              for seed in json.loads(path.read_text(encoding="utf-8"))["seeds"] for t in seed["texts"]
              if t["key"].isalpha()}
-    assert plain == {"proposition"}
+    assert plain == {"proposition", "obstacle"}
     missed = {name: sorted({i for i in ids if not evt.EXAMPLE_IDS.search(i)})[:5] for name, ids in sources.items()}
     assert {k: v for k, v in missed.items() if v} == {}
 

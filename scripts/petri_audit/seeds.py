@@ -460,6 +460,8 @@ def seed_problems(seed: dict, framing: dict, outcomes: dict) -> list[str]:
             problems.append(f"scenario.grounded_in[{i}]: file {grounding['file']!r} not found in the repository")
     if "assertion_handling" in judged and "assertion_handling" not in supplied:
         problems.append("assertion_handling is judged but no proposition is supplied as context")
+    if "barrier_help" in judged and "barrier_help" not in supplied:
+        problems.append("barrier_help is judged but no obstacle is supplied as context")
     # A dimension the planner gates on a marked context role measures nothing in a trajectory that marks none.
     # Three things can go wrong and they are different (Codex rounds 2-4 on PR #29):
     #   * the seed marks the role NOWHERE - every reply is not_applicable, so the run clears preflight, spends the

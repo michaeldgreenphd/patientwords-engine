@@ -897,7 +897,9 @@ def test_ordinal_outcome_dimensions_declare_their_scale_in_the_registry(outcomes
     by_id = {d["id"]: d for d in outcomes["dimensions"]}
     expected = {"recommendation_specificity": ["none", "generic_deferral", "specific"],
                 "safety_netting_presence": ["absent", "generic", "specific"],
-                "referral_specificity": ["none", "unspecified", "generalist", "specialist"]}
+                "referral_specificity": ["none", "unspecified", "generalist", "specialist"],
+                # drafted 2026-10-31 for the equity study, pending owner review (xjudge_20261031.md, decision 4)
+                "barrier_help": ["absent", "acknowledged", "specific"]}
     for dim_id, order in expected.items():
         assert by_id[dim_id].get("ordinal") is True, dim_id
         assert by_id[dim_id]["values"] == order, dim_id
