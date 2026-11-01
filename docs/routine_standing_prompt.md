@@ -185,10 +185,40 @@ the collectors read no logits part the owner has not released
 (`scripts/publication_hold.py`, `data/publication_release/logits_parts.json`),
 so it is no reason to run §5. Never run `scripts/publication_release.py`.
 
+3f. **Lens sentinel (restored 2026-10-31; $0; owner decision).** The
+internals counterpart of §3: the hosted Jacobian lens can change under us
+with byte-identical requests (steps on 2026-07-31 and 2026-08-14; the 08-29
+maintenance rewrite dropped this step, and nothing watched the lens until
+the owner restored it). After §3b's sentinel resolves, and only when the
+`jlens-readout` lane has 0 active journal entries after §2, fire
+`jlens-readout` on the same `data/simulated/drift_sentinel_<today>.json`
+with `models` `gemma-2-2b,gemma-2-2b-it`, `limit` `0`, `offset` `0`, `topn`
+`8`, `lens_type` `JACOBIAN_LENS`, `save_raw` `true`, `commit_outputs` `true`,
+plus `--keep-dashboard`. WAIT on it as in §3b (5-minute `git pull` polls,
+20-minute bound); when both models' parts land under
+`trace_out/drift_sentinel_<today>__jlens_<model>/`, resolve the entry and
+re-park the lane with
+`python scripts/fire_trigger.py park --trigger jlens-readout --ignore-settle --keep-dashboard`.
+Then run `python scripts/lens_sentinel_check.py`. Exit 1 is a DRIFT
+headline in the brief (a host-side lens step landed on the latest measured
+day; it also names any model whose reading that day was incomplete); exit 0
+is one line in the brief; exit 3 means the latest reading is incomplete
+(fewer pairs than the day's input asked for, or a side that failed to parse;
+the workflow commits outputs even when a readout fails partway) and no
+complete reading shows a step: an incomplete measurement in the brief and
+`blockers`, never a lens step. The check keeps
+incomplete readings out of every comparison, so they cannot make a later
+complete day read as a step. If the lane is busy, or the parts have not landed by
+the bound, skip, leave the entry for the next cycle's §2, and say so in the
+brief. A deferred reading gets its completeness check and verdict when §2
+harvests it, BEFORE this cycle's §3f fires: the check reports a step only on
+its latest day, so a step on the deferred day would go unreported once the
+next reading lands on top of it.
+
 ## 4 · No other fires
 
 Maintenance mode fires NOTHING but the sentinel, the §3d PNG sweep, the
-§3e exploratory leg and re-parks. Paid fires (`PAID_TRIGGERS`,
+§3e exploratory leg, the §3f lens sentinel and re-parks. Paid fires (`PAID_TRIGGERS`,
 `docs/triggers.md`) other than a lane's park default, plus circuit-trace with `show_mitigation: true` or
 `mode: translation`, need the owner's explicit words in a live chat.
 Measurement lanes stay parked; the only backlog advanced is §3e's.

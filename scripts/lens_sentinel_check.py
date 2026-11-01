@@ -21,7 +21,12 @@ No medical vocabulary lives in this file. $0, offline, read-only.
 
 Exit 0 = no new step since the previous measured day; exit 1 = a step landed
 on the latest day (the DRIFT headline the brief must carry); exit 2 = nothing
-to compare.
+to compare; exit 3 = the latest reading is incomplete (fewer pairs than the
+day's input data/simulated/drift_sentinel_<date>.json asked for, an unreadable
+input, or a side that failed to parse) and no complete reading that day shows
+a step: no verdict. Incomplete readings stay on disk and are listed in the
+series file, but never enter a comparison; a step in another model's complete
+reading that day is still a DRIFT exit 1, with the incomplete one noted.
 """
 from __future__ import annotations
 
@@ -40,8 +45,17 @@ except ImportError:
 DIR_PATTERN = re.compile(r"drift_sentinel_(\d{8})__jlens_(.+)$")
 
 
+def _status_ok(status) -> bool:
+    """A pair's parse_status: per-side dict, one string, or absent (pre-status readouts)."""
+    if status is None:
+        return True
+    if isinstance(status, dict):
+        return bool(status) and all(v == "ok" for v in status.values())
+    return status == "ok"
+
+
 def _fingerprint(run_dir: Path):
-    """(canonical-json, target_rank_hits, layers_read) for one dated readout.
+    """(canonical-json, target_rank_hits, layers_read, n_pairs, all_ok) for one dated readout.
 
     The canonical form drops nothing from `results`: a host-side change to any
     per-layer top1 token is exactly the signal we are watching for. Summary
@@ -63,7 +77,38 @@ def _fingerprint(run_dir: Path):
                 layers += 1
                 if layer.get("target_rank") is not None:
                     hits += 1
-    return json.dumps(rows, sort_keys=True), hits, layers
+    n_pairs = len({row.get("index") for row in rows})
+    all_ok = all(_status_ok(row.get("parse_status")) for row in rows)
+    return json.dumps(rows, sort_keys=True), hits, layers, n_pairs, all_ok
+
+
+def expected_pairs(pairs_root: Path, date: str) -> int | None:
+    """How many pairs the day's sentinel input asked for (data/simulated/drift_sentinel_<date>.json), or None when
+    the input is missing or unreadable. Taken from the input, never from the outputs, which may themselves have
+    failed (Codex on engine#143: a majority of partial days must not redefine complete)."""
+    try:
+        pairs = json.loads((pairs_root / f"drift_sentinel_{date}.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return len(pairs) if isinstance(pairs, list) else None
+
+
+def split_incomplete(days: dict, pairs_root: Path):
+    """(complete_days, incomplete) — a reading is complete when it covers every pair the day's sentinel input
+    asked for and every pair parsed on both sides; a day whose input cannot be read is incomplete. The workflow
+    commits outputs even when a readout fails partway, so a partial reading must not enter any comparison: as the
+    latest day it would read as a step, and as history it would make the next complete day read as one (Codex on
+    engine#143)."""
+    complete, incomplete = {}, {}
+    for model, by_date in days.items():
+        for date, fp in by_date.items():
+            expected = expected_pairs(pairs_root, date)
+            if expected is not None and fp[3] == expected and fp[4]:
+                complete.setdefault(model, {})[date] = fp
+            else:
+                incomplete.setdefault(model, {})[date] = {"pairs": fp[3], "expected_pairs": expected,
+                                                           "all_parsed": fp[4]}
+    return complete, incomplete
 
 
 def collect(trace_root: Path):
@@ -115,30 +160,42 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--trace-root", default="trace_out")
     parser.add_argument("--out", default="ops/lens_sentinel_series.json")
+    parser.add_argument("--pairs-root", default="data/simulated",
+                        help="where the dated sentinel inputs drift_sentinel_<date>.json live")
     args = parser.parse_args()
 
-    days = collect(Path(args.trace_root))
-    if not days:
+    every = collect(Path(args.trace_root))
+    if not every:
         print("lens sentinel: no dated lens readouts found")
         return 2
+    days, incomplete = split_incomplete(every, Path(args.pairs_root))
+    latest_any = max(date for by_date in every.values() for date in by_date)
 
     per_model = steps(days)
     agreement = cross_host(days)
     all_dates = sorted({date for by_date in days.values() for date in by_date})
-    latest = all_dates[-1]
+    latest = all_dates[-1] if all_dates else None
 
     payload = {"pairs_file": "data/simulated/drift_sentinel.json",
                "models": sorted(days),
                "days_measured": all_dates,
                "per_model": per_model,
                "cross_host_identical": agreement,
+               "incomplete": incomplete,
                "_provenance": provenance("lens_sentinel_check.py")}
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
+    late = {model: by_date[latest_any] for model, by_date in incomplete.items() if latest_any in by_date}
+    late_note = ("; INCOMPLETE on " + latest_any + ": " + "; ".join(
+        f"{model} {info['pairs']}/{info['expected_pairs'] if info['expected_pairs'] is not None else '?'} pairs"
+        f"{'' if info['all_parsed'] else ', a side failed to parse'}" for model, info in late.items())) if late else ""
+
+    # A step in any COMPLETE reading on the latest day is reported even when another model's reading that day is
+    # incomplete: suppressing it would let the step pass into history unannounced (Codex on engine#143).
     new_steps = [(model, move) for model, info in per_model.items()
-                 for move in info["steps"] if move["date"] == latest]
+                 for move in info["steps"] if move["date"] == latest_any]
     all_steps = [(model, move) for model, info in per_model.items() for move in info["steps"]]
 
     if new_steps:
@@ -146,8 +203,11 @@ def main():
             f"{model} {move['prev']} -> {move['date']} "
             f"(target-rank hits {move['target_rank_hits_prev']} -> {move['target_rank_hits']})"
             for model, move in new_steps)
-        print(f"lens sentinel: DRIFT on {latest} — {detail}")
+        print(f"lens sentinel: DRIFT on {latest_any} — {detail}{late_note}")
         return 1
+    if late:
+        print(f"lens sentinel: no verdict for {latest_any}{late_note} (an incomplete measurement, not a lens step)")
+        return 3
 
     history = (f"; {len(all_steps)} historical step(s): "
                + ", ".join(f"{model}@{move['date']}" for model, move in all_steps)) if all_steps else ""

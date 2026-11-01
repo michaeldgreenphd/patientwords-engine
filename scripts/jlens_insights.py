@@ -87,7 +87,7 @@ def collect(trace_root: Path):
     for part in sorted(trace_root.glob("*__jlens_*/jlens_summary.part_*.json")):
         dataset = part.parent.name.split("__jlens_")[0]
         if (dataset.startswith(("txcorpus_", "drift_sentinel_"))
-                or dataset.endswith(("_txopus", "_txplacebo", "__context"))):
+                or dataset.endswith(("_txopus", "_txplacebo", "__context", "__lenspairs"))):
             # translated/placebo/context-arm lens readouts are NOT patient
             # profiles: their "patient" side is a rewrite or a prefixed prompt.
             # translation_scale.py and the arm analyses own them; ingesting
@@ -99,6 +99,11 @@ def collect(trace_root: Path):
             # sweep would enter the census once per sentinel day and inflate
             # every replicate-sensitive count (owner-approved fix 2026-08-21,
             # JLENS-SENTINEL-CONTAMINATION-20260821).
+            # __lenspairs dirs read dialect and 4-quadrant comparisons
+            # (scripts/derive_lens_pairs.py, 2026-10-31): baseline vs a dialect
+            # variant that keeps the clinical term, or quadrant A vs B/C/D.
+            # Their "patient" side is not a patient wording, so they stay out
+            # until a decision says how they enter.
             continue
         try:
             summary = json.loads(part.read_text(encoding="utf-8"))
