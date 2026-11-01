@@ -60,6 +60,9 @@ def test_review_budget_and_failure_do_not_publish_success(review_job: dict) -> N
         # the CLI's default of 10 backed-off retries spent about 8 minutes of the step under a 503 storm
         # (michaeldgreenphd/clinical-trial-populations), leaving the fallback no time
         "general": {"maxAttempts": 3},
+        # tool arguments are recorded only with logPrompts on; usage statistics would then send prompt text to Google
+        "telemetry": {"enabled": True, "target": "local", "outfile": ".gemini/telemetry.log", "logPrompts": True},
+        "privacy": {"usageStatisticsEnabled": False},
     }
     primary, fallback = _step(review_job, step_id="gemini"), _step(review_job, step_id="gemini_fallback")
     for step in (primary, fallback):
@@ -192,6 +195,58 @@ def test_review_triggers_match_the_agents_review_request(workflow: dict) -> None
     assert '["OWNER", "MEMBER", "COLLABORATOR"]' in job_if
     resolve = _step(workflow["jobs"]["review"], step_id="pr")["run"]
     assert '($event != "pull_request" or .draft != true)' in resolve, "only automatic reviews skip drafts"
+
+
+LISTING = "List the review's tool calls and model requests"
+
+
+def test_tool_call_listing_runs_after_both_reviews_and_never_fails(review_job: dict) -> None:
+    """A session that reaches the turn cap posts nothing, so the listing must run after a failed review too, before
+    the publisher, and must never turn a completed review red."""
+    names = [s.get("id") or s["name"] for s in review_job["steps"]]
+    assert names.index("gemini_fallback") < names.index(LISTING) < names.index(PUBLISHER)
+    step = _step(review_job, name=LISTING)
+    assert step["if"] == "${{ !cancelled() && steps.pr.outputs.eligible == 'true' }}"
+    assert step["continue-on-error"] is True
+    settings = json.loads(review_job["env"]["GEMINI_SETTINGS"])
+    assert settings["telemetry"]["outfile"] in step["run"]
+    assert not (settings["telemetry"]["logPrompts"] and settings["privacy"]["usageStatisticsEnabled"] is not False)
+
+
+def test_tool_call_listing_prints_arguments_but_never_prompt_text(review_job: dict, tmp_path: Path) -> None:
+    """The CLI's file exporter appends pretty-printed records and writes function_args as indented JSON."""
+    if shutil.which("jq") is None:
+        pytest.skip("workflow shell regression requires jq")
+    script = _step(review_job, name=LISTING)["run"]
+    (tmp_path / ".gemini").mkdir()
+    log = tmp_path / ".gemini" / "telemetry.log"
+
+    def listing() -> str:
+        proc = subprocess.run(["bash", "-c", script], cwd=tmp_path, text=True, capture_output=True)
+        assert proc.returncode == 0, proc.stderr
+        return proc.stdout
+
+    assert listing().strip() == "No telemetry was written."
+    records = [
+        {"attributes": {"event.name": "gemini_cli.api_request", "model": "model-x", "request_text": "SECRET PROMPT"}},
+        {"attributes": {"event.name": "gemini_cli.tool_call", "function_name": "read_many_files",
+                        "function_args": json.dumps({"include": ["a.py", "b.py"]}, indent=2)}},
+        {"attributes": {"event.name": "gemini_cli.tool_call", "function_name": "grep_search",
+                        "function_args": "raw {"}},
+        {"attributes": {"event.name": "gemini_cli.api_response", "response_text": "SECRET RESPONSE"}},
+        {"descriptor": {"name": "gemini_cli.tool.call.count"}, "dataPoints": [{"value": 2}]},
+    ]
+    log.write_text("".join(json.dumps(r, indent=2) + "\n" for r in records))
+    out = listing()
+    assert out.splitlines() == [
+        "request  model=model-x",
+        'tool     read_many_files {"include":["a.py","b.py"]}',
+        "tool     grep_search raw {",
+        "Model requests: 1",
+    ]
+    assert "SECRET" not in out
+    log.write_text("not json")
+    assert "Could not parse" in listing()
 
 
 def test_ripgrep_is_ensured_before_the_cli(review_job: dict) -> None:

@@ -53,6 +53,12 @@ jobs:
       # servers, hooks, skills or local environment files, and an 80-turn session cap.
       # maxAttempts 3 (the CLI's default is 10): ten backed-off retries under a 503 storm took
       # about 8 minutes of the 10-minute step in michaeldgreenphd/clinical-trial-populations.
+      # Local telemetry writes each tool call and model request to .gemini/telemetry.log, so
+      # a session that runs out of turns shows where they went (ported from that repository).
+      # The CLI records tool arguments only with logPrompts on, which also puts prompt and
+      # response text in the file; the file stays on the runner and is not uploaded, and the
+      # listing step prints only tool names, arguments and models. With logPrompts on, usage
+      # statistics would send routing reasoning and prompts to Google, so they are off.
       GEMINI_SETTINGS: |
         {
           "tools": {"core": ["read_file", "read_many_files", "list_directory", "glob", "grep_search"]},
@@ -61,7 +67,9 @@ jobs:
           "skills": {"enabled": false},
           "advanced": {"ignoreLocalEnv": true},
           "model": {"maxSessionTurns": 80},
-          "general": {"maxAttempts": 3}
+          "general": {"maxAttempts": 3},
+          "telemetry": {"enabled": true, "target": "local", "outfile": ".gemini/telemetry.log", "logPrompts": true},
+          "privacy": {"usageStatisticsEnabled": false}
         }
       # The instructions only; the "Embed the review evidence in the prompt" step appends
       # the evidence files, and both review steps receive that step's output.
@@ -306,6 +314,22 @@ jobs:
           gemini_model: ${{ env.FALLBACK_MODEL }}
           settings: ${{ env.GEMINI_SETTINGS }}
           prompt: ${{ steps.prompt.outputs.text }}
+
+      - name: List the review's tool calls and model requests
+        # Diagnostic only: prints tool names, one-line arguments and models from the local
+        # telemetry file into this log, never prompt or response text, and never fails the job.
+        if: ${{ !cancelled() && steps.pr.outputs.eligible == 'true' }}
+        continue-on-error: true
+        run: |
+          log=.gemini/telemetry.log
+          if [ ! -s "$log" ]; then echo "No telemetry was written."; exit 0; fi
+          jq -r '.. | objects | select(has("event.name")) |
+            select(."event.name" == "gemini_cli.api_request" or ."event.name" == "gemini_cli.tool_call") |
+            if ."event.name" == "gemini_cli.api_request"
+            then "request  model=\(.model // "?")"
+            else "tool     \(.function_name // "?") \((.function_args // "") | tostring | . as $raw | (try (fromjson | tojson) catch $raw) | .[0:300])"
+            end' "$log" || echo "Could not parse $log."
+          echo "Model requests: $(jq -s '[.[] | .. | objects | select(."event.name"? == "gemini_cli.api_request")] | length' "$log" 2>/dev/null || echo '?')"
 
       - name: Create or update the sticky PR review comment
         # !cancelled(): a failed review, or one whose step hit its own time limit, is still

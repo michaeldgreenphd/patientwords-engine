@@ -177,6 +177,10 @@ of a three-file PR used all eight turns before writing (`FatalTurnLimitedError`)
 the same way on both PRs that set it; at 40 most reviews completed, but one run ran out on
 an engine#141 head (`65998d28`) and two on the nine-file engine#142 head (`a0e434a`); the
 owner then set 80 with the stopping rule, against a paid Gemini budget. The review step's limit is 15 minutes and the job's 25.
+Local telemetry (`.gemini/telemetry.log`, kept on the runner) records each tool call and model
+request; a diagnostic step lists tool names, arguments and models in the Actions log, so a
+session that reaches the cap shows where its turns went. Recording tool arguments needs
+`logPrompts`, so the CLI's usage statistics, which would then send prompt text to Google, are off.
 Exit criterion (owner decision 2026-10-31): once the 80-turn workflow is on `main` in both
 repositories, count the next five PRs whose Gemini review runs; if two or more end without a
 posted review, turn the automatic review off and rely on Codex, keeping `@gemini-cli` for
