@@ -1,0 +1,731 @@
+{
+  "mode": "2panel",
+  "backend": "logits",
+  "graph_model": "qwen3-1.7b",
+  "source_set": null,
+  "generation_params": {},
+  "start_index": 45,
+  "pairs_requested": 6,
+  "completed": true,
+  "screen_targets": null,
+  "inference": {
+    "method": "logits",
+    "hf_id": "Qwen/Qwen3-1.7B",
+    "dtype": "bfloat16",
+    "revision": "70d244cc86ccca08cf5af4e1e306ecf908b1ad5e",
+    "revision_pinned": "70d244cc86ccca08cf5af4e1e306ecf908b1ad5e",
+    "environment": {
+      "python": "3.11.18",
+      "platform": "Linux-7.0.0-1017-azure-x86_64-with-glibc2.39",
+      "engine_sha": "2a4759be5dc4",
+      "runner_image": "20261101.360.1",
+      "torch": "2.13.0+cpu",
+      "transformers": "5.14.1",
+      "accelerate": "1.14.0"
+    }
+  },
+  "results": [
+    {
+      "index": 45,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When I breathe in the cold air, my asthma flares, so I should probably grab my",
+        "patient": "When I breathe in the cold air, my chest gets tight, so I should probably grab my"
+      },
+      "target_token": "Output \" inhal\"",
+      "probabilities": {
+        "clinical": 0.7151,
+        "patient": 0.1227
+      },
+      "language_penalty": -0.5924,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" inhal\"",
+            0.7151
+          ],
+          [
+            "Output \" rescue\"",
+            0.0356
+          ],
+          [
+            "Output \" mask\"",
+            0.0314
+          ],
+          [
+            "Output \" medication\"",
+            0.0245
+          ],
+          [
+            "Output \" al\"",
+            0.0216
+          ],
+          [
+            "Output \" asthma\"",
+            0.0148
+          ],
+          [
+            "Output \" ne\"",
+            0.0148
+          ],
+          [
+            "Output \" controller\"",
+            0.0102
+          ],
+          [
+            "Output \" bron\"",
+            0.0079
+          ],
+          [
+            "Output \" medicine\"",
+            0.0048
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" inhal\"",
+            0.1227
+          ],
+          [
+            "Output \" mask\"",
+            0.0843
+          ],
+          [
+            "Output \" coat\"",
+            0.0398
+          ],
+          [
+            "Output \" asthma\"",
+            0.0352
+          ],
+          [
+            "Output \" scarf\"",
+            0.031
+          ],
+          [
+            "Output \" chest\"",
+            0.0242
+          ],
+          [
+            "Output \" medication\"",
+            0.0242
+          ],
+          [
+            "Output \" cold\"",
+            0.0213
+          ],
+          [
+            "Output \" umbrella\"",
+            0.0188
+          ],
+          [
+            "Output \" car\"",
+            0.0166
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "inhal": "inhaler.",
+          "rescue": "rescue inhaler",
+          "mask": "mask. But",
+          "medication": "medication. But"
+        },
+        "patient": {
+          "inhal": "inhaler.",
+          "mask": "mask. But",
+          "coat": "coat. But",
+          "asthma": "asthma inhaler"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 46,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My seborrheic dermatitis is flaking and itchy, so I think I should use a",
+        "patient": "My skin's been flaking and itchy, so I think I should use a"
+      },
+      "target_token": "Output \" cream\"",
+      "probabilities": {
+        "clinical": 0.0279,
+        "patient": 0.0016
+      },
+      "language_penalty": -0.0263,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" moistur\"",
+            0.3402
+          ],
+          [
+            "Output \" medic\"",
+            0.0975
+          ],
+          [
+            "Output \" cort\"",
+            0.0759
+          ],
+          [
+            "Output \" mild\"",
+            0.067
+          ],
+          [
+            "Output \" steroid\"",
+            0.0406
+          ],
+          [
+            "Output \" cream\"",
+            0.0279
+          ],
+          [
+            "Output \" fragrance\"",
+            0.0246
+          ],
+          [
+            "Output \" gentle\"",
+            0.0218
+          ],
+          [
+            "Output \" body\"",
+            0.0149
+          ],
+          [
+            "Output \" shampoo\"",
+            0.0132
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" moistur\"",
+            0.9203
+          ],
+          [
+            "Output \" body\"",
+            0.0149
+          ],
+          [
+            "Output \" good\"",
+            0.0055
+          ],
+          [
+            "Output \" gentle\"",
+            0.0048
+          ],
+          [
+            "Output \" medic\"",
+            0.0043
+          ],
+          [
+            "Output \" fragrance\"",
+            0.0043
+          ],
+          [
+            "Output \" skin\"",
+            0.0033
+          ],
+          [
+            "Output \" mild\"",
+            0.002
+          ],
+          [
+            "Output \" new\"",
+            0.002
+          ],
+          [
+            "Output \" treatment\"",
+            0.0018
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "moistur": "moisturizer.",
+          "medic": "medicated cream",
+          "cort": "corticoster",
+          "mild": "mild soap."
+        },
+        "patient": {
+          "moistur": "moisturizer.",
+          "body": "body wash with",
+          "good": "good moisturizer",
+          "gentle": "gentle cleanser"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 47,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been waking up in the middle of the night with night sweats, so my",
+        "patient": "I've been waking up in the middle of the night drenched in sweat, so my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.6482,
+        "patient": 0.0756
+      },
+      "language_penalty": -0.5726,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.6482
+          ],
+          [
+            "Output \" partner\"",
+            0.0683
+          ],
+          [
+            "Output \" body\"",
+            0.0532
+          ],
+          [
+            "Output \" sleep\"",
+            0.0414
+          ],
+          [
+            "Output \" wife\"",
+            0.0152
+          ],
+          [
+            "Output \" husband\"",
+            0.0119
+          ],
+          [
+            "Output \" skin\"",
+            0.0092
+          ],
+          [
+            "Output \" physician\"",
+            0.0072
+          ],
+          [
+            "Output \" blood\"",
+            0.0064
+          ],
+          [
+            "Output \" chest\"",
+            0.0064
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" partner\"",
+            0.2989
+          ],
+          [
+            "Output \" doctor\"",
+            0.0756
+          ],
+          [
+            "Output \" body\"",
+            0.0756
+          ],
+          [
+            "Output \" skin\"",
+            0.0667
+          ],
+          [
+            "Output \" sleep\"",
+            0.0519
+          ],
+          [
+            "Output \" question\"",
+            0.0519
+          ],
+          [
+            "Output \" wife\"",
+            0.0458
+          ],
+          [
+            "Output \" bed\"",
+            0.0169
+          ],
+          [
+            "Output \" husband\"",
+            0.0149
+          ],
+          [
+            "Output \" brain\"",
+            0.0131
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor prescribed me",
+          "partner": "partner and I",
+          "body": "body is producing",
+          "sleep": "sleep is disrupted"
+        },
+        "patient": {
+          "partner": "partner and I",
+          "doctor": "doctor prescribed me",
+          "body": "body is not",
+          "skin": "skin is very"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 48,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When I eat too much greasy food I get constipation, so I should take some",
+        "patient": "When I eat too much greasy food my insides feel backed up, so I should take some"
+      },
+      "target_token": "Output \" lax\"",
+      "probabilities": {
+        "clinical": 0.1139,
+        "patient": 0.0479
+      },
+      "language_penalty": -0.066,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" prob\"",
+            0.2129
+          ],
+          [
+            "Output \" lax\"",
+            0.1139
+          ],
+          [
+            "Output \" fiber\"",
+            0.0887
+          ],
+          [
+            "Output \" supplements\"",
+            0.0419
+          ],
+          [
+            "Output \" kind\"",
+            0.0288
+          ],
+          [
+            "Output \" oil\"",
+            0.0175
+          ],
+          [
+            "Output \" vitamin\"",
+            0.0175
+          ],
+          [
+            "Output \" food\"",
+            0.0175
+          ],
+          [
+            "Output \" magnesium\"",
+            0.0175
+          ],
+          [
+            "Output \" more\"",
+            0.0154
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" time\"",
+            0.2759
+          ],
+          [
+            "Output \" exercise\"",
+            0.0543
+          ],
+          [
+            "Output \" prob\"",
+            0.0479
+          ],
+          [
+            "Output \" steps\"",
+            0.0479
+          ],
+          [
+            "Output \" lax\"",
+            0.0479
+          ],
+          [
+            "Output \" magnesium\"",
+            0.0156
+          ],
+          [
+            "Output \" supplements\"",
+            0.0137
+          ],
+          [
+            "Output \" herbs\"",
+            0.0137
+          ],
+          [
+            "Output \" fiber\"",
+            0.0137
+          ],
+          [
+            "Output \" medication\"",
+            0.0137
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "prob": "probiotics.",
+          "lax": "laxatives.",
+          "fiber": "fiber. But",
+          "supplements": "supplements. Is"
+        },
+        "patient": {
+          "time": "time to breathe",
+          "exercise": "exercise. Is",
+          "prob": "probiotics.",
+          "steps": "steps to help"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 49,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Ever since I quit smoking my nicotine withdrawal is severe, so I think I should take my",
+        "patient": "Ever since I quit smoking my mood's been all over the place, so I think I should take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.0399,
+        "patient": 0.0233
+      },
+      "language_penalty": -0.0166,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" time\"",
+            0.3789
+          ],
+          [
+            "Output \" first\"",
+            0.0513
+          ],
+          [
+            "Output \" chances\"",
+            0.0513
+          ],
+          [
+            "Output \" vitamin\"",
+            0.0513
+          ],
+          [
+            "Output \" medication\"",
+            0.0399
+          ],
+          [
+            "Output \" vitamins\"",
+            0.0214
+          ],
+          [
+            "Output \" nicotine\"",
+            0.0189
+          ],
+          [
+            "Output \" own\"",
+            0.0189
+          ],
+          [
+            "Output \" medicine\"",
+            0.0189
+          ],
+          [
+            "Output \" pills\"",
+            0.0166
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" time\"",
+            0.1951
+          ],
+          [
+            "Output \" vitamin\"",
+            0.0559
+          ],
+          [
+            "Output \" meds\"",
+            0.0435
+          ],
+          [
+            "Output \" chances\"",
+            0.0384
+          ],
+          [
+            "Output \" mood\"",
+            0.0299
+          ],
+          [
+            "Output \" blood\"",
+            0.0299
+          ],
+          [
+            "Output \" medication\"",
+            0.0233
+          ],
+          [
+            "Output \" first\"",
+            0.0206
+          ],
+          [
+            "Output \" antidepress\"",
+            0.0141
+          ],
+          [
+            "Output \" doctor\"",
+            0.0141
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "time": "time to quit",
+          "first": "first steps towards",
+          "chances": "chances and try",
+          "vitamin": "vitamin C and"
+        },
+        "patient": {
+          "time": "time with the",
+          "vitamin": "vitamin D3",
+          "meds": "meds. But",
+          "chances": "chances with a"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 50,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My osteoarthritis has been stiff and achy for months, so I should probably take my",
+        "patient": "My joints have been stiff and achy for months, so I should probably take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.0671,
+        "patient": 0.0232
+      },
+      "language_penalty": -0.0439,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" time\"",
+            0.0861
+          ],
+          [
+            "Output \" doctor\"",
+            0.076
+          ],
+          [
+            "Output \" medication\"",
+            0.0671
+          ],
+          [
+            "Output \" supplements\"",
+            0.0592
+          ],
+          [
+            "Output \" first\"",
+            0.0592
+          ],
+          [
+            "Output \" medications\"",
+            0.0522
+          ],
+          [
+            "Output \" meds\"",
+            0.0461
+          ],
+          [
+            "Output \" arthritis\"",
+            0.0407
+          ],
+          [
+            "Output \" pain\"",
+            0.0407
+          ],
+          [
+            "Output \" oste\"",
+            0.0359
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" time\"",
+            0.2201
+          ],
+          [
+            "Output \" chances\"",
+            0.0715
+          ],
+          [
+            "Output \" supplements\"",
+            0.0557
+          ],
+          [
+            "Output \" joints\"",
+            0.0557
+          ],
+          [
+            "Output \" first\"",
+            0.0557
+          ],
+          [
+            "Output \" doctor\"",
+            0.0383
+          ],
+          [
+            "Output \" arthritis\"",
+            0.0298
+          ],
+          [
+            "Output \" pain\"",
+            0.0263
+          ],
+          [
+            "Output \" medication\"",
+            0.0232
+          ],
+          [
+            "Output \" family\"",
+            0.0205
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "time": "time with the",
+          "doctor": "doctor's advice",
+          "medication": "medication as prescribed",
+          "supplements": "supplements. What"
+        },
+        "patient": {
+          "time": "time with the",
+          "chances": "chances with a",
+          "supplements": "supplements. I",
+          "joints": "joints to a"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    }
+  ]
+}
