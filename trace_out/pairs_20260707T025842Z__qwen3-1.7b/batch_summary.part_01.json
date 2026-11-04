@@ -1,0 +1,5171 @@
+{
+  "mode": "2panel",
+  "backend": "logits",
+  "graph_model": "qwen3-1.7b",
+  "source_set": null,
+  "generation_params": {},
+  "start_index": 1,
+  "pairs_requested": 44,
+  "completed": true,
+  "screen_targets": null,
+  "inference": {
+    "method": "logits",
+    "hf_id": "Qwen/Qwen3-1.7B",
+    "dtype": "bfloat16",
+    "revision": "70d244cc86ccca08cf5af4e1e306ecf908b1ad5e",
+    "revision_pinned": "70d244cc86ccca08cf5af4e1e306ecf908b1ad5e",
+    "environment": {
+      "python": "3.11.18",
+      "platform": "Linux-7.0.0-1017-azure-x86_64-with-glibc2.39",
+      "engine_sha": "9c1dd077230a",
+      "runner_image": "20261101.360.1",
+      "torch": "2.13.0+cpu",
+      "transformers": "5.14.1",
+      "accelerate": "1.14.0"
+    }
+  },
+  "results": [
+    {
+      "index": 1,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My gastroesophageal reflux has been acting up all week, so I'm gonna see a",
+        "patient": "My stomach's been acting up all week, so I'm gonna see a"
+      },
+      "target_token": "Output \" gastro\"",
+      "probabilities": {
+        "clinical": 0.2771,
+        "patient": 0.1264
+      },
+      "language_penalty": -0.1507,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.6646
+          ],
+          [
+            "Output \" gastro\"",
+            0.2771
+          ],
+          [
+            "Output \" GI\"",
+            0.0156
+          ],
+          [
+            "Output \" specialist\"",
+            0.0095
+          ],
+          [
+            "Output \" GP\"",
+            0.0095
+          ],
+          [
+            "Output \" physician\"",
+            0.0074
+          ],
+          [
+            "Output \" G\"",
+            0.001
+          ],
+          [
+            "Output \" diet\"",
+            0.0008
+          ],
+          [
+            "Output \" family\"",
+            0.0007
+          ],
+          [
+            "Output \" nurse\"",
+            0.0007
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.8245
+          ],
+          [
+            "Output \" gastro\"",
+            0.1264
+          ],
+          [
+            "Output \" GP\"",
+            0.0056
+          ],
+          [
+            "Output \" physician\"",
+            0.0049
+          ],
+          [
+            "Output \" specialist\"",
+            0.0043
+          ],
+          [
+            "Output \" nutrition\"",
+            0.003
+          ],
+          [
+            "Output \" GI\"",
+            0.0026
+          ],
+          [
+            "Output \" g\"",
+            0.0018
+          ],
+          [
+            "Output \" therapist\"",
+            0.0018
+          ],
+          [
+            "Output \" nurse\"",
+            0.0018
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. What",
+          "gastro": "gastroenterologist",
+          "GI": "GI doctor.",
+          "specialist": "specialist. What"
+        },
+        "patient": {
+          "doctor": "doctor. What",
+          "gastro": "gastroenterologist",
+          "GP": "GP. What",
+          "physician": "physician. What"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 2,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been itching with severe pruritus, so the doctor gave me a",
+        "patient": "I've been itching like crazy, so the doctor gave me a"
+      },
+      "target_token": "Output \" prescription\"",
+      "probabilities": {
+        "clinical": 0.3456,
+        "patient": 0.2912
+      },
+      "language_penalty": -0.0544,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" prescription\"",
+            0.3456
+          ],
+          [
+            "Output \" trial\"",
+            0.0601
+          ],
+          [
+            "Output \" \"",
+            0.0413
+          ],
+          [
+            "Output \" cort\"",
+            0.0321
+          ],
+          [
+            "Output \" course\"",
+            0.0221
+          ],
+          [
+            "Output \" new\"",
+            0.0221
+          ],
+          [
+            "Output \" short\"",
+            0.0195
+          ],
+          [
+            "Output \" topical\"",
+            0.0195
+          ],
+          [
+            "Output \" steroid\"",
+            0.0172
+          ],
+          [
+            "Output \" treatment\"",
+            0.0172
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" prescription\"",
+            0.2912
+          ],
+          [
+            "Output \" cort\"",
+            0.1071
+          ],
+          [
+            "Output \" cream\"",
+            0.0736
+          ],
+          [
+            "Output \" steroid\"",
+            0.0447
+          ],
+          [
+            "Output \" pill\"",
+            0.0271
+          ],
+          [
+            "Output \" new\"",
+            0.0271
+          ],
+          [
+            "Output \" \"",
+            0.0211
+          ],
+          [
+            "Output \" skin\"",
+            0.0186
+          ],
+          [
+            "Output \" treatment\"",
+            0.0186
+          ],
+          [
+            "Output \" shot\"",
+            0.0128
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "prescription": "prescription for hydro",
+          "trial": "trial of ant",
+          "cort": "corticoster"
+        },
+        "patient": {
+          "prescription": "prescription for ant",
+          "cort": "cortisone",
+          "cream": "cream. I",
+          "steroid": "steroid cream."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 3,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My chronic lumbar pain is present when I wake up, so I should take my",
+        "patient": "My back's killing me when I wake up, so I should take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.1375,
+        "patient": 0.0317
+      },
+      "language_penalty": -0.1058,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" time\"",
+            0.4235
+          ],
+          [
+            "Output \" medication\"",
+            0.1375
+          ],
+          [
+            "Output \" pain\"",
+            0.1071
+          ],
+          [
+            "Output \" medications\"",
+            0.0394
+          ],
+          [
+            "Output \" usual\"",
+            0.0307
+          ],
+          [
+            "Output \" morning\"",
+            0.0211
+          ],
+          [
+            "Output \" first\"",
+            0.0186
+          ],
+          [
+            "Output \" medicine\"",
+            0.0145
+          ],
+          [
+            "Output \" supplements\"",
+            0.0128
+          ],
+          [
+            "Output \" temperature\"",
+            0.0128
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" time\"",
+            0.3006
+          ],
+          [
+            "Output \" pain\"",
+            0.076
+          ],
+          [
+            "Output \" medication\"",
+            0.0317
+          ],
+          [
+            "Output \" dog\"",
+            0.028
+          ],
+          [
+            "Output \" doctor\"",
+            0.0192
+          ],
+          [
+            "Output \" chances\"",
+            0.0192
+          ],
+          [
+            "Output \" medicine\"",
+            0.0192
+          ],
+          [
+            "Output \" back\"",
+            0.017
+          ],
+          [
+            "Output \" temperature\"",
+            0.017
+          ],
+          [
+            "Output \" wife\"",
+            0.0117
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "time": "time in the",
+          "medication": "medication before bed",
+          "pain": "pain medication before",
+          "medications": "medications before bed"
+        },
+        "patient": {
+          "time": "time to get",
+          "pain": "painkillers",
+          "medication": "medication. What",
+          "dog": "dog for a"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 4,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I can't seem to achieve sleep onset no matter what, so my sleep doc wants me to try a",
+        "patient": "I can't seem to drop off no matter what, so my sleep doc wants me to try a"
+      },
+      "target_token": "Output \" hypnot\"",
+      "probabilities": {
+        "clinical": 0.0049,
+        "patient": 0.0021
+      },
+      "language_penalty": -0.0028,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" sleep\"",
+            0.2368
+          ],
+          [
+            "Output \" different\"",
+            0.0769
+          ],
+          [
+            "Output \" new\"",
+            0.0769
+          ],
+          [
+            "Output \" \"",
+            0.0599
+          ],
+          [
+            "Output \" C\"",
+            0.0528
+          ],
+          [
+            "Output \" few\"",
+            0.0321
+          ],
+          [
+            "Output \" cognitive\"",
+            0.025
+          ],
+          [
+            "Output \" pill\"",
+            0.025
+          ],
+          [
+            "Output \" medication\"",
+            0.0194
+          ],
+          [
+            "Output \" low\"",
+            0.0194
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" sleep\"",
+            0.1228
+          ],
+          [
+            "Output \" different\"",
+            0.1228
+          ],
+          [
+            "Output \" \"",
+            0.1084
+          ],
+          [
+            "Output \" new\"",
+            0.0512
+          ],
+          [
+            "Output \" C\"",
+            0.031
+          ],
+          [
+            "Output \" few\"",
+            0.0242
+          ],
+          [
+            "Output \" low\"",
+            0.0213
+          ],
+          [
+            "Output \" trial\"",
+            0.0188
+          ],
+          [
+            "Output \" CP\"",
+            0.0166
+          ],
+          [
+            "Output \" little\"",
+            0.0166
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "sleep": "sleep study.",
+          "different": "different approach.",
+          "new": "new sleep disorder"
+        },
+        "patient": {
+          "sleep": "sleep study.",
+          "different": "different sleep study",
+          "new": "new sleep study"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 5,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing dyspnea with bronchospasm, so I should probably call my",
+        "patient": "I've been wheezing up a storm, so I should probably call my"
+      },
+      "target_token": "Output \" pul\"",
+      "probabilities": {
+        "clinical": 0.0037,
+        "patient": 0.0004
+      },
+      "language_penalty": -0.0033,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.7079
+          ],
+          [
+            "Output \" physician\"",
+            0.1579
+          ],
+          [
+            "Output \" provider\"",
+            0.0274
+          ],
+          [
+            "Output \" healthcare\"",
+            0.0242
+          ],
+          [
+            "Output \" health\"",
+            0.0147
+          ],
+          [
+            "Output \" primary\"",
+            0.013
+          ],
+          [
+            "Output \" GP\"",
+            0.0079
+          ],
+          [
+            "Output \" cardi\"",
+            0.0042
+          ],
+          [
+            "Output \" family\"",
+            0.0037
+          ],
+          [
+            "Output \" pul\"",
+            0.0037
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.9159
+          ],
+          [
+            "Output \" physician\"",
+            0.0168
+          ],
+          [
+            "Output \" GP\"",
+            0.0102
+          ],
+          [
+            "Output \" insurance\"",
+            0.0062
+          ],
+          [
+            "Output \" health\"",
+            0.0054
+          ],
+          [
+            "Output \" healthcare\"",
+            0.0042
+          ],
+          [
+            "Output \" mom\"",
+            0.0037
+          ],
+          [
+            "Output \" local\"",
+            0.0026
+          ],
+          [
+            "Output \" family\"",
+            0.002
+          ],
+          [
+            "Output \" pediatric\"",
+            0.0016
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. What",
+          "physician": "physician. What",
+          "provider": "provider. What",
+          "healthcare": "healthcare provider."
+        },
+        "patient": {
+          "doctor": "doctor. But",
+          "physician": "physician. But",
+          "GP": "GP. But",
+          "insurance": "insurance company."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 6,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My irritable bowel syndrome's been off all morning, so I think I need to see a",
+        "patient": "My stomach's been off all morning, so I think I need to see a"
+      },
+      "target_token": "Output \" gastro\"",
+      "probabilities": {
+        "clinical": 0.111,
+        "patient": 0.0284
+      },
+      "language_penalty": -0.0826,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.8199
+          ],
+          [
+            "Output \" gastro\"",
+            0.111
+          ],
+          [
+            "Output \" specialist\"",
+            0.0193
+          ],
+          [
+            "Output \" physician\"",
+            0.0103
+          ],
+          [
+            "Output \" GP\"",
+            0.008
+          ],
+          [
+            "Output \" GI\"",
+            0.0049
+          ],
+          [
+            "Output \" therapist\"",
+            0.0038
+          ],
+          [
+            "Output \" healthcare\"",
+            0.0023
+          ],
+          [
+            "Output \" pro\"",
+            0.0016
+          ],
+          [
+            "Output \" nutrition\"",
+            0.0014
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.9397
+          ],
+          [
+            "Output \" gastro\"",
+            0.0284
+          ],
+          [
+            "Output \" GP\"",
+            0.0081
+          ],
+          [
+            "Output \" physician\"",
+            0.0072
+          ],
+          [
+            "Output \" GI\"",
+            0.0021
+          ],
+          [
+            "Output \" specialist\"",
+            0.0016
+          ],
+          [
+            "Output \" healthcare\"",
+            0.0011
+          ],
+          [
+            "Output \" nurse\"",
+            0.0011
+          ],
+          [
+            "Output \" Doctor\"",
+            0.001
+          ],
+          [
+            "Output \" medical\"",
+            0.0009
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. What",
+          "gastro": "gastroenterologist",
+          "specialist": "specialist. What",
+          "physician": "physician. What"
+        },
+        "patient": {
+          "doctor": "doctor. What",
+          "gastro": "gastroenterologist",
+          "GP": "GP. What",
+          "physician": "physician. What"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 7,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been having insomnia all night, so my doctor said to take my",
+        "patient": "I've been tossing and turning all night, so my doctor said to take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.0028,
+        "patient": 0.0031
+      },
+      "language_penalty": 0.0003,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.7762
+          ],
+          [
+            "Output \" sleep\"",
+            0.0161
+          ],
+          [
+            "Output \" vit\"",
+            0.0161
+          ],
+          [
+            "Output \" pulse\"",
+            0.0125
+          ],
+          [
+            "Output \" symptoms\"",
+            0.0111
+          ],
+          [
+            "Output \" urine\"",
+            0.0052
+          ],
+          [
+            "Output \" eyes\"",
+            0.0046
+          ],
+          [
+            "Output \" weight\"",
+            0.0046
+          ],
+          [
+            "Output \" son\"",
+            0.0041
+          ],
+          [
+            "Output \" brain\"",
+            0.0041
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" blood\"",
+            0.5152
+          ],
+          [
+            "Output \" kids\"",
+            0.0423
+          ],
+          [
+            "Output \" son\"",
+            0.0423
+          ],
+          [
+            "Output \" temperature\"",
+            0.0257
+          ],
+          [
+            "Output \" daughter\"",
+            0.02
+          ],
+          [
+            "Output \" weight\"",
+            0.02
+          ],
+          [
+            "Output \" pulse\"",
+            0.0137
+          ],
+          [
+            "Output \" urine\"",
+            0.0107
+          ],
+          [
+            "Output \" wife\"",
+            0.0094
+          ],
+          [
+            "Output \" symptoms\"",
+            0.0083
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "blood": "blood pressure.",
+          "sleep": "sleep diary and",
+          "vit": "vitals and",
+          "pulse": "pulse and check"
+        },
+        "patient": {
+          "blood": "blood pressure.",
+          "kids": "kids to the",
+          "son": "son to the",
+          "temperature": "temperature. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 8,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've got this contact dermatitis on my arm, so I should put on some",
+        "patient": "I've got this angry red patch on my arm, so I should put on some"
+      },
+      "target_token": "Output \" cream\"",
+      "probabilities": {
+        "clinical": 0.0011,
+        "patient": 0.0134
+      },
+      "language_penalty": 0.0123,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" gloves\"",
+            0.5212
+          ],
+          [
+            "Output \" cotton\"",
+            0.0705
+          ],
+          [
+            "Output \" sort\"",
+            0.0428
+          ],
+          [
+            "Output \" ant\"",
+            0.0333
+          ],
+          [
+            "Output \" band\"",
+            0.0294
+          ],
+          [
+            "Output \" kind\"",
+            0.0294
+          ],
+          [
+            "Output \" protective\"",
+            0.0294
+          ],
+          [
+            "Output \" sunscreen\"",
+            0.0095
+          ],
+          [
+            "Output \" clothes\"",
+            0.0084
+          ],
+          [
+            "Output \" extra\"",
+            0.0084
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ant\"",
+            0.1441
+          ],
+          [
+            "Output \" band\"",
+            0.1272
+          ],
+          [
+            "Output \" antibiotic\"",
+            0.0468
+          ],
+          [
+            "Output \" ice\"",
+            0.0322
+          ],
+          [
+            "Output \" sort\"",
+            0.0284
+          ],
+          [
+            "Output \" sunscreen\"",
+            0.025
+          ],
+          [
+            "Output \" antibiotics\"",
+            0.0221
+          ],
+          [
+            "Output \" cotton\"",
+            0.0221
+          ],
+          [
+            "Output \" kind\"",
+            0.0195
+          ],
+          [
+            "Output \" gloves\"",
+            0.0152
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "gloves": "gloves. But",
+          "cotton": "cotton gloves to",
+          "sort": "sort of protective",
+          "ant": "antihist"
+        },
+        "patient": {
+          "ant": "antiseptic",
+          "band": "bandages.",
+          "antibiotic": "antibiotic oint",
+          "ice": "ice packs."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 9,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When I walk upstairs I get dyspnea, so I think I need to see my",
+        "patient": "When I walk upstairs I can barely catch my breath, so I think I need to see my"
+      },
+      "target_token": "Output \" cardi\"",
+      "probabilities": {
+        "clinical": 0.0333,
+        "patient": 0.01
+      },
+      "language_penalty": -0.0233,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.8601
+          ],
+          [
+            "Output \" physician\"",
+            0.0485
+          ],
+          [
+            "Output \" cardi\"",
+            0.0333
+          ],
+          [
+            "Output \" GP\"",
+            0.0229
+          ],
+          [
+            "Output \" primary\"",
+            0.0074
+          ],
+          [
+            "Output \" family\"",
+            0.0058
+          ],
+          [
+            "Output \" pul\"",
+            0.0035
+          ],
+          [
+            "Output \" PC\"",
+            0.0024
+          ],
+          [
+            "Output \" healthcare\"",
+            0.0011
+          ],
+          [
+            "Output \" Doctor\"",
+            0.001
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.9033
+          ],
+          [
+            "Output \" GP\"",
+            0.045
+          ],
+          [
+            "Output \" physician\"",
+            0.0146
+          ],
+          [
+            "Output \" cardi\"",
+            0.01
+          ],
+          [
+            "Output \" family\"",
+            0.0042
+          ],
+          [
+            "Output \" phys\"",
+            0.0029
+          ],
+          [
+            "Output \" dentist\"",
+            0.0012
+          ],
+          [
+            "Output \" orth\"",
+            0.0012
+          ],
+          [
+            "Output \" healthcare\"",
+            0.0012
+          ],
+          [
+            "Output \" general\"",
+            0.0012
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. What",
+          "physician": "physician. What",
+          "cardi": "cardiologist.",
+          "GP": "GP. Is"
+        },
+        "patient": {
+          "doctor": "doctor. What",
+          "GP": "GP. What",
+          "physician": "physician. But",
+          "cardi": "cardiologist."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 10,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "She's been really experiencing rumination lately, so the counselor thinks she should try a",
+        "patient": "She's been really in her head lately, so the counselor thinks she should try a"
+      },
+      "target_token": "Output \" technique\"",
+      "probabilities": {
+        "clinical": 0.0047,
+        "patient": 0.0011
+      },
+      "language_penalty": -0.0036,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" different\"",
+            0.2587
+          ],
+          [
+            "Output \" new\"",
+            0.2014
+          ],
+          [
+            "Output \" cognitive\"",
+            0.0577
+          ],
+          [
+            "Output \" mindfulness\"",
+            0.0509
+          ],
+          [
+            "Output \" more\"",
+            0.0449
+          ],
+          [
+            "Output \" behavioral\"",
+            0.0309
+          ],
+          [
+            "Output \" C\"",
+            0.0273
+          ],
+          [
+            "Output \" specific\"",
+            0.0187
+          ],
+          [
+            "Output \" ______\"",
+            0.0187
+          ],
+          [
+            "Output \" certain\"",
+            0.0187
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" new\"",
+            0.3531
+          ],
+          [
+            "Output \" different\"",
+            0.2427
+          ],
+          [
+            "Output \" ______\"",
+            0.029
+          ],
+          [
+            "Output \" therapy\"",
+            0.0199
+          ],
+          [
+            "Output \" certain\"",
+            0.0176
+          ],
+          [
+            "Output \" bit\"",
+            0.0155
+          ],
+          [
+            "Output \" few\"",
+            0.0137
+          ],
+          [
+            "Output \" more\"",
+            0.0137
+          ],
+          [
+            "Output \" little\"",
+            0.0094
+          ],
+          [
+            "Output \"...\"",
+            0.0083
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "different": "different approach.",
+          "new": "new approach.",
+          "cognitive": "cognitive behavioral therapy",
+          "mindfulness": "mindfulness-based intervention"
+        },
+        "patient": {
+          "new": "new therapy.",
+          "different": "different approach.",
+          "______": "_______ to",
+          "therapy": "therapy. What"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 11,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been up all night with insomnia, so I really need to get some",
+        "patient": "I've been up all night staring at the ceiling, so I really need to get some"
+      },
+      "target_token": "Output \" sleep\"",
+      "probabilities": {
+        "clinical": 0.49,
+        "patient": 0.5048
+      },
+      "language_penalty": 0.0148,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" sleep\"",
+            0.49
+          ],
+          [
+            "Output \" rest\"",
+            0.3816
+          ],
+          [
+            "Output \" help\"",
+            0.0516
+          ],
+          [
+            "Output \" good\"",
+            0.009
+          ],
+          [
+            "Output \" information\"",
+            0.0048
+          ],
+          [
+            "Output \" more\"",
+            0.0042
+          ],
+          [
+            "Output \" shut\"",
+            0.0042
+          ],
+          [
+            "Output \" advice\"",
+            0.0037
+          ],
+          [
+            "Output \" work\"",
+            0.0037
+          ],
+          [
+            "Output \" of\"",
+            0.0018
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" sleep\"",
+            0.5048
+          ],
+          [
+            "Output \" rest\"",
+            0.2104
+          ],
+          [
+            "Output \" help\"",
+            0.0774
+          ],
+          [
+            "Output \" work\"",
+            0.0323
+          ],
+          [
+            "Output \" answers\"",
+            0.0119
+          ],
+          [
+            "Output \" good\"",
+            0.0119
+          ],
+          [
+            "Output \" shut\"",
+            0.0064
+          ],
+          [
+            "Output \" information\"",
+            0.0064
+          ],
+          [
+            "Output \" advice\"",
+            0.0056
+          ],
+          [
+            "Output \" ideas\"",
+            0.0056
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "sleep": "sleep. What",
+          "rest": "rest. What",
+          "help": "help. What",
+          "good": "good sleep."
+        },
+        "patient": {
+          "sleep": "sleep. What",
+          "rest": "rest. I",
+          "help": "help. I",
+          "work": "work done."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 12,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've got dermatitis that won't quit, so the pharmacist told me to grab a",
+        "patient": "I've got this nasty rash that won't quit, so the pharmacist told me to grab a"
+      },
+      "target_token": "Output \" cream\"",
+      "probabilities": {
+        "clinical": 0.0223,
+        "patient": 0.0221
+      },
+      "language_penalty": -0.0002,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" cort\"",
+            0.0606
+          ],
+          [
+            "Output \" bottle\"",
+            0.0472
+          ],
+          [
+            "Output \" steroid\"",
+            0.0472
+          ],
+          [
+            "Output \" few\"",
+            0.0472
+          ],
+          [
+            "Output \" \"",
+            0.0324
+          ],
+          [
+            "Output \" topical\"",
+            0.0286
+          ],
+          [
+            "Output \" couple\"",
+            0.0253
+          ],
+          [
+            "Output \" cream\"",
+            0.0223
+          ],
+          [
+            "Output \" new\"",
+            0.0223
+          ],
+          [
+            "Output \" vitamin\"",
+            0.0197
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" few\"",
+            0.0601
+          ],
+          [
+            "Output \" bottle\"",
+            0.0531
+          ],
+          [
+            "Output \" couple\"",
+            0.0413
+          ],
+          [
+            "Output \" \"",
+            0.0413
+          ],
+          [
+            "Output \" little\"",
+            0.0284
+          ],
+          [
+            "Output \" jar\"",
+            0.0284
+          ],
+          [
+            "Output \" band\"",
+            0.0284
+          ],
+          [
+            "Output \" cream\"",
+            0.0221
+          ],
+          [
+            "Output \" steroid\"",
+            0.0195
+          ],
+          [
+            "Output \" hydro\"",
+            0.0195
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "cort": "corticoster",
+          "bottle": "bottle of hydro",
+          "steroid": "steroid cream.",
+          "few": "few drops of"
+        },
+        "patient": {
+          "few": "few drops of",
+          "bottle": "bottle of ant",
+          "couple": "couple of ant"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 13,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My shoulder's had chronic pain syndrome for weeks, so I think I need to see a",
+        "patient": "My shoulder's been screaming at me for weeks, so I think I need to see a"
+      },
+      "target_token": "Output \" specialist\"",
+      "probabilities": {
+        "clinical": 0.1855,
+        "patient": 0.0145
+      },
+      "language_penalty": -0.171,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.3926
+          ],
+          [
+            "Output \" phys\"",
+            0.1855
+          ],
+          [
+            "Output \" specialist\"",
+            0.1855
+          ],
+          [
+            "Output \" physical\"",
+            0.0876
+          ],
+          [
+            "Output \" neuro\"",
+            0.0251
+          ],
+          [
+            "Output \" pain\"",
+            0.0195
+          ],
+          [
+            "Output \" therapist\"",
+            0.0152
+          ],
+          [
+            "Output \" physician\"",
+            0.0119
+          ],
+          [
+            "Output \" rhe\"",
+            0.0119
+          ],
+          [
+            "Output \" chiropr\"",
+            0.0092
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.8999
+          ],
+          [
+            "Output \" phys\"",
+            0.0448
+          ],
+          [
+            "Output \" specialist\"",
+            0.0145
+          ],
+          [
+            "Output \" physical\"",
+            0.0128
+          ],
+          [
+            "Output \" therapist\"",
+            0.0042
+          ],
+          [
+            "Output \" physician\"",
+            0.0037
+          ],
+          [
+            "Output \" chiropr\"",
+            0.0032
+          ],
+          [
+            "Output \" professional\"",
+            0.0029
+          ],
+          [
+            "Output \" orth\"",
+            0.002
+          ],
+          [
+            "Output \" shoulder\"",
+            0.0017
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. What",
+          "phys": "physiother",
+          "specialist": "specialist. What",
+          "physical": "physical therapist."
+        },
+        "patient": {
+          "doctor": "doctor. What",
+          "phys": "physio.",
+          "specialist": "specialist. What",
+          "physical": "physical therapist."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 14,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Every time I head up the stairs I get angina and I can barely breathe, so my cardiologist wants me to wear a",
+        "patient": "Every time I head up the stairs my chest gets tight and I can barely breathe, so my cardiologist wants me to wear a"
+      },
+      "target_token": "Output \" monitor\"",
+      "probabilities": {
+        "clinical": 0.0723,
+        "patient": 0.0886
+      },
+      "language_penalty": 0.0163,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" cardiac\"",
+            0.1733
+          ],
+          [
+            "Output \" heart\"",
+            0.1051
+          ],
+          [
+            "Output \" device\"",
+            0.0819
+          ],
+          [
+            "Output \" monitor\"",
+            0.0723
+          ],
+          [
+            "Output \" watch\"",
+            0.0638
+          ],
+          [
+            "Output \" CP\"",
+            0.0341
+          ],
+          [
+            "Output \" continuous\"",
+            0.0266
+          ],
+          [
+            "Output \" loop\"",
+            0.0266
+          ],
+          [
+            "Output \" fitness\"",
+            0.0266
+          ],
+          [
+            "Output \" blood\"",
+            0.0266
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" device\"",
+            0.1138
+          ],
+          [
+            "Output \" cardiac\"",
+            0.1005
+          ],
+          [
+            "Output \" heart\"",
+            0.0886
+          ],
+          [
+            "Output \" CP\"",
+            0.0886
+          ],
+          [
+            "Output \" monitor\"",
+            0.0886
+          ],
+          [
+            "Output \" chest\"",
+            0.0609
+          ],
+          [
+            "Output \" loop\"",
+            0.0475
+          ],
+          [
+            "Output \" wearable\"",
+            0.0419
+          ],
+          [
+            "Output \" watch\"",
+            0.0419
+          ],
+          [
+            "Output \" Hol\"",
+            0.037
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "cardiac": "cardiac monitor.",
+          "heart": "heart monitor.",
+          "device": "device that monitors",
+          "monitor": "monitor. I"
+        },
+        "patient": {
+          "device": "device that monitors",
+          "cardiac": "cardiac monitor.",
+          "heart": "heart monitor.",
+          "CP": "CPAP machine"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 15,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing major depression lately, so my friend thinks I should talk to a",
+        "patient": "I've been a real mess in my head lately, so my friend thinks I should talk to a"
+      },
+      "target_token": "Output \" therapist\"",
+      "probabilities": {
+        "clinical": 0.6037,
+        "patient": 0.5704
+      },
+      "language_penalty": -0.0333,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" therapist\"",
+            0.6037
+          ],
+          [
+            "Output \" professional\"",
+            0.1347
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.0721
+          ],
+          [
+            "Output \" psychologist\"",
+            0.0437
+          ],
+          [
+            "Output \" counselor\"",
+            0.0437
+          ],
+          [
+            "Output \" mental\"",
+            0.0341
+          ],
+          [
+            "Output \" doctor\"",
+            0.0301
+          ],
+          [
+            "Output \" specialist\"",
+            0.0076
+          ],
+          [
+            "Output \" psycho\"",
+            0.0046
+          ],
+          [
+            "Output \" licensed\"",
+            0.0022
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" therapist\"",
+            0.5704
+          ],
+          [
+            "Output \" professional\"",
+            0.3053
+          ],
+          [
+            "Output \" doctor\"",
+            0.0284
+          ],
+          [
+            "Output \" counselor\"",
+            0.0195
+          ],
+          [
+            "Output \" psychologist\"",
+            0.0172
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.0134
+          ],
+          [
+            "Output \" shrink\"",
+            0.0134
+          ],
+          [
+            "Output \" mental\"",
+            0.0104
+          ],
+          [
+            "Output \" psycho\"",
+            0.003
+          ],
+          [
+            "Output \" coun\"",
+            0.0018
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "therapist": "therapist. I",
+          "professional": "professional. I",
+          "psychiatrist": "psychiatrist. What",
+          "psychologist": "psychologist. I"
+        },
+        "patient": {
+          "therapist": "therapist. I",
+          "professional": "professional. I",
+          "doctor": "doctor. I",
+          "counselor": "counselor. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 16,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My insomnia's been all over the place, so I think I need to see a",
+        "patient": "My sleep's been all over the place, so I think I need to see a"
+      },
+      "target_token": "Output \" sleep\"",
+      "probabilities": {
+        "clinical": 0.2148,
+        "patient": 0.1225
+      },
+      "language_penalty": -0.0923,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.5152
+          ],
+          [
+            "Output \" sleep\"",
+            0.2148
+          ],
+          [
+            "Output \" therapist\"",
+            0.1149
+          ],
+          [
+            "Output \" specialist\"",
+            0.0479
+          ],
+          [
+            "Output \" professional\"",
+            0.0291
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.02
+          ],
+          [
+            "Output \" psychologist\"",
+            0.0156
+          ],
+          [
+            "Output \" neuro\"",
+            0.0057
+          ],
+          [
+            "Output \" mental\"",
+            0.0035
+          ],
+          [
+            "Output \" counselor\"",
+            0.0031
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.7991
+          ],
+          [
+            "Output \" sleep\"",
+            0.1225
+          ],
+          [
+            "Output \" therapist\"",
+            0.031
+          ],
+          [
+            "Output \" specialist\"",
+            0.0129
+          ],
+          [
+            "Output \" professional\"",
+            0.0078
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.0033
+          ],
+          [
+            "Output \" psychologist\"",
+            0.0025
+          ],
+          [
+            "Output \" dermat\"",
+            0.0015
+          ],
+          [
+            "Output \" physician\"",
+            0.0015
+          ],
+          [
+            "Output \" GP\"",
+            0.0014
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. What",
+          "sleep": "sleep specialist.",
+          "therapist": "therapist. But",
+          "specialist": "specialist. What"
+        },
+        "patient": {
+          "doctor": "doctor. What",
+          "sleep": "sleep specialist.",
+          "therapist": "therapist. What",
+          "specialist": "specialist. What"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 17,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Every time I eat greasy food I have postprandial dyspepsia, so I should probably see a",
+        "patient": "Every time I eat greasy food my stomach goes haywire, so I should probably see a"
+      },
+      "target_token": "Output \" gastro\"",
+      "probabilities": {
+        "clinical": 0.1609,
+        "patient": 0.0558
+      },
+      "language_penalty": -0.1051,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.721
+          ],
+          [
+            "Output \" gastro\"",
+            0.1609
+          ],
+          [
+            "Output \" physician\"",
+            0.0218
+          ],
+          [
+            "Output \" GP\"",
+            0.0192
+          ],
+          [
+            "Output \" specialist\"",
+            0.0132
+          ],
+          [
+            "Output \" diet\"",
+            0.0091
+          ],
+          [
+            "Output \" GI\"",
+            0.0071
+          ],
+          [
+            "Output \" nutrition\"",
+            0.0071
+          ],
+          [
+            "Output \" healthcare\"",
+            0.0033
+          ],
+          [
+            "Output \" therapist\"",
+            0.0029
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.8728
+          ],
+          [
+            "Output \" gastro\"",
+            0.0558
+          ],
+          [
+            "Output \" physician\"",
+            0.011
+          ],
+          [
+            "Output \" specialist\"",
+            0.0086
+          ],
+          [
+            "Output \" professional\"",
+            0.0059
+          ],
+          [
+            "Output \" __\"",
+            0.0046
+          ],
+          [
+            "Output \" GP\"",
+            0.0046
+          ],
+          [
+            "Output \" ______\"",
+            0.0036
+          ],
+          [
+            "Output \" nutrition\"",
+            0.0025
+          ],
+          [
+            "Output \" medical\"",
+            0.0025
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. Is",
+          "gastro": "gastroenterologist",
+          "physician": "physician. Is",
+          "GP": "GP. Is"
+        },
+        "patient": {
+          "doctor": "doctor. Is",
+          "gastro": "gastroenterologist",
+          "physician": "physician. Is",
+          "specialist": "specialist. But"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 18,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've got this dermatological lesion that won't heal, so I need to grab a",
+        "patient": "I've got this weird itchy patch that won't heal, so I need to grab a"
+      },
+      "target_token": "Output \" cream\"",
+      "probabilities": {
+        "clinical": 0.0002,
+        "patient": 0.0015
+      },
+      "language_penalty": 0.0013,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" dermat\"",
+            0.2818
+          ],
+          [
+            "Output \" sample\"",
+            0.2195
+          ],
+          [
+            "Output \" skin\"",
+            0.0807
+          ],
+          [
+            "Output \" biopsy\"",
+            0.0555
+          ],
+          [
+            "Output \" doctor\"",
+            0.0432
+          ],
+          [
+            "Output \" scal\"",
+            0.0432
+          ],
+          [
+            "Output \" few\"",
+            0.0297
+          ],
+          [
+            "Output \" tissue\"",
+            0.0262
+          ],
+          [
+            "Output \" professional\"",
+            0.0204
+          ],
+          [
+            "Output \" new\"",
+            0.0124
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" dermat\"",
+            0.1901
+          ],
+          [
+            "Output \" sample\"",
+            0.1481
+          ],
+          [
+            "Output \" doctor\"",
+            0.1153
+          ],
+          [
+            "Output \" skin\"",
+            0.0793
+          ],
+          [
+            "Output \" new\"",
+            0.0424
+          ],
+          [
+            "Output \" few\"",
+            0.0374
+          ],
+          [
+            "Output \" medical\"",
+            0.0257
+          ],
+          [
+            "Output \" band\"",
+            0.02
+          ],
+          [
+            "Output \" prescription\"",
+            0.0156
+          ],
+          [
+            "Output \" scal\"",
+            0.0138
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "dermat": "dermatologist.",
+          "sample": "sample for a",
+          "skin": "skin sample for",
+          "biopsy": "biopsy. What"
+        },
+        "patient": {
+          "dermat": "dermatologist.",
+          "sample": "sample. I",
+          "doctor": "doctor. But",
+          "skin": "skin sample."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 19,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My knee's been causing chronic pain for months now, so I really ought to book a",
+        "patient": "My knee's been killing me for months now, so I really ought to book a"
+      },
+      "target_token": "Output \" phys\"",
+      "probabilities": {
+        "clinical": 0.2602,
+        "patient": 0.1159
+      },
+      "language_penalty": -0.1443,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" phys\"",
+            0.2602
+          ],
+          [
+            "Output \" knee\"",
+            0.1788
+          ],
+          [
+            "Output \" doctor\"",
+            0.1229
+          ],
+          [
+            "Output \" visit\"",
+            0.0845
+          ],
+          [
+            "Output \" physical\"",
+            0.0658
+          ],
+          [
+            "Output \" consultation\"",
+            0.0512
+          ],
+          [
+            "Output \" specialist\"",
+            0.0352
+          ],
+          [
+            "Output \" medical\"",
+            0.0214
+          ],
+          [
+            "Output \" massage\"",
+            0.013
+          ],
+          [
+            "Output \" MRI\"",
+            0.0101
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" knee\"",
+            0.2164
+          ],
+          [
+            "Output \" doctor\"",
+            0.1159
+          ],
+          [
+            "Output \" phys\"",
+            0.1159
+          ],
+          [
+            "Output \" visit\"",
+            0.0902
+          ],
+          [
+            "Output \" physical\"",
+            0.0483
+          ],
+          [
+            "Output \" consultation\"",
+            0.0426
+          ],
+          [
+            "Output \" specialist\"",
+            0.0376
+          ],
+          [
+            "Output \" massage\"",
+            0.0293
+          ],
+          [
+            "Output \" MRI\"",
+            0.0157
+          ],
+          [
+            "Output \" medical\"",
+            0.0157
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "phys": "physiotherapy",
+          "knee": "knee replacement.",
+          "doctor": "doctor's appointment",
+          "visit": "visit with a"
+        },
+        "patient": {
+          "knee": "knee replacement.",
+          "doctor": "doctor's appointment",
+          "phys": "physio.",
+          "visit": "visit with a"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 20,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing dyspnea on exertion when I exercise, so I think I'm coming down with a",
+        "patient": "I've been wheezing up a storm when I exercise, so I think I'm coming down with a"
+      },
+      "target_token": "Output \" cold\"",
+      "probabilities": {
+        "clinical": 0.2494,
+        "patient": 0.8358
+      },
+      "language_penalty": 0.5864,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" heart\"",
+            0.2494
+          ],
+          [
+            "Output \" cold\"",
+            0.2494
+          ],
+          [
+            "Output \" virus\"",
+            0.1178
+          ],
+          [
+            "Output \" viral\"",
+            0.104
+          ],
+          [
+            "Output \" respiratory\"",
+            0.0715
+          ],
+          [
+            "Output \" lung\"",
+            0.0383
+          ],
+          [
+            "Output \" chest\"",
+            0.0298
+          ],
+          [
+            "Output \" pulmonary\"",
+            0.0159
+          ],
+          [
+            "Output \" bron\"",
+            0.0124
+          ],
+          [
+            "Output \" mild\"",
+            0.0124
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" cold\"",
+            0.8358
+          ],
+          [
+            "Output \" respiratory\"",
+            0.0324
+          ],
+          [
+            "Output \" virus\"",
+            0.0286
+          ],
+          [
+            "Output \" mild\"",
+            0.0135
+          ],
+          [
+            "Output \" viral\"",
+            0.0105
+          ],
+          [
+            "Output \" severe\"",
+            0.0082
+          ],
+          [
+            "Output \" bad\"",
+            0.0072
+          ],
+          [
+            "Output \" bron\"",
+            0.0072
+          ],
+          [
+            "Output \" chest\"",
+            0.0044
+          ],
+          [
+            "Output \" flu\"",
+            0.0044
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "heart": "heart condition.",
+          "cold": "cold. Is",
+          "virus": "virus. What",
+          "viral": "viral infection."
+        },
+        "patient": {
+          "cold": "cold. Is",
+          "respiratory": "respiratory infection.",
+          "virus": "virus. Is",
+          "mild": "mild asthma."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 21,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing persistent depressive mood lately, so my partner wants me to get some",
+        "patient": "I've been feeling really down in the dumps lately, so my partner wants me to get some"
+      },
+      "target_token": "Output \" help\"",
+      "probabilities": {
+        "clinical": 0.2348,
+        "patient": 0.7527
+      },
+      "language_penalty": 0.5179,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" help\"",
+            0.2348
+          ],
+          [
+            "Output \" therapy\"",
+            0.1614
+          ],
+          [
+            "Output \" kind\"",
+            0.0524
+          ],
+          [
+            "Output \" counseling\"",
+            0.0318
+          ],
+          [
+            "Output \" antidepress\"",
+            0.0318
+          ],
+          [
+            "Output \" vitamin\"",
+            0.028
+          ],
+          [
+            "Output \" supplements\"",
+            0.0218
+          ],
+          [
+            "Output \" medication\"",
+            0.0193
+          ],
+          [
+            "Output \" treatment\"",
+            0.0193
+          ],
+          [
+            "Output \" professional\"",
+            0.015
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" help\"",
+            0.7527
+          ],
+          [
+            "Output \" therapy\"",
+            0.07
+          ],
+          [
+            "Output \" professional\"",
+            0.0201
+          ],
+          [
+            "Output \" counseling\"",
+            0.0107
+          ],
+          [
+            "Output \" more\"",
+            0.0084
+          ],
+          [
+            "Output \" medication\"",
+            0.0057
+          ],
+          [
+            "Output \" exercise\"",
+            0.0057
+          ],
+          [
+            "Output \" antidepress\"",
+            0.0057
+          ],
+          [
+            "Output \" vitamin\"",
+            0.0057
+          ],
+          [
+            "Output \" treatment\"",
+            0.0045
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "help": "help. I",
+          "therapy": "therapy. I",
+          "kind": "kind of therapy",
+          "counseling": "counseling. I"
+        },
+        "patient": {
+          "help": "help. What",
+          "therapy": "therapy. I",
+          "professional": "professional help.",
+          "counseling": "counseling. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 22,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My arrhythmia's been acting up lately, so I should probably see a",
+        "patient": "My ticker's been acting up lately, so I should probably see a"
+      },
+      "target_token": "Output \" cardi\"",
+      "probabilities": {
+        "clinical": 0.0908,
+        "patient": 0.0002
+      },
+      "language_penalty": -0.0906,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.8614
+          ],
+          [
+            "Output \" cardi\"",
+            0.0908
+          ],
+          [
+            "Output \" specialist\"",
+            0.0179
+          ],
+          [
+            "Output \" physician\"",
+            0.0096
+          ],
+          [
+            "Output \" heart\"",
+            0.0031
+          ],
+          [
+            "Output \" healthcare\"",
+            0.0027
+          ],
+          [
+            "Output \" card\"",
+            0.0017
+          ],
+          [
+            "Output \" professional\"",
+            0.0015
+          ],
+          [
+            "Output \" therapist\"",
+            0.0013
+          ],
+          [
+            "Output \" GP\"",
+            0.001
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" professional\"",
+            0.2917
+          ],
+          [
+            "Output \" financial\"",
+            0.2917
+          ],
+          [
+            "Output \" doctor\"",
+            0.2574
+          ],
+          [
+            "Output \" specialist\"",
+            0.0211
+          ],
+          [
+            "Output \" different\"",
+            0.0145
+          ],
+          [
+            "Output \" stock\"",
+            0.01
+          ],
+          [
+            "Output \" new\"",
+            0.0061
+          ],
+          [
+            "Output \" therapist\"",
+            0.0047
+          ],
+          [
+            "Output \"\n\"",
+            0.0047
+          ],
+          [
+            "Output \" pro\"",
+            0.0042
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. What",
+          "cardi": "cardiologist.",
+          "specialist": "specialist. What",
+          "physician": "physician. What"
+        },
+        "patient": {
+          "professional": "professional. I",
+          "financial": "financial advisor.",
+          "doctor": "doctor. What",
+          "specialist": "specialist. What"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 23,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been waking up with nocturnal hyperhidrosis every night, so my GP thinks I might have a",
+        "patient": "I've been waking up in a cold sweat every night, so my GP thinks I might have a"
+      },
+      "target_token": "Output \" fever\"",
+      "probabilities": {
+        "clinical": 0.0008,
+        "patient": 0.002
+      },
+      "language_penalty": 0.0012,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" condition\"",
+            0.1822
+          ],
+          [
+            "Output \" problem\"",
+            0.1105
+          ],
+          [
+            "Output \" sleep\"",
+            0.1105
+          ],
+          [
+            "Output \" fungal\"",
+            0.0975
+          ],
+          [
+            "Output \" neuro\"",
+            0.0406
+          ],
+          [
+            "Output \" skin\"",
+            0.0359
+          ],
+          [
+            "Output \" thyroid\"",
+            0.0317
+          ],
+          [
+            "Output \" T\"",
+            0.0247
+          ],
+          [
+            "Output \" hyper\"",
+            0.0247
+          ],
+          [
+            "Output \" hormonal\"",
+            0.0218
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" sleep\"",
+            0.5649
+          ],
+          [
+            "Output \" heart\"",
+            0.0675
+          ],
+          [
+            "Output \" cold\"",
+            0.0525
+          ],
+          [
+            "Output \" problem\"",
+            0.0409
+          ],
+          [
+            "Output \" condition\"",
+            0.0319
+          ],
+          [
+            "Output \" thyroid\"",
+            0.0281
+          ],
+          [
+            "Output \" low\"",
+            0.0193
+          ],
+          [
+            "Output \" disorder\"",
+            0.0103
+          ],
+          [
+            "Output \" chronic\"",
+            0.0091
+          ],
+          [
+            "Output \" rare\"",
+            0.0071
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "condition": "condition called \"",
+          "problem": "problem with my",
+          "sleep": "sleep disorder.",
+          "fungal": "fungal infection."
+        },
+        "patient": {
+          "sleep": "sleep apnea",
+          "heart": "heart condition.",
+          "cold": "cold. But",
+          "problem": "problem with my"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 24,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My seborrheic dermatitis's been flaking off like crazy, so I should grab some",
+        "patient": "My skin's been flaking off like crazy, so I should grab some"
+      },
+      "target_token": "Output \" shampoo\"",
+      "probabilities": {
+        "clinical": 0.0046,
+        "patient": 0.0003
+      },
+      "language_penalty": -0.0043,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" kind\"",
+            0.0713
+          ],
+          [
+            "Output \" ant\"",
+            0.0629
+          ],
+          [
+            "Output \" moistur\"",
+            0.049
+          ],
+          [
+            "Output \" over\"",
+            0.0337
+          ],
+          [
+            "Output \" more\"",
+            0.0231
+          ],
+          [
+            "Output \" anti\"",
+            0.0231
+          ],
+          [
+            "Output \" new\"",
+            0.0231
+          ],
+          [
+            "Output \" topical\"",
+            0.0231
+          ],
+          [
+            "Output \" of\"",
+            0.0231
+          ],
+          [
+            "Output \" medic\"",
+            0.018
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" moistur\"",
+            0.4169
+          ],
+          [
+            "Output \" kind\"",
+            0.0639
+          ],
+          [
+            "Output \" good\"",
+            0.0208
+          ],
+          [
+            "Output \" skin\"",
+            0.0162
+          ],
+          [
+            "Output \" products\"",
+            0.0162
+          ],
+          [
+            "Output \" skincare\"",
+            0.0162
+          ],
+          [
+            "Output \" sal\"",
+            0.0143
+          ],
+          [
+            "Output \" sort\"",
+            0.0143
+          ],
+          [
+            "Output \" vitamin\"",
+            0.0143
+          ],
+          [
+            "Output \" new\"",
+            0.0126
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "kind": "kind of ant",
+          "ant": "antifungal",
+          "moistur": "moisturizer.",
+          "over": "over-the-counter"
+        },
+        "patient": {
+          "moistur": "moisturizer.",
+          "kind": "kind of moistur",
+          "good": "good moisturizer",
+          "skin": "skin care products"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 25,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been feeling palpitations all day, so I think I should take my",
+        "patient": "I've been feeling butterflies in my stomach all day, so I think I should take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.0098,
+        "patient": 0.1307
+      },
+      "language_penalty": 0.1209,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.2519
+          ],
+          [
+            "Output \" E\"",
+            0.2223
+          ],
+          [
+            "Output \" potassium\"",
+            0.119
+          ],
+          [
+            "Output \" heart\"",
+            0.119
+          ],
+          [
+            "Output \" pulse\"",
+            0.105
+          ],
+          [
+            "Output \" vit\"",
+            0.0182
+          ],
+          [
+            "Output \" BP\"",
+            0.0111
+          ],
+          [
+            "Output \" doctor\"",
+            0.0111
+          ],
+          [
+            "Output \" medication\"",
+            0.0098
+          ],
+          [
+            "Output \" heartbeat\"",
+            0.0067
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" medication\"",
+            0.1307
+          ],
+          [
+            "Output \" vitamin\"",
+            0.1154
+          ],
+          [
+            "Output \" pill\"",
+            0.07
+          ],
+          [
+            "Output \" medicine\"",
+            0.0545
+          ],
+          [
+            "Output \" usual\"",
+            0.0375
+          ],
+          [
+            "Output \" time\"",
+            0.0227
+          ],
+          [
+            "Output \" chances\"",
+            0.0227
+          ],
+          [
+            "Output \" vitamins\"",
+            0.02
+          ],
+          [
+            "Output \" pulse\"",
+            0.0156
+          ],
+          [
+            "Output \" morning\"",
+            0.0156
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "blood": "blood pressure.",
+          "E": "ECG.",
+          "potassium": "potassium levels.",
+          "heart": "heart rate."
+        },
+        "patient": {
+          "medication": "medication. What",
+          "vitamin": "vitamin B1",
+          "pill": "pill. What",
+          "medicine": "medicine. What"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 26,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I can't seem to get enough air when I climb stairs, so I'm wondering if I should use an",
+        "patient": "I can't seem to get enough air when I climb stairs, so I'm wondering if I should use a"
+      },
+      "target_token": "Output \" inhal\"",
+      "probabilities": {
+        "clinical": 0.2161,
+        "patient": 0.002
+      },
+      "language_penalty": -0.2141,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" air\"",
+            0.2449
+          ],
+          [
+            "Output \" inhal\"",
+            0.2161
+          ],
+          [
+            "Output \" oxygen\"",
+            0.1907
+          ],
+          [
+            "Output \" electric\"",
+            0.0228
+          ],
+          [
+            "Output \" alternative\"",
+            0.0201
+          ],
+          [
+            "Output \"abolic\"",
+            0.0157
+          ],
+          [
+            "Output \" E\"",
+            0.0157
+          ],
+          [
+            "Output \" extra\"",
+            0.0122
+          ],
+          [
+            "Output \" al\"",
+            0.0122
+          ],
+          [
+            "Output \" altitude\"",
+            0.0095
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" different\"",
+            0.0947
+          ],
+          [
+            "Output \" breathing\"",
+            0.0737
+          ],
+          [
+            "Output \" walking\"",
+            0.0651
+          ],
+          [
+            "Output \" mask\"",
+            0.0395
+          ],
+          [
+            "Output \" st\"",
+            0.0211
+          ],
+          [
+            "Output \" ventil\"",
+            0.0211
+          ],
+          [
+            "Output \" respir\"",
+            0.0165
+          ],
+          [
+            "Output \" bicycle\"",
+            0.0165
+          ],
+          [
+            "Output \" CP\"",
+            0.0145
+          ],
+          [
+            "Output \" portable\"",
+            0.0145
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "air": "air mask.",
+          "inhal": "inhaler.",
+          "oxygen": "oxygen mask.",
+          "electric": "electric scooter to"
+        },
+        "patient": {
+          "different": "different type of",
+          "breathing": "breathing mask.",
+          "walking": "walking stick.",
+          "mask": "mask. Also"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 27,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been clinically fatigued every single day, so my boss wants me to get some",
+        "patient": "I've been dead on my feet every single day, so my boss wants me to get some"
+      },
+      "target_token": "Output \" help\"",
+      "probabilities": {
+        "clinical": 0.0584,
+        "patient": 0.2633
+      },
+      "language_penalty": 0.2049,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" rest\"",
+            0.2616
+          ],
+          [
+            "Output \" more\"",
+            0.1236
+          ],
+          [
+            "Output \" extra\"",
+            0.0849
+          ],
+          [
+            "Output \" help\"",
+            0.0584
+          ],
+          [
+            "Output \" work\"",
+            0.0455
+          ],
+          [
+            "Output \" exercise\"",
+            0.0401
+          ],
+          [
+            "Output \" sleep\"",
+            0.0401
+          ],
+          [
+            "Output \" energy\"",
+            0.0215
+          ],
+          [
+            "Output \" time\"",
+            0.0167
+          ],
+          [
+            "Output \" \"\"",
+            0.0148
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" help\"",
+            0.2633
+          ],
+          [
+            "Output \" more\"",
+            0.1409
+          ],
+          [
+            "Output \" exercise\"",
+            0.1097
+          ],
+          [
+            "Output \" rest\"",
+            0.0855
+          ],
+          [
+            "Output \" extra\"",
+            0.0518
+          ],
+          [
+            "Output \" work\"",
+            0.0314
+          ],
+          [
+            "Output \" training\"",
+            0.0277
+          ],
+          [
+            "Output \" sleep\"",
+            0.0131
+          ],
+          [
+            "Output \" physical\"",
+            0.0131
+          ],
+          [
+            "Output \" of\"",
+            0.0116
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "rest": "rest. I",
+          "more": "more exercise.",
+          "extra": "extra hours.",
+          "help": "help. I"
+        },
+        "patient": {
+          "help": "help. I",
+          "more": "more exercise.",
+          "exercise": "exercise. I",
+          "rest": "rest. What"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 28,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My skin's been showing eczematous inflammation in the creases, so I should probably grab a",
+        "patient": "My skin's been weeping and raw in the creases, so I should probably grab a"
+      },
+      "target_token": "Output \" steroid\"",
+      "probabilities": {
+        "clinical": 0.097,
+        "patient": 0.002
+      },
+      "language_penalty": -0.095,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" moistur\"",
+            0.1245
+          ],
+          [
+            "Output \" cort\"",
+            0.1099
+          ],
+          [
+            "Output \" steroid\"",
+            0.097
+          ],
+          [
+            "Output \" new\"",
+            0.0519
+          ],
+          [
+            "Output \" skin\"",
+            0.0404
+          ],
+          [
+            "Output \" topical\"",
+            0.0315
+          ],
+          [
+            "Output \" dermat\"",
+            0.0278
+          ],
+          [
+            "Output \" prescription\"",
+            0.0245
+          ],
+          [
+            "Output \" few\"",
+            0.0245
+          ],
+          [
+            "Output \" hydro\"",
+            0.0169
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" new\"",
+            0.1484
+          ],
+          [
+            "Output \" moistur\"",
+            0.1309
+          ],
+          [
+            "Output \" humid\"",
+            0.0331
+          ],
+          [
+            "Output \" few\"",
+            0.0331
+          ],
+          [
+            "Output \" dermat\"",
+            0.0228
+          ],
+          [
+            "Output \" skin\"",
+            0.0201
+          ],
+          [
+            "Output \" good\"",
+            0.0177
+          ],
+          [
+            "Output \" cleans\"",
+            0.0177
+          ],
+          [
+            "Output \" skincare\"",
+            0.0156
+          ],
+          [
+            "Output \" hydr\"",
+            0.0156
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "moistur": "moisturizer with",
+          "cort": "corticoster",
+          "steroid": "steroid cream.",
+          "new": "new moisturizer"
+        },
+        "patient": {
+          "new": "new moisturizer",
+          "moistur": "moisturizer.",
+          "humid": "humidifier.",
+          "few": "few more moistur"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 29,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When I lie flat my heart starts showing palpitations, so I need to take my",
+        "patient": "When I lie flat my heart starts doing somersaults, so I need to take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.0429,
+        "patient": 0.0367
+      },
+      "language_penalty": -0.0062,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" pulse\"",
+            0.3171
+          ],
+          [
+            "Output \" heart\"",
+            0.247
+          ],
+          [
+            "Output \" blood\"",
+            0.0802
+          ],
+          [
+            "Output \" medication\"",
+            0.0429
+          ],
+          [
+            "Output \" medicine\"",
+            0.0334
+          ],
+          [
+            "Output \" time\"",
+            0.0295
+          ],
+          [
+            "Output \" BP\"",
+            0.0295
+          ],
+          [
+            "Output \" medications\"",
+            0.026
+          ],
+          [
+            "Output \" E\"",
+            0.023
+          ],
+          [
+            "Output \" temperature\"",
+            0.0085
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" heart\"",
+            0.1865
+          ],
+          [
+            "Output \" medicine\"",
+            0.0472
+          ],
+          [
+            "Output \" pulse\"",
+            0.0367
+          ],
+          [
+            "Output \" medication\"",
+            0.0367
+          ],
+          [
+            "Output \" time\"",
+            0.0367
+          ],
+          [
+            "Output \" blood\"",
+            0.0324
+          ],
+          [
+            "Output \" legs\"",
+            0.0286
+          ],
+          [
+            "Output \" medications\"",
+            0.0153
+          ],
+          [
+            "Output \" pills\"",
+            0.0153
+          ],
+          [
+            "Output \" shoes\"",
+            0.0135
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "pulse": "pulse before lying",
+          "heart": "heart rate and",
+          "blood": "blood pressure.",
+          "medication": "medication. What"
+        },
+        "patient": {
+          "heart": "heart rate and",
+          "medicine": "medicine. What",
+          "pulse": "pulse. What",
+          "medication": "medication. What"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 30,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Ever since the stressful presentation at work, I've had this anxiety disorder flare-up in my chest, so I should probably call my",
+        "patient": "Ever since the stressful presentation at work, I've had this tight knot in my chest, so I should probably call my"
+      },
+      "target_token": "Output \" therapist\"",
+      "probabilities": {
+        "clinical": 0.0269,
+        "patient": 0.1322
+      },
+      "language_penalty": 0.1053,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.7866
+          ],
+          [
+            "Output \" insurance\"",
+            0.0503
+          ],
+          [
+            "Output \" therapist\"",
+            0.0269
+          ],
+          [
+            "Output \" physician\"",
+            0.0112
+          ],
+          [
+            "Output \" mom\"",
+            0.0112
+          ],
+          [
+            "Output \" GP\"",
+            0.0099
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.0077
+          ],
+          [
+            "Output \" boss\"",
+            0.0068
+          ],
+          [
+            "Output \" friend\"",
+            0.0053
+          ],
+          [
+            "Output \" employer\"",
+            0.0047
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.6716
+          ],
+          [
+            "Output \" therapist\"",
+            0.1322
+          ],
+          [
+            "Output \" friend\"",
+            0.0139
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.0109
+          ],
+          [
+            "Output \" physician\"",
+            0.0096
+          ],
+          [
+            "Output \" mom\"",
+            0.0096
+          ],
+          [
+            "Output \" insurance\"",
+            0.0075
+          ],
+          [
+            "Output \" GP\"",
+            0.0066
+          ],
+          [
+            "Output \" shrink\"",
+            0.0058
+          ],
+          [
+            "Output \" boss\"",
+            0.004
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. What",
+          "insurance": "insurance company and",
+          "therapist": "therapist. But",
+          "physician": "physician. What"
+        },
+        "patient": {
+          "doctor": "doctor. What",
+          "therapist": "therapist. But",
+          "friend": "friend, but",
+          "psychiatrist": "psychiatrist. But"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 31,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I can't stop scratching at this pruritic lesion on my neck, so the dermatologist gave me a",
+        "patient": "I can't stop scratching at this itchy patch on my neck, so the dermatologist gave me a"
+      },
+      "target_token": "Output \" prescription\"",
+      "probabilities": {
+        "clinical": 0.3604,
+        "patient": 0.3717
+      },
+      "language_penalty": 0.0113,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" prescription\"",
+            0.3604
+          ],
+          [
+            "Output \" topical\"",
+            0.0911
+          ],
+          [
+            "Output \" cort\"",
+            0.071
+          ],
+          [
+            "Output \" \"",
+            0.038
+          ],
+          [
+            "Output \" steroid\"",
+            0.0296
+          ],
+          [
+            "Output \" trial\"",
+            0.023
+          ],
+          [
+            "Output \" treatment\"",
+            0.0179
+          ],
+          [
+            "Output \" course\"",
+            0.0179
+          ],
+          [
+            "Output \" cream\"",
+            0.0158
+          ],
+          [
+            "Output \" new\"",
+            0.0158
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" prescription\"",
+            0.3717
+          ],
+          [
+            "Output \" cort\"",
+            0.094
+          ],
+          [
+            "Output \" cream\"",
+            0.0732
+          ],
+          [
+            "Output \" steroid\"",
+            0.0646
+          ],
+          [
+            "Output \" topical\"",
+            0.0346
+          ],
+          [
+            "Output \" patch\"",
+            0.0305
+          ],
+          [
+            "Output \" new\"",
+            0.021
+          ],
+          [
+            "Output \" \"",
+            0.0185
+          ],
+          [
+            "Output \" treatment\"",
+            0.0144
+          ],
+          [
+            "Output \" skin\"",
+            0.0127
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "prescription": "prescription for a",
+          "topical": "topical antih",
+          "cort": "corticoster"
+        },
+        "patient": {
+          "prescription": "prescription for a",
+          "cort": "cortisone",
+          "cream": "cream. I",
+          "steroid": "steroid cream."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 32,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Since I started experiencing nocturnal hyperhidrosis, I've been worried about my",
+        "patient": "Since I started getting these night sweats, I've been worried about my"
+      },
+      "target_token": "Output \" heart\"",
+      "probabilities": {
+        "clinical": 0.0001,
+        "patient": 0.001
+      },
+      "language_penalty": 0.0009,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" sleep\"",
+            0.5052
+          ],
+          [
+            "Output \" health\"",
+            0.1277
+          ],
+          [
+            "Output \" skin\"",
+            0.0995
+          ],
+          [
+            "Output \" ability\"",
+            0.0285
+          ],
+          [
+            "Output \" quality\"",
+            0.0252
+          ],
+          [
+            "Output \" body\"",
+            0.0252
+          ],
+          [
+            "Output \" night\"",
+            0.0173
+          ],
+          [
+            "Output \" symptoms\"",
+            0.0093
+          ],
+          [
+            "Output \" nighttime\"",
+            0.0072
+          ],
+          [
+            "Output \" sleeping\"",
+            0.0072
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" health\"",
+            0.8775
+          ],
+          [
+            "Output \" men\"",
+            0.011
+          ],
+          [
+            "Output \" sleep\"",
+            0.011
+          ],
+          [
+            "Output \" symptoms\"",
+            0.0086
+          ],
+          [
+            "Output \" thyroid\"",
+            0.0076
+          ],
+          [
+            "Output \" body\"",
+            0.0059
+          ],
+          [
+            "Output \" overall\"",
+            0.0052
+          ],
+          [
+            "Output \" sexual\"",
+            0.0046
+          ],
+          [
+            "Output \" hormones\"",
+            0.0041
+          ],
+          [
+            "Output \" fertility\"",
+            0.0036
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "sleep": "sleep quality.",
+          "health": "health. What",
+          "skin": "skin. I",
+          "ability": "ability to sleep"
+        },
+        "patient": {
+          "health": "health. What",
+          "men": "menopause.",
+          "sleep": "sleep. I",
+          "symptoms": "symptoms. What"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 33,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've got xerotic dermatitis on my elbows, so I should grab a",
+        "patient": "I've got this flaky, cracked skin on my elbows, so I should grab a"
+      },
+      "target_token": "Output \" moistur\"",
+      "probabilities": {
+        "clinical": 0.0083,
+        "patient": 0.0955
+      },
+      "language_penalty": 0.0872,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" few\"",
+            0.0897
+          ],
+          [
+            "Output \" couple\"",
+            0.0374
+          ],
+          [
+            "Output \" new\"",
+            0.0227
+          ],
+          [
+            "Output \" dermat\"",
+            0.02
+          ],
+          [
+            "Output \" bottle\"",
+            0.0177
+          ],
+          [
+            "Output \" book\"",
+            0.0156
+          ],
+          [
+            "Output \" jar\"",
+            0.0156
+          ],
+          [
+            "Output \" copy\"",
+            0.0156
+          ],
+          [
+            "Output \" skin\"",
+            0.0138
+          ],
+          [
+            "Output \" good\"",
+            0.0138
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" moistur\"",
+            0.0955
+          ],
+          [
+            "Output \" few\"",
+            0.0511
+          ],
+          [
+            "Output \" good\"",
+            0.0398
+          ],
+          [
+            "Output \" skin\"",
+            0.0273
+          ],
+          [
+            "Output \" new\"",
+            0.0273
+          ],
+          [
+            "Output \" bottle\"",
+            0.0213
+          ],
+          [
+            "Output \" couple\"",
+            0.0213
+          ],
+          [
+            "Output \" jar\"",
+            0.0188
+          ],
+          [
+            "Output \" hydr\"",
+            0.0146
+          ],
+          [
+            "Output \" bit\"",
+            0.0146
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "few": "few things to",
+          "couple": "couple of these",
+          "new": "new pair of",
+          "dermat": "dermatologist."
+        },
+        "patient": {
+          "moistur": "moisturizer.",
+          "few": "few things to",
+          "good": "good moisturizer",
+          "skin": "skin barrier cream"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 34,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I can't seem to fall asleep even when I'm exhausted, so my sleep specialist says I should try insomnia-focused",
+        "patient": "I can't seem to fall asleep even when I'm exhausted, so my sleep specialist says I should try a"
+      },
+      "target_token": "Output \" C\"",
+      "probabilities": {
+        "clinical": 0.2791,
+        "patient": 0.0267
+      },
+      "language_penalty": -0.2524,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" therapy\"",
+            0.5214
+          ],
+          [
+            "Output \" C\"",
+            0.2791
+          ],
+          [
+            "Output \" cognitive\"",
+            0.1318
+          ],
+          [
+            "Output \" treatment\"",
+            0.0108
+          ],
+          [
+            "Output \" therapies\"",
+            0.0108
+          ],
+          [
+            "Output \" treatments\"",
+            0.0084
+          ],
+          [
+            "Output \" behavioral\"",
+            0.0074
+          ],
+          [
+            "Output \" sleep\"",
+            0.0058
+          ],
+          [
+            "Output \" techniques\"",
+            0.0035
+          ],
+          [
+            "Output \" Cognitive\"",
+            0.0027
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" sleep\"",
+            0.2874
+          ],
+          [
+            "Output \" few\"",
+            0.0823
+          ],
+          [
+            "Output \" different\"",
+            0.0641
+          ],
+          [
+            "Output \" \"",
+            0.0441
+          ],
+          [
+            "Output \" cognitive\"",
+            0.0389
+          ],
+          [
+            "Output \" new\"",
+            0.0389
+          ],
+          [
+            "Output \" relaxation\"",
+            0.0343
+          ],
+          [
+            "Output \" C\"",
+            0.0267
+          ],
+          [
+            "Output \" sed\"",
+            0.0184
+          ],
+          [
+            "Output \" short\"",
+            0.0143
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "therapy": "therapy. What",
+          "C": "CBT-I",
+          "cognitive": "cognitive behavioral therapy",
+          "treatment": "treatment. What"
+        },
+        "patient": {
+          "sleep": "sleep study.",
+          "few": "few different things",
+          "different": "different sleep disorder"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 35,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been wheezing and I have dyspnea on exertion when I walk, so I should book a",
+        "patient": "I've been wheezing and my lungs feel tight when I walk, so I should book a"
+      },
+      "target_token": "Output \" pul\"",
+      "probabilities": {
+        "clinical": 0.0103,
+        "patient": 0.0026
+      },
+      "language_penalty": -0.0077,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.3014
+          ],
+          [
+            "Output \" consultation\"",
+            0.1424
+          ],
+          [
+            "Output \" chest\"",
+            0.0673
+          ],
+          [
+            "Output \" medical\"",
+            0.0593
+          ],
+          [
+            "Output \" visit\"",
+            0.0524
+          ],
+          [
+            "Output \" consult\"",
+            0.0524
+          ],
+          [
+            "Output \" physician\"",
+            0.0318
+          ],
+          [
+            "Output \" card\"",
+            0.0247
+          ],
+          [
+            "Output \" hospital\"",
+            0.0218
+          ],
+          [
+            "Output \" check\"",
+            0.0218
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.2694
+          ],
+          [
+            "Output \" consultation\"",
+            0.0991
+          ],
+          [
+            "Output \" medical\"",
+            0.0875
+          ],
+          [
+            "Output \" chest\"",
+            0.0772
+          ],
+          [
+            "Output \" check\"",
+            0.0601
+          ],
+          [
+            "Output \" visit\"",
+            0.0601
+          ],
+          [
+            "Output \" consult\"",
+            0.0251
+          ],
+          [
+            "Output \" lung\"",
+            0.0221
+          ],
+          [
+            "Output \" GP\"",
+            0.0134
+          ],
+          [
+            "Output \" test\"",
+            0.0134
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor's appointment",
+          "consultation": "consultation with a",
+          "chest": "chest X-ray",
+          "medical": "medical check-up"
+        },
+        "patient": {
+          "doctor": "doctor's appointment",
+          "consultation": "consultation with a",
+          "medical": "medical check-up",
+          "chest": "chest X-ray"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 36,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing insomnia all week, so my wife says I need to see a",
+        "patient": "I've been tossing and turning all week, so my wife says I need to see a"
+      },
+      "target_token": "Output \" sleep\"",
+      "probabilities": {
+        "clinical": 0.0626,
+        "patient": 0.0072
+      },
+      "language_penalty": -0.0554,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.8637
+          ],
+          [
+            "Output \" sleep\"",
+            0.0626
+          ],
+          [
+            "Output \" therapist\"",
+            0.0203
+          ],
+          [
+            "Output \" specialist\"",
+            0.0158
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.0123
+          ],
+          [
+            "Output \" psychologist\"",
+            0.0051
+          ],
+          [
+            "Output \" physician\"",
+            0.0045
+          ],
+          [
+            "Output \" neuro\"",
+            0.0027
+          ],
+          [
+            "Output \" dermat\"",
+            0.0021
+          ],
+          [
+            "Output \" professional\"",
+            0.001
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.9453
+          ],
+          [
+            "Output \" therapist\"",
+            0.0153
+          ],
+          [
+            "Output \" sleep\"",
+            0.0072
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.0056
+          ],
+          [
+            "Output \" physician\"",
+            0.0044
+          ],
+          [
+            "Output \" specialist\"",
+            0.003
+          ],
+          [
+            "Output \" dermat\"",
+            0.003
+          ],
+          [
+            "Output \" professional\"",
+            0.0016
+          ],
+          [
+            "Output \" psychologist\"",
+            0.0014
+          ],
+          [
+            "Output \" counselor\"",
+            0.0008
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. What",
+          "sleep": "sleep specialist.",
+          "therapist": "therapist. What",
+          "specialist": "specialist. What"
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "therapist": "therapist. I",
+          "sleep": "sleep specialist.",
+          "psychiatrist": "psychiatrist. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 37,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "This dermatitis on my skin won't stop oozing, so I really ought to book an",
+        "patient": "This weird patch on my skin won't stop oozing, so I really ought to book an"
+      },
+      "target_token": "Output \" appointment\"",
+      "probabilities": {
+        "clinical": 0.9787,
+        "patient": 0.9323
+      },
+      "language_penalty": -0.0464,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" appointment\"",
+            0.9787
+          ],
+          [
+            "Output \" in\"",
+            0.0027
+          ],
+          [
+            "Output \" ap\"",
+            0.0027
+          ],
+          [
+            "Output \" urgent\"",
+            0.0024
+          ],
+          [
+            "Output \" office\"",
+            0.0021
+          ],
+          [
+            "Output \" dermat\"",
+            0.001
+          ],
+          [
+            "Output \" ant\"",
+            0.001
+          ],
+          [
+            "Output \" emergency\"",
+            0.0009
+          ],
+          [
+            "Output \" expert\"",
+            0.0007
+          ],
+          [
+            "Output \" appointments\"",
+            0.0005
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" appointment\"",
+            0.9323
+          ],
+          [
+            "Output \" ap\"",
+            0.0104
+          ],
+          [
+            "Output \" urgent\"",
+            0.0081
+          ],
+          [
+            "Output \" expert\"",
+            0.0055
+          ],
+          [
+            "Output \" aesthetic\"",
+            0.0049
+          ],
+          [
+            "Output \" dermat\"",
+            0.0043
+          ],
+          [
+            "Output \" emergency\"",
+            0.0034
+          ],
+          [
+            "Output \" ep\"",
+            0.003
+          ],
+          [
+            "Output \" office\"",
+            0.003
+          ],
+          [
+            "Output \" ant\"",
+            0.002
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "appointment": "appointment with a",
+          "in": "in-person appointment",
+          "ap": "appt with",
+          "urgent": "urgent appointment."
+        },
+        "patient": {
+          "appointment": "appointment with a",
+          "ap": "appt with",
+          "urgent": "urgent dermatology",
+          "expert": "expert. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 38,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Every morning my chronic pain flares up, so I take some",
+        "patient": "Every morning my back feels like it's locked up, so I take some"
+      },
+      "target_token": "Output \" pain\"",
+      "probabilities": {
+        "clinical": 0.2119,
+        "patient": 0.1098
+      },
+      "language_penalty": -0.1021,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" pain\"",
+            0.2119
+          ],
+          [
+            "Output \" time\"",
+            0.187
+          ],
+          [
+            "Output \" ib\"",
+            0.1001
+          ],
+          [
+            "Output \" medication\"",
+            0.0883
+          ],
+          [
+            "Output \" kind\"",
+            0.0607
+          ],
+          [
+            "Output \" aspir\"",
+            0.0253
+          ],
+          [
+            "Output \" acet\"",
+            0.0174
+          ],
+          [
+            "Output \" Adv\"",
+            0.0153
+          ],
+          [
+            "Output \" extra\"",
+            0.0105
+          ],
+          [
+            "Output \" Ty\"",
+            0.0105
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" time\"",
+            0.8112
+          ],
+          [
+            "Output \" pain\"",
+            0.1098
+          ],
+          [
+            "Output \" aspir\"",
+            0.008
+          ],
+          [
+            "Output \" breaks\"",
+            0.0038
+          ],
+          [
+            "Output \" ice\"",
+            0.0033
+          ],
+          [
+            "Output \" ib\"",
+            0.0033
+          ],
+          [
+            "Output \" walks\"",
+            0.0033
+          ],
+          [
+            "Output \" steps\"",
+            0.0029
+          ],
+          [
+            "Output \" medication\"",
+            0.0026
+          ],
+          [
+            "Output \" warm\"",
+            0.0023
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "pain": "painkillers",
+          "time": "time to rest",
+          "ib": "ibuprofen",
+          "medication": "medication. I"
+        },
+        "patient": {
+          "time": "time to stretch",
+          "pain": "painkillers",
+          "aspir": "aspirin.",
+          "breaks": "breaks. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 39,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When I go for a run my allergic rhinitis acts up and my eyes start watering, so I should probably take my",
+        "patient": "When I go for a run my throat gets all scratchy and my eyes start watering, so I should probably take my"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.4186,
+        "patient": 0.0266
+      },
+      "language_penalty": -0.392,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ant\"",
+            0.4186
+          ],
+          [
+            "Output \" medication\"",
+            0.1058
+          ],
+          [
+            "Output \" allergy\"",
+            0.1058
+          ],
+          [
+            "Output \" medicine\"",
+            0.0303
+          ],
+          [
+            "Output \" usual\"",
+            0.0236
+          ],
+          [
+            "Output \" meds\"",
+            0.0126
+          ],
+          [
+            "Output \" medications\"",
+            0.0126
+          ],
+          [
+            "Output \" eyes\"",
+            0.0126
+          ],
+          [
+            "Output \" eye\"",
+            0.0112
+          ],
+          [
+            "Output \" medic\"",
+            0.0098
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" run\"",
+            0.0818
+          ],
+          [
+            "Output \" time\"",
+            0.0562
+          ],
+          [
+            "Output \" running\"",
+            0.0438
+          ],
+          [
+            "Output \" eyes\"",
+            0.0386
+          ],
+          [
+            "Output \" vitamin\"",
+            0.0386
+          ],
+          [
+            "Output \" medication\"",
+            0.0341
+          ],
+          [
+            "Output \" vitamins\"",
+            0.0301
+          ],
+          [
+            "Output \" meds\"",
+            0.0266
+          ],
+          [
+            "Output \" ant\"",
+            0.0266
+          ],
+          [
+            "Output \" dog\"",
+            0.0266
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "ant": "antihist",
+          "medication": "medication. Is",
+          "allergy": "allergy meds.",
+          "medicine": "medicine. Is"
+        },
+        "patient": {
+          "run": "run to a",
+          "time": "time and not",
+          "running": "running shoes off",
+          "eyes": "eyes off the"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 40,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been feeling generalized anxiety disorder symptoms and can't switch off in the evenings, so my therapist wants me to try a",
+        "patient": "I've been feeling really wound up and can't switch off in the evenings, so my therapist wants me to try a"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.0121,
+        "patient": 0.0036
+      },
+      "language_penalty": -0.0085,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" C\"",
+            0.2435
+          ],
+          [
+            "Output \" cognitive\"",
+            0.1303
+          ],
+          [
+            "Output \" behavioral\"",
+            0.0616
+          ],
+          [
+            "Output \" mindfulness\"",
+            0.0479
+          ],
+          [
+            "Output \" new\"",
+            0.0479
+          ],
+          [
+            "Output \" relaxation\"",
+            0.0423
+          ],
+          [
+            "Output \" \"\"",
+            0.02
+          ],
+          [
+            "Output \" graded\"",
+            0.0176
+          ],
+          [
+            "Output \" specific\"",
+            0.0156
+          ],
+          [
+            "Output \" \"",
+            0.0156
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" new\"",
+            0.1206
+          ],
+          [
+            "Output \" mindfulness\"",
+            0.0939
+          ],
+          [
+            "Output \" C\"",
+            0.0732
+          ],
+          [
+            "Output \" cognitive\"",
+            0.0732
+          ],
+          [
+            "Output \" relaxation\"",
+            0.0503
+          ],
+          [
+            "Output \" behavioral\"",
+            0.0392
+          ],
+          [
+            "Output \" technique\"",
+            0.0392
+          ],
+          [
+            "Output \" \"\"",
+            0.0346
+          ],
+          [
+            "Output \" different\"",
+            0.0269
+          ],
+          [
+            "Output \" form\"",
+            0.0238
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "C": "CBT approach",
+          "cognitive": "cognitive behavioral therapy",
+          "behavioral": "behavioral therapy called",
+          "mindfulness": "mindfulness-based stress"
+        },
+        "patient": {
+          "new": "new technique.",
+          "mindfulness": "mindfulness-based stress",
+          "C": "CBT approach",
+          "cognitive": "cognitive behavioral therapy"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 41,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been tossing around all night because I have racing thoughts, so I need to see a",
+        "patient": "I've been tossing around all night because my mind won't shut up, so I need to see a"
+      },
+      "target_token": "Output \" psychiatrist\"",
+      "probabilities": {
+        "clinical": 0.0389,
+        "patient": 0.0373
+      },
+      "language_penalty": -0.0016,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.5367
+          ],
+          [
+            "Output \" therapist\"",
+            0.2535
+          ],
+          [
+            "Output \" professional\"",
+            0.0441
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.0389
+          ],
+          [
+            "Output \" psychologist\"",
+            0.0162
+          ],
+          [
+            "Output \" mental\"",
+            0.0111
+          ],
+          [
+            "Output \" specialist\"",
+            0.0111
+          ],
+          [
+            "Output \" shrink\"",
+            0.0098
+          ],
+          [
+            "Output \" counselor\"",
+            0.0068
+          ],
+          [
+            "Output \" neuro\"",
+            0.0041
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.401
+          ],
+          [
+            "Output \" therapist\"",
+            0.2756
+          ],
+          [
+            "Output \" professional\"",
+            0.0479
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.0373
+          ],
+          [
+            "Output \" psychologist\"",
+            0.0256
+          ],
+          [
+            "Output \" movie\"",
+            0.0226
+          ],
+          [
+            "Output \" shrink\"",
+            0.02
+          ],
+          [
+            "Output \" neuro\"",
+            0.0107
+          ],
+          [
+            "Output \" mental\"",
+            0.0107
+          ],
+          [
+            "Output \" specialist\"",
+            0.0073
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. I",
+          "therapist": "therapist. I",
+          "professional": "professional. I",
+          "psychiatrist": "psychiatrist. I"
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "therapist": "therapist. I",
+          "professional": "professional. I",
+          "psychiatrist": "psychiatrist. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 42,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My digestive system has been making weird noises and I feel bloated, so I should grab some",
+        "patient": "My guts have been making weird noises and I feel bloated, so I should grab some"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.0372,
+        "patient": 0.0727
+      },
+      "language_penalty": 0.0355,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" prob\"",
+            0.4529
+          ],
+          [
+            "Output \" over\"",
+            0.0695
+          ],
+          [
+            "Output \" pain\"",
+            0.0541
+          ],
+          [
+            "Output \" food\"",
+            0.0477
+          ],
+          [
+            "Output \" digestive\"",
+            0.0421
+          ],
+          [
+            "Output \" ant\"",
+            0.0372
+          ],
+          [
+            "Output \" O\"",
+            0.0256
+          ],
+          [
+            "Output \" gas\"",
+            0.0225
+          ],
+          [
+            "Output \" Pro\"",
+            0.0225
+          ],
+          [
+            "Output \" lax\"",
+            0.0176
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" food\"",
+            0.1976
+          ],
+          [
+            "Output \" pain\"",
+            0.0727
+          ],
+          [
+            "Output \" ant\"",
+            0.0727
+          ],
+          [
+            "Output \" prob\"",
+            0.0441
+          ],
+          [
+            "Output \" help\"",
+            0.0389
+          ],
+          [
+            "Output \" lax\"",
+            0.0267
+          ],
+          [
+            "Output \" snacks\"",
+            0.0236
+          ],
+          [
+            "Output \" antibiotics\"",
+            0.0208
+          ],
+          [
+            "Output \" medication\"",
+            0.0162
+          ],
+          [
+            "Output \" over\"",
+            0.0143
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "prob": "probiotics.",
+          "over": "over-the-counter",
+          "pain": "painkillers",
+          "food": "food. But"
+        },
+        "patient": {
+          "food": "food. But",
+          "pain": "painkillers",
+          "ant": "antacids",
+          "prob": "probiotics."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 43,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I woke up with profuse diaphoresis last night, so my doctor thinks I might have a",
+        "patient": "I woke up sweating buckets last night, so my doctor thinks I might have a"
+      },
+      "target_token": "Output \" fever\"",
+      "probabilities": {
+        "clinical": 0.0115,
+        "patient": 0.0953
+      },
+      "language_penalty": 0.0838,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" cold\"",
+            0.0966
+          ],
+          [
+            "Output \" problem\"",
+            0.0355
+          ],
+          [
+            "Output \" viral\"",
+            0.0314
+          ],
+          [
+            "Output \" low\"",
+            0.0314
+          ],
+          [
+            "Output \" heart\"",
+            0.0244
+          ],
+          [
+            "Output \" urinary\"",
+            0.0244
+          ],
+          [
+            "Output \" case\"",
+            0.0244
+          ],
+          [
+            "Output \" possible\"",
+            0.0215
+          ],
+          [
+            "Output \" fungal\"",
+            0.0215
+          ],
+          [
+            "Output \" condition\"",
+            0.019
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" fever\"",
+            0.0953
+          ],
+          [
+            "Output \" problem\"",
+            0.0841
+          ],
+          [
+            "Output \" fungal\"",
+            0.0655
+          ],
+          [
+            "Output \" condition\"",
+            0.0578
+          ],
+          [
+            "Output \" sleep\"",
+            0.045
+          ],
+          [
+            "Output \" heart\"",
+            0.0273
+          ],
+          [
+            "Output \" skin\"",
+            0.0241
+          ],
+          [
+            "Output \" hot\"",
+            0.0241
+          ],
+          [
+            "Output \" thyroid\"",
+            0.0213
+          ],
+          [
+            "Output \" cold\"",
+            0.0213
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "cold": "cold. But",
+          "problem": "problem with my",
+          "viral": "viral infection.",
+          "low": "low blood pressure"
+        },
+        "patient": {
+          "fever": "fever. What",
+          "problem": "problem with my",
+          "fungal": "fungal infection.",
+          "condition": "condition called \""
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 44,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been scratching myself raw with this eczema, so I should probably see a",
+        "patient": "I've been scratching myself raw with this itchy skin, so I should probably see a"
+      },
+      "target_token": "Output \" dermat\"",
+      "probabilities": {
+        "clinical": 0.6935,
+        "patient": 0.6716
+      },
+      "language_penalty": -0.0219,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" dermat\"",
+            0.6935
+          ],
+          [
+            "Output \" doctor\"",
+            0.2891
+          ],
+          [
+            "Output \" specialist\"",
+            0.006
+          ],
+          [
+            "Output \" skin\"",
+            0.0022
+          ],
+          [
+            "Output \" physician\"",
+            0.0013
+          ],
+          [
+            "Output \" professional\"",
+            0.0013
+          ],
+          [
+            "Output \" GP\"",
+            0.0009
+          ],
+          [
+            "Output \" board\"",
+            0.0005
+          ],
+          [
+            "Output \" therapist\"",
+            0.0004
+          ],
+          [
+            "Output \" healthcare\"",
+            0.0003
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" dermat\"",
+            0.6716
+          ],
+          [
+            "Output \" doctor\"",
+            0.3172
+          ],
+          [
+            "Output \" physician\"",
+            0.0024
+          ],
+          [
+            "Output \" skin\"",
+            0.0019
+          ],
+          [
+            "Output \" specialist\"",
+            0.0009
+          ],
+          [
+            "Output \" GP\"",
+            0.0007
+          ],
+          [
+            "Output \" professional\"",
+            0.0007
+          ],
+          [
+            "Output \" Derm\"",
+            0.0003
+          ],
+          [
+            "Output \" medical\"",
+            0.0003
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0002
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "dermat": "dermatologist.",
+          "doctor": "doctor. What",
+          "specialist": "specialist. What",
+          "skin": "skin doctor."
+        },
+        "patient": {
+          "dermat": "dermatologist.",
+          "doctor": "doctor. What",
+          "physician": "physician. What",
+          "skin": "skin doctor."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    }
+  ]
+}
