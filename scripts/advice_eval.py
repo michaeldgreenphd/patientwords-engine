@@ -1236,6 +1236,16 @@ def _generation_tracker(args, cfg_data: dict, spec: dict) -> CostTracker:
     return CostTracker(1e9 if ceiling is None else ceiling, int(cfg_data.get("max_tokens", 2200)), custom)
 
 
+def _compat_usage_complete(raw: object) -> bool:
+    """Whether an OpenAI-compatible reply reports complete, nonnegative token counts. `_send_compat` substitutes 0 for
+    a missing count, which would book a billed call as free (Codex review of PR #146), so generation checks the raw
+    usage first, as the paired judge path does (dual_judge_usage_unavailable)."""
+    usage = raw.get("usage") if isinstance(raw, dict) else None
+    return isinstance(usage, dict) and all(
+        isinstance(usage.get(k), int) and not isinstance(usage.get(k), bool) and usage[k] >= 0
+        for k in ("prompt_tokens", "completion_tokens"))
+
+
 def _input_token_bound(system: str | None, user_text: str) -> int:
     """A conservative input-token count for a ceiling check: one token per two UTF-8 bytes of the system and user
     text, plus a margin for chat framing. English runs near four characters a token, so this over-reserves (Codex
@@ -1340,6 +1350,9 @@ def generate_rewrites(args, cfg_data: dict, registry: dict, spec: dict, tracker:
             _pace(spec["provider"], spec["cfg"])
             res = _send_compat(spec["cfg"], spec["model"], system, user_text, sent_max, sent_temperature)
             calls += 1
+            if not _compat_usage_complete(res[3] if len(res) > 3 else None):
+                # inflight_worst stays set, so the interrupted path books this call at its worst case and stops
+                raise RuntimeError("generation_usage_unavailable: the reply reported no complete token counts")
             tokens_in += res[1]
             tokens_out += res[2]
             tracker.record(spec["spec"], res[1], res[2])
@@ -1470,6 +1483,7 @@ def generate(args) -> Path:
     out_pairs: list[dict] = []
     calls = tokens_in = tokens_out = 0
     dropped_dupe = dropped_holdout = unparseable = 0
+    usage_unavailable = False
     while len(out_pairs) < n_target and calls < max_calls:
         topic = topics[calls % len(topics)]
         user_text = template.format(count=per_call, topic=topic, exemplars=ex_block)
@@ -1481,6 +1495,15 @@ def generate(args) -> Path:
         res = _send_compat(spec["cfg"], spec["model"], system, user_text, max_tokens, temperature)
         text, in_tok, out_tok = res[0], res[1], res[2]
         calls += 1
+        if not _compat_usage_complete(res[3] if len(res) > 3 else None):
+            # book the call at its worst case and stop: a missing count is not a free call (Codex review of PR #146)
+            in_tok, out_tok = _input_token_bound(system, user_text), max_tokens
+            tokens_in += in_tok
+            tokens_out += out_tok
+            tracker.record(spec["spec"], in_tok, out_tok)
+            usage_unavailable = True
+            print(f"call {calls}: the reply reported no complete token counts; booked at its worst case, stopping")
+            break
         tokens_in += in_tok
         tokens_out += out_tok
         tracker.record(spec["spec"], in_tok, out_tok)
@@ -1543,6 +1566,7 @@ def generate(args) -> Path:
         "cost_note": cfg_data.get("cost_note", ""),
         "max_spend_usd": getattr(args, "max_spend", None),
         "run_utc": run_utc,  # the day scripts/ledger_update.py books this spend to
+        "usage_unavailable": usage_unavailable,
         "dropped_duplicates": dropped_dupe,
         "dropped_holdout_collisions": dropped_holdout,
         "unparseable_calls": unparseable,

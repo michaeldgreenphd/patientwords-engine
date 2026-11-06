@@ -2481,7 +2481,7 @@ def _rewrite_setup(tmp_path, monkeypatch, reply):
 
     def stub_compat(cfg_, model, system, user_text, max_tokens, temperature):
         sent.append(user_text)
-        return reply, 1000, 500, {}
+        return reply, 1000, 500, {"usage": {"prompt_tokens": 1000, "completion_tokens": 500}}
 
     monkeypatch.setattr(ae, "_send_compat", stub_compat)
     monkeypatch.setattr(ae, "_pace", lambda *a, **k: None)
@@ -2538,7 +2538,8 @@ def test_legacy_generate_sidecar_counts_cost(tmp_path, monkeypatch):
     cfg.write_text(json.dumps({"model": "fakeai", "stem": "g", "n_items": 1, "items_per_call": 1, "max_calls": 1,
                                "prompt_template": "write {count} {topic} {exemplars}"}), encoding="utf-8")
     monkeypatch.setattr(ae, "_send_compat", lambda *a, **k: (
-        json.dumps([{"clinical": "alpha one", "patient": "beta one"}]), 2000, 1000, {}))
+        json.dumps([{"clinical": "alpha one", "patient": "beta one"}]), 2000, 1000,
+        {"usage": {"prompt_tokens": 2000, "completion_tokens": 1000}}))
     monkeypatch.setattr(ae, "_pace", lambda *a, **k: None)
     ae.main(["generate", "--config", str(cfg), "--providers", str(reg), "--out-dir", str(tmp_path),
              "--max-spend", "1.0"])
@@ -2609,7 +2610,7 @@ def test_rewrite_run_writes_what_landed_when_a_later_call_fails(tmp_path, monkey
 
     def flaky(cfg_, model, system, user_text, max_tokens, temperature):
         try:
-            return next(replies), 1000, 500, {}
+            return next(replies), 1000, 500, {"usage": {"prompt_tokens": 1000, "completion_tokens": 500}}
         except StopIteration:
             raise ConnectionError("timeout") from None
 
@@ -2646,3 +2647,40 @@ def test_generation_sidecars_carry_the_ledger_run_day(tmp_path, monkeypatch):
              "--max-spend", "1.0"])
     report = json.loads(next(tmp_path.glob("rw_*.report.json")).read_text(encoding="utf-8"))
     assert report["run_utc"] and report["run_utc"] <= report["created_utc"]
+
+
+def test_rewrite_without_reported_usage_is_booked_at_worst_case_and_stops(tmp_path, monkeypatch):
+    # Codex review of PR #146: _send_compat substitutes 0 for missing counts, which booked a billed call as free
+    cfg, reg, _ = _rewrite_setup(tmp_path, monkeypatch, "")
+    _rewrite_cfg(tmp_path, items_per_call=1, max_tokens=4000)
+    calls = []
+
+    def no_usage(cfg_, model, system, user_text, max_tokens, temperature):
+        calls.append(1)
+        return json.dumps([{"id": "s#1", "text": "ok so"}]), 0, 0, {}
+
+    monkeypatch.setattr(ae, "_send_compat", no_usage)
+    with pytest.raises(SystemExit, match="usage_unavailable"):
+        ae.main(["generate", "--config", str(cfg), "--providers", str(reg), "--out-dir", str(tmp_path),
+                 "--max-spend", "0.009"])
+    assert len(calls) == 1  # stopped after the first usage-free reply
+    report = json.loads(next(tmp_path.glob("rw_*.report.json")).read_text(encoding="utf-8"))
+    assert report["cost_usd"] >= 4000 * 2.0 / 1e6  # the reply's worst case, never 0
+
+
+def test_legacy_generate_without_reported_usage_books_worst_case(tmp_path, monkeypatch):
+    reg = tmp_path / "providers.json"
+    reg.write_text(json.dumps(REGISTRY), encoding="utf-8")
+    cfg = tmp_path / "gen.json"
+    cfg.write_text(json.dumps({"model": "fakeai", "stem": "g", "n_items": 5, "items_per_call": 1, "max_calls": 3,
+                               "max_tokens": 1000, "prompt_template": "write {count} {topic} {exemplars}"}),
+                   encoding="utf-8")
+    calls = []
+    monkeypatch.setattr(ae, "_send_compat", lambda *a, **k: calls.append(1) or (
+        json.dumps([{"clinical": "alpha one", "patient": "beta one"}]), 0, 0, {}))
+    monkeypatch.setattr(ae, "_pace", lambda *a, **k: None)
+    ae.main(["generate", "--config", str(cfg), "--providers", str(reg), "--out-dir", str(tmp_path),
+             "--max-spend", "1.0"])
+    report = json.loads(next(tmp_path.glob("g_*.report.json")).read_text(encoding="utf-8"))
+    assert len(calls) == 1 and report["usage_unavailable"] is True
+    assert report["cost_usd"] >= 1000 * 2.0 / 1e6
