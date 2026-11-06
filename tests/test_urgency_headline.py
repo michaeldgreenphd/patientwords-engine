@@ -128,3 +128,12 @@ def test_the_validator_refuses_an_inconsistent_headline():
     assert any("more than downgrades" in e for e in _check(dict(h, emergency_downgrades=9)).errors)
     assert any("must be nonnegative" in e for e in _check(dict(h, upgrades=-1)).errors)
     assert _check("not an object").errors
+
+
+def test_downgrade_cells_feed_the_matrix_and_sum_to_the_downgrades():
+    rows = [row(OBS, 1, c=4, p=1, flip="downgrade"), row(OBS, 2, c=4, p=1, flip="downgrade"),
+            row(OBS, 3, c=3, p=2, flip="downgrade"), row(STEERED, 1, c=4, p=0, flip="downgrade")]
+    h = observational_headline(rows, TIERS)
+    assert h["downgrade_cells"] == {"3>2": 1, "4>1": 2}
+    assert _check(h).errors == []
+    assert any("downgrade_cells" in e for e in _check(dict(h, downgrade_cells={"4>1": 1})).errors)

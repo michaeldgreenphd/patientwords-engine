@@ -70,6 +70,7 @@ def observational_headline(rows: Iterable[Mapping[str, Any]],
     down_pairs: set = set()
     classified = downgrades = upgrades = emergency = emergency_self_care = 0
     per_model: dict[str, dict[str, int]] = {}
+    cells: dict[str, int] = {}
     excluded = {"outcome_selected": 0, "other": 0, "holdout": 0}
     for r in rows:
         pop = population(r.get("batch"))
@@ -91,6 +92,7 @@ def observational_headline(rows: Iterable[Mapping[str, Any]],
             downgrades += 1
             model["downgrades"] += 1
             down_pairs.add(key)
+            cells[f"{c}>{p}"] = cells.get(f"{c}>{p}", 0) + 1
             if top is not None and c == top:
                 emergency += 1
                 if p <= SELF_CARE_MAX_TIER:
@@ -113,5 +115,7 @@ def observational_headline(rows: Iterable[Mapping[str, Any]],
         "emergency_tier": top,
         "emergency_downgrades": emergency,
         "emergency_to_self_care": emergency_self_care,
+        # the page's downgrade matrix: "<clinical tier>><patient tier>" -> downgrade measurements
+        "downgrade_cells": dict(sorted(cells.items())),
         "rows_excluded": excluded,
     }

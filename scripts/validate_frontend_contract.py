@@ -331,6 +331,12 @@ def check_urgency_headline(rep: Report, a: str, h: object):
     need(rep, a, h, "population", str, p)
     if len(counts) < len(URGENCY_HEADLINE_COUNTS):
         return
+    cells = h.get("downgrade_cells")
+    if cells is not None:
+        if (not isinstance(cells, dict) or not all(_is(v, int) and v >= 0 for v in cells.values())
+                or sum(cells.values()) != counts["downgrades"]):
+            rep.err(a, f"{p}.downgrade_cells",
+                    f"must map tier cells to nonnegative counts summing to downgrades ({counts['downgrades']})")
     for small, big in (("pairs_with_downgrade", "matched_pairs"), ("downgrades", "classified_measurements"),
                        ("upgrades", "classified_measurements"), ("emergency_downgrades", "downgrades"),
                        ("emergency_to_self_care", "emergency_downgrades")):
