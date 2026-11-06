@@ -82,6 +82,26 @@ def test_exemplars_carry_prompts_and_prefer_rendered(tmp_path):
     assert render_map_from_scenarios(str(scen)) == {("b", 5): "H"}
 
 
+def test_pab_harvest_rows_count_but_never_carry_text_or_become_exemplars(tmp_path):
+    # pabharvest_ batches embed CC-BY-NC-derived utterances that must never reach the site
+    root = tmp_path / "trace_out"
+    write_summary(root, "pabharvest_20260807T025446Z", "gemma-2-2b", [
+        result(1, [(None, "x"), (1, "y"), (1, "y"), (1, "y")],
+               [(None, "x"), (5, "y"), (4, "y"), (None, "z")],
+               prompts={"clinical": "harvested high", "patient": "harvested low"}),
+    ])
+    write_summary(root, "pairs_R", "gemma-2-2b", [
+        result(1, [(None, "x"), (1, "y"), (1, "y"), (1, "y")], [(1, "y")] * 4,
+               prompts={"clinical": "study clinical", "patient": "study patient"}),
+    ])
+    per_model, _ = collect(root)
+    pab = [r for r in per_model["gemma-2-2b"] if r["dataset"].startswith("pabharvest_")]
+    assert len(pab) == 1 and pab[0]["prompts"] is None          # counted, no text
+    out = analyze(per_model, "gemma-2-2b", "gemma-2-2b-it", 3)
+    assert all(not e["dataset"].startswith("pabharvest_") for e in out["exemplars"])
+    assert "harvested" not in json.dumps(out)
+
+
 def test_collect_and_analyze_end_to_end(tmp_path):
     root = tmp_path / "trace_out"
     write_summary(root, "setA", "gemma-2-2b", [

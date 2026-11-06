@@ -1219,6 +1219,221 @@ def _parse_generated_pairs(text: str) -> list[dict]:
     return items
 
 
+_GENERATION_COST_BASIS = ("tokens returned by the provider x the registry rate the elicit ceiling uses "
+                          "(_registry_rate; built-in table, then the fallback rate, when the registry has none)")
+
+
+def _generation_tracker(args, cfg_data: dict, spec: dict) -> CostTracker:
+    """The cost tracker of a generation run. It always counts cost from the tokens each call returns, so the sidecar's
+    cost_usd is what the ledger books (scripts/ledger_update.py folds data/advice/*.report.json). Before 2026-11-06 the
+    sidecar always said 0.0, which was true only for the free promotional window the first generator ran in. With
+    --max-spend it is also a ceiling: no call is sent whose worst case would cross it."""
+    pricing, _ = _registry_rate(spec["cfg"], spec["model"])
+    custom = {spec["spec"]: (float(pricing[0]), float(pricing[1]))} if pricing else {}
+    ceiling = getattr(args, "max_spend", None)
+    # None means no ceiling was given (cost is still counted); any given value, 0 included, goes to CostTracker,
+    # which refuses a non-positive one (Codex review of PR #146: a 0 ceiling had been read as no ceiling)
+    return CostTracker(1e9 if ceiling is None else ceiling, int(cfg_data.get("max_tokens", 2200)), custom)
+
+
+def _compat_usage_complete(raw: object) -> bool:
+    """Whether an OpenAI-compatible reply reports complete, nonnegative token counts. `_send_compat` substitutes 0 for
+    a missing count, which would book a billed call as free (Codex review of PR #146), so generation checks the raw
+    usage first, as the paired judge path does (dual_judge_usage_unavailable)."""
+    usage = raw.get("usage") if isinstance(raw, dict) else None
+    return isinstance(usage, dict) and all(
+        isinstance(usage.get(k), int) and not isinstance(usage.get(k), bool) and usage[k] >= 0
+        for k in ("prompt_tokens", "completion_tokens"))
+
+
+def _input_token_bound(system: str | None, user_text: str) -> int:
+    """A conservative input-token count for a ceiling check: one token per two UTF-8 bytes of the system and user
+    text, plus a margin for chat framing. English runs near four characters a token, so this over-reserves (Codex
+    review of PR #146: the fixed EST_INPUT_TOKENS undercounted a 700-word rewrite prompt)."""
+    return len(((system or "") + user_text).encode("utf-8")) // 2 + 64
+
+
+_WORD = re.compile(r"[A-Za-z][A-Za-z'-]*")
+_NUMBER = re.compile(r"\d+(?:\.\d+)?")
+_CONTRACTION = re.compile(r"[A-Za-z]'[A-Za-z]")
+
+
+def rewrite_checks(clinical: str, source: str, rewrite: str, min_len: int = 4) -> dict:
+    """Mechanical checks of one register rewrite, recorded for the owner's review (no vocabulary in this file: the
+    clinical terms are read off the pair itself).
+
+    - clinical_terms_leaked: words of at least `min_len` letters in the clinical body that the source (careful lay)
+      body does not use, found in the rewrite. The source pair was written so these are the clinical terms; any of
+      them in the rewrite breaks the arm.
+    - numbers_missing: digit groups in the source that the rewrite drops (durations, ages, doses).
+    - words_added: words of at least `min_len` letters in the rewrite that the source does not use. A register
+      rewrite adds connectives and fillers, so this is a count for review, not a failure.
+    - casual markers: whether the rewrite starts lower case and uses a contraction (the registry's colloquial
+      definition, docs/framework/framing_dimensions.draft.json).
+    """
+    def words(text: str) -> set[str]:
+        return {w.lower().strip("'-") for w in _WORD.findall(text) if len(w.strip("'-")) >= min_len}
+
+    clinical_only = words(clinical) - words(source)
+    leaked = sorted(clinical_only & words(rewrite))
+    missing = sorted(set(_NUMBER.findall(source)) - set(_NUMBER.findall(rewrite)))
+    stripped = rewrite.lstrip()
+    return {
+        "clinical_terms_leaked": leaked,
+        "numbers_missing": missing,
+        "words_added": len(words(rewrite) - words(source)),
+        "starts_lower_case": bool(stripped) and stripped[0].islower(),
+        "has_contraction": bool(_CONTRACTION.search(rewrite)),
+        "needs_review": bool(leaked or missing),
+    }
+
+
+def _parse_rewrites(text: str) -> dict[str, str]:
+    """{id: text} from a JSON array of {"id", "text"} objects; tolerates prose around the array."""
+    start, end = text.find("["), text.rfind("]")
+    if start < 0 or end <= start:
+        raise ValueError("no JSON array in response")
+    raw = json.loads(text[start:end + 1])
+    if not isinstance(raw, list):
+        raise ValueError("top-level JSON is not an array")
+    out = {}
+    for entry in raw:
+        if isinstance(entry, dict) and str(entry.get("id") or "") and str(entry.get("text") or "").strip():
+            out[str(entry["id"])] = str(entry["text"]).strip()
+    return out
+
+
+def generate_rewrites(args, cfg_data: dict, registry: dict, spec: dict, tracker: CostTracker) -> Path:
+    """Register rewrite (owner decision 2026-11-06, structured-lay-go): recast one field of each item of an existing
+    stimuli file in another register, keeping its words and facts, so a third wording of the same situations can be
+    elicited. Config: `source_stimuli`, `source_field` (default patient_body), `pair_with` (default clinical_body,
+    the other side of each output pair), `items_per_call`, `max_calls`, `prompt_template` with {items} (a JSON array
+    of {"id", "text"}), the model's reply a JSON array of {"id", "text"}. Output: a pairs file (top_prompt = the
+    `pair_with` field, bottom_prompt = the rewrite) that `build-stimuli --source pairs` consumes, each pair carrying
+    its source item id, the source text's sha256 and `rewrite_checks`. The batch is pilot-unreviewed: nothing
+    consumes it until the owner reviews it. A rewrite run requires --max-spend."""
+    if getattr(args, "max_spend", None) is None:
+        raise SystemExit("a rewrite run is paid: pass --max-spend (the fire's max_spend)")
+    run_utc = utc_now_iso()
+    source_path = str(cfg_data["source_stimuli"])
+    field = str(cfg_data.get("source_field", "patient_body"))
+    pair_with = str(cfg_data.get("pair_with", "clinical_body"))
+    items = _load_json(source_path)["items"]
+    per_call = int(cfg_data.get("items_per_call", 8))
+    max_calls = int(cfg_data.get("max_calls", 20))
+    max_tokens = int(cfg_data.get("max_tokens", 4000))
+    system = cfg_data.get("system") or None
+    template = str(cfg_data["prompt_template"])
+    sent_max, sent_temperature, adjustments = call_settings(
+        registry, spec["cfg"], spec["model"], max_tokens, float(cfg_data.get("temperature", 0.7)))
+    # the ceiling reserves the output budget the calls are actually sent with, registry minimums included (Codex
+    # review of PR #146: the tracker had been sized from the config's max_tokens default, not the sent budget)
+    tracker.max_output_tokens = sent_max
+    tracker.output_budget[spec["spec"]] = sent_max
+    tierb = _load_tierb_split()
+    pending = [it for it in items if str(it.get(field) or "").strip() and str(it.get(pair_with) or "").strip()]
+    done: dict[str, str] = {}
+    calls = tokens_in = tokens_out = unparseable = 0
+    inflight_worst = 0.0
+    interrupted: str | None = None
+    in_p, out_p = tracker._price(spec["spec"])
+    try:
+        while len(done) < len(pending) and calls < max_calls:
+            batch = [it for it in pending if it["id"] not in done][:per_call]
+            user_text = template.format(items=json.dumps([{"id": it["id"], "text": it[field]} for it in batch],
+                                                         ensure_ascii=False, indent=1))
+            bound = _input_token_bound(system, user_text)
+            if not tracker.can_afford(spec["spec"], input_tokens=bound):
+                print(f"spend ceiling ${args.max_spend:.2f} reached after {calls} calls; stopping")
+                break
+            inflight_worst = bound * in_p / 1e6 + sent_max * out_p / 1e6
+            _pace(spec["provider"], spec["cfg"])
+            res = _send_compat(spec["cfg"], spec["model"], system, user_text, sent_max, sent_temperature)
+            calls += 1
+            if not _compat_usage_complete(res[3] if len(res) > 3 else None):
+                # inflight_worst stays set, so the interrupted path books this call at its worst case and stops
+                raise RuntimeError("generation_usage_unavailable: the reply reported no complete token counts")
+            tokens_in += res[1]
+            tokens_out += res[2]
+            tracker.record(spec["spec"], res[1], res[2])
+            inflight_worst = 0.0
+            try:
+                got = _parse_rewrites(res[0])
+            except (ValueError, json.JSONDecodeError) as err:
+                unparseable += 1
+                print(f"call {calls}: {err}; continuing")
+                continue
+            for it in batch:
+                if it["id"] in got:
+                    done[it["id"]] = got[it["id"]]
+            print(f"call {calls}: {len(done)}/{len(pending)} rewritten")
+    except BaseException as err:  # noqa: BLE001 - write what landed and its cost, then re-raise below
+        interrupted = f"{type(err).__name__}: {err}"
+    out_pairs, holdout = [], 0
+    for it in pending:
+        text = done.get(it["id"])
+        if text is None:
+            continue
+        if tierb.is_holdout(text) or tierb.is_holdout(it[pair_with]):
+            holdout += 1
+            continue
+        out_pairs.append({
+            "top_prompt": it[pair_with],
+            "bottom_prompt": text,
+            "family": cfg_data.get("family", "advice_register_rewrite"),
+            "generation": {
+                "provider_spec": spec["spec"],
+                "mode": "rewrite",
+                "register": cfg_data.get("register"),
+                "source_ref": {"stimuli": source_path, "id": it["id"], "field": field},
+                "source_sha256": hashlib.sha256(it[field].encode("utf-8")).hexdigest(),
+                "checks": rewrite_checks(it[pair_with], it[field], text),
+            },
+        })
+    stamp = utc_stamp()
+    stem = cfg_data.get("stem", "rewrite")
+    out_path = Path(args.out_dir) / f"{stem}_{stamp}.json"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(out_pairs, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    flagged = sum(1 for p in out_pairs if p["generation"]["checks"]["needs_review"])
+    report = {
+        "task": "advice-stimuli-generation",
+        "mode": "rewrite",
+        "status": "pilot-unreviewed",
+        "model": spec["spec"],
+        "config": str(args.config),
+        "source_stimuli": source_path,
+        "n_source_items": len(pending),
+        "n_generated": len(out_pairs),
+        "n_flagged_for_review": flagged,
+        "dropped_holdout_collisions": holdout,
+        "calls": calls,
+        "unparseable_calls": unparseable,
+        "input_tokens": tokens_in,
+        "output_tokens": tokens_out,
+        "call_adjustments": adjustments,
+        # an interrupted run books the call that failed at its worst case: it may have been billed and no tokens came
+        # back to count (the Jev audit sidecar's rule for an unbilled call)
+        "cost_usd": round(tracker.spent + inflight_worst, 6),
+        "cost_basis": _GENERATION_COST_BASIS + ("; plus the failed in-flight call at its worst case" if inflight_worst
+                                                else ""),
+        "max_spend_usd": args.max_spend,
+        "interrupted": interrupted,
+        # the day scripts/ledger_update.py books this spend to (it reads run_utc or run_timestamp, never created_utc)
+        "run_utc": run_utc,
+        "created_utc": utc_now_iso(),
+        "engine_sha": engine_sha(),
+    }
+    out_path.with_suffix(".report.json").write_text(json.dumps(report, indent=1) + "\n", encoding="utf-8")
+    if interrupted:
+        raise SystemExit(f"rewrite run interrupted after {calls} call(s) ({interrupted}); {len(out_pairs)} pair(s) "
+                         f"and the cost sidecar were written to {out_path.parent}")
+    print(f"rewrote {len(out_pairs)}/{len(pending)} items in {calls} calls (${tracker.spent:.4f}) -> {out_path}; "
+          f"{flagged} flagged for review")
+    print("PILOT-UNREVIEWED: nothing consumes this batch until the owner reviews it.")
+    return out_path
+
+
 def generate(args) -> Path:
     """Generator-diversity pilot (owner-approved 2026-08-21): author NEW paired
     advice vignettes with a non-Anthropic model through the provider registry.
@@ -1234,6 +1449,10 @@ def generate(args) -> Path:
     cfg_data = _load_json(args.config)
     registry = _load_providers(args.providers)
     spec = _resolve_spec(str(cfg_data["model"]), registry)
+    tracker = _generation_tracker(args, cfg_data, spec)
+    run_utc = utc_now_iso()
+    if cfg_data.get("mode") == "rewrite":
+        return generate_rewrites(args, cfg_data, registry, spec, tracker)
     n_target = int(cfg_data["n_items"])
     per_call = int(cfg_data.get("items_per_call", 8))
     max_calls = int(cfg_data.get("max_calls", 20))
@@ -1264,15 +1483,30 @@ def generate(args) -> Path:
     out_pairs: list[dict] = []
     calls = tokens_in = tokens_out = 0
     dropped_dupe = dropped_holdout = unparseable = 0
+    usage_unavailable = False
     while len(out_pairs) < n_target and calls < max_calls:
         topic = topics[calls % len(topics)]
         user_text = template.format(count=per_call, topic=topic, exemplars=ex_block)
+        if getattr(args, "max_spend", None) is not None and not tracker.can_afford(
+                spec["spec"], input_tokens=_input_token_bound(system, user_text)):
+            print(f"spend ceiling ${args.max_spend:.2f} reached after {calls} calls; stopping")
+            break
         _pace(spec["provider"], spec["cfg"])
         res = _send_compat(spec["cfg"], spec["model"], system, user_text, max_tokens, temperature)
         text, in_tok, out_tok = res[0], res[1], res[2]
         calls += 1
+        if not _compat_usage_complete(res[3] if len(res) > 3 else None):
+            # book the call at its worst case and stop: a missing count is not a free call (Codex review of PR #146)
+            in_tok, out_tok = _input_token_bound(system, user_text), max_tokens
+            tokens_in += in_tok
+            tokens_out += out_tok
+            tracker.record(spec["spec"], in_tok, out_tok)
+            usage_unavailable = True
+            print(f"call {calls}: the reply reported no complete token counts; booked at its worst case, stopping")
+            break
         tokens_in += in_tok
         tokens_out += out_tok
+        tracker.record(spec["spec"], in_tok, out_tok)
         try:
             candidates = _parse_generated_pairs(text)
         except ValueError as err:
@@ -1327,8 +1561,12 @@ def generate(args) -> Path:
         "calls": calls,
         "input_tokens": tokens_in,
         "output_tokens": tokens_out,
-        "cost_usd": 0.0,
+        "cost_usd": round(tracker.spent, 6),
+        "cost_basis": _GENERATION_COST_BASIS,
         "cost_note": cfg_data.get("cost_note", ""),
+        "max_spend_usd": getattr(args, "max_spend", None),
+        "run_utc": run_utc,  # the day scripts/ledger_update.py books this spend to
+        "usage_unavailable": usage_unavailable,
         "dropped_duplicates": dropped_dupe,
         "dropped_holdout_collisions": dropped_holdout,
         "unparseable_calls": unparseable,
@@ -3020,6 +3258,9 @@ def build_parser() -> argparse.ArgumentParser:
                                         "registry (config-driven; owner-reviewed before use)")
     g.add_argument("--config", required=True, help="JSON config: model spec, topics, template, exemplars")
     g.add_argument("--providers", default=DEFAULT_PROVIDERS)
+    g.add_argument("--max-spend", type=float, default=None,
+                   help="USD ceiling (the fire's max_spend); required for a rewrite config. Cost is counted "
+                        "and written to the sidecar either way")
     g.add_argument("--out-dir", default=DEFAULT_OUT_DIR)
 
     e = sub.add_parser("elicit", help="paid: sample advice per stimulus x arm x model")

@@ -1,0 +1,18 @@
+{
+ "_": "Register rewrite for the single-turn style-vs-vocabulary arm (owner decisions 2026-11-06: ag-new-runs 'Design both', structured-lay-go 'Generation fire, then your read'; design docs/exploratory/structured_lay_design_20261106.md; analysis plan preregistered in docs/preregistration_advice_register_style.md). The 56 situations of stimuli_20260827T141036Z already hold a clinical body and a careful-lay body (everyday words, careful orthography). This writes the third wording, colloquial: the careful-lay body's words and facts in casual orthography (the registry's colloquial definition, docs/framework/framing_dimensions.draft.json). Output is pilot-unreviewed: the owner reads every rewrite before anything elicits on it.",
+ "mode": "rewrite",
+ "register": "colloquial",
+ "model": "openrouter:anthropic/claude-sonnet-5",
+ "family": "advice_register_rewrite_colloquial",
+ "stem": "rewrite_colloquial",
+ "source_stimuli": "data/advice/stimuli_20260827T141036Z.json",
+ "source_field": "patient_body",
+ "pair_with": "clinical_body",
+ "items_per_call": 8,
+ "max_calls": 12,
+ "temperature": 0.7,
+ "max_tokens": 6000,
+ "system": "You rewrite test stimuli for a public research study measuring how AI assistants respond to the same health situation written in different registers. You never give medical advice; you only rewrite the person's question.",
+ "prompt_template": "Each item below is a first-person health question written in careful everyday English. Rewrite each one in a CASUAL register: how the same person would type it quickly to a chat assistant on their phone.\n\nKeep exactly:\n- every fact: who, symptoms, how long, how often, how bad, what helps or worsens, what they are asking;\n- the order of the facts;\n- the everyday words they use for the symptoms. Do not replace them with other descriptions, and never use a medical term the original does not use.\n\nChange only the register:\n- lower case, including the first word and \"i\";\n- contractions (im, dont, its or i'm, don't, it's);\n- casual connectives and run-on sentences (\"and\", \"so\", \"like\"), fewer full stops;\n- an informal opening or closing is fine (\"ok so\", \"idk\").\n\nDo not:\n- add or drop any fact, symptom or number;\n- misspell words on purpose beyond dropped apostrophes;\n- add slang that changes the meaning;\n- make it shorter by leaving facts out.\n\nReturn ONLY a JSON array with one object per item, in the same order, each with exactly the fields \"id\" (copied unchanged) and \"text\" (the rewrite). No prose.\n\nItems:\n{items}",
+ "cost_note": "OpenRouter lane; about 7 calls of 8 items. The fire's max_spend is the ceiling (generate --max-spend); the sidecar books the counted cost."
+}

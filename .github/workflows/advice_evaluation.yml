@@ -268,8 +268,11 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEN_CONFIG: ${{ needs.params.outputs.gen_config }}
+          # the fire's ceiling: generate counts cost from returned tokens and stops before a call could cross it
+          # (2026-11-06; before, a generation run had no ceiling and its sidecar always said cost 0)
+          MAX_SPEND: ${{ needs.params.outputs.max_spend }}
         run: |
-          python scripts/advice_eval.py generate --config "$GEN_CONFIG" --out-dir data/advice
+          python scripts/advice_eval.py generate --config "$GEN_CONFIG" --out-dir data/advice --max-spend "$MAX_SPEND"
 
       - name: Download archive artifact (recovery after a killed run)
         if: ${{ needs.params.outputs.restore_artifact_run_id != '' && needs.params.outputs.gen_config == '' }}

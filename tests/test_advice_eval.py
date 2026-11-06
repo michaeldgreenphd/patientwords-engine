@@ -2460,3 +2460,227 @@ def test_automatic_dual_judging_keeps_primary_and_books_both_passes(
     judgments = ae._read_jsonl(Path(sidecars[0]["judgments_file"]))
     primary = [r for r in judgments if not ae.is_secondary_judge(r["judge_model"])]
     assert primary and len(primary) * 2 == len(judgments)
+
+
+# ---- register rewrite mode and generation cost (owner decisions 2026-11-06) -------------------------------------
+
+def _rewrite_setup(tmp_path, monkeypatch, reply):
+    stim = tmp_path / "stimuli_src.json"
+    stim.write_text(json.dumps({"items": [
+        {"id": "s#1", "clinical_body": "I have had alphaitis for 3 days. What should I do?",
+         "patient_body": "My side has hurt for 3 days. What should I do?"},
+        {"id": "s#2", "clinical_body": "I have betaosis since 2 weeks. What should I do?",
+         "patient_body": "My skin is itchy since 2 weeks. What should I do?"}]}), encoding="utf-8")
+    reg = tmp_path / "providers.json"
+    reg.write_text(json.dumps(REGISTRY), encoding="utf-8")
+    cfg = tmp_path / "gen_rewrite.json"
+    cfg.write_text(json.dumps({"mode": "rewrite", "register": "colloquial", "model": "fakeai", "stem": "rw",
+                               "source_stimuli": str(stim), "items_per_call": 8, "max_calls": 2,
+                               "prompt_template": "rewrite {items}"}), encoding="utf-8")
+    sent = []
+
+    def stub_compat(cfg_, model, system, user_text, max_tokens, temperature):
+        sent.append(user_text)
+        return reply, 1000, 500, {"usage": {"prompt_tokens": 1000, "completion_tokens": 500}}
+
+    monkeypatch.setattr(ae, "_send_compat", stub_compat)
+    monkeypatch.setattr(ae, "_pace", lambda *a, **k: None)
+
+    class _Seal:  # the real Tier B seal hashes texts; a stub keeps these synthetic sentences out of it
+        @staticmethod
+        def is_holdout(text):
+            return "sealed" in text
+
+    monkeypatch.setattr(ae, "_load_tierb_split", lambda: _Seal)
+    return cfg, reg, sent
+
+
+def test_rewrite_checks_flag_leaked_terms_and_dropped_numbers():
+    c = ae.rewrite_checks("I have had alphaitis for 3 days.", "My side has hurt for 3 days.",
+                          "ok so my side hurts and its alphaitis i think")
+    assert c["clinical_terms_leaked"] == ["alphaitis"] and c["numbers_missing"] == ["3"]
+    assert c["starts_lower_case"] and c["needs_review"]
+    clean = ae.rewrite_checks("I have had alphaitis for 3 days.", "My side has hurt for 3 days.",
+                              "ok so my side's hurt for 3 days")
+    assert clean["clinical_terms_leaked"] == [] and clean["numbers_missing"] == [] and not clean["needs_review"]
+    assert clean["has_contraction"]
+
+
+def test_rewrite_mode_writes_pairs_with_checks_and_counted_cost(tmp_path, monkeypatch):
+    reply = json.dumps([{"id": "s#1", "text": "ok so my side's hurt for 3 days what do i do"},
+                        {"id": "s#2", "text": "my skin's itchy and its betaosis since 2 weeks what do i do"}])
+    cfg, reg, sent = _rewrite_setup(tmp_path, monkeypatch, reply)
+    ae.main(["generate", "--config", str(cfg), "--providers", str(reg), "--out-dir", str(tmp_path),
+             "--max-spend", "1.0"])
+    pairs_path = next(p for p in tmp_path.glob("rw_*.json") if not p.name.endswith(".report.json"))
+    pairs = json.loads(pairs_path.read_text(encoding="utf-8"))
+    assert [p["top_prompt"] for p in pairs] == ["I have had alphaitis for 3 days. What should I do?",
+                                               "I have betaosis since 2 weeks. What should I do?"]
+    assert pairs[0]["generation"]["source_ref"]["id"] == "s#1" and not pairs[0]["generation"]["checks"]["needs_review"]
+    assert pairs[1]["generation"]["checks"]["clinical_terms_leaked"] == ["betaosis"]
+    report = json.loads(pairs_path.with_suffix(".report.json").read_text(encoding="utf-8"))
+    # one call at the registry's default rate [0.5, 2.0] per Mtok: 1000 in, 500 out
+    assert report["cost_usd"] == round(1000 * 0.5 / 1e6 + 500 * 2.0 / 1e6, 6) and report["calls"] == 1
+    assert report["n_flagged_for_review"] == 1 and report["status"] == "pilot-unreviewed"
+    assert len(sent) == 1 and '"s#1"' in sent[0]
+
+
+def test_rewrite_mode_requires_a_ceiling(tmp_path, monkeypatch):
+    cfg, reg, _ = _rewrite_setup(tmp_path, monkeypatch, "[]")
+    with pytest.raises(SystemExit, match="max-spend"):
+        ae.main(["generate", "--config", str(cfg), "--providers", str(reg), "--out-dir", str(tmp_path)])
+
+
+def test_legacy_generate_sidecar_counts_cost(tmp_path, monkeypatch):
+    reg = tmp_path / "providers.json"
+    reg.write_text(json.dumps(REGISTRY), encoding="utf-8")
+    cfg = tmp_path / "gen.json"
+    cfg.write_text(json.dumps({"model": "fakeai", "stem": "g", "n_items": 1, "items_per_call": 1, "max_calls": 1,
+                               "prompt_template": "write {count} {topic} {exemplars}"}), encoding="utf-8")
+    monkeypatch.setattr(ae, "_send_compat", lambda *a, **k: (
+        json.dumps([{"clinical": "alpha one", "patient": "beta one"}]), 2000, 1000,
+        {"usage": {"prompt_tokens": 2000, "completion_tokens": 1000}}))
+    monkeypatch.setattr(ae, "_pace", lambda *a, **k: None)
+    ae.main(["generate", "--config", str(cfg), "--providers", str(reg), "--out-dir", str(tmp_path),
+             "--max-spend", "1.0"])
+    report = json.loads(next(tmp_path.glob("g_*.report.json")).read_text(encoding="utf-8"))
+    assert report["cost_usd"] == round(2000 * 0.5 / 1e6 + 1000 * 2.0 / 1e6, 6)  # no longer always 0.0
+    assert report["max_spend_usd"] == 1.0
+
+
+def test_advice_workflow_generate_step_passes_the_ceiling():
+    wf_path = Path(__file__).resolve().parents[1] / ".github" / "workflows" / "advice_evaluation.yml"
+    wf = yaml.safe_load(wf_path.read_text(encoding="utf-8"))
+    gen = next(st for st in wf["jobs"]["advice"]["steps"] if "Generate stimuli" in (st.get("name") or ""))
+    assert gen["env"]["MAX_SPEND"] == "${{ needs.params.outputs.max_spend }}"
+    assert '--max-spend "$MAX_SPEND"' in gen["run"]
+
+
+def test_committed_colloquial_rewrite_config_reads_its_source():
+    root = Path(__file__).resolve().parents[1]
+    cfg = json.loads((root / "data/advice/gen_config_colloquial_rewrite_20261106.json").read_text(encoding="utf-8"))
+    assert cfg["mode"] == "rewrite" and cfg["register"] == "colloquial"
+    items = json.loads((root / cfg["source_stimuli"]).read_text(encoding="utf-8"))["items"]
+    assert len(items) == 56 and all(i.get(cfg["source_field"]) and i.get(cfg["pair_with"]) for i in items)
+    assert "{items}" in cfg["prompt_template"]
+
+
+def test_rewrite_mode_drops_holdout_collisions(tmp_path, monkeypatch):
+    reply = json.dumps([{"id": "s#1", "text": "ok so my side's hurt for 3 days sealed"},
+                        {"id": "s#2", "text": "my skin's itchy since 2 weeks what do i do"}])
+    cfg, reg, _ = _rewrite_setup(tmp_path, monkeypatch, reply)
+    ae.main(["generate", "--config", str(cfg), "--providers", str(reg), "--out-dir", str(tmp_path),
+             "--max-spend", "1.0"])
+    report = json.loads(next(tmp_path.glob("rw_*.report.json")).read_text(encoding="utf-8"))
+    assert report["n_generated"] == 1 and report["dropped_holdout_collisions"] == 1
+
+
+def _rewrite_cfg(tmp_path, **over):
+    cfg = json.loads((tmp_path / "gen_rewrite.json").read_text(encoding="utf-8"))
+    cfg.update(over)
+    (tmp_path / "gen_rewrite.json").write_text(json.dumps(cfg), encoding="utf-8")
+
+
+def test_rewrite_ceiling_reserves_the_output_budget_actually_sent(tmp_path, monkeypatch):
+    # Codex review of PR #146: with no max_tokens in the config the run sends 4,000, and the ceiling must reserve
+    # that, not the tracker's 2,200 default. At [0.5, 2.0] a 4,000-token reply alone costs $0.008.
+    cfg, reg, sent = _rewrite_setup(tmp_path, monkeypatch, "[]")
+    ae.main(["generate", "--config", str(cfg), "--providers", str(reg), "--out-dir", str(tmp_path),
+             "--max-spend", "0.006"])
+    assert sent == []  # refused before any call
+    report = json.loads(next(tmp_path.glob("rw_*.report.json")).read_text(encoding="utf-8"))
+    assert report["calls"] == 0 and report["cost_usd"] == 0.0
+
+
+def test_rewrite_ceiling_is_sized_from_the_built_prompt(tmp_path, monkeypatch):
+    # Codex review of PR #146: the check used a fixed 400-token input estimate. A 40,000-character prompt bounds at
+    # 20,000+ input tokens ($0.010 at 0.5/Mtok) on top of the reply, so a $0.012 ceiling must refuse it.
+    cfg, reg, sent = _rewrite_setup(tmp_path, monkeypatch, "[]")
+    _rewrite_cfg(tmp_path, prompt_template="x" * 40000 + " {items}", max_tokens=100)
+    ae.main(["generate", "--config", str(cfg), "--providers", str(reg), "--out-dir", str(tmp_path),
+             "--max-spend", "0.010"])
+    assert sent == []
+
+
+def test_rewrite_run_writes_what_landed_when_a_later_call_fails(tmp_path, monkeypatch):
+    # Codex review of PR #146: a failing later call must not lose the earlier rewrites or their cost.
+    cfg, reg, _ = _rewrite_setup(tmp_path, monkeypatch, "")
+    _rewrite_cfg(tmp_path, items_per_call=1, max_tokens=500)
+    replies = iter([json.dumps([{"id": "s#1", "text": "ok so my side's hurt for 3 days what do i do"}])])
+
+    def flaky(cfg_, model, system, user_text, max_tokens, temperature):
+        try:
+            return next(replies), 1000, 500, {"usage": {"prompt_tokens": 1000, "completion_tokens": 500}}
+        except StopIteration:
+            raise ConnectionError("timeout") from None
+
+    monkeypatch.setattr(ae, "_send_compat", flaky)
+    with pytest.raises(SystemExit, match="interrupted"):
+        ae.main(["generate", "--config", str(cfg), "--providers", str(reg), "--out-dir", str(tmp_path),
+                 "--max-spend", "1.0"])
+    report = json.loads(next(tmp_path.glob("rw_*.report.json")).read_text(encoding="utf-8"))
+    assert report["n_generated"] == 1 and report["calls"] == 1 and "ConnectionError" in report["interrupted"]
+    landed = 1000 * 0.5 / 1e6 + 500 * 2.0 / 1e6
+    assert report["cost_usd"] > landed  # the failed call is booked at its worst case beside the landed one
+
+
+def test_a_zero_generation_ceiling_is_refused_not_unlimited(tmp_path, monkeypatch):
+    # Codex review of PR #146: --max-spend 0 had been read as no ceiling
+    reg = tmp_path / "providers.json"
+    reg.write_text(json.dumps(REGISTRY), encoding="utf-8")
+    cfg = tmp_path / "gen.json"
+    cfg.write_text(json.dumps({"model": "fakeai", "stem": "g", "n_items": 1, "max_calls": 1,
+                               "prompt_template": "write {count} {topic} {exemplars}"}), encoding="utf-8")
+    sent = []
+    monkeypatch.setattr(ae, "_send_compat", lambda *a, **k: sent.append(1) or ("[]", 1, 1, {}))
+    with pytest.raises(SystemExit, match="max-spend"):
+        ae.main(["generate", "--config", str(cfg), "--providers", str(reg), "--out-dir", str(tmp_path),
+                 "--max-spend", "0"])
+    assert sent == []
+
+
+def test_generation_sidecars_carry_the_ledger_run_day(tmp_path, monkeypatch):
+    # Codex review of PR #146: scripts/ledger_update.py dates a sidecar by run_utc or run_timestamp
+    reply = json.dumps([{"id": "s#1", "text": "ok so my side's hurt for 3 days what do i do"}])
+    cfg, reg, _ = _rewrite_setup(tmp_path, monkeypatch, reply)
+    ae.main(["generate", "--config", str(cfg), "--providers", str(reg), "--out-dir", str(tmp_path),
+             "--max-spend", "1.0"])
+    report = json.loads(next(tmp_path.glob("rw_*.report.json")).read_text(encoding="utf-8"))
+    assert report["run_utc"] and report["run_utc"] <= report["created_utc"]
+
+
+def test_rewrite_without_reported_usage_is_booked_at_worst_case_and_stops(tmp_path, monkeypatch):
+    # Codex review of PR #146: _send_compat substitutes 0 for missing counts, which booked a billed call as free
+    cfg, reg, _ = _rewrite_setup(tmp_path, monkeypatch, "")
+    _rewrite_cfg(tmp_path, items_per_call=1, max_tokens=4000)
+    calls = []
+
+    def no_usage(cfg_, model, system, user_text, max_tokens, temperature):
+        calls.append(1)
+        return json.dumps([{"id": "s#1", "text": "ok so"}]), 0, 0, {}
+
+    monkeypatch.setattr(ae, "_send_compat", no_usage)
+    with pytest.raises(SystemExit, match="usage_unavailable"):
+        ae.main(["generate", "--config", str(cfg), "--providers", str(reg), "--out-dir", str(tmp_path),
+                 "--max-spend", "0.009"])
+    assert len(calls) == 1  # stopped after the first usage-free reply
+    report = json.loads(next(tmp_path.glob("rw_*.report.json")).read_text(encoding="utf-8"))
+    assert report["cost_usd"] >= 4000 * 2.0 / 1e6  # the reply's worst case, never 0
+
+
+def test_legacy_generate_without_reported_usage_books_worst_case(tmp_path, monkeypatch):
+    reg = tmp_path / "providers.json"
+    reg.write_text(json.dumps(REGISTRY), encoding="utf-8")
+    cfg = tmp_path / "gen.json"
+    cfg.write_text(json.dumps({"model": "fakeai", "stem": "g", "n_items": 5, "items_per_call": 1, "max_calls": 3,
+                               "max_tokens": 1000, "prompt_template": "write {count} {topic} {exemplars}"}),
+                   encoding="utf-8")
+    calls = []
+    monkeypatch.setattr(ae, "_send_compat", lambda *a, **k: calls.append(1) or (
+        json.dumps([{"clinical": "alpha one", "patient": "beta one"}]), 0, 0, {}))
+    monkeypatch.setattr(ae, "_pace", lambda *a, **k: None)
+    ae.main(["generate", "--config", str(cfg), "--providers", str(reg), "--out-dir", str(tmp_path),
+             "--max-spend", "1.0"])
+    report = json.loads(next(tmp_path.glob("g_*.report.json")).read_text(encoding="utf-8"))
+    assert len(calls) == 1 and report["usage_unavailable"] is True
+    assert report["cost_usd"] >= 1000 * 2.0 / 1e6
