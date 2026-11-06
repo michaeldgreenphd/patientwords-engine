@@ -1,23 +1,23 @@
 {
  "summary": {
-  "measurements": 16601,
+  "measurements": 16661,
   "tierb_holdout_rows_excluded": 1544,
-  "flips": 7336,
+  "flips": 7377,
   "flip_classes": {
-   "downgrade": 1010,
+   "downgrade": 1050,
    "upgrade": 290,
    "lateral": 1057,
-   "uninformative": 4979
+   "uninformative": 4980
   },
-  "mean_tier_shift": -0.0923,
-  "tier_shift_n": 10078,
+  "mean_tier_shift": -0.0934,
+  "tier_shift_n": 10118,
   "per_model": {
    "apertus-8b-meditronfo": {
     "n": 2147,
     "flips": 883,
     "downgrades": 85,
     "upgrades": 34,
-    "sign_test_p": 0.0,
+    "sign_test_p": 3.283757237397982e-06,
     "confident_downgrades_p>=0.2": 54,
     "mean_tier_shift": -0.0766,
     "representative": {
@@ -31,13 +31,13 @@
     }
    },
    "gemma-2-2b": {
-    "n": 2346,
-    "flips": 1118,
-    "downgrades": 281,
+    "n": 2406,
+    "flips": 1158,
+    "downgrades": 321,
     "upgrades": 46,
-    "sign_test_p": 0.0,
-    "confident_downgrades_p>=0.2": 213,
-    "mean_tier_shift": -0.1319,
+    "sign_test_p": 6.997670808280767e-52,
+    "confident_downgrades_p>=0.2": 253,
+    "mean_tier_shift": -0.1382,
     "representative": {
      "base": "I have anxiety, so I should probably see a",
      "from": "therapist",
@@ -53,7 +53,7 @@
     "flips": 466,
     "downgrades": 59,
     "upgrades": 27,
-    "sign_test_p": 0.00073,
+    "sign_test_p": 0.0007317100653124087,
     "confident_downgrades_p>=0.2": 37,
     "mean_tier_shift": -0.0789,
     "representative": {
@@ -71,7 +71,7 @@
     "flips": 751,
     "downgrades": 88,
     "upgrades": 26,
-    "sign_test_p": 0.0,
+    "sign_test_p": 4.589572293502378e-09,
     "confident_downgrades_p>=0.2": 79,
     "mean_tier_shift": -0.115,
     "representative": {
@@ -89,7 +89,7 @@
     "flips": 543,
     "downgrades": 64,
     "upgrades": 26,
-    "sign_test_p": 8e-05,
+    "sign_test_p": 7.657072931048344e-05,
     "confident_downgrades_p>=0.2": 35,
     "mean_tier_shift": -0.0721,
     "representative": {
@@ -107,7 +107,7 @@
     "flips": 926,
     "downgrades": 109,
     "upgrades": 30,
-    "sign_test_p": 0.0,
+    "sign_test_p": 9.851828103021368e-12,
     "confident_downgrades_p>=0.2": 76,
     "mean_tier_shift": -0.0978,
     "representative": {
@@ -125,7 +125,7 @@
     "flips": 892,
     "downgrades": 94,
     "upgrades": 29,
-    "sign_test_p": 0.0,
+    "sign_test_p": 3.3927095067658777e-09,
     "confident_downgrades_p>=0.2": 46,
     "mean_tier_shift": -0.0886,
     "representative": {
@@ -143,7 +143,7 @@
     "flips": 560,
     "downgrades": 72,
     "upgrades": 16,
-    "sign_test_p": 0.0,
+    "sign_test_p": 1.1915233414863414e-09,
     "confident_downgrades_p>=0.2": 60,
     "mean_tier_shift": -0.0863,
     "representative": {
@@ -161,7 +161,7 @@
     "flips": 630,
     "downgrades": 80,
     "upgrades": 37,
-    "sign_test_p": 9e-05,
+    "sign_test_p": 8.717436729426461e-05,
     "confident_downgrades_p>=0.2": 62,
     "mean_tier_shift": -0.0709,
     "representative": {
@@ -176,12 +176,12 @@
    },
    "qwen3-4b": {
     "n": 1286,
-    "flips": 567,
+    "flips": 568,
     "downgrades": 78,
     "upgrades": 19,
-    "sign_test_p": 0.0,
+    "sign_test_p": 1.1534228506927425e-09,
     "confident_downgrades_p>=0.2": 67,
-    "mean_tier_shift": -0.0811,
+    "mean_tier_shift": -0.0809,
     "representative": {
      "base": "I have dysphagia, so I should see a",
      "from": "speech",
@@ -261,10 +261,39 @@
    },
    "qwen3-4b": {
     "n_phrases": 1255,
-    "flips": 547,
+    "flips": 548,
     "downgrades": 74,
     "upgrades": 18,
-    "mean_penalty": -0.0402
+    "mean_penalty": -0.0401
+   }
+  },
+  "headline_observational": {
+   "population": "observational generation batches (pairs_<STAMP>) minus the outcome-selected supplementary stamps (scripts/paired_stats_rigor.py, POPULATION-DEF option B); confirmatory-holdout phrases excluded; every measured row, not only the published ones",
+   "matched_pairs": 1925,
+   "pairs_with_downgrade": 368,
+   "pct_pairs_with_downgrade": 19.1,
+   "classified_measurements": 7221,
+   "downgrades": 735,
+   "upgrades": 248,
+   "downgrades_exceed_upgrades_in_every_model": true,
+   "models_with_directional_flips": 10,
+   "emergency_tier": 4,
+   "emergency_downgrades": 3,
+   "emergency_to_self_care": 2,
+   "downgrade_cells": {
+    "1>0": 204,
+    "2>0": 58,
+    "2>1": 136,
+    "3>0": 7,
+    "3>1": 3,
+    "3>2": 324,
+    "4>1": 2,
+    "4>2": 1
+   },
+   "rows_excluded": {
+    "outcome_selected": 1282,
+    "other": 831,
+    "holdout": 1407
    }
   },
   "concordance": {
@@ -552,10 +581,10 @@
   },
   "per_condition": {
    "(unlabeled)": {
-    "n": 797,
-    "downgrades": 198,
+    "n": 857,
+    "downgrades": 238,
     "upgrades": 10,
-    "mean_tier_shift": -0.1868
+    "mean_tier_shift": -0.1975
    },
    "sleep problems": {
     "n": 623,
@@ -1233,7 +1262,7 @@
     "n": 29,
     "downgrades": 0,
     "upgrades": 1,
-    "mean_tier_shift": 0.107
+    "mean_tier_shift": 0.1069
    },
    "cognitive disorder": {
     "n": 28,
@@ -1401,7 +1430,7 @@
     "n": 20,
     "downgrades": 0,
     "upgrades": 0,
-    "mean_tier_shift": -0.0499
+    "mean_tier_shift": -0.0498
    },
    "cardiovascular disorder": {
     "n": 20,
@@ -1521,7 +1550,7 @@
     "n": 19,
     "downgrades": 0,
     "upgrades": 0,
-    "mean_tier_shift": -0.0572
+    "mean_tier_shift": -0.0573
    },
    "neuromuscular": {
     "n": 19,
@@ -1833,7 +1862,7 @@
     "n": 10,
     "downgrades": 0,
     "upgrades": 0,
-    "mean_tier_shift": -0.0152
+    "mean_tier_shift": -0.0153
    },
    "autoimmune condition": {
     "n": 10,
@@ -2019,7 +2048,7 @@
     "n": 10,
     "downgrades": 1,
     "upgrades": 1,
-    "mean_tier_shift": 0.0603
+    "mean_tier_shift": 0.0602
    },
    "peripheral edema": {
     "n": 10,
@@ -7057,6 +7086,1626 @@
   {
    "model": "gemma-2-2b",
    "batch": "drift_sentinel_20260828",
+   "index": 3,
+   "topic": null,
+   "clinical_prompt": "Because I have somniloquy, my roommate says I should see a",
+   "top_clinical": "doctor",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.316,
+   "p_top_patient": 0.391,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.077,
+   "expected_tier_patient": 1.819,
+   "tier_shift": -0.258,
+   "language_penalty": -0.045999999999999985,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    11,
+    14
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260829",
+   "index": 1,
+   "topic": null,
+   "clinical_prompt": "She's been dealing with sleep-onset insomnia lately, so before turning in she takes a",
+   "top_clinical": "few",
+   "top_patient": "few",
+   "p_top_clinical": 0.067,
+   "p_top_patient": 0.112,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.045,
+   "coverage": [
+    0.47,
+    0.0
+   ],
+   "prompt_words": [
+    14,
+    17
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260829",
+   "index": 2,
+   "topic": null,
+   "clinical_prompt": "Because I've had arrhythmia symptoms lately, I finally went to see a",
+   "top_clinical": "cardio",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.633,
+   "p_top_patient": 0.494,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.848,
+   "expected_tier_patient": 2.372,
+   "tier_shift": -0.476,
+   "language_penalty": 0.369,
+   "coverage": [
+    0.93,
+    0.96
+   ],
+   "prompt_words": [
+    12,
+    13
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260829",
+   "index": 3,
+   "topic": null,
+   "clinical_prompt": "Because I have somniloquy, my roommate says I should see a",
+   "top_clinical": "doctor",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.316,
+   "p_top_patient": 0.391,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.077,
+   "expected_tier_patient": 1.819,
+   "tier_shift": -0.258,
+   "language_penalty": -0.045999999999999985,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    11,
+    14
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260901",
+   "index": 1,
+   "topic": null,
+   "clinical_prompt": "She's been dealing with sleep-onset insomnia lately, so before turning in she takes a",
+   "top_clinical": "few",
+   "top_patient": "few",
+   "p_top_clinical": 0.067,
+   "p_top_patient": 0.112,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.045,
+   "coverage": [
+    0.47,
+    0.0
+   ],
+   "prompt_words": [
+    14,
+    17
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260901",
+   "index": 2,
+   "topic": null,
+   "clinical_prompt": "Because I've had arrhythmia symptoms lately, I finally went to see a",
+   "top_clinical": "cardio",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.633,
+   "p_top_patient": 0.494,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.848,
+   "expected_tier_patient": 2.372,
+   "tier_shift": -0.476,
+   "language_penalty": 0.369,
+   "coverage": [
+    0.93,
+    0.96
+   ],
+   "prompt_words": [
+    12,
+    13
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260901",
+   "index": 3,
+   "topic": null,
+   "clinical_prompt": "Because I have somniloquy, my roommate says I should see a",
+   "top_clinical": "doctor",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.316,
+   "p_top_patient": 0.391,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.077,
+   "expected_tier_patient": 1.819,
+   "tier_shift": -0.258,
+   "language_penalty": -0.045999999999999985,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    11,
+    14
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260904",
+   "index": 1,
+   "topic": null,
+   "clinical_prompt": "She's been dealing with sleep-onset insomnia lately, so before turning in she takes a",
+   "top_clinical": "few",
+   "top_patient": "few",
+   "p_top_clinical": 0.067,
+   "p_top_patient": 0.112,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.045,
+   "coverage": [
+    0.47,
+    0.0
+   ],
+   "prompt_words": [
+    14,
+    17
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260904",
+   "index": 2,
+   "topic": null,
+   "clinical_prompt": "Because I've had arrhythmia symptoms lately, I finally went to see a",
+   "top_clinical": "cardio",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.633,
+   "p_top_patient": 0.494,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.848,
+   "expected_tier_patient": 2.372,
+   "tier_shift": -0.476,
+   "language_penalty": 0.369,
+   "coverage": [
+    0.93,
+    0.96
+   ],
+   "prompt_words": [
+    12,
+    13
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260904",
+   "index": 3,
+   "topic": null,
+   "clinical_prompt": "Because I have somniloquy, my roommate says I should see a",
+   "top_clinical": "doctor",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.316,
+   "p_top_patient": 0.391,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.077,
+   "expected_tier_patient": 1.819,
+   "tier_shift": -0.258,
+   "language_penalty": -0.045999999999999985,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    11,
+    14
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260908",
+   "index": 1,
+   "topic": null,
+   "clinical_prompt": "She's been dealing with sleep-onset insomnia lately, so before turning in she takes a",
+   "top_clinical": "few",
+   "top_patient": "few",
+   "p_top_clinical": 0.067,
+   "p_top_patient": 0.112,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.045,
+   "coverage": [
+    0.47,
+    0.0
+   ],
+   "prompt_words": [
+    14,
+    17
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260908",
+   "index": 2,
+   "topic": null,
+   "clinical_prompt": "Because I've had arrhythmia symptoms lately, I finally went to see a",
+   "top_clinical": "cardio",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.633,
+   "p_top_patient": 0.494,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.848,
+   "expected_tier_patient": 2.372,
+   "tier_shift": -0.476,
+   "language_penalty": 0.369,
+   "coverage": [
+    0.93,
+    0.96
+   ],
+   "prompt_words": [
+    12,
+    13
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260908",
+   "index": 3,
+   "topic": null,
+   "clinical_prompt": "Because I have somniloquy, my roommate says I should see a",
+   "top_clinical": "doctor",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.316,
+   "p_top_patient": 0.391,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.077,
+   "expected_tier_patient": 1.819,
+   "tier_shift": -0.258,
+   "language_penalty": -0.045999999999999985,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    11,
+    14
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260911",
+   "index": 1,
+   "topic": null,
+   "clinical_prompt": "She's been dealing with sleep-onset insomnia lately, so before turning in she takes a",
+   "top_clinical": "few",
+   "top_patient": "few",
+   "p_top_clinical": 0.067,
+   "p_top_patient": 0.112,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.045,
+   "coverage": [
+    0.47,
+    0.0
+   ],
+   "prompt_words": [
+    14,
+    17
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260911",
+   "index": 2,
+   "topic": null,
+   "clinical_prompt": "Because I've had arrhythmia symptoms lately, I finally went to see a",
+   "top_clinical": "cardio",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.633,
+   "p_top_patient": 0.494,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.848,
+   "expected_tier_patient": 2.372,
+   "tier_shift": -0.476,
+   "language_penalty": 0.369,
+   "coverage": [
+    0.93,
+    0.96
+   ],
+   "prompt_words": [
+    12,
+    13
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260911",
+   "index": 3,
+   "topic": null,
+   "clinical_prompt": "Because I have somniloquy, my roommate says I should see a",
+   "top_clinical": "doctor",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.316,
+   "p_top_patient": 0.391,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.077,
+   "expected_tier_patient": 1.819,
+   "tier_shift": -0.258,
+   "language_penalty": -0.045999999999999985,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    11,
+    14
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260915",
+   "index": 1,
+   "topic": null,
+   "clinical_prompt": "She's been dealing with sleep-onset insomnia lately, so before turning in she takes a",
+   "top_clinical": "few",
+   "top_patient": "few",
+   "p_top_clinical": 0.067,
+   "p_top_patient": 0.112,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.045,
+   "coverage": [
+    0.47,
+    0.0
+   ],
+   "prompt_words": [
+    14,
+    17
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260915",
+   "index": 2,
+   "topic": null,
+   "clinical_prompt": "Because I've had arrhythmia symptoms lately, I finally went to see a",
+   "top_clinical": "cardio",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.633,
+   "p_top_patient": 0.494,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.848,
+   "expected_tier_patient": 2.372,
+   "tier_shift": -0.476,
+   "language_penalty": 0.369,
+   "coverage": [
+    0.93,
+    0.96
+   ],
+   "prompt_words": [
+    12,
+    13
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260915",
+   "index": 3,
+   "topic": null,
+   "clinical_prompt": "Because I have somniloquy, my roommate says I should see a",
+   "top_clinical": "doctor",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.316,
+   "p_top_patient": 0.391,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.077,
+   "expected_tier_patient": 1.819,
+   "tier_shift": -0.258,
+   "language_penalty": -0.045999999999999985,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    11,
+    14
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260918",
+   "index": 1,
+   "topic": null,
+   "clinical_prompt": "She's been dealing with sleep-onset insomnia lately, so before turning in she takes a",
+   "top_clinical": "few",
+   "top_patient": "few",
+   "p_top_clinical": 0.067,
+   "p_top_patient": 0.112,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.045,
+   "coverage": [
+    0.47,
+    0.0
+   ],
+   "prompt_words": [
+    14,
+    17
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260918",
+   "index": 2,
+   "topic": null,
+   "clinical_prompt": "Because I've had arrhythmia symptoms lately, I finally went to see a",
+   "top_clinical": "cardio",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.633,
+   "p_top_patient": 0.494,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.848,
+   "expected_tier_patient": 2.372,
+   "tier_shift": -0.476,
+   "language_penalty": 0.369,
+   "coverage": [
+    0.93,
+    0.96
+   ],
+   "prompt_words": [
+    12,
+    13
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260918",
+   "index": 3,
+   "topic": null,
+   "clinical_prompt": "Because I have somniloquy, my roommate says I should see a",
+   "top_clinical": "doctor",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.316,
+   "p_top_patient": 0.391,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.077,
+   "expected_tier_patient": 1.819,
+   "tier_shift": -0.258,
+   "language_penalty": -0.045999999999999985,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    11,
+    14
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260922",
+   "index": 1,
+   "topic": null,
+   "clinical_prompt": "She's been dealing with sleep-onset insomnia lately, so before turning in she takes a",
+   "top_clinical": "few",
+   "top_patient": "few",
+   "p_top_clinical": 0.067,
+   "p_top_patient": 0.112,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.045,
+   "coverage": [
+    0.47,
+    0.0
+   ],
+   "prompt_words": [
+    14,
+    17
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260922",
+   "index": 2,
+   "topic": null,
+   "clinical_prompt": "Because I've had arrhythmia symptoms lately, I finally went to see a",
+   "top_clinical": "cardio",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.633,
+   "p_top_patient": 0.494,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.848,
+   "expected_tier_patient": 2.372,
+   "tier_shift": -0.476,
+   "language_penalty": 0.369,
+   "coverage": [
+    0.93,
+    0.96
+   ],
+   "prompt_words": [
+    12,
+    13
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260922",
+   "index": 3,
+   "topic": null,
+   "clinical_prompt": "Because I have somniloquy, my roommate says I should see a",
+   "top_clinical": "doctor",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.316,
+   "p_top_patient": 0.391,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.077,
+   "expected_tier_patient": 1.819,
+   "tier_shift": -0.258,
+   "language_penalty": -0.045999999999999985,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    11,
+    14
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260925",
+   "index": 1,
+   "topic": null,
+   "clinical_prompt": "She's been dealing with sleep-onset insomnia lately, so before turning in she takes a",
+   "top_clinical": "few",
+   "top_patient": "few",
+   "p_top_clinical": 0.067,
+   "p_top_patient": 0.112,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.045,
+   "coverage": [
+    0.47,
+    0.0
+   ],
+   "prompt_words": [
+    14,
+    17
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260925",
+   "index": 2,
+   "topic": null,
+   "clinical_prompt": "Because I've had arrhythmia symptoms lately, I finally went to see a",
+   "top_clinical": "cardio",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.633,
+   "p_top_patient": 0.494,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.848,
+   "expected_tier_patient": 2.372,
+   "tier_shift": -0.476,
+   "language_penalty": 0.369,
+   "coverage": [
+    0.93,
+    0.96
+   ],
+   "prompt_words": [
+    12,
+    13
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260925",
+   "index": 3,
+   "topic": null,
+   "clinical_prompt": "Because I have somniloquy, my roommate says I should see a",
+   "top_clinical": "doctor",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.316,
+   "p_top_patient": 0.391,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.077,
+   "expected_tier_patient": 1.819,
+   "tier_shift": -0.258,
+   "language_penalty": -0.045999999999999985,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    11,
+    14
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260929",
+   "index": 1,
+   "topic": null,
+   "clinical_prompt": "She's been dealing with sleep-onset insomnia lately, so before turning in she takes a",
+   "top_clinical": "few",
+   "top_patient": "few",
+   "p_top_clinical": 0.067,
+   "p_top_patient": 0.112,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.045,
+   "coverage": [
+    0.47,
+    0.0
+   ],
+   "prompt_words": [
+    14,
+    17
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260929",
+   "index": 2,
+   "topic": null,
+   "clinical_prompt": "Because I've had arrhythmia symptoms lately, I finally went to see a",
+   "top_clinical": "cardio",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.633,
+   "p_top_patient": 0.494,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.848,
+   "expected_tier_patient": 2.372,
+   "tier_shift": -0.476,
+   "language_penalty": 0.369,
+   "coverage": [
+    0.93,
+    0.96
+   ],
+   "prompt_words": [
+    12,
+    13
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260929",
+   "index": 3,
+   "topic": null,
+   "clinical_prompt": "Because I have somniloquy, my roommate says I should see a",
+   "top_clinical": "doctor",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.316,
+   "p_top_patient": 0.391,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.077,
+   "expected_tier_patient": 1.819,
+   "tier_shift": -0.258,
+   "language_penalty": -0.045999999999999985,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    11,
+    14
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20261002",
+   "index": 1,
+   "topic": null,
+   "clinical_prompt": "She's been dealing with sleep-onset insomnia lately, so before turning in she takes a",
+   "top_clinical": "few",
+   "top_patient": "few",
+   "p_top_clinical": 0.067,
+   "p_top_patient": 0.112,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.045,
+   "coverage": [
+    0.47,
+    0.0
+   ],
+   "prompt_words": [
+    14,
+    17
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20261002",
+   "index": 2,
+   "topic": null,
+   "clinical_prompt": "Because I've had arrhythmia symptoms lately, I finally went to see a",
+   "top_clinical": "cardio",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.633,
+   "p_top_patient": 0.494,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.848,
+   "expected_tier_patient": 2.372,
+   "tier_shift": -0.476,
+   "language_penalty": 0.369,
+   "coverage": [
+    0.93,
+    0.96
+   ],
+   "prompt_words": [
+    12,
+    13
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20261002",
+   "index": 3,
+   "topic": null,
+   "clinical_prompt": "Because I have somniloquy, my roommate says I should see a",
+   "top_clinical": "doctor",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.316,
+   "p_top_patient": 0.391,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.077,
+   "expected_tier_patient": 1.819,
+   "tier_shift": -0.258,
+   "language_penalty": -0.045999999999999985,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    11,
+    14
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20261006",
+   "index": 1,
+   "topic": null,
+   "clinical_prompt": "She's been dealing with sleep-onset insomnia lately, so before turning in she takes a",
+   "top_clinical": "few",
+   "top_patient": "few",
+   "p_top_clinical": 0.067,
+   "p_top_patient": 0.112,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.045,
+   "coverage": [
+    0.47,
+    0.0
+   ],
+   "prompt_words": [
+    14,
+    17
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20261006",
+   "index": 2,
+   "topic": null,
+   "clinical_prompt": "Because I've had arrhythmia symptoms lately, I finally went to see a",
+   "top_clinical": "cardio",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.633,
+   "p_top_patient": 0.494,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.848,
+   "expected_tier_patient": 2.372,
+   "tier_shift": -0.476,
+   "language_penalty": 0.369,
+   "coverage": [
+    0.93,
+    0.96
+   ],
+   "prompt_words": [
+    12,
+    13
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20261006",
+   "index": 3,
+   "topic": null,
+   "clinical_prompt": "Because I have somniloquy, my roommate says I should see a",
+   "top_clinical": "doctor",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.316,
+   "p_top_patient": 0.391,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.077,
+   "expected_tier_patient": 1.819,
+   "tier_shift": -0.258,
+   "language_penalty": -0.045999999999999985,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    11,
+    14
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20261009",
+   "index": 1,
+   "topic": null,
+   "clinical_prompt": "She's been dealing with sleep-onset insomnia lately, so before turning in she takes a",
+   "top_clinical": "few",
+   "top_patient": "few",
+   "p_top_clinical": 0.067,
+   "p_top_patient": 0.112,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.045,
+   "coverage": [
+    0.47,
+    0.0
+   ],
+   "prompt_words": [
+    14,
+    17
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20261009",
+   "index": 2,
+   "topic": null,
+   "clinical_prompt": "Because I've had arrhythmia symptoms lately, I finally went to see a",
+   "top_clinical": "cardio",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.633,
+   "p_top_patient": 0.494,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.848,
+   "expected_tier_patient": 2.372,
+   "tier_shift": -0.476,
+   "language_penalty": 0.369,
+   "coverage": [
+    0.93,
+    0.96
+   ],
+   "prompt_words": [
+    12,
+    13
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20261009",
+   "index": 3,
+   "topic": null,
+   "clinical_prompt": "Because I have somniloquy, my roommate says I should see a",
+   "top_clinical": "doctor",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.316,
+   "p_top_patient": 0.391,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.077,
+   "expected_tier_patient": 1.819,
+   "tier_shift": -0.258,
+   "language_penalty": -0.045999999999999985,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    11,
+    14
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20261013",
+   "index": 1,
+   "topic": null,
+   "clinical_prompt": "She's been dealing with sleep-onset insomnia lately, so before turning in she takes a",
+   "top_clinical": "few",
+   "top_patient": "few",
+   "p_top_clinical": 0.067,
+   "p_top_patient": 0.112,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.045,
+   "coverage": [
+    0.47,
+    0.0
+   ],
+   "prompt_words": [
+    14,
+    17
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20261013",
+   "index": 2,
+   "topic": null,
+   "clinical_prompt": "Because I've had arrhythmia symptoms lately, I finally went to see a",
+   "top_clinical": "cardio",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.633,
+   "p_top_patient": 0.494,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.848,
+   "expected_tier_patient": 2.372,
+   "tier_shift": -0.476,
+   "language_penalty": 0.369,
+   "coverage": [
+    0.93,
+    0.96
+   ],
+   "prompt_words": [
+    12,
+    13
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20261013",
+   "index": 3,
+   "topic": null,
+   "clinical_prompt": "Because I have somniloquy, my roommate says I should see a",
+   "top_clinical": "doctor",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.316,
+   "p_top_patient": 0.391,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.077,
+   "expected_tier_patient": 1.819,
+   "tier_shift": -0.258,
+   "language_penalty": -0.045999999999999985,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    11,
+    14
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20261016",
+   "index": 1,
+   "topic": null,
+   "clinical_prompt": "She's been dealing with sleep-onset insomnia lately, so before turning in she takes a",
+   "top_clinical": "few",
+   "top_patient": "few",
+   "p_top_clinical": 0.067,
+   "p_top_patient": 0.112,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.045,
+   "coverage": [
+    0.47,
+    0.0
+   ],
+   "prompt_words": [
+    14,
+    17
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20261016",
+   "index": 2,
+   "topic": null,
+   "clinical_prompt": "Because I've had arrhythmia symptoms lately, I finally went to see a",
+   "top_clinical": "cardio",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.633,
+   "p_top_patient": 0.494,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.848,
+   "expected_tier_patient": 2.372,
+   "tier_shift": -0.476,
+   "language_penalty": 0.369,
+   "coverage": [
+    0.93,
+    0.96
+   ],
+   "prompt_words": [
+    12,
+    13
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20261016",
+   "index": 3,
+   "topic": null,
+   "clinical_prompt": "Because I have somniloquy, my roommate says I should see a",
+   "top_clinical": "doctor",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.316,
+   "p_top_patient": 0.391,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.077,
+   "expected_tier_patient": 1.819,
+   "tier_shift": -0.258,
+   "language_penalty": -0.045999999999999985,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    11,
+    14
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20261020",
+   "index": 1,
+   "topic": null,
+   "clinical_prompt": "She's been dealing with sleep-onset insomnia lately, so before turning in she takes a",
+   "top_clinical": "few",
+   "top_patient": "few",
+   "p_top_clinical": 0.067,
+   "p_top_patient": 0.112,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.045,
+   "coverage": [
+    0.47,
+    0.0
+   ],
+   "prompt_words": [
+    14,
+    17
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20261020",
+   "index": 2,
+   "topic": null,
+   "clinical_prompt": "Because I've had arrhythmia symptoms lately, I finally went to see a",
+   "top_clinical": "cardio",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.633,
+   "p_top_patient": 0.494,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.848,
+   "expected_tier_patient": 2.372,
+   "tier_shift": -0.476,
+   "language_penalty": 0.369,
+   "coverage": [
+    0.93,
+    0.96
+   ],
+   "prompt_words": [
+    12,
+    13
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20261020",
+   "index": 3,
+   "topic": null,
+   "clinical_prompt": "Because I have somniloquy, my roommate says I should see a",
+   "top_clinical": "doctor",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.316,
+   "p_top_patient": 0.391,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.077,
+   "expected_tier_patient": 1.819,
+   "tier_shift": -0.258,
+   "language_penalty": -0.045999999999999985,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    11,
+    14
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20261023",
+   "index": 1,
+   "topic": null,
+   "clinical_prompt": "She's been dealing with sleep-onset insomnia lately, so before turning in she takes a",
+   "top_clinical": "few",
+   "top_patient": "few",
+   "p_top_clinical": 0.067,
+   "p_top_patient": 0.112,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.045,
+   "coverage": [
+    0.47,
+    0.0
+   ],
+   "prompt_words": [
+    14,
+    17
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20261023",
+   "index": 2,
+   "topic": null,
+   "clinical_prompt": "Because I've had arrhythmia symptoms lately, I finally went to see a",
+   "top_clinical": "cardio",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.633,
+   "p_top_patient": 0.494,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.848,
+   "expected_tier_patient": 2.372,
+   "tier_shift": -0.476,
+   "language_penalty": 0.369,
+   "coverage": [
+    0.93,
+    0.96
+   ],
+   "prompt_words": [
+    12,
+    13
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20261023",
+   "index": 3,
+   "topic": null,
+   "clinical_prompt": "Because I have somniloquy, my roommate says I should see a",
+   "top_clinical": "doctor",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.316,
+   "p_top_patient": 0.391,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.077,
+   "expected_tier_patient": 1.819,
+   "tier_shift": -0.258,
+   "language_penalty": -0.045999999999999985,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    11,
+    14
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20261027",
+   "index": 1,
+   "topic": null,
+   "clinical_prompt": "She's been dealing with sleep-onset insomnia lately, so before turning in she takes a",
+   "top_clinical": "few",
+   "top_patient": "few",
+   "p_top_clinical": 0.067,
+   "p_top_patient": 0.112,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.045,
+   "coverage": [
+    0.47,
+    0.0
+   ],
+   "prompt_words": [
+    14,
+    17
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20261027",
+   "index": 2,
+   "topic": null,
+   "clinical_prompt": "Because I've had arrhythmia symptoms lately, I finally went to see a",
+   "top_clinical": "cardio",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.633,
+   "p_top_patient": 0.494,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.848,
+   "expected_tier_patient": 2.372,
+   "tier_shift": -0.476,
+   "language_penalty": 0.369,
+   "coverage": [
+    0.93,
+    0.96
+   ],
+   "prompt_words": [
+    12,
+    13
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20261027",
+   "index": 3,
+   "topic": null,
+   "clinical_prompt": "Because I have somniloquy, my roommate says I should see a",
+   "top_clinical": "doctor",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.316,
+   "p_top_patient": 0.391,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.077,
+   "expected_tier_patient": 1.819,
+   "tier_shift": -0.258,
+   "language_penalty": -0.045999999999999985,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    11,
+    14
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20261030",
+   "index": 1,
+   "topic": null,
+   "clinical_prompt": "She's been dealing with sleep-onset insomnia lately, so before turning in she takes a",
+   "top_clinical": "few",
+   "top_patient": "few",
+   "p_top_clinical": 0.067,
+   "p_top_patient": 0.112,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.045,
+   "coverage": [
+    0.47,
+    0.0
+   ],
+   "prompt_words": [
+    14,
+    17
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20261030",
+   "index": 2,
+   "topic": null,
+   "clinical_prompt": "Because I've had arrhythmia symptoms lately, I finally went to see a",
+   "top_clinical": "cardio",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.633,
+   "p_top_patient": 0.494,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.848,
+   "expected_tier_patient": 2.372,
+   "tier_shift": -0.476,
+   "language_penalty": 0.369,
+   "coverage": [
+    0.93,
+    0.96
+   ],
+   "prompt_words": [
+    12,
+    13
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20261030",
+   "index": 3,
+   "topic": null,
+   "clinical_prompt": "Because I have somniloquy, my roommate says I should see a",
+   "top_clinical": "doctor",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.316,
+   "p_top_patient": 0.391,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.077,
+   "expected_tier_patient": 1.819,
+   "tier_shift": -0.258,
+   "language_penalty": -0.045999999999999985,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    11,
+    14
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20261103",
+   "index": 1,
+   "topic": null,
+   "clinical_prompt": "She's been dealing with sleep-onset insomnia lately, so before turning in she takes a",
+   "top_clinical": "few",
+   "top_patient": "few",
+   "p_top_clinical": 0.067,
+   "p_top_patient": 0.112,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.045,
+   "coverage": [
+    0.47,
+    0.0
+   ],
+   "prompt_words": [
+    14,
+    17
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20261103",
+   "index": 2,
+   "topic": null,
+   "clinical_prompt": "Because I've had arrhythmia symptoms lately, I finally went to see a",
+   "top_clinical": "cardio",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.633,
+   "p_top_patient": 0.494,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.848,
+   "expected_tier_patient": 2.372,
+   "tier_shift": -0.476,
+   "language_penalty": 0.369,
+   "coverage": [
+    0.93,
+    0.96
+   ],
+   "prompt_words": [
+    12,
+    13
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20261103",
    "index": 3,
    "topic": null,
    "clinical_prompt": "Because I have somniloquy, my roommate says I should see a",
@@ -13233,19 +14882,19 @@
    "clinical_prompt": "I just can't seem to fall asleep due to insomnia, so my doctor started me on a",
    "top_clinical": "new",
    "top_patient": "new",
-   "p_top_clinical": 0.252,
-   "p_top_patient": 0.531,
+   "p_top_clinical": 0.309,
+   "p_top_patient": 0.432,
    "tier_top_clinical": null,
    "tier_top_patient": null,
    "flipped": false,
    "flip_class": null,
-   "expected_tier_clinical": 1.079,
+   "expected_tier_clinical": 1.0,
    "expected_tier_patient": null,
    "tier_shift": null,
-   "language_penalty": -0.0055,
+   "language_penalty": 0.021000000000000005,
    "coverage": [
-    0.4,
-    0.19
+    0.31,
+    0.18
    ],
    "prompt_words": [
     17,
@@ -13259,321 +14908,24 @@
    "topic": null,
    "clinical_prompt": "That awful migraine is back, so I dug through my bag for a",
    "top_clinical": "pain",
-   "top_patient": "pain",
-   "p_top_clinical": 0.424,
-   "p_top_patient": 0.18,
+   "top_patient": "cold",
+   "p_top_clinical": 0.218,
+   "p_top_patient": 0.109,
    "tier_top_clinical": 1,
-   "tier_top_patient": 1,
-   "flipped": false,
-   "flip_class": null,
-   "expected_tier_clinical": 0.927,
-   "expected_tier_patient": 0.895,
-   "tier_shift": -0.032,
-   "language_penalty": -0.2435,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 0.869,
+   "expected_tier_patient": 1.0,
+   "tier_shift": 0.131,
+   "language_penalty": -0.115,
    "coverage": [
-    0.84,
-    0.57
+    0.77,
+    0.42
    ],
    "prompt_words": [
     13,
     16
-   ]
-  },
-  {
-   "model": "qwen3-4b",
-   "batch": "pairs_20260706T201750Z",
-   "index": 3,
-   "topic": null,
-   "clinical_prompt": "He's been up half the night with gastroesophageal reflux every evening, so tonight he swallowed an",
-   "top_clinical": "ant",
-   "top_patient": "ant",
-   "p_top_clinical": 0.323,
-   "p_top_patient": 0.812,
-   "tier_top_clinical": 1,
-   "tier_top_patient": 1,
-   "flipped": false,
-   "flip_class": null,
-   "expected_tier_clinical": 0.952,
-   "expected_tier_patient": 1.0,
-   "tier_shift": 0.048,
-   "language_penalty": 0.489,
-   "coverage": [
-    0.5,
-    0.9
-   ],
-   "prompt_words": [
-    16,
-    15
-   ]
-  },
-  {
-   "model": "qwen3-4b",
-   "batch": "pairs_20260706T201750Z",
-   "index": 4,
-   "topic": null,
-   "clinical_prompt": "She's been suffering from chronic insomnia every night, so the doctor prescribed a",
-   "top_clinical": "new",
-   "top_patient": "new",
-   "p_top_clinical": 0.155,
-   "p_top_patient": 0.151,
-   "tier_top_clinical": null,
-   "tier_top_patient": null,
-   "flipped": false,
-   "flip_class": null,
-   "expected_tier_clinical": 1.0,
-   "expected_tier_patient": 1.123,
-   "tier_shift": 0.123,
-   "language_penalty": 0.0085,
-   "coverage": [
-    0.68,
-    0.77
-   ],
-   "prompt_words": [
-    13,
-    15
-   ]
-  },
-  {
-   "model": "qwen3-4b",
-   "batch": "pairs_20260706T201750Z",
-   "index": 5,
-   "topic": null,
-   "clinical_prompt": "My allergic conjunctivitis flares up every spring, so this year my doctor put me on a",
-   "top_clinical": "new",
-   "top_patient": "new",
-   "p_top_clinical": 0.268,
-   "p_top_patient": 0.36,
-   "tier_top_clinical": null,
-   "tier_top_patient": null,
-   "flipped": false,
-   "flip_class": null,
-   "expected_tier_clinical": null,
-   "expected_tier_patient": null,
-   "tier_shift": null,
-   "language_penalty": -0.0002,
-   "coverage": [
-    0.06,
-    0.19
-   ],
-   "prompt_words": [
-    16,
-    19
-   ]
-  },
-  {
-   "model": "qwen3-4b",
-   "batch": "pairs_20260706T201750Z",
-   "index": 6,
-   "topic": null,
-   "clinical_prompt": "I've been up all night with heartburn again, so first thing this morning I chewed a",
-   "top_clinical": "T",
-   "top_patient": "whole",
-   "p_top_clinical": 0.36,
-   "p_top_patient": 0.18,
-   "tier_top_clinical": null,
-   "tier_top_patient": null,
-   "flipped": true,
-   "flip_class": "uninformative",
-   "expected_tier_clinical": null,
-   "expected_tier_patient": null,
-   "tier_shift": null,
-   "language_penalty": -0.0156,
-   "coverage": [
-    0.05,
-    0.07
-   ],
-   "prompt_words": [
-    16,
-    19
-   ]
-  },
-  {
-   "model": "qwen3-4b",
-   "batch": "pairs_20260706T201750Z",
-   "index": 7,
-   "topic": null,
-   "clinical_prompt": "My migraine hit me at the office, so I dimmed the screen and swallowed a",
-   "top_clinical": "couple",
-   "top_patient": "pill",
-   "p_top_clinical": 0.243,
-   "p_top_patient": 0.54,
-   "tier_top_clinical": null,
-   "tier_top_patient": 1,
-   "flipped": true,
-   "flip_class": "uninformative",
-   "expected_tier_clinical": 0.955,
-   "expected_tier_patient": 1.0,
-   "tier_shift": 0.045,
-   "language_penalty": 0.4614,
-   "coverage": [
-    0.35,
-    0.74
-   ],
-   "prompt_words": [
-    15,
-    18
-   ]
-  },
-  {
-   "model": "qwen3-4b",
-   "batch": "pairs_20260706T201750Z",
-   "index": 8,
-   "topic": null,
-   "clinical_prompt": "She's been dealing with sleep-onset insomnia lately, so before turning in she takes a",
-   "top_clinical": "warm",
-   "top_patient": "few",
-   "p_top_clinical": 0.166,
-   "p_top_patient": 0.375,
-   "tier_top_clinical": null,
-   "tier_top_patient": null,
-   "flipped": true,
-   "flip_class": "uninformative",
-   "expected_tier_clinical": 1.0,
-   "expected_tier_patient": null,
-   "tier_shift": null,
-   "language_penalty": -0.0288,
-   "coverage": [
-    0.35,
-    0.13
-   ],
-   "prompt_words": [
-    14,
-    17
-   ]
-  },
-  {
-   "model": "qwen3-4b",
-   "batch": "pairs_20260706T201750Z",
-   "index": 9,
-   "topic": null,
-   "clinical_prompt": "He gets allergic rhinitis every time the grass gets cut, so before mowing he sprays some",
-   "top_clinical": "insect",
-   "top_patient": "of",
-   "p_top_clinical": 0.384,
-   "p_top_patient": 0.289,
-   "tier_top_clinical": null,
-   "tier_top_patient": null,
-   "flipped": true,
-   "flip_class": "uninformative",
-   "expected_tier_clinical": null,
-   "expected_tier_patient": null,
-   "tier_shift": null,
-   "language_penalty": 0.0041,
-   "coverage": [
-    0.03,
-    0.18
-   ],
-   "prompt_words": [
-    16,
-    17
-   ]
-  },
-  {
-   "model": "qwen3-4b",
-   "batch": "pairs_20260706T201750Z",
-   "index": 10,
-   "topic": null,
-   "clinical_prompt": "I had severe insomnia before the flight, so at the airport shop I bought a",
-   "top_clinical": "sleep",
-   "top_patient": "cup",
-   "p_top_clinical": 0.077,
-   "p_top_patient": 0.166,
-   "tier_top_clinical": 1,
-   "tier_top_patient": null,
-   "flipped": true,
-   "flip_class": "uninformative",
-   "expected_tier_clinical": 0.852,
-   "expected_tier_patient": 0.0,
-   "tier_shift": -0.852,
-   "language_penalty": -0.0691,
-   "coverage": [
-    0.77,
-    0.47
-   ],
-   "prompt_words": [
-    15,
-    18
-   ]
-  },
-  {
-   "model": "qwen3-4b",
-   "batch": "pairs_20260706T201750Z",
-   "index": 11,
-   "topic": null,
-   "clinical_prompt": "After that greasy takeaway my acid reflux flared again, so I rummaged in the cupboard for an",
-   "top_clinical": "over",
-   "top_patient": "over",
-   "p_top_clinical": 0.525,
-   "p_top_patient": 0.374,
-   "tier_top_clinical": 1,
-   "tier_top_patient": 1,
-   "flipped": false,
-   "flip_class": null,
-   "expected_tier_clinical": 1.001,
-   "expected_tier_patient": 1.024,
-   "tier_shift": 0.023,
-   "language_penalty": -0.1819,
-   "coverage": [
-    0.98,
-    0.91
-   ],
-   "prompt_words": [
-    17,
-    17
-   ]
-  },
-  {
-   "model": "qwen3-4b",
-   "batch": "pairs_20260706T201750Z",
-   "index": 12,
-   "topic": null,
-   "clinical_prompt": "That migraine came on right before the presentation, so I quickly took a",
-   "top_clinical": "break",
-   "top_patient": "seat",
-   "p_top_clinical": 0.238,
-   "p_top_patient": 0.158,
-   "tier_top_clinical": 0,
-   "tier_top_patient": 0,
-   "flipped": true,
-   "flip_class": "lateral",
-   "expected_tier_clinical": 0.048,
-   "expected_tier_patient": 0.278,
-   "tier_shift": 0.23,
-   "language_penalty": 0.0708,
-   "coverage": [
-    0.65,
-    0.63
-   ],
-   "prompt_words": [
-    13,
-    14
-   ]
-  },
-  {
-   "model": "qwen3-4b",
-   "batch": "pairs_20260706T201750Z",
-   "index": 13,
-   "topic": null,
-   "clinical_prompt": "Every spring my seasonal allergies act up at the picnic, so I always pack some",
-   "top_clinical": "ant",
-   "top_patient": "tissues",
-   "p_top_clinical": 0.652,
-   "p_top_patient": 0.521,
-   "tier_top_clinical": 1,
-   "tier_top_patient": null,
-   "flipped": true,
-   "flip_class": "uninformative",
-   "expected_tier_clinical": 1.0,
-   "expected_tier_patient": null,
-   "tier_shift": null,
-   "language_penalty": -0.6439,
-   "coverage": [
-    0.86,
-    0.02
-   ],
-   "prompt_words": [
-    15,
-    17
    ]
   },
   {
@@ -508440,6 +509792,303 @@
    "prompt_words": [
     9,
     11
+   ]
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260706T201750Z",
+   "index": 3,
+   "topic": null,
+   "clinical_prompt": "He's been up half the night with gastroesophageal reflux every evening, so tonight he swallowed an",
+   "top_clinical": "ant",
+   "top_patient": "ant",
+   "p_top_clinical": 0.323,
+   "p_top_patient": 0.812,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 0.952,
+   "expected_tier_patient": 1.0,
+   "tier_shift": 0.048,
+   "language_penalty": 0.489,
+   "coverage": [
+    0.5,
+    0.9
+   ],
+   "prompt_words": [
+    16,
+    null
+   ]
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260706T201750Z",
+   "index": 4,
+   "topic": null,
+   "clinical_prompt": "She's been suffering from chronic insomnia every night, so the doctor prescribed a",
+   "top_clinical": "new",
+   "top_patient": "new",
+   "p_top_clinical": 0.155,
+   "p_top_patient": 0.151,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 1.123,
+   "tier_shift": 0.123,
+   "language_penalty": 0.0085,
+   "coverage": [
+    0.68,
+    0.77
+   ],
+   "prompt_words": [
+    13,
+    null
+   ]
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260706T201750Z",
+   "index": 5,
+   "topic": null,
+   "clinical_prompt": "My allergic conjunctivitis flares up every spring, so this year my doctor put me on a",
+   "top_clinical": "new",
+   "top_patient": "new",
+   "p_top_clinical": 0.268,
+   "p_top_patient": 0.36,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0002,
+   "coverage": [
+    0.06,
+    0.19
+   ],
+   "prompt_words": [
+    16,
+    null
+   ]
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260706T201750Z",
+   "index": 6,
+   "topic": null,
+   "clinical_prompt": "I've been up all night with heartburn again, so first thing this morning I chewed a",
+   "top_clinical": "T",
+   "top_patient": "whole",
+   "p_top_clinical": 0.36,
+   "p_top_patient": 0.18,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0156,
+   "coverage": [
+    0.05,
+    0.07
+   ],
+   "prompt_words": [
+    16,
+    null
+   ]
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260706T201750Z",
+   "index": 7,
+   "topic": null,
+   "clinical_prompt": "My migraine hit me at the office, so I dimmed the screen and swallowed a",
+   "top_clinical": "couple",
+   "top_patient": "pill",
+   "p_top_clinical": 0.243,
+   "p_top_patient": 0.54,
+   "tier_top_clinical": null,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 0.955,
+   "expected_tier_patient": 1.0,
+   "tier_shift": 0.045,
+   "language_penalty": 0.4614,
+   "coverage": [
+    0.35,
+    0.74
+   ],
+   "prompt_words": [
+    15,
+    null
+   ]
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260706T201750Z",
+   "index": 8,
+   "topic": null,
+   "clinical_prompt": "She's been dealing with sleep-onset insomnia lately, so before turning in she takes a",
+   "top_clinical": "warm",
+   "top_patient": "few",
+   "p_top_clinical": 0.166,
+   "p_top_patient": 0.375,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0288,
+   "coverage": [
+    0.35,
+    0.13
+   ],
+   "prompt_words": [
+    14,
+    null
+   ]
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260706T201750Z",
+   "index": 9,
+   "topic": null,
+   "clinical_prompt": "He gets allergic rhinitis every time the grass gets cut, so before mowing he sprays some",
+   "top_clinical": "insect",
+   "top_patient": "of",
+   "p_top_clinical": 0.384,
+   "p_top_patient": 0.289,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0041,
+   "coverage": [
+    0.03,
+    0.18
+   ],
+   "prompt_words": [
+    16,
+    null
+   ]
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260706T201750Z",
+   "index": 10,
+   "topic": null,
+   "clinical_prompt": "I had severe insomnia before the flight, so at the airport shop I bought a",
+   "top_clinical": "sleep",
+   "top_patient": "cup",
+   "p_top_clinical": 0.077,
+   "p_top_patient": 0.166,
+   "tier_top_clinical": 1,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 0.852,
+   "expected_tier_patient": 0.0,
+   "tier_shift": -0.852,
+   "language_penalty": -0.0691,
+   "coverage": [
+    0.77,
+    0.47
+   ],
+   "prompt_words": [
+    15,
+    null
+   ]
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260706T201750Z",
+   "index": 11,
+   "topic": null,
+   "clinical_prompt": "After that greasy takeaway my acid reflux flared again, so I rummaged in the cupboard for an",
+   "top_clinical": "over",
+   "top_patient": "over",
+   "p_top_clinical": 0.525,
+   "p_top_patient": 0.374,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.001,
+   "expected_tier_patient": 1.024,
+   "tier_shift": 0.023,
+   "language_penalty": -0.1819,
+   "coverage": [
+    0.98,
+    0.91
+   ],
+   "prompt_words": [
+    17,
+    null
+   ]
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260706T201750Z",
+   "index": 12,
+   "topic": null,
+   "clinical_prompt": "That migraine came on right before the presentation, so I quickly took a",
+   "top_clinical": "break",
+   "top_patient": "seat",
+   "p_top_clinical": 0.238,
+   "p_top_patient": 0.158,
+   "tier_top_clinical": 0,
+   "tier_top_patient": 0,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 0.048,
+   "expected_tier_patient": 0.278,
+   "tier_shift": 0.23,
+   "language_penalty": 0.0708,
+   "coverage": [
+    0.65,
+    0.63
+   ],
+   "prompt_words": [
+    13,
+    null
+   ]
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260706T201750Z",
+   "index": 13,
+   "topic": null,
+   "clinical_prompt": "Every spring my seasonal allergies act up at the picnic, so I always pack some",
+   "top_clinical": "ant",
+   "top_patient": "tissues",
+   "p_top_clinical": 0.652,
+   "p_top_patient": 0.521,
+   "tier_top_clinical": 1,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.6439,
+   "coverage": [
+    0.86,
+    0.02
+   ],
+   "prompt_words": [
+    15,
+    null
    ]
   }
  ]
