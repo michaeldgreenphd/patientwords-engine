@@ -30,6 +30,16 @@ PERSISTENCE = 2  # consecutive readable layers required to count as formation
 FEATURED_CLASS = "hijack"  # technical Fig-1 exemplar class (audit M3 tail)
 
 
+# Datasets whose prompt text may not ship to the site: pabharvest_ batches embed CC-BY-NC-4.0-derived PatientAgentBench
+# utterances (scripts/pab_build_frames.py: "never the site"). Their rows still count in the census (dataset, index and
+# ranks only), but carry no prompt text and are never an exemplar, so their sentences cannot be published.
+TEXT_RESTRICTED_PREFIXES = ("pabharvest_",)
+
+
+def text_restricted(dataset: str) -> bool:
+    return str(dataset).startswith(TEXT_RESTRICTED_PREFIXES)
+
+
 def featured_exemplar_index(exemplars):
     """Index of the Fig-1 featured exemplar: first of FEATURED_CLASS, else 0;
     None when there are no exemplars (page then keeps its own fallback)."""
@@ -135,7 +145,8 @@ def collect(trace_root: Path):
                 "endpoint_class": r.get("patient_depth_class"),
                 "pat_ranks": [rec.get("target_rank") for rec in pat],
                 "clin_ranks": [rec.get("target_rank") for rec in clin],
-                "prompts": r.get("prompts"),  # {clinical, patient} verbatim, for exemplar sentences
+                # {clinical, patient} verbatim, for exemplar sentences; never for text-restricted datasets
+                "prompts": None if text_restricted(dataset) else r.get("prompts"),
             }
             per_model[model].append(row)
     return per_model, holdout_excluded
@@ -281,7 +292,8 @@ def analyze(per_model, base_model, it_model, exemplar_count, render_map=None):
                 (r["dataset"], r["index"]) in rmap)
 
     for want in ("hijack", "capture", "held"):
-        cands = [r for r in rows if classify(r) == want and r["clin_formed"] is not None]
+        cands = [r for r in rows if classify(r) == want and r["clin_formed"] is not None
+                 and not text_restricted(r["dataset"])]
         if not cands:
             continue
         r = max(cands, key=_pref)  # best (prompts + render) available; else first of class
