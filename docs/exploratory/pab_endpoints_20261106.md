@@ -17,7 +17,9 @@ python scripts/pab_endpoints.py --out /tmp/pab_endpoints.json
 1. **Neither preregistered endpoint is supported.**
    - **Endpoint 1 (language penalty).** 8 of 13 pairs lose probability on the clinical target under the low-literacy
      wording and 5 gain it (exact two-sided sign test p = 0.58).
-   - **Endpoint 2 (formation depth).** The low-literacy side forms later in 3 pairs and earlier in 5 (p = 0.73).
+   - **Endpoint 2 (formation depth, the spec's first rank-1 layer).** The low-literacy side reaches rank 1 later in 6
+     pairs and earlier in 3 (p = 0.51). That is the preregistered direction, but not significant. Under the census's
+     own formation rule, a secondary reading, it is 3 later and 5 earlier (p = 0.73).
 2. **The typical PAB pair looks like the typical study pair.**
    - The median pair penalty is −0.019; for the study's own observational pairs on the same model it is −0.012.
    - 62% of PAB pairs are negative, against 61% of study phrases.
@@ -71,7 +73,21 @@ exact-read change, and the target-read audit found no PAB row reading another to
 
 ## Endpoint 2: formation depth
 
-The census's own rules (`scripts/jlens_insights.py`):
+**Correction (Codex review of PR #146).** The first version of this report used the census's formation rule as
+endpoint 2. The spec defines the endpoint as "higher first-rank-1 layer or absence". That measure is now the endpoint;
+the census rule is reported beside it as a secondary reading.
+
+**The registered measure.** It is the first layer at which the target is the lens's top token. A pair counts as
+"later or weaker" when the low-literacy side reaches rank 1 later than the high-literacy side, or never where the high
+side does.
+
+| | Count |
+|---|---|
+| Entries: low later or weaker / earlier or stronger / same layer / neither reaches rank 1 | 10 / 6 / 14 / 22 |
+| Pairs whose majority is later or weaker / earlier or stronger / neither | 6 / 3 / 4 |
+| Exact two-sided sign test on pairs | p = 0.51 |
+
+**Secondary: the census's formation rule.** The census's own rules (`scripts/jlens_insights.py`):
 - **Formation** means the target is readable for two consecutive layers in the top-8 window.
 - **Classes**, on the low-literacy side, conditioned on the high-literacy side:
   - *held:* the target still ranks at the final layer;
@@ -84,7 +100,7 @@ All 52 entries have usable lens readouts.
 | | Count |
 |---|---|
 | Low-literacy class: held / unreadable / capture / hijack | 35 / 11 / 3 / 3 |
-| Entries: low later or weaker / earlier or stronger / same layer / neither forms | 9 / 14 / 18 / 11 |
+| Entries (census formation): low later or weaker / earlier or stronger / same layer / neither forms | 9 / 14 / 18 / 11 |
 | Pairs whose majority is later or weaker / earlier or stronger / neither | 3 / 5 / 5 |
 | Exact two-sided sign test on pairs | p = 0.73 |
 
@@ -96,7 +112,7 @@ would overwrite the August `part_01`, which holds all 52 readouts, with an 8-ent
 the truncated part.
 
 A safe re-read needs either a copy of the batch under its own stem, which then also needs a census decision so its
-rows are not counted twice, or an output that is not committed. The endpoint is null in this era. Whether it would be
+rows are not counted twice, or an output that is not committed. The endpoint is not significant in this era. Whether it would be
 null in today's era is not known.
 
 ## What these numbers can and cannot carry

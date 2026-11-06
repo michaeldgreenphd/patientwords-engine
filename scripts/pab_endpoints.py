@@ -18,9 +18,10 @@ clinical target.
   side. They have no penalty, are counted by reason, and are never counted as zero.
 - Exact reads: each penalty is checked to be read on exactly the entry's anchor token. The traces predate the
   2026-10-07 exact-read change.
-- Formation (endpoint 2) uses the census's own rules (`scripts/jlens_insights.py`): `formation_layer` (readable for 2
-  consecutive layers in the top-8 window), `lock_in_layer` and the `classify` taxonomy. "Later or weaker" for a pair
-  means the low-literacy side forms later than the high-literacy side, or never forms where the high side does.
+- Endpoint 2 is measured as the spec defines it: the first layer at which the target is the lens's top token
+  (rank 1). "Later or weaker" for a pair means the low-literacy side reaches rank 1 later than the high-literacy side,
+  or never where the high side does. The census's own formation rule (`scripts/jlens_insights.py`: readable for 2
+  consecutive layers in the top-8 window) and its `classify` taxonomy are reported beside it as a secondary reading.
 - Comparison: the same model's language penalty on the study's own observational pairs (the engine's urgency row
   file, `urgency_shift.json`: gemma-2-2b rows of observational `pairs_<STAMP>` batches minus the outcome-selected
   stamps, holdout phrases excluded, one mean per phrase).
@@ -107,6 +108,7 @@ def entries() -> list[dict[str, Any]]:
                 row = {"clin_formed": formation_layer(hi), "pat_formed": formation_layer(lo),
                        "pat_final_rank": lo[-1].get("target_rank")}
                 rec["lens"] = {"high_formed": row["clin_formed"], "low_formed": row["pat_formed"],
+                               "high_rank1": first_rank1_layer(hi), "low_rank1": first_rank1_layer(lo),
                                "low_lock_in": lock_in_layer(lo), "n_layers": len(lo), "class": classify(row)}
             else:
                 rec["lens"] = None
@@ -140,12 +142,25 @@ def endpoint_penalty(recs: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def endpoint_formation(recs: list[dict[str, Any]]) -> dict[str, Any]:
+def first_rank1_layer(layers: list[dict]) -> int | None:
+    """The first layer at which the target is the lens's top token (target_rank 1), or None."""
+    for rec in layers:
+        if rec.get("target_rank") == 1:
+            return rec["layer"]
+    return None
+
+
+def endpoint_formation(recs: list[dict[str, Any]], high_key: str = "high_rank1",
+                       low_key: str = "low_rank1") -> dict[str, Any]:
+    """Endpoint 2. The spec's measure (docs/pab_frame_spec_20260805.md, endpoint 2: "higher first-rank-1 layer or
+    absence") is the first rank-1 layer, the default here. Passing high_formed/low_formed gives the census's formation
+    rule instead, reported beside it as a secondary reading (Codex review of PR #146: the first version reported the
+    census rule as the endpoint)."""
     lens = [r for r in recs if r.get("lens")]
     classes = Counter(r["lens"]["class"] for r in lens)
     per_pair: dict[str, Counter] = defaultdict(Counter)
     for r in lens:
-        hi, lo = r["lens"]["high_formed"], r["lens"]["low_formed"]
+        hi, lo = r["lens"][high_key], r["lens"][low_key]
         if hi is None and lo is None:
             verdict = "neither forms"
         elif hi is not None and lo is None:
@@ -207,7 +222,8 @@ def main(argv: list[str] | None = None) -> int:
         "penalty_reads_exact": dict(Counter(str(r["read_exact"]) for r in recs if r["penalty"] is not None)),
         "missing_lens": dict(Counter(r.get("lens_missing_reason") for r in recs if not r.get("lens"))),
         "endpoint_1_penalty": endpoint_penalty(recs),
-        "endpoint_2_formation": endpoint_formation(recs),
+        "endpoint_2_first_rank1": endpoint_formation(recs),
+        "endpoint_2_secondary_census_formation": endpoint_formation(recs, "high_formed", "low_formed"),
         "study_reference_gemma_2_2b": study_reference(),
         "entries_detail": [{k: v for k, v in r.items()} for r in recs],
     }

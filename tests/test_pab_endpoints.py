@@ -37,3 +37,16 @@ def test_the_report_carries_no_harvested_text(tmp_path):
     for e in batch:
         for span in e["generation"]["spans"].values():
             assert span[:30] not in text
+
+
+def test_endpoint_2_uses_the_specs_first_rank1_layer():
+    # Codex review of PR #146: the spec defines endpoint 2 as "higher first-rank-1 layer or absence"; the census's
+    # formation rule is a secondary reading only.
+    layers = [{"layer": 0, "target_rank": 3}, {"layer": 1, "target_rank": 1}, {"layer": 2, "target_rank": 1}]
+    assert pe.first_rank1_layer(layers) == 1
+    assert pe.first_rank1_layer([{"layer": 0, "target_rank": 2}]) is None
+    recs = pe.entries()
+    primary = pe.endpoint_formation(recs)
+    secondary = pe.endpoint_formation(recs, "high_formed", "low_formed")
+    assert primary != secondary
+    assert all("high_rank1" in r["lens"] for r in recs if r.get("lens"))

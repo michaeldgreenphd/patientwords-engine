@@ -2572,3 +2572,52 @@ def test_rewrite_mode_drops_holdout_collisions(tmp_path, monkeypatch):
              "--max-spend", "1.0"])
     report = json.loads(next(tmp_path.glob("rw_*.report.json")).read_text(encoding="utf-8"))
     assert report["n_generated"] == 1 and report["dropped_holdout_collisions"] == 1
+
+
+def _rewrite_cfg(tmp_path, **over):
+    cfg = json.loads((tmp_path / "gen_rewrite.json").read_text(encoding="utf-8"))
+    cfg.update(over)
+    (tmp_path / "gen_rewrite.json").write_text(json.dumps(cfg), encoding="utf-8")
+
+
+def test_rewrite_ceiling_reserves_the_output_budget_actually_sent(tmp_path, monkeypatch):
+    # Codex review of PR #146: with no max_tokens in the config the run sends 4,000, and the ceiling must reserve
+    # that, not the tracker's 2,200 default. At [0.5, 2.0] a 4,000-token reply alone costs $0.008.
+    cfg, reg, sent = _rewrite_setup(tmp_path, monkeypatch, "[]")
+    ae.main(["generate", "--config", str(cfg), "--providers", str(reg), "--out-dir", str(tmp_path),
+             "--max-spend", "0.006"])
+    assert sent == []  # refused before any call
+    report = json.loads(next(tmp_path.glob("rw_*.report.json")).read_text(encoding="utf-8"))
+    assert report["calls"] == 0 and report["cost_usd"] == 0.0
+
+
+def test_rewrite_ceiling_is_sized_from_the_built_prompt(tmp_path, monkeypatch):
+    # Codex review of PR #146: the check used a fixed 400-token input estimate. A 40,000-character prompt bounds at
+    # 20,000+ input tokens ($0.010 at 0.5/Mtok) on top of the reply, so a $0.012 ceiling must refuse it.
+    cfg, reg, sent = _rewrite_setup(tmp_path, monkeypatch, "[]")
+    _rewrite_cfg(tmp_path, prompt_template="x" * 40000 + " {items}", max_tokens=100)
+    ae.main(["generate", "--config", str(cfg), "--providers", str(reg), "--out-dir", str(tmp_path),
+             "--max-spend", "0.010"])
+    assert sent == []
+
+
+def test_rewrite_run_writes_what_landed_when_a_later_call_fails(tmp_path, monkeypatch):
+    # Codex review of PR #146: a failing later call must not lose the earlier rewrites or their cost.
+    cfg, reg, _ = _rewrite_setup(tmp_path, monkeypatch, "")
+    _rewrite_cfg(tmp_path, items_per_call=1, max_tokens=500)
+    replies = iter([json.dumps([{"id": "s#1", "text": "ok so my side's hurt for 3 days what do i do"}])])
+
+    def flaky(cfg_, model, system, user_text, max_tokens, temperature):
+        try:
+            return next(replies), 1000, 500, {}
+        except StopIteration:
+            raise ConnectionError("timeout") from None
+
+    monkeypatch.setattr(ae, "_send_compat", flaky)
+    with pytest.raises(SystemExit, match="interrupted"):
+        ae.main(["generate", "--config", str(cfg), "--providers", str(reg), "--out-dir", str(tmp_path),
+                 "--max-spend", "1.0"])
+    report = json.loads(next(tmp_path.glob("rw_*.report.json")).read_text(encoding="utf-8"))
+    assert report["n_generated"] == 1 and report["calls"] == 1 and "ConnectionError" in report["interrupted"]
+    landed = 1000 * 0.5 / 1e6 + 500 * 2.0 / 1e6
+    assert report["cost_usd"] > landed  # the failed call is booked at its worst case beside the landed one

@@ -1234,6 +1234,13 @@ def _generation_tracker(args, cfg_data: dict, spec: dict) -> CostTracker:
     return CostTracker(ceiling if ceiling else 1e9, int(cfg_data.get("max_tokens", 2200)), custom)
 
 
+def _input_token_bound(system: str | None, user_text: str) -> int:
+    """A conservative input-token count for a ceiling check: one token per two UTF-8 bytes of the system and user
+    text, plus a margin for chat framing. English runs near four characters a token, so this over-reserves (Codex
+    review of PR #146: the fixed EST_INPUT_TOKENS undercounted a 700-word rewrite prompt)."""
+    return len(((system or "") + user_text).encode("utf-8")) // 2 + 64
+
+
 _WORD = re.compile(r"[A-Za-z][A-Za-z'-]*")
 _NUMBER = re.compile(r"\d+(?:\.\d+)?")
 _CONTRACTION = re.compile(r"[A-Za-z]'[A-Za-z]")
@@ -1306,33 +1313,46 @@ def generate_rewrites(args, cfg_data: dict, registry: dict, spec: dict, tracker:
     template = str(cfg_data["prompt_template"])
     sent_max, sent_temperature, adjustments = call_settings(
         registry, spec["cfg"], spec["model"], max_tokens, float(cfg_data.get("temperature", 0.7)))
+    # the ceiling reserves the output budget the calls are actually sent with, registry minimums included (Codex
+    # review of PR #146: the tracker had been sized from the config's max_tokens default, not the sent budget)
+    tracker.max_output_tokens = sent_max
+    tracker.output_budget[spec["spec"]] = sent_max
     tierb = _load_tierb_split()
     pending = [it for it in items if str(it.get(field) or "").strip() and str(it.get(pair_with) or "").strip()]
     done: dict[str, str] = {}
     calls = tokens_in = tokens_out = unparseable = 0
-    while len(done) < len(pending) and calls < max_calls:
-        batch = [it for it in pending if it["id"] not in done][:per_call]
-        if not tracker.can_afford(spec["spec"]):
-            print(f"spend ceiling ${args.max_spend:.2f} reached after {calls} calls; stopping")
-            break
-        user_text = template.format(items=json.dumps([{"id": it["id"], "text": it[field]} for it in batch],
-                                                     ensure_ascii=False, indent=1))
-        _pace(spec["provider"], spec["cfg"])
-        res = _send_compat(spec["cfg"], spec["model"], system, user_text, sent_max, sent_temperature)
-        calls += 1
-        tokens_in += res[1]
-        tokens_out += res[2]
-        tracker.record(spec["spec"], res[1], res[2])
-        try:
-            got = _parse_rewrites(res[0])
-        except (ValueError, json.JSONDecodeError) as err:
-            unparseable += 1
-            print(f"call {calls}: {err}; continuing")
-            continue
-        for it in batch:
-            if it["id"] in got:
-                done[it["id"]] = got[it["id"]]
-        print(f"call {calls}: {len(done)}/{len(pending)} rewritten")
+    inflight_worst = 0.0
+    interrupted: str | None = None
+    in_p, out_p = tracker._price(spec["spec"])
+    try:
+        while len(done) < len(pending) and calls < max_calls:
+            batch = [it for it in pending if it["id"] not in done][:per_call]
+            user_text = template.format(items=json.dumps([{"id": it["id"], "text": it[field]} for it in batch],
+                                                         ensure_ascii=False, indent=1))
+            bound = _input_token_bound(system, user_text)
+            if not tracker.can_afford(spec["spec"], input_tokens=bound):
+                print(f"spend ceiling ${args.max_spend:.2f} reached after {calls} calls; stopping")
+                break
+            inflight_worst = bound * in_p / 1e6 + sent_max * out_p / 1e6
+            _pace(spec["provider"], spec["cfg"])
+            res = _send_compat(spec["cfg"], spec["model"], system, user_text, sent_max, sent_temperature)
+            calls += 1
+            tokens_in += res[1]
+            tokens_out += res[2]
+            tracker.record(spec["spec"], res[1], res[2])
+            inflight_worst = 0.0
+            try:
+                got = _parse_rewrites(res[0])
+            except (ValueError, json.JSONDecodeError) as err:
+                unparseable += 1
+                print(f"call {calls}: {err}; continuing")
+                continue
+            for it in batch:
+                if it["id"] in got:
+                    done[it["id"]] = got[it["id"]]
+            print(f"call {calls}: {len(done)}/{len(pending)} rewritten")
+    except BaseException as err:  # noqa: BLE001 - write what landed and its cost, then re-raise below
+        interrupted = f"{type(err).__name__}: {err}"
     out_pairs, holdout = [], 0
     for it in pending:
         text = done.get(it["id"])
@@ -1376,13 +1396,20 @@ def generate_rewrites(args, cfg_data: dict, registry: dict, spec: dict, tracker:
         "input_tokens": tokens_in,
         "output_tokens": tokens_out,
         "call_adjustments": adjustments,
-        "cost_usd": round(tracker.spent, 6),
-        "cost_basis": _GENERATION_COST_BASIS,
+        # an interrupted run books the call that failed at its worst case: it may have been billed and no tokens came
+        # back to count (the Jev audit sidecar's rule for an unbilled call)
+        "cost_usd": round(tracker.spent + inflight_worst, 6),
+        "cost_basis": _GENERATION_COST_BASIS + ("; plus the failed in-flight call at its worst case" if inflight_worst
+                                                else ""),
         "max_spend_usd": args.max_spend,
+        "interrupted": interrupted,
         "created_utc": utc_now_iso(),
         "engine_sha": engine_sha(),
     }
     out_path.with_suffix(".report.json").write_text(json.dumps(report, indent=1) + "\n", encoding="utf-8")
+    if interrupted:
+        raise SystemExit(f"rewrite run interrupted after {calls} call(s) ({interrupted}); {len(out_pairs)} pair(s) "
+                         f"and the cost sidecar were written to {out_path.parent}")
     print(f"rewrote {len(out_pairs)}/{len(pending)} items in {calls} calls (${tracker.spent:.4f}) -> {out_path}; "
           f"{flagged} flagged for review")
     print("PILOT-UNREVIEWED: nothing consumes this batch until the owner reviews it.")
@@ -1440,7 +1467,8 @@ def generate(args) -> Path:
     while len(out_pairs) < n_target and calls < max_calls:
         topic = topics[calls % len(topics)]
         user_text = template.format(count=per_call, topic=topic, exemplars=ex_block)
-        if getattr(args, "max_spend", None) and not tracker.can_afford(spec["spec"]):
+        if getattr(args, "max_spend", None) and not tracker.can_afford(
+                spec["spec"], input_tokens=_input_token_bound(system, user_text)):
             print(f"spend ceiling ${args.max_spend:.2f} reached after {calls} calls; stopping")
             break
         _pace(spec["provider"], spec["cfg"])
