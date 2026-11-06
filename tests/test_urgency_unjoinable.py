@@ -275,3 +275,20 @@ def test_without_publish_a_missing_payload_is_still_skipped(engine_root, tmp_pat
     assert proc.returncode == 0, proc.stderr
     assert rows_out.exists() and not published.exists()
     assert "unjoinable_rows" not in json.loads(rows_out.read_text(encoding="utf-8"))
+
+
+def test_publish_writes_the_observational_headline_over_every_measured_row(engine_root, tmp_path):
+    # Owner decision 2026-11-06 (ag-urgency-hero): the clinical page's headline comes from the collector, over the
+    # observational population (scripts/urgency_headline.py); every row still ships for the other consumers.
+    site = _site(tmp_path, _site_payload())
+    proc, published, rows_file = _collect(engine_root, site)
+    assert proc.returncode == 0, proc.stderr
+    data = json.loads(published.read_text(encoding="utf-8"))
+    head = data["summary"]["headline_observational"]
+    assert len(data["rows"]) == 8
+    # BATCH#1, BATCH#2 (m2 and the payload's gemma-2-2b row), BATCH#3 and UNPUBLISHED#1 are generation-batch pairs;
+    # repeat_r1 (2 rows) and the _txsuffix stem (1 row) are not
+    assert head["matched_pairs"] == 4
+    assert head["rows_excluded"] == {"outcome_selected": 0, "other": 3, "holdout": 0}
+    # the engine-side row file carries the same block
+    assert json.loads(rows_file.read_text(encoding="utf-8"))["summary"]["headline_observational"] == head

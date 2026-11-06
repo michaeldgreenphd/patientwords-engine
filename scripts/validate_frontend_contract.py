@@ -310,6 +310,40 @@ def unjoinable_total(rep: Report, a: str, rec: object) -> int | None:
     return total if ok else None
 
 
+# The clinical page's headline block (scripts/urgency_headline.py, owner decision 2026-11-06). Older payloads
+# without it keep the page's own computation; a present block must be internally consistent.
+URGENCY_HEADLINE_COUNTS = ("matched_pairs", "pairs_with_downgrade", "classified_measurements", "downgrades",
+                           "upgrades", "emergency_downgrades", "emergency_to_self_care")
+
+
+def check_urgency_headline(rep: Report, a: str, h: object):
+    p = "$.summary.headline_observational"
+    if not isinstance(h, dict):
+        rep.err(a, p, "must be an object")
+        return
+    counts = {}
+    for k in URGENCY_HEADLINE_COUNTS:
+        v = need(rep, a, h, k, int, p)
+        if v is not None and v < 0:
+            rep.err(a, f"{p}.{k}", f"is {v}, must be nonnegative")
+        elif v is not None:
+            counts[k] = v
+    need(rep, a, h, "population", str, p)
+    if len(counts) < len(URGENCY_HEADLINE_COUNTS):
+        return
+    cells = h.get("downgrade_cells")
+    if cells is not None:
+        if (not isinstance(cells, dict) or not all(_is(v, int) and v >= 0 for v in cells.values())
+                or sum(cells.values()) != counts["downgrades"]):
+            rep.err(a, f"{p}.downgrade_cells",
+                    f"must map tier cells to nonnegative counts summing to downgrades ({counts['downgrades']})")
+    for small, big in (("pairs_with_downgrade", "matched_pairs"), ("downgrades", "classified_measurements"),
+                       ("upgrades", "classified_measurements"), ("emergency_downgrades", "downgrades"),
+                       ("emergency_to_self_care", "emergency_downgrades")):
+        if counts[small] > counts[big]:
+            rep.err(a, f"{p}.{small}", f"is {counts[small]}, more than {big} ({counts[big]})")
+
+
 def check_urgency(rep: Report, data: dict, joins: dict):
     a = "urgency_shift.json"
     known_keys(rep, a, data, {"rows", "summary", "tiers", "tier_examples",
@@ -325,6 +359,8 @@ def check_urgency(rep: Report, data: dict, joins: dict):
     summary = need(rep, a, data, "summary", dict, "$") or {}
     if "per_model_deduped" not in summary and "flip_classes" not in summary:
         rep.err(a, "$.summary", "needs per_model_deduped or the flip_classes fallback")
+    if "headline_observational" in summary:
+        check_urgency_headline(rep, a, summary["headline_observational"])
 
     seen = set()
     orphans = 0
