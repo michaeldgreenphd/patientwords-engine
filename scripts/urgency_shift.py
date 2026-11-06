@@ -351,6 +351,14 @@ for model in sorted({r["model"] for r in arows}):
         "mean_penalty": round(sum(pen_means) / len(pen_means), 4) if pen_means else None,
     }
 
+# The clinical page's headline figures over the confirmatory population, with the full denominator
+# (owner decision 2026-11-06, ag-urgency-hero; scripts/urgency_headline.py). Every row above stays:
+# paired_stats_rigor.py and the scenario joins read them with their own rules.
+from urgency_headline import observational_headline  # noqa: E402  (script-style module)
+_tiers = json.loads(Path(args.tiers).read_text(encoding="utf-8")).get("tiers")
+summary["headline_observational"] = observational_headline(
+    rows, _tiers, {r["clinical_prompt"] for r in rows if r.get("tierb_split") == "holdout"})
+
 # Cross-model concordance: do the models downgrade on the SAME phrases?
 # Correlated downgrades point at the language; uncorrelated ones at the model.
 by_phrase = {}
@@ -472,7 +480,8 @@ if args.publish:
         "tier_examples": tier_examples,
         "summary": {k: summary[k] for k in ("measurements", "flips", "flip_classes",
                                             "per_model", "per_model_deduped",
-                                            "concordance", "mitigation")
+                                            "concordance", "mitigation",
+                                            "headline_observational")
                     if k in summary},
         "unjoinable_rows": unjoinable,
         "rows": trimmed,
