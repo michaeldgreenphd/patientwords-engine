@@ -1231,7 +1231,9 @@ def _generation_tracker(args, cfg_data: dict, spec: dict) -> CostTracker:
     pricing, _ = _registry_rate(spec["cfg"], spec["model"])
     custom = {spec["spec"]: (float(pricing[0]), float(pricing[1]))} if pricing else {}
     ceiling = getattr(args, "max_spend", None)
-    return CostTracker(ceiling if ceiling else 1e9, int(cfg_data.get("max_tokens", 2200)), custom)
+    # None means no ceiling was given (cost is still counted); any given value, 0 included, goes to CostTracker,
+    # which refuses a non-positive one (Codex review of PR #146: a 0 ceiling had been read as no ceiling)
+    return CostTracker(1e9 if ceiling is None else ceiling, int(cfg_data.get("max_tokens", 2200)), custom)
 
 
 def _input_token_bound(system: str | None, user_text: str) -> int:
@@ -1300,8 +1302,9 @@ def generate_rewrites(args, cfg_data: dict, registry: dict, spec: dict, tracker:
     `pair_with` field, bottom_prompt = the rewrite) that `build-stimuli --source pairs` consumes, each pair carrying
     its source item id, the source text's sha256 and `rewrite_checks`. The batch is pilot-unreviewed: nothing
     consumes it until the owner reviews it. A rewrite run requires --max-spend."""
-    if not getattr(args, "max_spend", None):
+    if getattr(args, "max_spend", None) is None:
         raise SystemExit("a rewrite run is paid: pass --max-spend (the fire's max_spend)")
+    run_utc = utc_now_iso()
     source_path = str(cfg_data["source_stimuli"])
     field = str(cfg_data.get("source_field", "patient_body"))
     pair_with = str(cfg_data.get("pair_with", "clinical_body"))
@@ -1403,6 +1406,8 @@ def generate_rewrites(args, cfg_data: dict, registry: dict, spec: dict, tracker:
                                                 else ""),
         "max_spend_usd": args.max_spend,
         "interrupted": interrupted,
+        # the day scripts/ledger_update.py books this spend to (it reads run_utc or run_timestamp, never created_utc)
+        "run_utc": run_utc,
         "created_utc": utc_now_iso(),
         "engine_sha": engine_sha(),
     }
@@ -1432,6 +1437,7 @@ def generate(args) -> Path:
     registry = _load_providers(args.providers)
     spec = _resolve_spec(str(cfg_data["model"]), registry)
     tracker = _generation_tracker(args, cfg_data, spec)
+    run_utc = utc_now_iso()
     if cfg_data.get("mode") == "rewrite":
         return generate_rewrites(args, cfg_data, registry, spec, tracker)
     n_target = int(cfg_data["n_items"])
@@ -1467,7 +1473,7 @@ def generate(args) -> Path:
     while len(out_pairs) < n_target and calls < max_calls:
         topic = topics[calls % len(topics)]
         user_text = template.format(count=per_call, topic=topic, exemplars=ex_block)
-        if getattr(args, "max_spend", None) and not tracker.can_afford(
+        if getattr(args, "max_spend", None) is not None and not tracker.can_afford(
                 spec["spec"], input_tokens=_input_token_bound(system, user_text)):
             print(f"spend ceiling ${args.max_spend:.2f} reached after {calls} calls; stopping")
             break
@@ -1536,6 +1542,7 @@ def generate(args) -> Path:
         "cost_basis": _GENERATION_COST_BASIS,
         "cost_note": cfg_data.get("cost_note", ""),
         "max_spend_usd": getattr(args, "max_spend", None),
+        "run_utc": run_utc,  # the day scripts/ledger_update.py books this spend to
         "dropped_duplicates": dropped_dupe,
         "dropped_holdout_collisions": dropped_holdout,
         "unparseable_calls": unparseable,

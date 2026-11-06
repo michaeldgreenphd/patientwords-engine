@@ -2621,3 +2621,28 @@ def test_rewrite_run_writes_what_landed_when_a_later_call_fails(tmp_path, monkey
     assert report["n_generated"] == 1 and report["calls"] == 1 and "ConnectionError" in report["interrupted"]
     landed = 1000 * 0.5 / 1e6 + 500 * 2.0 / 1e6
     assert report["cost_usd"] > landed  # the failed call is booked at its worst case beside the landed one
+
+
+def test_a_zero_generation_ceiling_is_refused_not_unlimited(tmp_path, monkeypatch):
+    # Codex review of PR #146: --max-spend 0 had been read as no ceiling
+    reg = tmp_path / "providers.json"
+    reg.write_text(json.dumps(REGISTRY), encoding="utf-8")
+    cfg = tmp_path / "gen.json"
+    cfg.write_text(json.dumps({"model": "fakeai", "stem": "g", "n_items": 1, "max_calls": 1,
+                               "prompt_template": "write {count} {topic} {exemplars}"}), encoding="utf-8")
+    sent = []
+    monkeypatch.setattr(ae, "_send_compat", lambda *a, **k: sent.append(1) or ("[]", 1, 1, {}))
+    with pytest.raises(SystemExit, match="max-spend"):
+        ae.main(["generate", "--config", str(cfg), "--providers", str(reg), "--out-dir", str(tmp_path),
+                 "--max-spend", "0"])
+    assert sent == []
+
+
+def test_generation_sidecars_carry_the_ledger_run_day(tmp_path, monkeypatch):
+    # Codex review of PR #146: scripts/ledger_update.py dates a sidecar by run_utc or run_timestamp
+    reply = json.dumps([{"id": "s#1", "text": "ok so my side's hurt for 3 days what do i do"}])
+    cfg, reg, _ = _rewrite_setup(tmp_path, monkeypatch, reply)
+    ae.main(["generate", "--config", str(cfg), "--providers", str(reg), "--out-dir", str(tmp_path),
+             "--max-spend", "1.0"])
+    report = json.loads(next(tmp_path.glob("rw_*.report.json")).read_text(encoding="utf-8"))
+    assert report["run_utc"] and report["run_utc"] <= report["created_utc"]
