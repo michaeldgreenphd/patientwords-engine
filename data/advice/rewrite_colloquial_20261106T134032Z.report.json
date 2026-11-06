@@ -1,0 +1,31 @@
+{
+ "task": "advice-stimuli-generation",
+ "mode": "rewrite",
+ "status": "pilot-unreviewed",
+ "model": "openrouter:anthropic/claude-sonnet-5",
+ "config": "data/advice/gen_config_colloquial_rewrite_20261106.json",
+ "source_stimuli": "data/advice/stimuli_20260827T141036Z.json",
+ "n_source_items": 56,
+ "n_generated": 53,
+ "n_flagged_for_review": 1,
+ "dropped_holdout_collisions": 3,
+ "calls": 7,
+ "unparseable_calls": 0,
+ "input_tokens": 10609,
+ "output_tokens": 7587,
+ "call_adjustments": [
+  {
+   "field": "temperature",
+   "requested": 0.7,
+   "sent": null,
+   "reason": "registry anthropic.omit_temperature: Claude Sonnet 5 rejects a non-default temperature with a 400 (claude-api skill, python/claude-api/sdk-upgrade.md; shared/model-migration.md: omitting it, or passing the default, is accepted); omitted, it samples at the API default, 1.0, as a request carrying 1.0 does (OpenRouter spelling of claude-sonnet-5)"
+  }
+ ],
+ "cost_usd": 0.280655,
+ "cost_basis": "tokens returned by the provider x the registry rate the elicit ceiling uses (_registry_rate; built-in table, then the fallback rate, when the registry has none)",
+ "max_spend_usd": 1.0,
+ "interrupted": null,
+ "run_utc": "2026-11-06T13:39:34Z",
+ "created_utc": "2026-11-06T13:40:32Z",
+ "engine_sha": "106eb85702f27f37b11b53fb5303fa392272dadf"
+}
