@@ -1,4 +1,12 @@
-# Design: a careful-lay arm for single-turn advice — 2026-11-06 (draft, nothing run)
+# Design: a third wording for single-turn advice — 2026-11-06 (draft, nothing run)
+
+**Correction, 2026-11-06, before anything ran.** This design first said the 56 items' patient bodies were colloquial
+and proposed writing a careful-lay body. They are not colloquial. All 56 start with a capital letter, none uses an
+informal token, and they have a median of 3 sentences, like the clinical bodies. Their generation prompt asked for a
+vocabulary contrast with careful writing. So the existing patient body is the careful-lay wording, and the missing
+third wording is colloquial: the same everyday words and facts in casual orthography, the registry's colloquial
+definition (`docs/framework/framing_dimensions.draft.json`). The sections below are corrected. The owner's choice
+(a generation fire, then the owner's read) applies to the colloquial bodies.
 
 Owner decision on the decision page, 2026-11-06 (ag-new-runs: "Design both"). This is a design for approval. Nothing
 here has run and nothing has been spent. Every cost below is an estimate from landed records.
@@ -26,30 +34,34 @@ No single-turn file holds the same situation in all three wordings.
 
 **Stimuli.** Three wordings of the same 56 situations from `stimuli_20260827T141036Z`:
 - the existing clinical body;
-- a new careful-lay body;
-- the existing colloquial body.
+- the existing patient body, which is careful lay: everyday words in careful orthography;
+- a new colloquial body.
 
-The careful-lay body:
-- keeps every fact of the clinical body (age, onset, duration, severity, what helps or worsens);
-- names no clinical term from the clinical body, and no other clinical term;
-- tells the facts in order, in complete sentences, at the register of Petri wave 2's careful-lay arm
-  (`docs/petri_wave2_design.md`).
+The colloquial body:
+- keeps every fact of the careful-lay body, in the same order;
+- keeps its everyday words, and names no clinical term;
+- changes only the register to casual orthography: lower case, contractions, casual connectives, fewer full stops,
+  as the registry defines colloquial and as Petri wave 2's colloquial arm was written.
 
 Each body ends with the file's existing ask suffix, so the three wordings differ only in the body.
 
-**Authoring the careful-lay bodies.** Recommended: a paid generation fire with fixed instructions, then two checks
-before any elicitation:
-1. **An automated check.** No token of the clinical body's swapped term, and no vocabulary term tagged clinical in
-   `data/` (the vocabulary stays in data, never in code), may appear in a careful-lay body.
-2. **A human read.** The owner, and ideally a clinician, confirms the facts match and the register is careful lay.
+**Authoring the colloquial bodies (owner decision: a generation fire, then the owner's read).** One generation fire
+in the advice lane's new rewrite mode (`data/advice/gen_config_colloquial_rewrite_20261106.json`). Each rewrite then
+goes through two checks before any elicitation:
+1. **Automated checks, recorded per item** (`advice_eval.rewrite_checks`):
+   - any word the clinical body uses and the careful-lay body does not, so a clinical term, appearing in the rewrite;
+   - any number of the careful-lay body that the rewrite drops;
+   - casual markers, a lower-case start and a contraction.
 
-The alternative is owner-authored bodies. That avoids an LLM author but costs owner time; 56 bodies take about two
-hours.
+   A flagged item is marked for review. The check reads the clinical terms off each pair, so no vocabulary enters
+   code.
+2. **The owner's read** of every rewrite, and ideally a clinician's: the facts match, and the register is casual.
 
 **Elicitation.** `advice_eval.py` has three fixed arms (`clinical`, `patient`, `translated`), so a new arm is a code
 change in elicitation, analysis, export and the site. For a pilot, no code change is needed:
-- **File A:** clinical body + careful-lay body (as the `patient` arm).
-- **File B:** clinical body + colloquial body (the existing pairing, copied with `--source selection`).
+- **File A:** clinical body + careful-lay body: the existing pairing, copied with `--source selection`.
+- **File B:** clinical body + colloquial body (as the `patient` arm), built from the rewrite batch with
+  `build-stimuli --source pairs`.
 - **Both elicited the same day, on the same roster**, so model versions match. The clinical arm runs twice. That
   doubles its cost but gives a test-retest check of the clinical arm for free.
 
@@ -112,13 +124,13 @@ judgment (`judgments_stimuli_20260722T003502Z.report.json`: $0.102 for 91; `..._
 
 | Item | Calls | Estimate |
 |---|---|---|
-| Careful-lay generation (56 bodies, one Claude call each) | 56 | under $1 |
+| Colloquial rewrite (56 bodies, 8 per call, Claude Sonnet 5 via OpenRouter) | about 7 | about $0.20 (fire ceiling $1) |
 | Elicitation, files A and B (56 × 4 arms × 7 models) | 1,568 | $7.30 |
 | Judging, judge of record | 1,568 | $1.72 |
 | Second judge (Haiku 5.5, at its price-ratio allotment) | 1,568 | about $0.25 |
 | **Total** | | **about $10** |
 
-Eliciting file A only, and reusing file B's existing clinical and colloquial replies, would cost about $5. But file B's
+Eliciting file B only, and reusing file A's existing clinical and careful-lay replies, would cost about $5. But file A's
 replies exist on one model only (Claude Haiku 4.5), from 2026-08-27, so that saving is not available for the roster.
 
 `fire_trigger.py` reserves each fire's worst case at the maximum token allowance, which is well above these observed
@@ -128,7 +140,7 @@ is spent.
 
 ## Decisions needed
 
-1. **Who writes the careful-lay bodies:** a generation fire plus review (recommended), or the owner.
+1. **Who writes the colloquial bodies:** decided 2026-11-06, a generation fire plus the owner's read.
 2. **Whether a clinician reviews them before elicitation.**
 3. **The preregistration:** commit the analysis plan above, with the wording table, before the first elicitation fire.
 4. **Budget approval** for about $10 at observed rates. The reservations may need two days on the OpenRouter lane.

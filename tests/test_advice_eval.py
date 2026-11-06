@@ -2460,3 +2460,115 @@ def test_automatic_dual_judging_keeps_primary_and_books_both_passes(
     judgments = ae._read_jsonl(Path(sidecars[0]["judgments_file"]))
     primary = [r for r in judgments if not ae.is_secondary_judge(r["judge_model"])]
     assert primary and len(primary) * 2 == len(judgments)
+
+
+# ---- register rewrite mode and generation cost (owner decisions 2026-11-06) -------------------------------------
+
+def _rewrite_setup(tmp_path, monkeypatch, reply):
+    stim = tmp_path / "stimuli_src.json"
+    stim.write_text(json.dumps({"items": [
+        {"id": "s#1", "clinical_body": "I have had alphaitis for 3 days. What should I do?",
+         "patient_body": "My side has hurt for 3 days. What should I do?"},
+        {"id": "s#2", "clinical_body": "I have betaosis since 2 weeks. What should I do?",
+         "patient_body": "My skin is itchy since 2 weeks. What should I do?"}]}), encoding="utf-8")
+    reg = tmp_path / "providers.json"
+    reg.write_text(json.dumps(REGISTRY), encoding="utf-8")
+    cfg = tmp_path / "gen_rewrite.json"
+    cfg.write_text(json.dumps({"mode": "rewrite", "register": "colloquial", "model": "fakeai", "stem": "rw",
+                               "source_stimuli": str(stim), "items_per_call": 8, "max_calls": 2,
+                               "prompt_template": "rewrite {items}"}), encoding="utf-8")
+    sent = []
+
+    def stub_compat(cfg_, model, system, user_text, max_tokens, temperature):
+        sent.append(user_text)
+        return reply, 1000, 500, {}
+
+    monkeypatch.setattr(ae, "_send_compat", stub_compat)
+    monkeypatch.setattr(ae, "_pace", lambda *a, **k: None)
+
+    class _Seal:  # the real Tier B seal hashes texts; a stub keeps these synthetic sentences out of it
+        @staticmethod
+        def is_holdout(text):
+            return "sealed" in text
+
+    monkeypatch.setattr(ae, "_load_tierb_split", lambda: _Seal)
+    return cfg, reg, sent
+
+
+def test_rewrite_checks_flag_leaked_terms_and_dropped_numbers():
+    c = ae.rewrite_checks("I have had alphaitis for 3 days.", "My side has hurt for 3 days.",
+                          "ok so my side hurts and its alphaitis i think")
+    assert c["clinical_terms_leaked"] == ["alphaitis"] and c["numbers_missing"] == ["3"]
+    assert c["starts_lower_case"] and c["needs_review"]
+    clean = ae.rewrite_checks("I have had alphaitis for 3 days.", "My side has hurt for 3 days.",
+                              "ok so my side's hurt for 3 days")
+    assert clean["clinical_terms_leaked"] == [] and clean["numbers_missing"] == [] and not clean["needs_review"]
+    assert clean["has_contraction"]
+
+
+def test_rewrite_mode_writes_pairs_with_checks_and_counted_cost(tmp_path, monkeypatch):
+    reply = json.dumps([{"id": "s#1", "text": "ok so my side's hurt for 3 days what do i do"},
+                        {"id": "s#2", "text": "my skin's itchy and its betaosis since 2 weeks what do i do"}])
+    cfg, reg, sent = _rewrite_setup(tmp_path, monkeypatch, reply)
+    ae.main(["generate", "--config", str(cfg), "--providers", str(reg), "--out-dir", str(tmp_path),
+             "--max-spend", "1.0"])
+    pairs_path = next(p for p in tmp_path.glob("rw_*.json") if not p.name.endswith(".report.json"))
+    pairs = json.loads(pairs_path.read_text(encoding="utf-8"))
+    assert [p["top_prompt"] for p in pairs] == ["I have had alphaitis for 3 days. What should I do?",
+                                               "I have betaosis since 2 weeks. What should I do?"]
+    assert pairs[0]["generation"]["source_ref"]["id"] == "s#1" and not pairs[0]["generation"]["checks"]["needs_review"]
+    assert pairs[1]["generation"]["checks"]["clinical_terms_leaked"] == ["betaosis"]
+    report = json.loads(pairs_path.with_suffix(".report.json").read_text(encoding="utf-8"))
+    # one call at the registry's default rate [0.5, 2.0] per Mtok: 1000 in, 500 out
+    assert report["cost_usd"] == round(1000 * 0.5 / 1e6 + 500 * 2.0 / 1e6, 6) and report["calls"] == 1
+    assert report["n_flagged_for_review"] == 1 and report["status"] == "pilot-unreviewed"
+    assert len(sent) == 1 and '"s#1"' in sent[0]
+
+
+def test_rewrite_mode_requires_a_ceiling(tmp_path, monkeypatch):
+    cfg, reg, _ = _rewrite_setup(tmp_path, monkeypatch, "[]")
+    with pytest.raises(SystemExit, match="max-spend"):
+        ae.main(["generate", "--config", str(cfg), "--providers", str(reg), "--out-dir", str(tmp_path)])
+
+
+def test_legacy_generate_sidecar_counts_cost(tmp_path, monkeypatch):
+    reg = tmp_path / "providers.json"
+    reg.write_text(json.dumps(REGISTRY), encoding="utf-8")
+    cfg = tmp_path / "gen.json"
+    cfg.write_text(json.dumps({"model": "fakeai", "stem": "g", "n_items": 1, "items_per_call": 1, "max_calls": 1,
+                               "prompt_template": "write {count} {topic} {exemplars}"}), encoding="utf-8")
+    monkeypatch.setattr(ae, "_send_compat", lambda *a, **k: (
+        json.dumps([{"clinical": "alpha one", "patient": "beta one"}]), 2000, 1000, {}))
+    monkeypatch.setattr(ae, "_pace", lambda *a, **k: None)
+    ae.main(["generate", "--config", str(cfg), "--providers", str(reg), "--out-dir", str(tmp_path),
+             "--max-spend", "1.0"])
+    report = json.loads(next(tmp_path.glob("g_*.report.json")).read_text(encoding="utf-8"))
+    assert report["cost_usd"] == round(2000 * 0.5 / 1e6 + 1000 * 2.0 / 1e6, 6)  # no longer always 0.0
+    assert report["max_spend_usd"] == 1.0
+
+
+def test_advice_workflow_generate_step_passes_the_ceiling():
+    wf_path = Path(__file__).resolve().parents[1] / ".github" / "workflows" / "advice_evaluation.yml"
+    wf = yaml.safe_load(wf_path.read_text(encoding="utf-8"))
+    gen = next(st for st in wf["jobs"]["advice"]["steps"] if "Generate stimuli" in (st.get("name") or ""))
+    assert gen["env"]["MAX_SPEND"] == "${{ needs.params.outputs.max_spend }}"
+    assert '--max-spend "$MAX_SPEND"' in gen["run"]
+
+
+def test_committed_colloquial_rewrite_config_reads_its_source():
+    root = Path(__file__).resolve().parents[1]
+    cfg = json.loads((root / "data/advice/gen_config_colloquial_rewrite_20261106.json").read_text(encoding="utf-8"))
+    assert cfg["mode"] == "rewrite" and cfg["register"] == "colloquial"
+    items = json.loads((root / cfg["source_stimuli"]).read_text(encoding="utf-8"))["items"]
+    assert len(items) == 56 and all(i.get(cfg["source_field"]) and i.get(cfg["pair_with"]) for i in items)
+    assert "{items}" in cfg["prompt_template"]
+
+
+def test_rewrite_mode_drops_holdout_collisions(tmp_path, monkeypatch):
+    reply = json.dumps([{"id": "s#1", "text": "ok so my side's hurt for 3 days sealed"},
+                        {"id": "s#2", "text": "my skin's itchy since 2 weeks what do i do"}])
+    cfg, reg, _ = _rewrite_setup(tmp_path, monkeypatch, reply)
+    ae.main(["generate", "--config", str(cfg), "--providers", str(reg), "--out-dir", str(tmp_path),
+             "--max-spend", "1.0"])
+    report = json.loads(next(tmp_path.glob("rw_*.report.json")).read_text(encoding="utf-8"))
+    assert report["n_generated"] == 1 and report["dropped_holdout_collisions"] == 1
