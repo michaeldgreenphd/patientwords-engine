@@ -2864,3 +2864,16 @@ def test_committed_colloquial_v2_config_keeps_the_v1_model_system_and_source():
     # no source already starts with a banned opener, so the rule can be met for every item
     assert not any(ae.style_checks("", i["patient_body"], {"banned_openers": v2["style_limits"]["banned_openers"]})["opener"]
                    for i in items)
+
+
+def test_style_checks_count_stops_without_a_following_space_but_not_decimals():
+    # Codex review of PR #148: "fine.now?yes" has two sentence stops with text after them; 38.4 has none
+    c = ae.style_checks("fine. now? yes", "fine.now?yes", STYLE)
+    assert c["inner_stops"] == 2 and not c["style_ok"]
+    assert ae.style_checks("it said 38.4 today", "it said 38.4 today", STYLE)["inner_stops"] == 0
+
+
+def test_style_checks_treat_typographic_apostrophes_as_ascii():
+    # Codex review of PR #148: "I’m" must compare equal to "im", not as the dropped words "i" and "m"
+    assert ae.style_checks("I’m fine", "im fine", STYLE)["words_dropped"] == []
+    assert ae.style_checks("I'm fine", "i’m fine", STYLE)["words_dropped"] == []

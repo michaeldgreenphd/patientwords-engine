@@ -1320,13 +1320,18 @@ def rewrite_checks(clinical: str, source: str, rewrite: str, min_len: int = 4) -
     }
 
 
-_INNER_STOP = re.compile(r"[.!?]+(?=\s+\S)")
+# a sentence stop with more words after it, with or without a space ("fine.now?yes" has two); a stop followed by a
+# digit is a decimal point ("38.4"), not a sentence stop (Codex review of PR #148)
+_INNER_STOP = re.compile(r"[.!?]+(?!\d)(?=\s*[A-Za-z])")
 _STYLE_LIMIT_KEYS = frozenset({"max_commas", "max_inner_stops", "banned_openers"})
 
 
 def _plain_words(text: str) -> list[str]:
     """Every word, lower-cased with apostrophes removed, so "I'm" and "im" compare equal."""
-    return [w.lower().replace("'", "").replace("\u2019", "").strip("-") for w in _WORD.findall(text)]
+    # typographic apostrophes become ASCII before tokenizing: _WORD would otherwise split "I\u2019m" into "I" and "m"
+    # (Codex review of PR #148)
+    text = text.replace("\u2019", "'").replace("\u2018", "'")
+    return [w.lower().replace("'", "").strip("-") for w in _WORD.findall(text)]
 
 
 def style_checks(source: str, rewrite: str, limits: dict) -> dict:
