@@ -1320,9 +1320,10 @@ def rewrite_checks(clinical: str, source: str, rewrite: str, min_len: int = 4) -
     }
 
 
-# a sentence stop with more words after it, with or without a space ("fine.now?yes" has two); a stop followed by a
-# digit is a decimal point ("38.4"), not a sentence stop (Codex review of PR #148)
-_INNER_STOP = re.compile(r"[.!?]+(?!\d)(?=\s*[A-Za-z])")
+# a sentence stop with more text after it: after a space, anything ("sick. 2 days" counts); with no space, a letter
+# ("fine.now?yes" has two). Only a digit straight after the stop is a decimal point ("38.4"), not a sentence stop
+# (Codex review of PR #148, two rounds)
+_INNER_STOP = re.compile(r"[.!?]+(?:(?=\s+\S)|(?=[A-Za-z]))")
 _STYLE_LIMIT_KEYS = frozenset({"max_commas", "max_inner_stops", "banned_openers"})
 
 

@@ -2877,3 +2877,11 @@ def test_style_checks_treat_typographic_apostrophes_as_ascii():
     # Codex review of PR #148: "I’m" must compare equal to "im", not as the dropped words "i" and "m"
     assert ae.style_checks("I’m fine", "im fine", STYLE)["words_dropped"] == []
     assert ae.style_checks("I'm fine", "i’m fine", STYLE)["words_dropped"] == []
+
+
+def test_style_checks_count_stops_before_a_sentence_that_starts_with_a_number():
+    # Codex review of PR #148, second round: "sick. 2 days now. 3 times" has two inner stops; 38.4 still has none
+    t = "i feel sick. 2 days now. 3 times today should i worry?"
+    c = ae.style_checks(t, t, STYLE)
+    assert c["inner_stops"] == 2 and not c["style_ok"]
+    assert ae.style_checks("it was 38.4 today", "it was 38.4 today", STYLE)["inner_stops"] == 0
