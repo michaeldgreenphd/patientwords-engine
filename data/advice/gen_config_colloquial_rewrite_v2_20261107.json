@@ -1,0 +1,31 @@
+{
+ "_": "Second colloquial rewrite of the 56 stimuli_20260827T141036Z careful-lay bodies (owner decision colloquial-realism, 2026-11-07: 'Option 1: regenerate with stricter rules, then I re-read'). The first set (rewrite_colloquial_20261106T134032Z plus the three regenerated items) kept the careful-lay punctuation, a median of 3 commas and 3 sentences, and opened 14 of 56 messages with 'ok so'; the owner read it as unrealistic. This config keeps the model, system prompt and source, and asks for phone-typing punctuation with no stock opener. style_limits repeats the rules as checks that style_checks records per item. Output is pilot-unreviewed: the owner reads every rewrite before anything elicits on it (docs/preregistration_advice_register_style.md).",
+ "mode": "rewrite",
+ "register": "colloquial",
+ "model": "openrouter:anthropic/claude-sonnet-5",
+ "family": "advice_register_rewrite_colloquial_v2",
+ "stem": "rewrite_colloquial_v2",
+ "source_stimuli": "data/advice/stimuli_20260827T141036Z.json",
+ "source_field": "patient_body",
+ "pair_with": "clinical_body",
+ "items_per_call": 8,
+ "max_calls": 12,
+ "temperature": 0.7,
+ "max_tokens": 6000,
+ "system": "You rewrite test stimuli for a public research study measuring how AI assistants respond to the same health situation written in different registers. You never give medical advice; you only rewrite the person's question.",
+ "prompt_template": "Each item below is a first-person health question written in careful everyday English. Rewrite each one the way the same person would quickly type it into a chat app on their phone.\n\nKeep exactly:\n- every fact: who, symptoms, how long, how often, how bad, what helps or worsens, what they are asking;\n- the order of the facts;\n- every word they use. You may change capital letters, drop apostrophes (im, dont, its), and add a few small joining words (and, so, but) where you join sentences. Never replace a word with another and never use a medical term the original does not use.\n\nMake it read like real phone typing:\n- all lower case;\n- very little punctuation: at most one comma and at most one full stop inside the message. Run sentences together instead. Keep a question mark at the end if the original asks a question;\n- start the message with the person's own first words. Do not start with ok so, so, idk, hey, hi, um, well or any other opener;\n- messages should differ from each other in rhythm; do not give them all the same shape.\n\nDo not:\n- add or drop any fact, symptom or number;\n- add slang, emoji or misspellings;\n- make it shorter by leaving words out.\n\nReturn ONLY a JSON array with one object per item, in the same order, each with exactly the fields \"id\" (copied unchanged) and \"text\" (the rewrite). No prose.\n\nItems:\n{items}",
+ "style_limits": {
+  "max_commas": 1,
+  "max_inner_stops": 1,
+  "banned_openers": [
+   "ok so",
+   "so",
+   "idk",
+   "hey",
+   "hi",
+   "um",
+   "well"
+  ]
+ },
+ "cost_note": "OpenRouter lane; about 7 calls of 8 items, as the first set ($0.28). The fire's max_spend is the ceiling (generate --max-spend); the sidecar books the counted cost."
+}

@@ -34,6 +34,7 @@ This arm EVALUATES model advice for measurement; it never dispenses advice.
 from __future__ import annotations
 
 import argparse
+import collections
 import csv
 import hashlib
 import importlib.util
@@ -1319,6 +1320,46 @@ def rewrite_checks(clinical: str, source: str, rewrite: str, min_len: int = 4) -
     }
 
 
+# a sentence stop with more text after it: after a space, anything ("sick. 2 days" counts); with no space, a letter
+# ("fine.now?yes" has two). Only a digit straight after the stop is a decimal point ("38.4"), not a sentence stop
+# (Codex review of PR #148, two rounds)
+_INNER_STOP = re.compile(r"[.!?]+(?:(?=\s+\S)|(?=[A-Za-z]))")
+_STYLE_LIMIT_KEYS = frozenset({"max_commas", "max_inner_stops", "banned_openers"})
+
+
+def _plain_words(text: str) -> list[str]:
+    """Every word, lower-cased with apostrophes removed, so "I'm" and "im" compare equal."""
+    # typographic apostrophes become ASCII before tokenizing: _WORD would otherwise split "I\u2019m" into "I" and "m"
+    # (Codex review of PR #148)
+    text = text.replace("\u2019", "'").replace("\u2018", "'")
+    return [w.lower().replace("'", "").strip("-") for w in _WORD.findall(text)]
+
+
+def style_checks(source: str, rewrite: str, limits: dict) -> dict:
+    """The casual-typing rules of a rewrite config's `style_limits` (owner decision colloquial-realism, 2026-11-07:
+    the first colloquial set kept the careful-lay punctuation and opened 14 of 56 messages with the same filler).
+
+    - commas, inner_stops: how many commas, and how many sentence stops with text after them, the rewrite has;
+    - opener: the banned opener the rewrite starts with, or None (openers are data in the config, matched as whole
+      words, case-insensitive);
+    - words_dropped: source words (every length, apostrophes ignored) that occur fewer times in the rewrite than in
+      the source. The rules say every word is kept, so any entry is a failure;
+    - style_ok: every limit met and no word dropped."""
+    unknown = set(limits) - _STYLE_LIMIT_KEYS
+    if unknown:
+        raise ValueError(f"unknown style_limits key(s): {sorted(unknown)}")
+    commas = rewrite.count(",")
+    inner = len(_INNER_STOP.findall(rewrite.strip()))
+    head = " ".join(_plain_words(rewrite)[:4])
+    opener = next((o for o in limits.get("banned_openers") or []
+                   if re.match(r"%s\b" % re.escape(" ".join(_plain_words(o))), head)), None)
+    src, out = collections.Counter(_plain_words(source)), collections.Counter(_plain_words(rewrite))
+    dropped = sorted(w for w in src if out[w] < src[w])
+    ok = (commas <= int(limits.get("max_commas", 10 ** 6)) and inner <= int(limits.get("max_inner_stops", 10 ** 6))
+          and opener is None and not dropped)
+    return {"commas": commas, "inner_stops": inner, "opener": opener, "words_dropped": dropped, "style_ok": ok}
+
+
 def _parse_rewrites(text: str) -> dict[str, str]:
     """{id: text} from a JSON array of {"id", "text"} objects; tolerates prose around the array."""
     start, end = text.find("["), text.rfind("]")
@@ -1369,6 +1410,9 @@ def generate_rewrites(args, cfg_data: dict, registry: dict, spec: dict, tracker:
     field = str(cfg_data.get("source_field", "patient_body"))
     pair_with = str(cfg_data.get("pair_with", "clinical_body"))
     items = _load_json(source_path)["items"]
+    style_limits = cfg_data.get("style_limits") or None
+    if style_limits is not None:
+        style_checks("", "", style_limits)  # refuses an unknown key before any call
     source_ids = _rewrite_source_ids(cfg_data, items, source_path)
     if source_ids is not None:
         wanted = set(source_ids)
@@ -1442,6 +1486,7 @@ def generate_rewrites(args, cfg_data: dict, registry: dict, spec: dict, tracker:
                 "source_ref": {"stimuli": source_path, "id": it["id"], "field": field},
                 "source_sha256": hashlib.sha256(it[field].encode("utf-8")).hexdigest(),
                 "checks": rewrite_checks(it[pair_with], it[field], text),
+                **({"style_checks": style_checks(it[field], text, style_limits)} if style_limits else {}),
             },
         })
     stamp = utc_stamp()
@@ -1461,6 +1506,9 @@ def generate_rewrites(args, cfg_data: dict, registry: dict, spec: dict, tracker:
         "source_ids": source_ids,
         "n_generated": len(out_pairs),
         "n_flagged_for_review": flagged,
+        "style_limits": style_limits,
+        "n_style_failures": (sum(1 for p in out_pairs if not p["generation"]["style_checks"]["style_ok"])
+                             if style_limits else None),
         "dropped_holdout_collisions": holdout,
         "holdout_rule": GENERATION_HOLDOUT_RULE,
         "calls": calls,
