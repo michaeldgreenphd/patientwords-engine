@@ -2795,3 +2795,72 @@ def test_committed_colloquial_regen_config_matches_the_original_but_its_items():
     assert set(regen["source_ids"]) <= items and len(regen["source_ids"]) == 3
     landed = json.loads((root / "data/advice/rewrite_colloquial_20261106T134032Z.json").read_text(encoding="utf-8"))
     assert not set(regen["source_ids"]) & {p["generation"]["source_ref"]["id"] for p in landed}
+
+
+# ---- casual-typing style checks (owner decision colloquial-realism, 2026-11-07) -----------------------------------
+
+STYLE = {"max_commas": 1, "max_inner_stops": 1, "banned_openers": ["ok so", "so", "idk"]}
+
+
+def test_style_checks_flag_openers_punctuation_and_dropped_words():
+    src = "I'm 35. About six weeks now my heart keeps racing, and my hands shake. Should I worry?"
+    ok = ae.style_checks(src, "im 35 and about six weeks now my heart keeps racing and my hands shake should i worry?",
+                         STYLE)
+    assert ok == {"commas": 0, "inner_stops": 0, "opener": None, "words_dropped": [], "style_ok": True}
+    opener = ae.style_checks(src, "ok so im 35 about six weeks now my heart keeps racing and my hands shake should i "
+                                  "worry?", STYLE)
+    assert opener["opener"] == "ok so" and not opener["style_ok"]
+    punct = ae.style_checks(src, "im 35, about six weeks now, my heart keeps racing. and my hands shake. should i worry?",
+                            STYLE)
+    assert punct["commas"] == 2 and punct["inner_stops"] == 2 and not punct["style_ok"]
+    dropped = ae.style_checks(src, "im 35 about six weeks my heart keeps racing and my hands shake should i worry?", STYLE)
+    assert dropped["words_dropped"] == ["now"] and not dropped["style_ok"]
+
+
+def test_style_checks_opener_is_a_whole_word():
+    # "so" is banned as an opener, not as the start of a word such as "sore"
+    assert ae.style_checks("Sore throat.", "sore throat", STYLE)["opener"] is None
+
+
+def test_style_checks_refuse_an_unknown_limit():
+    with pytest.raises(ValueError, match="unknown style_limits"):
+        ae.style_checks("a", "a", {"max_comma": 1})
+
+
+def test_rewrite_mode_records_style_checks_when_configured(tmp_path, monkeypatch):
+    reply = json.dumps([{"id": "s#1", "text": "my side has hurt for 3 days what should i do?"},
+                        {"id": "s#2", "text": "ok so my skin is itchy since 2 weeks. what should i do?"}])
+    cfg, reg, _ = _rewrite_setup(tmp_path, monkeypatch, reply)
+    _rewrite_cfg(tmp_path, style_limits=STYLE)
+    ae.main(["generate", "--config", str(cfg), "--providers", str(reg), "--out-dir", str(tmp_path),
+             "--max-spend", "1.0"])
+    pairs_path = next(p for p in tmp_path.glob("rw_*.json") if not p.name.endswith(".report.json"))
+    pairs = json.loads(pairs_path.read_text(encoding="utf-8"))
+    assert pairs[0]["generation"]["style_checks"]["style_ok"]
+    assert pairs[1]["generation"]["style_checks"]["opener"] == "ok so"
+    report = json.loads(pairs_path.with_suffix(".report.json").read_text(encoding="utf-8"))
+    assert report["n_style_failures"] == 1 and report["style_limits"] == STYLE
+
+
+def test_rewrite_mode_refuses_an_unknown_style_limit_before_any_call(tmp_path, monkeypatch):
+    cfg, reg, sent = _rewrite_setup(tmp_path, monkeypatch, "[]")
+    _rewrite_cfg(tmp_path, style_limits={"max_comas": 1})
+    with pytest.raises(ValueError, match="unknown style_limits"):
+        ae.main(["generate", "--config", str(cfg), "--providers", str(reg), "--out-dir", str(tmp_path),
+                 "--max-spend", "1.0"])
+    assert sent == []
+
+
+def test_committed_colloquial_v2_config_keeps_the_v1_model_system_and_source():
+    root = Path(__file__).resolve().parents[1]
+    v1 = json.loads((root / "data/advice/gen_config_colloquial_rewrite_20261106.json").read_text(encoding="utf-8"))
+    v2 = json.loads((root / "data/advice/gen_config_colloquial_rewrite_v2_20261107.json").read_text(encoding="utf-8"))
+    for key in ("mode", "register", "model", "system", "source_stimuli", "source_field", "pair_with", "temperature",
+                "max_tokens", "items_per_call", "max_calls"):
+        assert v1[key] == v2[key], key
+    assert v2["stem"] != v1["stem"] and "{items}" in v2["prompt_template"]
+    ae.style_checks("", "", v2["style_limits"])  # every limit key is known
+    items = json.loads((root / v2["source_stimuli"]).read_text(encoding="utf-8"))["items"]
+    # no source already starts with a banned opener, so the rule can be met for every item
+    assert not any(ae.style_checks("", i["patient_body"], {"banned_openers": v2["style_limits"]["banned_openers"]})["opener"]
+                   for i in items)

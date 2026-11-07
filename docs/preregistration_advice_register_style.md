@@ -38,7 +38,14 @@ pattern, and no result here licenses a statement about casual word choice or uno
   (`data/advice/gen_config_colloquial_rewrite_20261106.json`, 53 items). It keeps the careful-lay body's words,
   facts and order, and changes only the orthography, as the registry defines colloquial
   (`docs/framework/framing_dimensions.draft.json`).
-- **The three regenerated items.** That run's holdout guard was the bare Tier B hash, which marks about 1 in 10 texts
+- **The second set, which replaces the first (owner decision colloquial-realism, 2026-11-07).** In the owner's read the
+  first set did not look like real typing: 14 of 56 opened with "ok so", and the rewrites kept the careful-lay
+  punctuation (a median of 3 commas and 3 sentences). A second generation
+  (`data/advice/gen_config_colloquial_rewrite_v2_20261107.json`, same model, system prompt and source) asks for phone
+  typing: lower case, at most one comma and one full stop inside a message, no stock opener, and every word kept.
+  `style_checks` records each rule per item, and the owner reads the second set as the first. File B is built from
+  the second set; the first set stays in the archive and is not elicited.
+- **The three regenerated items (first set).** That run's holdout guard was the bare Tier B hash, which marks about 1 in 10 texts
   of any content, and it dropped three rewrites (items 14, 37 and 41), none of them a registered holdout phrase.
   After the guard was corrected, these three are written by one more fire under the same model, system prompt and
   template (`data/advice/gen_config_colloquial_rewrite_regen_20261107.json`). They were written in a call of their
