@@ -726,6 +726,37 @@ def _load_tierb_split():
     return mod
 
 
+GENERATION_HOLDOUT_RULE = ("tierb_split.sealed_pair(None, None, text): the text is a registered Tier B holdout phrase "
+                           "(Amendment 3, sealed anywhere)")
+
+
+def _generation_seal(tierb, args):
+    """The holdout guard for newly generated text: a function text -> True when the text is sealed.
+
+    A generated or rewritten text belongs to no batch, so of sealed_pair's three rules only the first applies: the
+    text is a registered holdout phrase (Amendment 3, sealed anywhere). Until 2026-11-07 both generate paths called
+    tierb_split.is_holdout, the bare Amendment 1 hash (sha1 mod 10 == 0), on every text. That hash assigns Tier B
+    pairs to the split; on text from outside a Tier B batch it marks about 1 in 10 texts regardless of content, so
+    those runs dropped about 10% of texts (owner decision colloquial-drops, 2026-11-07: "Fix the guard").
+
+    It fails closed before any paid call: the seal context is evaluated once here, and a SealError (no Tier B start
+    in the dashboard, an unreadable Tier B batch file, an empty phrase set) refuses the run with nothing sent. The
+    dashboard and batch files default to this repository's copies (sealed_pair's defaults)."""
+    dash = getattr(args, "dashboard", None)
+    sim = getattr(args, "simulated_dir", None)
+
+    def sealed(text: str) -> bool:
+        return bool(tierb.sealed_pair(None, None, text, dashboard_path=dash, simulated_dir=sim))
+
+    try:
+        sealed(" ")  # evaluates (and caches) the seal context; a blank text is never a registered phrase
+    except tierb.SealError as exc:
+        raise SystemExit(f"the holdout seal cannot be applied ({exc}); no call was sent and nothing was spent. On a "
+                         "stale checkout the dashboard may carry no tierb.start_utc - point --dashboard at the "
+                         "ops-truth branch copy and --simulated-dir at the batch files.") from exc
+    return sealed
+
+
 def _stimulus(item_id, clinical_text, patient_text, ask_suffix, source_ref=None, meta=None):
     def assemble(body: str) -> str:
         return f"{body.rstrip()} {ask_suffix}".strip()
@@ -1303,6 +1334,24 @@ def _parse_rewrites(text: str) -> dict[str, str]:
     return out
 
 
+def _rewrite_source_ids(cfg_data: dict, items: list, source_path: str) -> list[str] | None:
+    """The config's optional `source_ids`: rewrite only these items of the source file (owner decision
+    colloquial-drops, 2026-11-07: regenerate the three items the old hash guard dropped). None when absent. Refused
+    before any call when it is not a non-empty list of distinct strings, or names an id the source file lacks."""
+    ids = cfg_data.get("source_ids")
+    if ids is None:
+        return None
+    if not isinstance(ids, list) or not ids or not all(isinstance(i, str) and i for i in ids):
+        raise SystemExit("source_ids must be a non-empty list of item id strings")
+    if len(set(ids)) != len(ids):
+        raise SystemExit("source_ids repeats an id")
+    known = {str(it.get("id")) for it in items}
+    unknown = [i for i in ids if i not in known]
+    if unknown:
+        raise SystemExit(f"source_ids names {len(unknown)} id(s) not in {source_path}: {unknown}")
+    return list(ids)
+
+
 def generate_rewrites(args, cfg_data: dict, registry: dict, spec: dict, tracker: CostTracker) -> Path:
     """Register rewrite (owner decision 2026-11-06, structured-lay-go): recast one field of each item of an existing
     stimuli file in another register, keeping its words and facts, so a third wording of the same situations can be
@@ -1310,8 +1359,9 @@ def generate_rewrites(args, cfg_data: dict, registry: dict, spec: dict, tracker:
     the other side of each output pair), `items_per_call`, `max_calls`, `prompt_template` with {items} (a JSON array
     of {"id", "text"}), the model's reply a JSON array of {"id", "text"}. Output: a pairs file (top_prompt = the
     `pair_with` field, bottom_prompt = the rewrite) that `build-stimuli --source pairs` consumes, each pair carrying
-    its source item id, the source text's sha256 and `rewrite_checks`. The batch is pilot-unreviewed: nothing
-    consumes it until the owner reviews it. A rewrite run requires --max-spend."""
+    its source item id, the source text's sha256 and `rewrite_checks`. Optional `source_ids` limits the run to those
+    items. A pair is dropped when either text is a registered holdout phrase (_generation_seal). The batch is
+    pilot-unreviewed: nothing consumes it until the owner reviews it. A rewrite run requires --max-spend."""
     if getattr(args, "max_spend", None) is None:
         raise SystemExit("a rewrite run is paid: pass --max-spend (the fire's max_spend)")
     run_utc = utc_now_iso()
@@ -1319,6 +1369,10 @@ def generate_rewrites(args, cfg_data: dict, registry: dict, spec: dict, tracker:
     field = str(cfg_data.get("source_field", "patient_body"))
     pair_with = str(cfg_data.get("pair_with", "clinical_body"))
     items = _load_json(source_path)["items"]
+    source_ids = _rewrite_source_ids(cfg_data, items, source_path)
+    if source_ids is not None:
+        wanted = set(source_ids)
+        items = [it for it in items if str(it.get("id")) in wanted]
     per_call = int(cfg_data.get("items_per_call", 8))
     max_calls = int(cfg_data.get("max_calls", 20))
     max_tokens = int(cfg_data.get("max_tokens", 4000))
@@ -1330,7 +1384,7 @@ def generate_rewrites(args, cfg_data: dict, registry: dict, spec: dict, tracker:
     # review of PR #146: the tracker had been sized from the config's max_tokens default, not the sent budget)
     tracker.max_output_tokens = sent_max
     tracker.output_budget[spec["spec"]] = sent_max
-    tierb = _load_tierb_split()
+    sealed = _generation_seal(_load_tierb_split(), args)
     pending = [it for it in items if str(it.get(field) or "").strip() and str(it.get(pair_with) or "").strip()]
     done: dict[str, str] = {}
     calls = tokens_in = tokens_out = unparseable = 0
@@ -1374,7 +1428,7 @@ def generate_rewrites(args, cfg_data: dict, registry: dict, spec: dict, tracker:
         text = done.get(it["id"])
         if text is None:
             continue
-        if tierb.is_holdout(text) or tierb.is_holdout(it[pair_with]):
+        if sealed(text) or sealed(it[pair_with]):
             holdout += 1
             continue
         out_pairs.append({
@@ -1404,9 +1458,11 @@ def generate_rewrites(args, cfg_data: dict, registry: dict, spec: dict, tracker:
         "config": str(args.config),
         "source_stimuli": source_path,
         "n_source_items": len(pending),
+        "source_ids": source_ids,
         "n_generated": len(out_pairs),
         "n_flagged_for_review": flagged,
         "dropped_holdout_collisions": holdout,
+        "holdout_rule": GENERATION_HOLDOUT_RULE,
         "calls": calls,
         "unparseable_calls": unparseable,
         "input_tokens": tokens_in,
@@ -1444,8 +1500,9 @@ def generate(args) -> Path:
     = everyday register) so `build-stimuli --source pairs` consumes it
     unchanged. The batch is ISOLATED: its own family tag and stem, a sidecar
     marked pilot-unreviewed, and nothing consumes it until the owner reviews.
-    Tier B holdout texts are refused on the astronomically-unlikely collision
-    path, same guard as build-stimuli."""
+    A pair is dropped when either text is a registered Tier B holdout phrase
+    (_generation_seal; before 2026-11-07 this was the bare hash, which dropped
+    about 1 in 5 pairs)."""
     cfg_data = _load_json(args.config)
     registry = _load_providers(args.providers)
     spec = _resolve_spec(str(cfg_data["model"]), registry)
@@ -1479,7 +1536,7 @@ def generate(args) -> Path:
                 if value:
                     seen.add(_norm_prompt(value))
 
-    tierb = _load_tierb_split()
+    sealed = _generation_seal(_load_tierb_split(), args)
     out_pairs: list[dict] = []
     calls = tokens_in = tokens_out = 0
     dropped_dupe = dropped_holdout = unparseable = 0
@@ -1520,7 +1577,7 @@ def generate(args) -> Path:
             if key_c in seen or key_p in seen:
                 dropped_dupe += 1
                 continue
-            if tierb.is_holdout(item["clinical"]) or tierb.is_holdout(item["patient"]):
+            if sealed(item["clinical"]) or sealed(item["patient"]):
                 dropped_holdout += 1
                 continue
             seen.add(key_c)
@@ -1569,6 +1626,7 @@ def generate(args) -> Path:
         "usage_unavailable": usage_unavailable,
         "dropped_duplicates": dropped_dupe,
         "dropped_holdout_collisions": dropped_holdout,
+        "holdout_rule": GENERATION_HOLDOUT_RULE,
         "unparseable_calls": unparseable,
         "created_utc": utc_now_iso(),
         "engine_sha": engine_sha(),
@@ -3261,6 +3319,10 @@ def build_parser() -> argparse.ArgumentParser:
     g.add_argument("--max-spend", type=float, default=None,
                    help="USD ceiling (the fire's max_spend); required for a rewrite config. Cost is counted "
                         "and written to the sidecar either way")
+    g.add_argument("--dashboard", default=None,
+                   help="ops/dashboard.json for the holdout seal (default: this repository's copy)")
+    g.add_argument("--simulated-dir", default=None,
+                   help="batch files for the holdout seal (default: this repository's data/simulated)")
     g.add_argument("--out-dir", default=DEFAULT_OUT_DIR)
 
     e = sub.add_parser("elicit", help="paid: sample advice per stimulus x arm x model")
