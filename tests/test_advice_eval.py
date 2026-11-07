@@ -2486,10 +2486,13 @@ def _rewrite_setup(tmp_path, monkeypatch, reply):
     monkeypatch.setattr(ae, "_send_compat", stub_compat)
     monkeypatch.setattr(ae, "_pace", lambda *a, **k: None)
 
-    class _Seal:  # the real Tier B seal hashes texts; a stub keeps these synthetic sentences out of it
+    class _Seal:  # a stub seal: these synthetic sentences need no dashboard; "sealed" marks a registered phrase
+        class SealError(RuntimeError):
+            pass
+
         @staticmethod
-        def is_holdout(text):
-            return "sealed" in text
+        def sealed_pair(batch, index, text, **_kw):
+            return "sealed" in (text or "")
 
     monkeypatch.setattr(ae, "_load_tierb_split", lambda: _Seal)
     return cfg, reg, sent
@@ -2684,3 +2687,111 @@ def test_legacy_generate_without_reported_usage_books_worst_case(tmp_path, monke
     report = json.loads(next(tmp_path.glob("g_*.report.json")).read_text(encoding="utf-8"))
     assert len(calls) == 1 and report["usage_unavailable"] is True
     assert report["cost_usd"] >= 1000 * 2.0 / 1e6
+
+
+# ---- generation holdout guard: the registered-phrase rule, not the bare hash (owner decision colloquial-drops,
+# 2026-11-07) ------------------------------------------------------------------------------------------------
+
+def _hash_bucket_text(prefix):
+    """A text whose sha1 is 0 mod 10: what the old bare-hash guard dropped although it is no registered phrase."""
+    n = 0
+    while True:
+        cand = f"{prefix} {n}"
+        if int(hashlib.sha1(cand.encode()).hexdigest(), 16) % 10 == 0:
+            return cand
+        n += 1
+
+
+def _unstub_seal(monkeypatch):
+    monkeypatch.setattr(ae, "_load_tierb_split", _REAL_LOAD_TIERB_SPLIT)
+
+
+_REAL_LOAD_TIERB_SPLIT = ae._load_tierb_split
+
+
+def test_rewrite_keeps_a_hash_bucket_text_and_drops_a_registered_phrase(tmp_path, monkeypatch):
+    # regression: run 42227178735 dropped 3 of 56 rewrites (items 14, 37, 41) because their text hashed into the
+    # Tier B bucket, though none was a registered holdout phrase
+    _seal_repo(tmp_path)
+    bucket = _hash_bucket_text("ok so my side hurt for 3 days")
+    reply = json.dumps([{"id": "s#1", "text": bucket}, {"id": "s#2", "text": _holdout_phrase()}])
+    cfg, reg, sent = _rewrite_setup(tmp_path, monkeypatch, reply)
+    _unstub_seal(monkeypatch)
+    ae.main(["generate", "--config", str(cfg), "--providers", str(reg), "--out-dir", str(tmp_path),
+             "--max-spend", "1.0", "--dashboard", str(tmp_path / "ops" / "dashboard.json"),
+             "--simulated-dir", str(tmp_path / "simulated")])
+    pairs_path = next(p for p in tmp_path.glob("rw_*.json") if not p.name.endswith(".report.json"))
+    pairs = json.loads(pairs_path.read_text(encoding="utf-8"))
+    assert [p["bottom_prompt"] for p in pairs] == [bucket]
+    report = json.loads(pairs_path.with_suffix(".report.json").read_text(encoding="utf-8"))
+    assert report["dropped_holdout_collisions"] == 1 and report["holdout_rule"] == ae.GENERATION_HOLDOUT_RULE
+
+
+def test_rewrite_refuses_before_any_call_when_the_seal_cannot_be_applied(tmp_path, monkeypatch):
+    _seal_repo(tmp_path, start_utc=None)
+    cfg, reg, sent = _rewrite_setup(tmp_path, monkeypatch, "[]")
+    _unstub_seal(monkeypatch)
+    with pytest.raises(SystemExit, match="holdout seal cannot be applied"):
+        ae.main(["generate", "--config", str(cfg), "--providers", str(reg), "--out-dir", str(tmp_path),
+                 "--max-spend", "1.0", "--dashboard", str(tmp_path / "ops" / "dashboard.json"),
+                 "--simulated-dir", str(tmp_path / "simulated")])
+    assert sent == [] and not list(tmp_path.glob("rw_*.json"))
+
+
+def test_legacy_generate_keeps_a_hash_bucket_pair(tmp_path, monkeypatch):
+    _seal_repo(tmp_path)
+    reg = tmp_path / "providers.json"
+    reg.write_text(json.dumps(REGISTRY), encoding="utf-8")
+    cfg = tmp_path / "gen.json"
+    cfg.write_text(json.dumps({"model": "fakeai", "stem": "g", "n_items": 2, "items_per_call": 2, "max_calls": 1,
+                               "prompt_template": "write {count} {topic} {exemplars}"}), encoding="utf-8")
+    bucket = _hash_bucket_text("alpha clinical text")
+    monkeypatch.setattr(ae, "_send_compat", lambda *a, **k: (
+        json.dumps([{"clinical": bucket, "patient": "beta one"},
+                    {"clinical": _holdout_phrase(), "patient": "beta two"}]), 2000, 1000,
+        {"usage": {"prompt_tokens": 2000, "completion_tokens": 1000}}))
+    monkeypatch.setattr(ae, "_pace", lambda *a, **k: None)
+    ae.main(["generate", "--config", str(cfg), "--providers", str(reg), "--out-dir", str(tmp_path),
+             "--max-spend", "1.0", "--dashboard", str(tmp_path / "ops" / "dashboard.json"),
+             "--simulated-dir", str(tmp_path / "simulated")])
+    pairs = json.loads(next(p for p in tmp_path.glob("g_*.json") if not p.name.endswith(".report.json"))
+                       .read_text(encoding="utf-8"))
+    assert [p["top_prompt"] for p in pairs] == [bucket]
+    report = json.loads(next(tmp_path.glob("g_*.report.json")).read_text(encoding="utf-8"))
+    assert report["dropped_holdout_collisions"] == 1 and report["holdout_rule"] == ae.GENERATION_HOLDOUT_RULE
+
+
+def test_rewrite_source_ids_limits_the_items_sent(tmp_path, monkeypatch):
+    reply = json.dumps([{"id": "s#2", "text": "my skin's itchy since 2 weeks what do i do"}])
+    cfg, reg, sent = _rewrite_setup(tmp_path, monkeypatch, reply)
+    _rewrite_cfg(tmp_path, source_ids=["s#2"])
+    ae.main(["generate", "--config", str(cfg), "--providers", str(reg), "--out-dir", str(tmp_path),
+             "--max-spend", "1.0"])
+    assert len(sent) == 1 and '"s#2"' in sent[0] and '"s#1"' not in sent[0]
+    report = json.loads(next(tmp_path.glob("rw_*.report.json")).read_text(encoding="utf-8"))
+    assert report["source_ids"] == ["s#2"] and report["n_source_items"] == 1 and report["n_generated"] == 1
+
+
+@pytest.mark.parametrize("ids, match", [(["s#9"], "not in"), (["s#1", "s#1"], "repeats"), ([], "non-empty"),
+                                        ("s#1", "non-empty")])
+def test_rewrite_source_ids_refused_before_any_call(tmp_path, monkeypatch, ids, match):
+    cfg, reg, sent = _rewrite_setup(tmp_path, monkeypatch, "[]")
+    _rewrite_cfg(tmp_path, source_ids=ids)
+    with pytest.raises(SystemExit, match=match):
+        ae.main(["generate", "--config", str(cfg), "--providers", str(reg), "--out-dir", str(tmp_path),
+                 "--max-spend", "1.0"])
+    assert sent == []
+
+
+def test_committed_colloquial_regen_config_matches_the_original_but_its_items():
+    root = Path(__file__).resolve().parents[1]
+    orig = json.loads((root / "data/advice/gen_config_colloquial_rewrite_20261106.json").read_text(encoding="utf-8"))
+    regen = json.loads((root / "data/advice/gen_config_colloquial_rewrite_regen_20261107.json")
+                       .read_text(encoding="utf-8"))
+    # the three items are written under the original's instructions: only the note, items, call cap and cost note move
+    differ = {k for k in set(orig) | set(regen) if orig.get(k) != regen.get(k)}
+    assert differ == {"_", "source_ids", "max_calls", "cost_note"}
+    items = {i["id"] for i in json.loads((root / regen["source_stimuli"]).read_text(encoding="utf-8"))["items"]}
+    assert set(regen["source_ids"]) <= items and len(regen["source_ids"]) == 3
+    landed = json.loads((root / "data/advice/rewrite_colloquial_20261106T134032Z.json").read_text(encoding="utf-8"))
+    assert not set(regen["source_ids"]) & {p["generation"]["source_ref"]["id"] for p in landed}
