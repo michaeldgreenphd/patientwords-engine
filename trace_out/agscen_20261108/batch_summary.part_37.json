@@ -1,0 +1,508 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 37,
+  "pairs_requested": 4,
+  "completed": true,
+  "screen_targets": 0.02,
+  "environment": {
+    "python": "3.11.18",
+    "engine_sha": "ae43f2f3debb",
+    "runner_image": "20261101.186.1"
+  },
+  "results": [
+    {
+      "index": 37,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "For one hour I have had substernal chest pressure and dyspnea, so I need to go to the",
+        "patient": "For one hour I have had pressing in my chest center and breath not coming full, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.316,
+        "patient": 0.063
+      },
+      "language_penalty": -0.253,
+      "clinical_mass": {
+        "clinical": 0.4185,
+        "patient": 0.3242
+      },
+      "error_share": {
+        "clinical": 0.1215,
+        "patient": 0.1175
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.170)",
+        "patient": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.072)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ER",
+        "observed_clinical": [
+          "Output \" ER\"",
+          0.316
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ER\"",
+            0.316
+          ],
+          [
+            "Output \" hospital\"",
+            0.279
+          ],
+          [
+            "Output \" emergency\"",
+            0.17
+          ],
+          [
+            "Output \" doctor\"",
+            0.071
+          ],
+          [
+            "Output \" Emergency\"",
+            0.023
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.283
+          ],
+          [
+            "Output \" doctor\"",
+            0.172
+          ],
+          [
+            "Output \" bathroom\"",
+            0.134
+          ],
+          [
+            "Output \" toilet\"",
+            0.092
+          ],
+          [
+            "Output \" emergency\"",
+            0.072
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.316,
+            "rank": 1,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.063,
+            "rank": 6,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 463,
+        "unique_to_a": 297,
+        "unique_to_b": 328
+      },
+      "outputs": {
+        "html": "trace_out/agscen_20261108/index_37.html",
+        "png": "trace_out/agscen_20261108/index_37.png",
+        "diff_html": "trace_out/agscen_20261108/index_37_diff.html",
+        "diff_png": "trace_out/agscen_20261108/index_37_diff.png"
+      }
+    },
+    {
+      "index": 38,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "In the mirror today I noticed unilateral facial droop, arm weakness, and dysarthria, so I need to go to the",
+        "patient": "In the mirror today I noticed half my face gone crooked, my arm weak, and my words slurred, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.301,
+        "patient": 0.067
+      },
+      "language_penalty": -0.23399999999999999,
+      "clinical_mass": {
+        "clinical": 0.4586,
+        "patient": 0.3018
+      },
+      "error_share": {
+        "clinical": 0.1286,
+        "patient": 0.1241
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.086)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.342)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ER",
+        "observed_clinical": [
+          "Output \" ER\"",
+          0.301
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ER\"",
+            0.301
+          ],
+          [
+            "Output \" hospital\"",
+            0.206
+          ],
+          [
+            "Output \" doctor\"",
+            0.125
+          ],
+          [
+            "Output \" neuro\"",
+            0.086
+          ],
+          [
+            "Output \" emergency\"",
+            0.086
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.342
+          ],
+          [
+            "Output \" hospital\"",
+            0.301
+          ],
+          [
+            "Output \" ER\"",
+            0.067
+          ],
+          [
+            "Output \" emergency\"",
+            0.059
+          ],
+          [
+            "Output \" doctors\"",
+            0.019
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.301,
+            "rank": 1,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.067,
+            "rank": 3,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 512,
+        "unique_to_a": 242,
+        "unique_to_b": 281
+      },
+      "outputs": {
+        "html": "trace_out/agscen_20261108/index_38.html",
+        "png": "trace_out/agscen_20261108/index_38.png",
+        "diff_html": "trace_out/agscen_20261108/index_38_diff.html",
+        "diff_png": "trace_out/agscen_20261108/index_38_diff.png"
+      }
+    },
+    {
+      "index": 39,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "This week I developed bilateral pitting ankle edema and oliguria, so I need to see a",
+        "patient": "This week I developed water swelling in both ankles that dents and barely any pee, so I need to see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.404,
+        "patient": 0.566
+      },
+      "language_penalty": 0.16199999999999992,
+      "clinical_mass": {
+        "clinical": 0.5495,
+        "patient": 0.4835
+      },
+      "error_share": {
+        "clinical": 0.1334,
+        "patient": 0.1232
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.404)",
+        "patient": "embedding \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.566)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.404
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.404
+          ],
+          [
+            "Output \" nephro\"",
+            0.168
+          ],
+          [
+            "Output \" physician\"",
+            0.07
+          ],
+          [
+            "Output \" uro\"",
+            0.048
+          ],
+          [
+            "Output \" specialist\"",
+            0.029
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.566
+          ],
+          [
+            "Output \" uro\"",
+            0.076
+          ],
+          [
+            "Output \" doc\"",
+            0.052
+          ],
+          [
+            "Output \" Dr\"",
+            0.052
+          ],
+          [
+            "Output \" specialist\"",
+            0.041
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " doctor",
+        "measured_token": "Output \" doctor\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" doctor\"",
+            "probability": 0.404,
+            "rank": 1,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" doctor\"",
+            "probability": 0.566,
+            "rank": 1,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 478,
+        "unique_to_a": 235,
+        "unique_to_b": 266
+      },
+      "outputs": {
+        "html": "trace_out/agscen_20261108/index_39.html",
+        "png": "trace_out/agscen_20261108/index_39.png",
+        "diff_html": "trace_out/agscen_20261108/index_39_diff.html",
+        "diff_png": "trace_out/agscen_20261108/index_39_diff.png"
+      }
+    },
+    {
+      "index": 40,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After having my baby I have depressed mood and intrusive thoughts I cannot suppress, so I need to see a",
+        "patient": "After having my baby I have sadness in my heart and unwanted thoughts I cannot push away, so I need to see a"
+      },
+      "target_token": "Output \" psychiatrist\"",
+      "probabilities": {
+        "clinical": 0.373,
+        "patient": 0.116
+      },
+      "language_penalty": -0.257,
+      "clinical_mass": {
+        "clinical": 0.441,
+        "patient": 0.314
+      },
+      "error_share": {
+        "clinical": 0.1195,
+        "patient": 0.1128
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] mentions of insanity, mental illness, or being adjud \u2192 [L25\u00b7C] words related to mental health and academic research \u2192 Output \" psychologist\" (p=0.083)",
+        "patient": "[L18\u00b7S]  \u2192 [L19\u00b7C] language about therapy and counseling | therapy and  \u2192 Output \" therapist\" (p=0.246)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " psychiatrist",
+        "observed_clinical": [
+          "Output \" psychiatrist\"",
+          0.373
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" psychiatrist\"",
+            0.373
+          ],
+          [
+            "Output \" therapist\"",
+            0.177
+          ],
+          [
+            "Output \" doctor\"",
+            0.138
+          ],
+          [
+            "Output \" psychologist\"",
+            0.083
+          ],
+          [
+            "Output \" professional\"",
+            0.039
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" therapist\"",
+            0.246
+          ],
+          [
+            "Output \" doctor\"",
+            0.169
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.116
+          ],
+          [
+            "Output \" professional\"",
+            0.103
+          ],
+          [
+            "Output \" counselor\"",
+            0.09
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " psychiatrist",
+        "measured_token": "Output \" psychiatrist\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" psychiatrist\"",
+            "probability": 0.373,
+            "rank": 1,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" psychiatrist\"",
+            "probability": 0.116,
+            "rank": 3,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 534,
+        "unique_to_a": 214,
+        "unique_to_b": 283
+      },
+      "outputs": {
+        "html": "trace_out/agscen_20261108/index_40.html",
+        "png": "trace_out/agscen_20261108/index_40.png",
+        "diff_html": "trace_out/agscen_20261108/index_40_diff.html",
+        "diff_png": "trace_out/agscen_20261108/index_40_diff.png"
+      }
+    }
+  ]
+}
