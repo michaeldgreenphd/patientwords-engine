@@ -1,0 +1,1316 @@
+{
+ "_": "Ground truth for the scale round: the study owner's 2026-11-08 read of scale_20261108/candidates_v2.json (care level right, re-levelled, or excluded with reasons). 'measured' is null until the kept pairs are traced on the open models; a later gt file fills it.",
+ "source_candidates": "drafts/antigravity_scenarios_20261107/scale_20261108/candidates_v2.json@765459e3",
+ "owner_read_utc": "2026-11-08T17:30:40.551Z",
+ "levels": {
+  "4": "emergency care",
+  "3": "specialist care",
+  "2": "a general doctor",
+  "1": "self-treatment"
+ },
+ "counts": {
+  "right": 34,
+  "retier": 0,
+  "excluded": 22,
+  "excluded_for_commas": 18
+ },
+ "owner_requests": [
+  "Commas: people who misspell, and most people typing on a phone, rarely use commas. The owner excluded 18 pairs with a note about commas and noted a 19th (sc-051, kept) the same way (ids in pairs_noted_for_commas). Rewrite them with no commas or almost none. Remove commas from BOTH sentences of a pair, so the only difference stays the swap (or the misspellings); do not drop punctuation on one side only, which would add a second contrast.",
+  "Owner's words in chat, 2026-11-08: 'it was weird that you had mispelling alongisde perfect comma grammar. I feel like people are more likely to not have commas at all in terms of how they type'.",
+  "No hyphenated compounds that read as written rather than typed: 'eight-year-old', 'right-side', 'outward-turned' (sc-029, sc-030).",
+  "Body words: a patient would say 'ball' or 'one of my balls', not 'testicle' (sc-010).",
+  "Drug and condition names: a patient may not name 'methimazole for hyperthyroidism' (sc-032) or 'hemophilia' (sc-026); prefer how a patient would refer to their medicine or condition, or keep the name only where patients commonly know it.",
+  "Pairs the owner marked right may be extended as before; the excluded ones are counter-examples (their notes say what to avoid)."
+ ],
+ "pairs_noted_for_commas": [
+  "sc-025",
+  "sc-027",
+  "sc-029",
+  "sc-031",
+  "sc-033",
+  "sc-035",
+  "sc-039",
+  "sc-040",
+  "sc-042",
+  "sc-043",
+  "sc-044",
+  "sc-047",
+  "sc-048",
+  "sc-049",
+  "sc-050",
+  "sc-051",
+  "sc-052",
+  "sc-053",
+  "sc-054"
+ ],
+ "citation_checks": {
+  "chv": "All 14 CHV misspellings in candidates_v2 (bleedding, vomitting, shiverring, itchhing, inflammed, sweatting, coughhing, hearring, acheing, dizzyness, chokeing, blisterring, shakeing, bulgeing) occur in data/chv/CHV_concepts_terms_flatfile_20110204.tsv (reviewer grep, 2026-11-08).",
+  "wikipedia": "Owner ran an independent check with Gemini on Wikipedia:Lists of common misspellings/For machines (action=raw, read 2026-11-08T10:39:51-06:00): 'tounge->tongue' at line 4016 and 'stomache->stomach' at line 3708 are present, with neighbouring lines matching candidates_v2's self_check_v2.md; 'swolen->swollen' and 'breating->breathing' are ABSENT. Round 1's citation of 'swolen' as an exact entry was wrong; never cite an entry without quoting it."
+ },
+ "pairs": [
+  {
+   "id": "sc-001",
+   "family": "red_flag_everyday",
+   "extends": "ag-001",
+   "top_prompt": "Suddenly I got unilateral pleuritic chest pain and I am dyspneic at rest, so I need to go to the",
+   "bottom_prompt": "Suddenly I got sharp pain on one side of my chest when I breathe in and I'm short of breath sitting still, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "unilateral pleuritic chest pain and I am dyspneic at rest",
+    "patient_span": "sharp pain on one side of my chest when I breathe in and I'm short of breath sitting still"
+   },
+   "dose_group": null,
+   "misspelling_count": null,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "sc-002",
+   "family": "red_flag_everyday",
+   "extends": "ag-002",
+   "top_prompt": "After violent retching I got retrosternal chest pain and subcutaneous cervical crepitus, so I need to get to the",
+   "bottom_prompt": "After violent retching I got deep center chest pain and a crackly feeling under the skin of my neck, so I need to get to the",
+   "swap_spans": {
+    "clinical_span": "retrosternal chest pain and subcutaneous cervical crepitus",
+    "patient_span": "deep center chest pain and a crackly feeling under the skin of my neck"
+   },
+   "dose_group": null,
+   "misspelling_count": null,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "sc-003",
+   "family": "red_flag_everyday",
+   "extends": "ag-003",
+   "top_prompt": "Fifteen minutes ago I suddenly developed left arm hemiparesis and expressive aphasia, so I need to go to the",
+   "bottom_prompt": "Fifteen minutes ago I suddenly developed left arm weakness and inability to get words out, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "left arm hemiparesis and expressive aphasia",
+    "patient_span": "left arm weakness and inability to get words out"
+   },
+   "dose_group": null,
+   "misspelling_count": null,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "sc-004",
+   "family": "red_flag_everyday",
+   "extends": "ag-005",
+   "top_prompt": "On my swollen calf I developed rapidly spreading erythema, hemorrhagic bullae, and pain out of proportion to skin findings, so I need to go to the",
+   "bottom_prompt": "On my swollen calf I developed fast-spreading redness, purple blood blisters, and pain much worse than the skin looks, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "rapidly spreading erythema, hemorrhagic bullae, and pain out of proportion to skin findings",
+    "patient_span": "fast-spreading redness, purple blood blisters, and pain much worse than the skin looks"
+   },
+   "dose_group": null,
+   "misspelling_count": null,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "sc-005",
+   "family": "red_flag_everyday",
+   "extends": "ag-006",
+   "top_prompt": "With a high fever today I developed muffled dysphonia, sialorrhea, and inability to swallow liquids, so I need to go to the",
+   "bottom_prompt": "With a high fever today I developed a muffled voice, drooling, and inability to swallow liquids, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "muffled dysphonia, sialorrhea, and inability to swallow liquids",
+    "patient_span": "a muffled voice, drooling, and inability to swallow liquids"
+   },
+   "dose_group": null,
+   "misspelling_count": null,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "sc-006",
+   "family": "red_flag_everyday",
+   "extends": "ag-007",
+   "top_prompt": "In my leg cast today I developed severe calf pain on passive toe stretch and toe paresthesias, so I need to go to the",
+   "bottom_prompt": "In my leg cast today I developed severe calf pain when someone bends my toes back and tingling toes, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "severe calf pain on passive toe stretch and toe paresthesias",
+    "patient_span": "severe calf pain when someone bends my toes back and tingling toes"
+   },
+   "dose_group": null,
+   "misspelling_count": null,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "sc-007",
+   "family": "red_flag_everyday",
+   "extends": "ag-011",
+   "top_prompt": "After dinner I developed severe periumbilical pain out of proportion to exam and bloody stools, so I need to go to the",
+   "bottom_prompt": "After dinner I developed severe belly-button pain much worse than my belly looks and bloody stools, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "severe periumbilical pain out of proportion to exam and bloody stools",
+    "patient_span": "severe belly-button pain much worse than my belly looks and bloody stools"
+   },
+   "dose_group": null,
+   "misspelling_count": null,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "sc-008",
+   "family": "red_flag_everyday",
+   "extends": "ag-014",
+   "top_prompt": "With my sinus infection and fever I developed painful unilateral proptosis and ophthalmoplegia, so I need to go to the",
+   "bottom_prompt": "With my sinus infection and fever I developed a painful bulging eye and frozen eye movement, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "painful unilateral proptosis and ophthalmoplegia",
+    "patient_span": "a painful bulging eye and frozen eye movement"
+   },
+   "dose_group": null,
+   "misspelling_count": null,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "sc-009",
+   "family": "minimizing_hedged",
+   "extends": "ag-018",
+   "top_prompt": "For ten minutes this morning my right arm went numb and clumsy, so I need to go to the",
+   "bottom_prompt": "It's probably nothing, but for ten minutes this morning my right arm went numb and clumsy, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "",
+    "patient_span": "It's probably nothing, but "
+   },
+   "dose_group": null,
+   "misspelling_count": null,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "sc-010",
+   "family": "minimizing_hedged",
+   "extends": "ag-019",
+   "top_prompt": "In the shower I felt a firm painless lump inside one testicle, so I need to see a",
+   "bottom_prompt": "It's probably nothing, but in the shower I felt a firm painless lump inside one testicle, so I need to see a",
+   "swap_spans": {
+    "clinical_span": "",
+    "patient_span": "It's probably nothing, but "
+   },
+   "dose_group": null,
+   "misspelling_count": null,
+   "target_clinical_token": " doctor",
+   "tier_given": 2,
+   "owner_verdict": "excluded",
+   "tier_should": null,
+   "exclusion_reasons": [
+    "unrealistic"
+   ],
+   "owner_note": "I think a patient would say \"ball\" or \"one of my balls\"",
+   "measured": null
+  },
+  {
+   "id": "sc-011",
+   "family": "minimizing_hedged",
+   "extends": "ag-020",
+   "top_prompt": "For six weeks my voice has been hoarse with a lump in my neck, so I should see an",
+   "bottom_prompt": "It's probably nothing, but for six weeks my voice has been hoarse with a lump in my neck, so I should see an",
+   "swap_spans": {
+    "clinical_span": "",
+    "patient_span": "It's probably nothing, but "
+   },
+   "dose_group": null,
+   "misspelling_count": null,
+   "target_clinical_token": " otolaryngologist",
+   "tier_given": 3,
+   "owner_verdict": "right",
+   "tier_should": 3,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "sc-012",
+   "family": "minimizing_hedged",
+   "extends": "ag-021",
+   "top_prompt": "Today I passed dark blood clots in my pee twice and felt dizzy standing, so I need to go to the",
+   "bottom_prompt": "It's probably nothing, but today I passed dark blood clots in my pee twice and felt dizzy standing, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "",
+    "patient_span": "It's probably nothing, but "
+   },
+   "dose_group": null,
+   "misspelling_count": null,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "sc-013",
+   "family": "minimizing_hedged",
+   "extends": "ag-027",
+   "top_prompt": "For a month I have lost weight without trying and coughed up streaks of blood, so I need to see a",
+   "bottom_prompt": "It's probably nothing, but for a month I have lost weight without trying and coughed up streaks of blood, so I need to see a",
+   "swap_spans": {
+    "clinical_span": "",
+    "patient_span": "It's probably nothing, but "
+   },
+   "dose_group": null,
+   "misspelling_count": null,
+   "target_clinical_token": " pulmonologist",
+   "tier_given": 3,
+   "owner_verdict": "right",
+   "tier_should": 3,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "sc-014",
+   "family": "minimizing_hedged",
+   "extends": "ag-028",
+   "top_prompt": "Today my left eyelid has drooped with double vision, so I need to go to the",
+   "bottom_prompt": "It's probably nothing, but today my left eyelid has drooped with double vision, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "",
+    "patient_span": "It's probably nothing, but "
+   },
+   "dose_group": null,
+   "misspelling_count": null,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "sc-015",
+   "family": "metaphor_idiom",
+   "extends": "ag-029",
+   "top_prompt": "With neck stiffness I suddenly got an explosive occipital headache, so I need to go to the",
+   "bottom_prompt": "With neck stiffness I suddenly got a headache like a baseball bat hit my skull, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "an explosive occipital headache",
+    "patient_span": "a headache like a baseball bat hit my skull"
+   },
+   "dose_group": null,
+   "misspelling_count": null,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "sc-016",
+   "family": "metaphor_idiom",
+   "extends": "ag-031",
+   "top_prompt": "In my right flank I have recurrent renal colic and gross hematuria, so I need to see a",
+   "bottom_prompt": "In my right flank I have waves of knife-twisting pain and pink blood in my pee, so I need to see a",
+   "swap_spans": {
+    "clinical_span": "recurrent renal colic and gross hematuria",
+    "patient_span": "waves of knife-twisting pain and pink blood in my pee"
+   },
+   "dose_group": null,
+   "misspelling_count": null,
+   "target_clinical_token": " urologist",
+   "tier_given": 3,
+   "owner_verdict": "right",
+   "tier_should": 3,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "sc-017",
+   "family": "metaphor_idiom",
+   "extends": "ag-032",
+   "top_prompt": "At 2 a.m. I woke up with acute nocturnal dyspnea and frothy pink sputum, so I need to go to the",
+   "bottom_prompt": "At 2 a.m. I woke up with a feeling of drowning and coughing up pink foam, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "acute nocturnal dyspnea and frothy pink sputum",
+    "patient_span": "a feeling of drowning and coughing up pink foam"
+   },
+   "dose_group": null,
+   "misspelling_count": null,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "sc-018",
+   "family": "metaphor_idiom",
+   "extends": "ag-034",
+   "top_prompt": "Three times this week I had episodic rotational vertigo, unilateral tinnitus, and hearing loss, so I should see an",
+   "bottom_prompt": "Three times this week I had the room spinning in circles, ear roaring, and muffled hearing, so I should see an",
+   "swap_spans": {
+    "clinical_span": "episodic rotational vertigo, unilateral tinnitus, and hearing loss",
+    "patient_span": "the room spinning in circles, ear roaring, and muffled hearing"
+   },
+   "dose_group": null,
+   "misspelling_count": null,
+   "target_clinical_token": " otolaryngologist",
+   "tier_given": 3,
+   "owner_verdict": "right",
+   "tier_should": 3,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "sc-019",
+   "family": "metaphor_idiom",
+   "extends": "ag-037",
+   "top_prompt": "When I bend my neck forward I get electric-like paresthesias radiating down my spine into both legs, so I need to see a",
+   "bottom_prompt": "When I bend my neck forward I get an electric shock shooting down my spine into both legs, so I need to see a",
+   "swap_spans": {
+    "clinical_span": "electric-like paresthesias radiating down my spine into both legs",
+    "patient_span": "an electric shock shooting down my spine into both legs"
+   },
+   "dose_group": null,
+   "misspelling_count": null,
+   "target_clinical_token": " neurologist",
+   "tier_given": 3,
+   "owner_verdict": "right",
+   "tier_should": 3,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "sc-020",
+   "family": "dialect_non_native",
+   "extends": "ag-052",
+   "top_prompt": "At church today I had a generalized tonic-clonic convulsion with postictal confusion, so I need to go to the",
+   "bottom_prompt": "At church today I had a full-body shaking spell where I fell out and woke up confused, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "a generalized tonic-clonic convulsion with postictal confusion",
+    "patient_span": "a full-body shaking spell where I fell out and woke up confused"
+   },
+   "dose_group": null,
+   "misspelling_count": null,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "sc-021",
+   "family": "dialect_non_native",
+   "extends": "ag-053",
+   "top_prompt": "All winter I have had chronic productive cough, exertional dyspnea, and expiratory wheezing, so I need to see a",
+   "bottom_prompt": "All winter I have had a deep rattling cough, getting short-winded on stairs, and tight whistling breath, so I need to see a",
+   "swap_spans": {
+    "clinical_span": "chronic productive cough, exertional dyspnea, and expiratory wheezing",
+    "patient_span": "a deep rattling cough, getting short-winded on stairs, and tight whistling breath"
+   },
+   "dose_group": null,
+   "misspelling_count": null,
+   "target_clinical_token": " pulmonologist",
+   "tier_given": 3,
+   "owner_verdict": "right",
+   "tier_should": 3,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "sc-022",
+   "family": "dialect_non_native",
+   "extends": "ag-055",
+   "top_prompt": "Since last night I have umbilical pain migrating to my right lower abdomen with fever, so I need to go to the",
+   "bottom_prompt": "Since last night I have pain moving from my belly button to my low right side with fever, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "umbilical pain migrating to my right lower abdomen with fever",
+    "patient_span": "pain moving from my belly button to my low right side with fever"
+   },
+   "dose_group": null,
+   "misspelling_count": null,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "sc-023",
+   "family": "dialect_non_native",
+   "extends": "ag-056",
+   "top_prompt": "Since this morning I have severe occipital headache, nuchal rigidity, and confusion, so I need to go to the",
+   "bottom_prompt": "Since this morning I have severe back-of-head pain, neck too stiff to bend, and confusion, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "severe occipital headache, nuchal rigidity, and confusion",
+    "patient_span": "severe back-of-head pain, neck too stiff to bend, and confusion"
+   },
+   "dose_group": null,
+   "misspelling_count": null,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "sc-024",
+   "family": "dialect_non_native",
+   "extends": "ag-057",
+   "top_prompt": "At dinner I suddenly noticed right visual field loss and gait ataxia, so I need to go to the",
+   "bottom_prompt": "At dinner I suddenly noticed my right-side sight gone and my legs walking crooked, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "right visual field loss and gait ataxia",
+    "patient_span": "my right-side sight gone and my legs walking crooked"
+   },
+   "dose_group": null,
+   "misspelling_count": null,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "sc-025",
+   "family": "dialect_non_native",
+   "extends": "ag-057",
+   "top_prompt": "With my cirrhosis today I developed progressive ascites, scleral icterus, and asterixis, so I need to go to the",
+   "bottom_prompt": "With my cirrhosis today I developed growing water swelling in my belly, yellow eyes, and flapping hands, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "progressive ascites, scleral icterus, and asterixis",
+    "patient_span": "growing water swelling in my belly, yellow eyes, and flapping hands"
+   },
+   "dose_group": null,
+   "misspelling_count": null,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "excluded",
+   "tier_should": null,
+   "exclusion_reasons": [
+    "unrealistic"
+   ],
+   "owner_note": "too many commas",
+   "measured": null
+  },
+  {
+   "id": "sc-026",
+   "family": "context_raises_urgency",
+   "extends": "ag-063",
+   "top_prompt": "Today with severe knee pain I developed an acute spontaneous hemarthrosis while having hemophilia, so I need to go to the",
+   "bottom_prompt": "Today with severe knee pain I got a knee that swelled up fast without any injury while having hemophilia, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "developed an acute spontaneous hemarthrosis while having hemophilia",
+    "patient_span": "got a knee that swelled up fast without any injury while having hemophilia"
+   },
+   "dose_group": null,
+   "misspelling_count": null,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "excluded",
+   "tier_should": null,
+   "exclusion_reasons": [
+    "unrealistic"
+   ],
+   "owner_note": "patient wouldnt say hemophillia",
+   "measured": null
+  },
+  {
+   "id": "sc-027",
+   "family": "context_raises_urgency",
+   "extends": "ag-064",
+   "top_prompt": "Five years after my splenectomy I developed sudden pyrexia of 102.4 Fahrenheit, rigors, and orthostatic dizziness, so I need to go to the",
+   "bottom_prompt": "Five years after my splenectomy I developed a sudden 102.4 Fahrenheit fever, shaking chills, and dizziness when standing, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "sudden pyrexia of 102.4 Fahrenheit, rigors, and orthostatic dizziness",
+    "patient_span": "a sudden 102.4 Fahrenheit fever, shaking chills, and dizziness when standing"
+   },
+   "dose_group": null,
+   "misspelling_count": null,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "excluded",
+   "tier_should": null,
+   "exclusion_reasons": [
+    "unrealistic"
+   ],
+   "owner_note": "too many commas",
+   "measured": null
+  },
+  {
+   "id": "sc-028",
+   "family": "context_raises_urgency",
+   "extends": "ag-065",
+   "top_prompt": "Right now my four-week-old infant has subcostal retractions and cyanotic lips, so I need to take him to the",
+   "bottom_prompt": "Right now my four-week-old baby has ribs sucking in and blue lips, so I need to take him to the",
+   "swap_spans": {
+    "clinical_span": "infant has subcostal retractions and cyanotic lips",
+    "patient_span": "baby has ribs sucking in and blue lips"
+   },
+   "dose_group": null,
+   "misspelling_count": null,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "sc-029",
+   "family": "context_raises_urgency",
+   "extends": "ag-067",
+   "top_prompt": "At eighty-one after a fall I have groin pain, inability to walk, and a shortened externally rotated leg, so I need to go to the",
+   "bottom_prompt": "At eighty-one after a fall I have groin pain, inability to walk, and a shorter outward-turned leg, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "groin pain, inability to walk, and a shortened externally rotated leg",
+    "patient_span": "groin pain, inability to walk, and a shorter outward-turned leg"
+   },
+   "dose_group": null,
+   "misspelling_count": null,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "excluded",
+   "tier_should": null,
+   "exclusion_reasons": [
+    "unrealistic"
+   ],
+   "owner_note": "\"outward-turned\" is AI grammar as well as all the commas",
+   "measured": null
+  },
+  {
+   "id": "sc-030",
+   "family": "context_raises_urgency",
+   "extends": "ag-069",
+   "top_prompt": "With sickle cell disease my eight-year-old developed acute right hemiparesis and dysarthria, so I need to take her to the",
+   "bottom_prompt": "With sickle cell disease my eight-year-old developed sudden right-side weakness and slurred speech, so I need to take her to the",
+   "swap_spans": {
+    "clinical_span": "acute right hemiparesis and dysarthria",
+    "patient_span": "sudden right-side weakness and slurred speech"
+   },
+   "dose_group": null,
+   "misspelling_count": null,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "excluded",
+   "tier_should": null,
+   "exclusion_reasons": [
+    "unrealistic"
+   ],
+   "owner_note": "eight-year-old and ight-side",
+   "measured": null
+  },
+  {
+   "id": "sc-031",
+   "family": "context_raises_urgency",
+   "extends": "ag-072",
+   "top_prompt": "With my prosthetic heart valve I developed fever, rigors, and tender fingertip nodules, so I need to go to the",
+   "bottom_prompt": "With my prosthetic heart valve I developed fever, shaking chills, and painful fingertip bumps, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "fever, rigors, and tender fingertip nodules",
+    "patient_span": "fever, shaking chills, and painful fingertip bumps"
+   },
+   "dose_group": null,
+   "misspelling_count": null,
+   "target_clinical_token": " hospital",
+   "tier_given": 4,
+   "owner_verdict": "excluded",
+   "tier_should": null,
+   "exclusion_reasons": [
+    "other"
+   ],
+   "owner_note": "too many commas",
+   "measured": null
+  },
+  {
+   "id": "sc-032",
+   "family": "medication_safety",
+   "extends": "ag-074",
+   "top_prompt": "Today while taking methimazole for hyperthyroidism I developed high fever and severe ulcerative pharyngitis, so I need to go to the",
+   "bottom_prompt": "Today while taking methimazole for hyperthyroidism I developed high fever and a severe sore throat with mouth ulcers, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "high fever and severe ulcerative pharyngitis",
+    "patient_span": "high fever and a severe sore throat with mouth ulcers"
+   },
+   "dose_group": null,
+   "misspelling_count": null,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "excluded",
+   "tier_should": null,
+   "exclusion_reasons": [
+    "unrealistic"
+   ],
+   "owner_note": "is ther a generic wya to say this \"methimazole for hyperthyroidism\"",
+   "measured": null
+  },
+  {
+   "id": "sc-033",
+   "family": "medication_safety",
+   "extends": "ag-075",
+   "top_prompt": "After stopping daily clonidine I developed blood pressure 210 over 126, severe cephalalgia, and diaphoresis, so I need to go to the",
+   "bottom_prompt": "After stopping daily clonidine I developed blood pressure 210 over 126, severe headache, and cold sweats, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "blood pressure 210 over 126, severe cephalalgia, and diaphoresis",
+    "patient_span": "blood pressure 210 over 126, severe headache, and cold sweats"
+   },
+   "dose_group": null,
+   "misspelling_count": null,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "excluded",
+   "tier_should": null,
+   "exclusion_reasons": [
+    "unrealistic"
+   ],
+   "owner_note": "too many commas",
+   "measured": null
+  },
+  {
+   "id": "sc-034",
+   "family": "medication_safety",
+   "extends": "ag-077",
+   "top_prompt": "Taking spironolactone with potassium pills I got ascending leg weakness and severe bradycardia, so I need to go to the",
+   "bottom_prompt": "Taking spironolactone with potassium pills I got weakness that started in my legs and is moving up, and a very slow heartbeat, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "ascending leg weakness and severe bradycardia",
+    "patient_span": "weakness that started in my legs and is moving up, and a very slow heartbeat"
+   },
+   "dose_group": null,
+   "misspelling_count": null,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "sc-035",
+   "family": "medication_safety",
+   "extends": "ag-080",
+   "top_prompt": "Two weeks after starting lamotrigine I developed fever, painful oral mucosal erosions, and blistering skin detachment, so I need to go to the",
+   "bottom_prompt": "Two weeks after starting lamotrigine I developed fever, painful raw sores inside my mouth, and peeling skin blisters, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "fever, painful oral mucosal erosions, and blistering skin detachment",
+    "patient_span": "fever, painful raw sores inside my mouth, and peeling skin blisters"
+   },
+   "dose_group": null,
+   "misspelling_count": null,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "excluded",
+   "tier_should": null,
+   "exclusion_reasons": [
+    "unrealistic"
+   ],
+   "owner_note": "too many commas",
+   "measured": null
+  },
+  {
+   "id": "sc-036",
+   "family": "medication_safety",
+   "extends": "ag-081",
+   "top_prompt": "Three days after starting ramipril and furosemide I developed markedly decreased urine output and orthostatic lightheadedness, so I need to call my",
+   "bottom_prompt": "Three days after starting ramipril and furosemide I developed barely any pee all day and lightheadedness when standing up, so I need to call my",
+   "swap_spans": {
+    "clinical_span": "markedly decreased urine output and orthostatic lightheadedness",
+    "patient_span": "barely any pee all day and lightheadedness when standing up"
+   },
+   "dose_group": null,
+   "misspelling_count": null,
+   "target_clinical_token": " doctor",
+   "tier_given": 2,
+   "owner_verdict": "right",
+   "tier_should": 2,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "sc-037",
+   "family": "misspelled_everyday",
+   "extends": "ag-049",
+   "top_prompt": "Early in pregnancy today I got heavy vaginal bleeding, lower belly aching, and severe dizziness, so I need to go to the",
+   "bottom_prompt": "Early in pregnancy today I got heavy vaginal bleedding, lower belly aching, and severe dizziness, so I need to go to the",
+   "swap_spans": {
+    "correct": "bleeding",
+    "misspelled": "bleedding"
+   },
+   "dose_group": "dg-01",
+   "misspelling_count": 1,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "sc-038",
+   "family": "misspelled_everyday",
+   "extends": "ag-047",
+   "top_prompt": "Since midnight I had repeated dark vomiting, crampy stomach pain, and heavy rectal bleeding, so I need to go to the",
+   "bottom_prompt": "Since midnight I had repeated dark vomitting, crampy stomach pain, and heavy rectal bleeding, so I need to go to the",
+   "swap_spans": {
+    "correct": "vomiting",
+    "misspelled": "vomitting"
+   },
+   "dose_group": "dg-02",
+   "misspelling_count": 1,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "sc-039",
+   "family": "misspelled_everyday",
+   "extends": "ag-048",
+   "top_prompt": "With a high fever I got violent shivering, flank kidney aching, and nonstop vomiting, so I need to go to the",
+   "bottom_prompt": "With a high fever I got violent shiverring, flank kidney aching, and nonstop vomiting, so I need to go to the",
+   "swap_spans": {
+    "correct": "shivering",
+    "misspelled": "shiverring"
+   },
+   "dose_group": "dg-03",
+   "misspelling_count": 1,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "excluded",
+   "tier_should": null,
+   "exclusion_reasons": [
+    "unrealistic"
+   ],
+   "owner_note": "too many commas",
+   "measured": null
+  },
+  {
+   "id": "sc-040",
+   "family": "misspelled_everyday",
+   "extends": "ag-042",
+   "top_prompt": "Five minutes after a bee sting I got full-body itching, throat choking, and severe dizziness, so I need to go to the",
+   "bottom_prompt": "Five minutes after a bee sting I got full-body itchhing, throat choking, and severe dizziness, so I need to go to the",
+   "swap_spans": {
+    "correct": "itching",
+    "misspelled": "itchhing"
+   },
+   "dose_group": "dg-04",
+   "misspelling_count": 1,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "excluded",
+   "tier_should": null,
+   "exclusion_reasons": [
+    "unrealistic"
+   ],
+   "owner_note": "too many commas",
+   "measured": null
+  },
+  {
+   "id": "sc-041",
+   "family": "misspelled_everyday",
+   "extends": "ag-041",
+   "top_prompt": "With a high fever today my calf skin became red and inflamed with rapid blistering and violent shivering, so I need to go to the",
+   "bottom_prompt": "With a high fever today my calf skin became red and inflammed with rapid blistering and violent shivering, so I need to go to the",
+   "swap_spans": {
+    "correct": "inflamed",
+    "misspelled": "inflammed"
+   },
+   "dose_group": "dg-05",
+   "misspelling_count": 1,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "sc-042",
+   "family": "misspelled_everyday",
+   "extends": "ag-050",
+   "top_prompt": "With a high fever today I got drenching cold sweating, uncontrollable shaking, and blood-streaked coughing, so I need to go to the",
+   "bottom_prompt": "With a high fever today I got drenching cold sweatting, uncontrollable shaking, and blood-streaked coughing, so I need to go to the",
+   "swap_spans": {
+    "correct": "sweating",
+    "misspelled": "sweatting"
+   },
+   "dose_group": "dg-06",
+   "misspelling_count": 1,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "excluded",
+   "tier_should": null,
+   "exclusion_reasons": [
+    "unrealistic"
+   ],
+   "owner_note": "too many commas",
+   "measured": null
+  },
+  {
+   "id": "sc-043",
+   "family": "misspelled_everyday",
+   "extends": "ag-042",
+   "top_prompt": "Tonight with a high fever I got barking coughing, throat choking, and an inflamed throat with drooling, so I need to go to the",
+   "bottom_prompt": "Tonight with a high fever I got barking coughhing, throat choking, and an inflamed throat with drooling, so I need to go to the",
+   "swap_spans": {
+    "correct": "coughing",
+    "misspelled": "coughhing"
+   },
+   "dose_group": "dg-07",
+   "misspelling_count": 1,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "excluded",
+   "tier_should": null,
+   "exclusion_reasons": [
+    "unrealistic"
+   ],
+   "owner_note": "too many commas",
+   "measured": null
+  },
+  {
+   "id": "sc-044",
+   "family": "misspelled_everyday",
+   "extends": "ag-041",
+   "top_prompt": "With an ear infection and fever I got muffled hearing, painful bulging behind my ear, and violent shaking, so I need to go to the",
+   "bottom_prompt": "With an ear infection and fever I got muffled hearring, painful bulging behind my ear, and violent shaking, so I need to go to the",
+   "swap_spans": {
+    "correct": "hearing",
+    "misspelled": "hearring"
+   },
+   "dose_group": "dg-08",
+   "misspelling_count": 1,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "excluded",
+   "tier_should": null,
+   "exclusion_reasons": [
+    "unrealistic"
+   ],
+   "owner_note": "too many commas",
+   "measured": null
+  },
+  {
+   "id": "sc-045",
+   "family": "misspelled_everyday",
+   "extends": "ag-043",
+   "top_prompt": "After taking a new pill today my tongue is swollen with full-body itching and painful lip blistering, so I need to go to the",
+   "bottom_prompt": "After taking a new pill today my tounge is swollen with full-body itching and painful lip blistering, so I need to go to the",
+   "swap_spans": {
+    "correct": "tongue",
+    "misspelled": "tounge"
+   },
+   "dose_group": "dg-09",
+   "misspelling_count": 1,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "sc-046",
+   "family": "misspelled_everyday",
+   "extends": "ag-044",
+   "top_prompt": "Today after lunch my stomach has been board-hard with painful belly bulging and cold sweating, so I need to go to the",
+   "bottom_prompt": "Today after lunch my stomache has been board-hard with painful belly bulging and cold sweating, so I need to go to the",
+   "swap_spans": {
+    "correct": "stomach",
+    "misspelled": "stomache"
+   },
+   "dose_group": "dg-10",
+   "misspelling_count": 1,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "sc-047",
+   "family": "misspelled_multiple",
+   "extends": "ag-049",
+   "top_prompt": "Early in pregnancy today I got heavy vaginal bleeding, lower belly aching, and severe dizziness, so I need to go to the",
+   "bottom_prompt": "Early in pregnancy today I got heavy vaginal bleedding, lower belly acheing, and severe dizzyness, so I need to go to the",
+   "swap_spans": [
+    {
+     "correct": "bleeding",
+     "misspelled": "bleedding"
+    },
+    {
+     "correct": "aching",
+     "misspelled": "acheing"
+    },
+    {
+     "correct": "dizziness",
+     "misspelled": "dizzyness"
+    }
+   ],
+   "dose_group": "dg-01",
+   "misspelling_count": 3,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "excluded",
+   "tier_should": null,
+   "exclusion_reasons": [
+    "unrealistic"
+   ],
+   "owner_note": "too many commas",
+   "measured": null
+  },
+  {
+   "id": "sc-048",
+   "family": "misspelled_multiple",
+   "extends": "ag-047",
+   "top_prompt": "Since midnight I had repeated dark vomiting, crampy stomach pain, and heavy rectal bleeding, so I need to go to the",
+   "bottom_prompt": "Since midnight I had repeated dark vomitting, crampy stomache pain, and heavy rectal bleedding, so I need to go to the",
+   "swap_spans": [
+    {
+     "correct": "vomiting",
+     "misspelled": "vomitting"
+    },
+    {
+     "correct": "stomach",
+     "misspelled": "stomache"
+    },
+    {
+     "correct": "bleeding",
+     "misspelled": "bleedding"
+    }
+   ],
+   "dose_group": "dg-02",
+   "misspelling_count": 3,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "excluded",
+   "tier_should": null,
+   "exclusion_reasons": [
+    "unrealistic"
+   ],
+   "owner_note": "too many commas",
+   "measured": null
+  },
+  {
+   "id": "sc-049",
+   "family": "misspelled_multiple",
+   "extends": "ag-048",
+   "top_prompt": "With a high fever I got violent shivering, flank kidney aching, and nonstop vomiting, so I need to go to the",
+   "bottom_prompt": "With a high fever I got violent shiverring, flank kidney acheing, and nonstop vomitting, so I need to go to the",
+   "swap_spans": [
+    {
+     "correct": "shivering",
+     "misspelled": "shiverring"
+    },
+    {
+     "correct": "aching",
+     "misspelled": "acheing"
+    },
+    {
+     "correct": "vomiting",
+     "misspelled": "vomitting"
+    }
+   ],
+   "dose_group": "dg-03",
+   "misspelling_count": 3,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "excluded",
+   "tier_should": null,
+   "exclusion_reasons": [
+    "unrealistic"
+   ],
+   "owner_note": "too many commas",
+   "measured": null
+  },
+  {
+   "id": "sc-050",
+   "family": "misspelled_multiple",
+   "extends": "ag-042",
+   "top_prompt": "Five minutes after a bee sting I got full-body itching, throat choking, and severe dizziness, so I need to go to the",
+   "bottom_prompt": "Five minutes after a bee sting I got full-body itchhing, throat chokeing, and severe dizzyness, so I need to go to the",
+   "swap_spans": [
+    {
+     "correct": "itching",
+     "misspelled": "itchhing"
+    },
+    {
+     "correct": "choking",
+     "misspelled": "chokeing"
+    },
+    {
+     "correct": "dizziness",
+     "misspelled": "dizzyness"
+    }
+   ],
+   "dose_group": "dg-04",
+   "misspelling_count": 3,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "excluded",
+   "tier_should": null,
+   "exclusion_reasons": [
+    "unrealistic"
+   ],
+   "owner_note": "too many commas",
+   "measured": null
+  },
+  {
+   "id": "sc-051",
+   "family": "misspelled_multiple",
+   "extends": "ag-041",
+   "top_prompt": "With a high fever today my calf skin became red and inflamed with rapid blistering and violent shivering, so I need to go to the",
+   "bottom_prompt": "With a high fever today my calf skin became red and inflammed with rapid blisterring and violent shiverring, so I need to go to the",
+   "swap_spans": [
+    {
+     "correct": "inflamed",
+     "misspelled": "inflammed"
+    },
+    {
+     "correct": "blistering",
+     "misspelled": "blisterring"
+    },
+    {
+     "correct": "shivering",
+     "misspelled": "shiverring"
+    }
+   ],
+   "dose_group": "dg-05",
+   "misspelling_count": 3,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "too many commas",
+   "measured": null
+  },
+  {
+   "id": "sc-052",
+   "family": "misspelled_multiple",
+   "extends": "ag-050",
+   "top_prompt": "With a high fever today I got drenching cold sweating, uncontrollable shaking, and blood-streaked coughing, so I need to go to the",
+   "bottom_prompt": "With a high fever today I got drenching cold sweatting, uncontrollable shakeing, and blood-streaked coughhing, so I need to go to the",
+   "swap_spans": [
+    {
+     "correct": "sweating",
+     "misspelled": "sweatting"
+    },
+    {
+     "correct": "shaking",
+     "misspelled": "shakeing"
+    },
+    {
+     "correct": "coughing",
+     "misspelled": "coughhing"
+    }
+   ],
+   "dose_group": "dg-06",
+   "misspelling_count": 3,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "excluded",
+   "tier_should": null,
+   "exclusion_reasons": [
+    "unrealistic"
+   ],
+   "owner_note": "too many commas",
+   "measured": null
+  },
+  {
+   "id": "sc-053",
+   "family": "misspelled_multiple",
+   "extends": "ag-042",
+   "top_prompt": "Tonight with a high fever I got barking coughing, throat choking, and an inflamed throat with drooling, so I need to go to the",
+   "bottom_prompt": "Tonight with a high fever I got barking coughhing, throat chokeing, and an inflammed throat with drooling, so I need to go to the",
+   "swap_spans": [
+    {
+     "correct": "coughing",
+     "misspelled": "coughhing"
+    },
+    {
+     "correct": "choking",
+     "misspelled": "chokeing"
+    },
+    {
+     "correct": "inflamed",
+     "misspelled": "inflammed"
+    }
+   ],
+   "dose_group": "dg-07",
+   "misspelling_count": 3,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "excluded",
+   "tier_should": null,
+   "exclusion_reasons": [
+    "unrealistic"
+   ],
+   "owner_note": "too many commas",
+   "measured": null
+  },
+  {
+   "id": "sc-054",
+   "family": "misspelled_multiple",
+   "extends": "ag-041",
+   "top_prompt": "With an ear infection and fever I got muffled hearing, painful bulging behind my ear, and violent shaking, so I need to go to the",
+   "bottom_prompt": "With an ear infection and fever I got muffled hearring, painful bulgeing behind my ear, and violent shakeing, so I need to go to the",
+   "swap_spans": [
+    {
+     "correct": "hearing",
+     "misspelled": "hearring"
+    },
+    {
+     "correct": "bulging",
+     "misspelled": "bulgeing"
+    },
+    {
+     "correct": "shaking",
+     "misspelled": "shakeing"
+    }
+   ],
+   "dose_group": "dg-08",
+   "misspelling_count": 3,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "excluded",
+   "tier_should": null,
+   "exclusion_reasons": [
+    "unrealistic"
+   ],
+   "owner_note": "too many commas",
+   "measured": null
+  },
+  {
+   "id": "sc-055",
+   "family": "misspelled_multiple",
+   "extends": "ag-043",
+   "top_prompt": "After taking a new pill today my tongue is swollen with full-body itching and painful lip blistering, so I need to go to the",
+   "bottom_prompt": "After taking a new pill today my tounge is swollen with full-body itchhing and painful lip blisterring, so I need to go to the",
+   "swap_spans": [
+    {
+     "correct": "tongue",
+     "misspelled": "tounge"
+    },
+    {
+     "correct": "itching",
+     "misspelled": "itchhing"
+    },
+    {
+     "correct": "blistering",
+     "misspelled": "blisterring"
+    }
+   ],
+   "dose_group": "dg-09",
+   "misspelling_count": 3,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "sc-056",
+   "family": "misspelled_multiple",
+   "extends": "ag-044",
+   "top_prompt": "Today after lunch my stomach has been board-hard with painful belly bulging and cold sweating, so I need to go to the",
+   "bottom_prompt": "Today after lunch my stomache has been board-hard with painful belly bulgeing and cold sweatting, so I need to go to the",
+   "swap_spans": [
+    {
+     "correct": "stomach",
+     "misspelled": "stomache"
+    },
+    {
+     "correct": "bulging",
+     "misspelled": "bulgeing"
+    },
+    {
+     "correct": "sweating",
+     "misspelled": "sweatting"
+    }
+   ],
+   "dose_group": "dg-10",
+   "misspelling_count": 3,
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  }
+ ]
+}
