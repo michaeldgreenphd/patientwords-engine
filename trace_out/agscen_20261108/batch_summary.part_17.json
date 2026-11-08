@@ -1,0 +1,469 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 17,
+  "pairs_requested": 4,
+  "completed": true,
+  "screen_targets": 0.02,
+  "environment": {
+    "python": "3.11.18",
+    "engine_sha": "ae43f2f3debb",
+    "runner_image": "20261101.186.1"
+  },
+  "results": [
+    {
+      "index": 17,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Years after menopause I noticed light vaginal spotting, so I should see a",
+        "patient": "It's probably nothing, but years after menopause I noticed light vaginal spotting, so I should see a"
+      },
+      "target_token": "Output \" gyne\"",
+      "probabilities": {
+        "clinical": 0.181,
+        "patient": 0.084
+      },
+      "language_penalty": -0.09699999999999999,
+      "clinical_mass": {
+        "clinical": 0.4695,
+        "patient": 0.4386
+      },
+      "error_share": {
+        "clinical": 0.1264,
+        "patient": 0.1246
+      },
+      "top_path": {
+        "clinical": "[L15\u00b7S]  \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.434)",
+        "patient": "[L15\u00b7S]  \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.484)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " gynecologist",
+        "observed_clinical": [
+          "Output \" gyne\"",
+          0.181
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.434
+          ],
+          [
+            "Output \" gyne\"",
+            0.181
+          ],
+          [
+            "Output \" gy\"",
+            0.066
+          ],
+          [
+            "Output \" specialist\"",
+            0.04
+          ],
+          [
+            "Output \" g\"",
+            0.036
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.484
+          ],
+          [
+            "Output \" doc\"",
+            0.139
+          ],
+          [
+            "Output \" gyne\"",
+            0.084
+          ],
+          [
+            "Output \" gy\"",
+            0.051
+          ],
+          [
+            "Output \" Dr\"",
+            0.045
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " gynecologist",
+        "measured_token": "Output \" gyne\"",
+        "match": "leading_wordpiece",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "leading_wordpiece",
+            "token": "Output \" gyne\"",
+            "probability": 0.181,
+            "rank": 2,
+            "returned": 10,
+            "alternatives": [
+              [
+                "Output \" gyn\"",
+                0.036
+              ]
+            ]
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" gyne\"",
+            "probability": 0.084,
+            "rank": 3,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 512,
+        "unique_to_a": 157,
+        "unique_to_b": 220
+      },
+      "outputs": {
+        "html": "trace_out/agscen_20261108/index_17.html",
+        "png": "trace_out/agscen_20261108/index_17.png",
+        "diff_html": "trace_out/agscen_20261108/index_17_diff.html",
+        "diff_png": "trace_out/agscen_20261108/index_17_diff.png"
+      }
+    },
+    {
+      "index": 18,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "At my desk my heart started racing with near-fainting, so I need to see a",
+        "patient": "It's probably nothing, but at my desk my heart started racing with near-fainting, so I need to see a"
+      },
+      "target_token": "Output \" cardio\"",
+      "probabilities": {
+        "clinical": 0.09,
+        "patient": 0.081
+      },
+      "language_penalty": -0.008999999999999994,
+      "clinical_mass": {
+        "clinical": 0.3848,
+        "patient": 0.3903
+      },
+      "error_share": {
+        "clinical": 0.115,
+        "patient": 0.1131
+      },
+      "top_path": {
+        "clinical": "[L11\u00b7S]  \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.668)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.680)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " cardiologist",
+        "observed_clinical": [
+          "Output \" cardio\"",
+          0.09
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.668
+          ],
+          [
+            "Output \" cardio\"",
+            0.09
+          ],
+          [
+            "Output \" doc\"",
+            0.033
+          ],
+          [
+            "Output \" specialist\"",
+            0.026
+          ],
+          [
+            "Output \" GP\"",
+            0.023
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.68
+          ],
+          [
+            "Output \" doc\"",
+            0.118
+          ],
+          [
+            "Output \" cardio\"",
+            0.081
+          ],
+          [
+            "Output \" Dr\"",
+            0.023
+          ],
+          [
+            "Output \" dr\"",
+            0.014
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " cardiologist",
+        "measured_token": "Output \" cardio\"",
+        "match": "leading_wordpiece",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "leading_wordpiece",
+            "token": "Output \" cardio\"",
+            "probability": 0.09,
+            "rank": 2,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" cardio\"",
+            "probability": 0.081,
+            "rank": 3,
+            "returned": 8
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 439,
+        "unique_to_a": 274,
+        "unique_to_b": 300
+      },
+      "outputs": {
+        "html": "trace_out/agscen_20261108/index_18.html",
+        "png": "trace_out/agscen_20261108/index_18.png",
+        "diff_html": "trace_out/agscen_20261108/index_18_diff.html",
+        "diff_png": "trace_out/agscen_20261108/index_18_diff.png"
+      }
+    },
+    {
+      "index": 19,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "For weeks with unintentional weight loss I coughed up blood in my spit, so I need to see a",
+        "patient": "It's probably nothing, but for weeks with unintentional weight loss I coughed up blood in my spit, so I need to see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.676,
+        "patient": 0.664
+      },
+      "language_penalty": -0.01200000000000001,
+      "clinical_mass": {
+        "clinical": 0.4773,
+        "patient": 0.4468
+      },
+      "error_share": {
+        "clinical": 0.1248,
+        "patient": 0.122
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.676)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.664)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.676
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.676
+          ],
+          [
+            "Output \" specialist\"",
+            0.055
+          ],
+          [
+            "Output \" pulmon\"",
+            0.03
+          ],
+          [
+            "Output \" cardio\"",
+            0.018
+          ],
+          [
+            "Output \" Dr\"",
+            0.018
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.664
+          ],
+          [
+            "Output \" doc\"",
+            0.08
+          ],
+          [
+            "Output \" Dr\"",
+            0.038
+          ],
+          [
+            "Output \" dentist\"",
+            0.029
+          ],
+          [
+            "Output \" dr\"",
+            0.026
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " doctor",
+        "measured_token": "Output \" doctor\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" doctor\"",
+            "probability": 0.676,
+            "rank": 1,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" doctor\"",
+            "probability": 0.664,
+            "rank": 1,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 517,
+        "unique_to_a": 183,
+        "unique_to_b": 248
+      },
+      "outputs": {
+        "html": "trace_out/agscen_20261108/index_19.html",
+        "png": "trace_out/agscen_20261108/index_19.png",
+        "diff_html": "trace_out/agscen_20261108/index_19_diff.html",
+        "diff_png": "trace_out/agscen_20261108/index_19_diff.png"
+      }
+    },
+    {
+      "index": 20,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Since yesterday when walking my right foot has slapped the floor, so I need to see a",
+        "patient": "It's probably nothing, but since yesterday when walking my right foot has slapped the floor, so I need to see a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3497
+      },
+      "error_share": {
+        "clinical": 0.1166
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " neurologist",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" po\"",
+            0.314
+          ],
+          [
+            "Output \" doctor\"",
+            0.277
+          ],
+          [
+            "Output \" physio\"",
+            0.07
+          ],
+          [
+            "Output \" chi\"",
+            0.054
+          ],
+          [
+            "Output \" foot\"",
+            0.048
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " neurologist",
+        "measured_token": null,
+        "match": null,
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "missing",
+            "reason": "target_not_in_returned_logits",
+            "returned": 10,
+            "prefix_candidates": []
+          }
+        },
+        "intended_read": {
+          "status": "missing",
+          "reason": "target_not_in_returned_logits",
+          "returned": 10,
+          "prefix_candidates": []
+        }
+      },
+      "outputs": {}
+    }
+  ]
+}
