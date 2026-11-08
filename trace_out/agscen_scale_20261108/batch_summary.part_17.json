@@ -1,0 +1,514 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 17,
+  "pairs_requested": 4,
+  "completed": true,
+  "screen_targets": 0.02,
+  "environment": {
+    "python": "3.11.18",
+    "engine_sha": "83d559312b7b",
+    "runner_image": "20261101.186.1"
+  },
+  "results": [
+    {
+      "index": 17,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Three times this week I had episodic rotational vertigo, unilateral tinnitus, and hearing loss, so I should see an",
+        "patient": "Three times this week I had the room spinning in circles, ear roaring, and muffled hearing, so I should see an"
+      },
+      "target_token": "Output \" oto\"",
+      "probabilities": {
+        "clinical": 0.061,
+        "patient": 0.027
+      },
+      "language_penalty": -0.034,
+      "clinical_mass": {
+        "clinical": 0.3634,
+        "patient": 0.3108
+      },
+      "error_share": {
+        "clinical": 0.1212,
+        "patient": 0.1151
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L20\u00b7O] words and concepts about the inner ear | ear and hea \u2192 Output \" ear\" (p=0.079)",
+        "patient": "embedding \u2192 [L20\u00b7O] words and concepts about the inner ear | ear and hea \u2192 Output \" ear\" (p=0.095)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " otolaryngologist",
+        "observed_clinical": [
+          "Output \" oto\"",
+          0.061
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ENT\"",
+            0.578
+          ],
+          [
+            "Output \" audio\"",
+            0.129
+          ],
+          [
+            "Output \" ear\"",
+            0.079
+          ],
+          [
+            "Output \" oto\"",
+            0.061
+          ],
+          [
+            "Output \" o\"",
+            0.048
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ENT\"",
+            0.484
+          ],
+          [
+            "Output \" audio\"",
+            0.202
+          ],
+          [
+            "Output \" ear\"",
+            0.095
+          ],
+          [
+            "Output \" oto\"",
+            0.027
+          ],
+          [
+            "Output \" Ear\"",
+            0.027
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " otolaryngologist",
+        "measured_token": "Output \" oto\"",
+        "match": "leading_wordpiece",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "leading_wordpiece",
+            "token": "Output \" oto\"",
+            "probability": 0.061,
+            "rank": 4,
+            "returned": 8
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" oto\"",
+            "probability": 0.027,
+            "rank": 4,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 503,
+        "unique_to_a": 186,
+        "unique_to_b": 251
+      },
+      "outputs": {
+        "html": "trace_out/agscen_scale_20261108/index_17.html",
+        "png": "trace_out/agscen_scale_20261108/index_17.png",
+        "diff_html": "trace_out/agscen_scale_20261108/index_17_diff.html",
+        "diff_png": "trace_out/agscen_scale_20261108/index_17_diff.png"
+      }
+    },
+    {
+      "index": 18,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When I bend my neck forward I get electric-like paresthesias radiating down my spine into both legs, so I need to see a",
+        "patient": "When I bend my neck forward I get an electric shock shooting down my spine into both legs, so I need to see a"
+      },
+      "target_token": "Output \" neuro\"",
+      "probabilities": {
+        "clinical": 0.457,
+        "patient": 0.293
+      },
+      "language_penalty": -0.16400000000000003,
+      "clinical_mass": {
+        "clinical": 0.4451,
+        "patient": 0.4059
+      },
+      "error_share": {
+        "clinical": 0.1337,
+        "patient": 0.1236
+      },
+      "top_path": {
+        "clinical": "[L11\u00b7S]  \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.168)",
+        "patient": "[L11\u00b7S]  \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.258)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " neurologist",
+        "observed_clinical": [
+          "Output \" neuro\"",
+          0.457
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" neuro\"",
+            0.457
+          ],
+          [
+            "Output \" doctor\"",
+            0.168
+          ],
+          [
+            "Output \" specialist\"",
+            0.08
+          ],
+          [
+            "Output \" chi\"",
+            0.038
+          ],
+          [
+            "Output \" neuros\"",
+            0.033
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" neuro\"",
+            0.293
+          ],
+          [
+            "Output \" doctor\"",
+            0.258
+          ],
+          [
+            "Output \" specialist\"",
+            0.095
+          ],
+          [
+            "Output \" chi\"",
+            0.084
+          ],
+          [
+            "Output \" Neuro\"",
+            0.035
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " neurologist",
+        "measured_token": "Output \" neuro\"",
+        "match": "leading_wordpiece",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "leading_wordpiece",
+            "token": "Output \" neuro\"",
+            "probability": 0.457,
+            "rank": 1,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" neuro\"",
+            "probability": 0.293,
+            "rank": 1,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 633,
+        "unique_to_a": 115,
+        "unique_to_b": 167
+      },
+      "outputs": {
+        "html": "trace_out/agscen_scale_20261108/index_18.html",
+        "png": "trace_out/agscen_scale_20261108/index_18.png",
+        "diff_html": "trace_out/agscen_scale_20261108/index_18_diff.html",
+        "diff_png": "trace_out/agscen_scale_20261108/index_18_diff.png"
+      }
+    },
+    {
+      "index": 19,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "At church today I had a generalized tonic-clonic convulsion with postictal confusion, so I need to go to the",
+        "patient": "At church today I had a full-body shaking spell where I fell out and woke up confused, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.318,
+        "patient": 0.171
+      },
+      "language_penalty": -0.147,
+      "clinical_mass": {
+        "clinical": 0.4521,
+        "patient": 0.3363
+      },
+      "error_share": {
+        "clinical": 0.1449,
+        "patient": 0.1145
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.117)",
+        "patient": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.062)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ER",
+        "observed_clinical": [
+          "Output \" ER\"",
+          0.318
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.408
+          ],
+          [
+            "Output \" ER\"",
+            0.318
+          ],
+          [
+            "Output \" emergency\"",
+            0.117
+          ],
+          [
+            "Output \" doctor\"",
+            0.043
+          ],
+          [
+            "Output \" neuro\"",
+            0.023
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.361
+          ],
+          [
+            "Output \" doctor\"",
+            0.248
+          ],
+          [
+            "Output \" ER\"",
+            0.171
+          ],
+          [
+            "Output \" emergency\"",
+            0.062
+          ],
+          [
+            "Output \" doctors\"",
+            0.026
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.318,
+            "rank": 2,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.171,
+            "rank": 3,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 448,
+        "unique_to_a": 264,
+        "unique_to_b": 350
+      },
+      "outputs": {
+        "html": "trace_out/agscen_scale_20261108/index_19.html",
+        "png": "trace_out/agscen_scale_20261108/index_19.png",
+        "diff_html": "trace_out/agscen_scale_20261108/index_19_diff.html",
+        "diff_png": "trace_out/agscen_scale_20261108/index_19_diff.png"
+      }
+    },
+    {
+      "index": 20,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "All winter I have had chronic productive cough, exertional dyspnea, and expiratory wheezing, so I need to see a",
+        "patient": "All winter I have had a deep rattling cough, getting short-winded on stairs, and tight whistling breath, so I need to see a"
+      },
+      "target_token": "Output \" pulmon\"",
+      "probabilities": {
+        "clinical": 0.373,
+        "patient": 0.097
+      },
+      "language_penalty": -0.276,
+      "clinical_mass": {
+        "clinical": 0.5667,
+        "patient": 0.4606
+      },
+      "error_share": {
+        "clinical": 0.1253,
+        "patient": 0.1294
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7C] terminology and concepts in medical research about l \u2192 [L21\u00b7C] medical procedures related to the arterial and respi \u2192 Output \" pulmonary\" (p=0.094)",
+        "patient": "embedding \u2192 [L18\u00b7C] terminology and concepts in medical research about l \u2192 [L21\u00b7C] medical procedures related to the arterial and respi \u2192 Output \" lung\" (p=0.041)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " pulmonologist",
+        "observed_clinical": [
+          "Output \" pulmon\"",
+          0.373
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" pulmon\"",
+            0.373
+          ],
+          [
+            "Output \" specialist\"",
+            0.107
+          ],
+          [
+            "Output \" Pul\"",
+            0.094
+          ],
+          [
+            "Output \" pulmonary\"",
+            0.094
+          ],
+          [
+            "Output \" doctor\"",
+            0.083
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.385
+          ],
+          [
+            "Output \" specialist\"",
+            0.125
+          ],
+          [
+            "Output \" pulmon\"",
+            0.097
+          ],
+          [
+            "Output \" lung\"",
+            0.041
+          ],
+          [
+            "Output \" cardio\"",
+            0.041
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " pulmonologist",
+        "measured_token": "Output \" pulmon\"",
+        "match": "leading_wordpiece",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "leading_wordpiece",
+            "token": "Output \" pulmon\"",
+            "probability": 0.373,
+            "rank": 1,
+            "returned": 10,
+            "alternatives": [
+              [
+                "Output \" pul\"",
+                0.024
+              ]
+            ]
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" pulmon\"",
+            "probability": 0.097,
+            "rank": 3,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 475,
+        "unique_to_a": 247,
+        "unique_to_b": 290
+      },
+      "outputs": {
+        "html": "trace_out/agscen_scale_20261108/index_20.html",
+        "png": "trace_out/agscen_scale_20261108/index_20.png",
+        "diff_html": "trace_out/agscen_scale_20261108/index_20_diff.html",
+        "diff_png": "trace_out/agscen_scale_20261108/index_20_diff.png"
+      }
+    }
+  ]
+}
