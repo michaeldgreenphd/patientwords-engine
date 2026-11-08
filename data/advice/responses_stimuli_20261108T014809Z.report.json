@@ -1,13 +1,10 @@
 {
- "run_utc": "2026-11-08T04:36:58Z",
- "engine_sha": "a40255d0bed040352d6339793ac9bb9390abd944",
+ "run_utc": "2026-11-08T07:20:33Z",
+ "engine_sha": "23dbd4ad339cc74f2f181bb518797698440ced4d",
  "stimuli_file": "data/advice/stimuli_20261108T014809Z.json",
  "models": [
-  "openai:openai/gpt-5.5",
-  "openai:openai/gpt-5.4-mini",
-  "xai:x-ai/grok-4.3",
-  "deepseek:deepseek/deepseek-v4-flash",
-  "moonshot:moonshotai/kimi-k2.5"
+  "anthropic:claude-haiku-4-5",
+  "anthropic:claude-sonnet-5"
  ],
  "arms": [
   "clinical",
@@ -15,20 +12,20 @@
  ],
  "providers_registry": "data/advice_providers.json",
  "providers": {
-  "openai:openai/gpt-5.5": "openai",
-  "openai:openai/gpt-5.4-mini": "openai",
-  "xai:x-ai/grok-4.3": "xai",
-  "deepseek:deepseek/deepseek-v4-flash": "deepseek",
-  "moonshot:moonshotai/kimi-k2.5": "moonshot"
+  "anthropic:claude-haiku-4-5": "anthropic",
+  "anthropic:claude-sonnet-5": "anthropic"
  },
  "samples": 1,
  "temperature": 1.0,
  "max_tokens": 1024,
+ "fire_temperature_omitted_for": {
+  "anthropic:claude-sonnet-5": "Claude Sonnet 5 rejects a non-default temperature with a 400 (claude-api skill, python/claude-api/sdk-upgrade.md; shared/model-migration.md: omitting it, or passing the default, is accepted); omitted, it samples at the API default, 1.0, as a request carrying 1.0 does"
+ },
  "translator_model": null,
- "max_spend_usd": 4.0,
- "cost_usd": 3.134923,
+ "max_spend_usd": 1.5,
+ "cost_usd": 4.18915,
  "cost_basis": "cumulative_from_records",
- "run_cost_usd": 3.134925,
+ "run_cost_usd": 1.054227,
  "per_model": {
   "openai:openai/gpt-5.5": {
    "calls": 112,
@@ -59,43 +56,37 @@
    "input_tokens": 9886,
    "output_tokens": 132153,
    "cost": 0.4225119999999998
+  },
+  "anthropic:claude-haiku-4-5": {
+   "calls": 112,
+   "input_tokens": 8911,
+   "output_tokens": 34892,
+   "cost": 0.18337100000000003
+  },
+  "anthropic:claude-sonnet-5": {
+   "calls": 112,
+   "input_tokens": 11723,
+   "output_tokens": 84741,
+   "cost": 0.8708559999999996
   }
  },
  "run_per_model": {
-  "openai:openai/gpt-5.5": {
+  "anthropic:claude-haiku-4-5": {
    "calls": 112,
-   "input_tokens": 8143,
-   "output_tokens": 68827,
-   "cost": 2.2108012500000007
+   "input_tokens": 8911,
+   "output_tokens": 34892,
+   "cost": 0.18337100000000003
   },
-  "openai:openai/gpt-5.4-mini": {
+  "anthropic:claude-sonnet-5": {
    "calls": 112,
-   "input_tokens": 8143,
-   "output_tokens": 47671,
-   "cost": 0.23295164999999995
-  },
-  "xai:x-ai/grok-4.3": {
-   "calls": 112,
-   "input_tokens": 28878,
-   "output_tokens": 75240,
-   "cost": 0.23600016000000001
-  },
-  "deepseek:deepseek/deepseek-v4-flash": {
-   "calls": 112,
-   "input_tokens": 8414,
-   "output_tokens": 104667,
-   "cost": 0.032662200000000016
-  },
-  "moonshot:moonshotai/kimi-k2.5": {
-   "calls": 112,
-   "input_tokens": 9886,
-   "output_tokens": 132153,
-   "cost": 0.42251013000000004
+   "input_tokens": 11723,
+   "output_tokens": 84741,
+   "cost": 0.8708559999999996
   }
  },
- "records_appended": 560,
- "records_total": 560,
+ "records_appended": 224,
+ "records_total": 784,
  "truncated": false,
  "stopped_reason": null,
- "chain_head": "fa84ac94f7f3ec5ebcda5ae79cf3cd21a15499f3e15c8316bf2be6f19ee0149e"
+ "chain_head": "26fd4df85af9cfd251bbac8ee41f0b00063de71e2843c196e9c46e0aa94a5a9e"
 }
