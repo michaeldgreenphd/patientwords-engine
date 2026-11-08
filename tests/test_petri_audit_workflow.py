@@ -457,7 +457,7 @@ def test_park_default_validates_and_is_a_true_no_op():
     assert ft.fire_lane(TRIGGER, ft.PARK_DEFAULTS[TRIGGER]) == "anthropic"
     judged = dict(ft.PARK_DEFAULTS[TRIGGER], judge="true", judge_max_spend="0.50", max_spend="1.00")
     commitment, err = ft.fire_commitment(judged)
-    assert err is None and commitment == pytest.approx(1.55), "both judge ceilings are counted, as for advice-eval"
+    assert err is None and commitment == pytest.approx(1.575), "both judge ceilings are counted, as for advice-eval"
 
 
 def test_the_fire_nonce_reaches_the_run_the_manifest_and_the_fallback_sidecar(workflow, raw):

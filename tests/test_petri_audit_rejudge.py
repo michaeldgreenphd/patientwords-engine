@@ -1103,7 +1103,7 @@ def test_secondary_interrupt_is_imputed_once_within_its_own_cap(
     secondary.finalize(runs.parent / "secondary", "777", scratch)
     path = next(root.glob("*/*/*.report.json"))
     report = framework.load_json(path)
-    assert report["cost_usd"] == report["max_spend_usd"] == 0.1
+    assert report["cost_usd"] == report["max_spend_usd"] == 0.15   # judge_max_spend 1.0 x 0.1 x 1.5
     assert report["cost_basis"] == "ceiling_imputed:judge_aborted_without_sidecar"
     before = path.read_bytes()
     secondary.finalize(runs.parent / "secondary", "777", scratch)

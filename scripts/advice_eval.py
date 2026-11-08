@@ -44,6 +44,7 @@ import random
 import re
 import statistics
 import subprocess
+import sys
 import time
 from collections.abc import Callable
 from datetime import datetime, timezone
@@ -2094,8 +2095,22 @@ def judge_price_problem(judge_model: str, registry: dict) -> str | None:
             "tokens (fallback_priced_judge)")
 
 
+# `judge --with-secondary` exits with this code when the first judge finished and only the second judge's pass
+# cap ran out (2026-11-08). The workflow's Judge + analyze step still runs `analyze` on it, then fails with it.
+SECONDARY_SHORTFALL_EXIT = 3
+
+
+class PassCapExhausted(ValueError):
+    """A paired judge pass whose remaining cap cannot admit the next call; its sidecar records the stop."""
+
+
 def judge_both(args: argparse.Namespace) -> Path:
-    """Run the selected judge and Haiku 5.5 under separately reserved pass ceilings."""
+    """Run the selected judge and Haiku 5.5 under separately reserved pass ceilings.
+
+    When the second pass's cap runs out, both passes' judgments and sidecars are already written (the second's
+    sidecar records stopped_reason and unjudged), so the second pass stops there and this exits
+    SECONDARY_SHORTFALL_EXIT, which the workflow reads as "analyze, then fail". Any other error, and the first
+    pass running out of its own cap, propagates as before and skips analyze."""
     import copy
 
     try:
@@ -2116,7 +2131,12 @@ def judge_both(args: argparse.Namespace) -> Path:
         second = copy.copy(first)
         second.judge_model = reservation["judge_model"]
         second.max_spend = reservation["max_spend_usd"]
-        judge(second)
+        try:
+            judge(second)
+        except PassCapExhausted as exc:
+            print(f"secondary_judge_short: {exc}; the first judge completed, and both passes' judgments and "
+                  "sidecars are kept; a judge-only fire over this archive judges the rest", file=sys.stderr)
+            raise SystemExit(SECONDARY_SHORTFALL_EXIT) from exc
     return out
 
 
@@ -2223,6 +2243,7 @@ def judge(args) -> Path:
         with open(report_list, "a", encoding="utf-8") as listing:
             listing.write(str(sidecar_path) + "\n")
     in_flight = False
+    stopped_reason = None
 
     def refuse_unknown_retry(attempt: int, status: int) -> bool:
         raise ValueError(f"dual_judge_retry_unreserved: attempt {attempt + 1} returned {status} without usage; "
@@ -2240,7 +2261,11 @@ def judge(args) -> Path:
             "cost_basis": "ceiling_imputed:judge_usage_unavailable" if imputed else "this_judge_pass",
             "judgments_file": str(out_path),
             **({"dual_judge_reservation": args.dual_judge_reservation, "sdk_max_retries": 0,
-                "input_token_estimator": INPUT_TOKEN_ESTIMATOR} if paired else {}),
+                "input_token_estimator": INPUT_TOKEN_ESTIMATOR,
+                # measured usage per model, so a later re-sizing of the second judge's allowance has token counts
+                "per_model": tracker.per_model} if paired else {}),
+            # a paired pass the cap stopped: why, and how many responses this pass left unjudged
+            **({"stopped_reason": stopped_reason, "unjudged": len(todo) - n} if stopped_reason else {}),
             **({"usage_unavailable": True, "reported_cost_usd": round(tracker.spent, 6)} if imputed else {}),
         }
         temporary = sidecar_path.with_suffix(sidecar_path.suffix + ".tmp")
@@ -2254,8 +2279,10 @@ def judge(args) -> Path:
                 input_bound = estimate_input_tokens(prompt) if paired else EST_INPUT_TOKENS
                 if not tracker.can_afford(args.judge_model, input_bound):
                     if paired:
-                        raise ValueError("dual_judge_call_unaffordable: rendered input bound plus sent output "
-                                         "allowance exceeds the remaining pass cap")
+                        stopped_reason = "pass_cap_exhausted"
+                        raise PassCapExhausted(
+                            f"dual_judge_call_unaffordable: rendered input bound plus sent output allowance exceeds "
+                            f"the remaining pass cap (${args.max_spend}) after {n} of {len(todo)} judgments")
                     print(f"STOPPED EARLY: judge max_spend ceiling (${args.max_spend})")
                     break
                 # Blinding: the judge sees the response text only - never the prompt or arm.

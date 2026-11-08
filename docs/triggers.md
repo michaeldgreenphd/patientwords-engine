@@ -78,12 +78,24 @@ with the run they started. The journal entry's note and the commit message
 
 Every future judged advice or paid Petri fire also applies Claude Haiku 5.5. `judge_max_spend` remains the
 first judge's ceiling. The guard reserves an additional ceiling for the second pass, computed as
-`judge_max_spend × max(second_input_price / first_input_price, second_output_price / first_output_price)`,
-rounded upward to a microdollar. It records those prices and caps in the journal's `secondary_judge` field.
-For Haiku 4.5 followed by Haiku 5.5 this adds 10% to the judge reservation; the target reservation is unchanged.
+`judge_max_spend × max(second_input_price / first_input_price, second_output_price / first_output_price) × 1.5`,
+rounded upward to a microdollar. It records those prices, the 1.5 token allowance and both caps in the journal's
+`secondary_judge` field. For Haiku 4.5 followed by Haiku 5.5 this adds 15% to the judge reservation ($0.18 on a
+$1.20 `judge_max_spend`); the target reservation is unchanged.
 Both caps enter the **same** journal entry and daily ceiling check. An already-selected Haiku 5.5 on the same
 route runs once. Mock rehearsals remain free. Existing journal entries and landed outputs are unchanged;
 old reservations lacking the second cap cannot authorize the new paired execution.
+
+The 1.5 allowance dates from 2026-11-08. Until then the second cap was the price ratio alone, which assumes the
+second judge spends the first judge's tokens per judgment. Haiku 5.5's newer tokenizer counts more tokens for the
+same text: on two 784-response advice archives at `judge_max_spend` 1.2, Haiku 5.5 cost 1.25× and 1.26× per
+judgment what the price ratio predicts, and both second passes stopped at the $0.12 cap after 759 and 751 judgments. The basis and the
+alternative rejected (a worst case for every call) are in the comment on `SECONDARY_TOKEN_ALLOWANCE` in
+`scripts/judge_pair.py`. A journal entry written before the change keeps the reservation it recorded, and the daily
+ceiling counts that recorded `max_spend`; `fire_trigger.py publish` recomputes `max_spend` and `secondary_judge`
+together for a fire it publishes late. When the second pass's cap still runs out, advice judging stops that pass,
+records `stopped_reason: pass_cap_exhausted` and `unjudged` in its sidecar and exits 3; the workflow then runs
+`analyze` on the first judge's rows and fails the step with 3. Any other judge failure still skips `analyze`.
 
 Advice uses `anthropic:claude-haiku-5-5`, which keeps the second judge out of primary analysis cells. Each pass
 writes its own cost sidecar, also committed when `commit_outputs` is false. Before each call, paired advice

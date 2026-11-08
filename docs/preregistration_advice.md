@@ -1819,3 +1819,18 @@ direct spec `anthropic:claude-haiku-5-5`; its primary rows and default
 analysis exclusion of secondary rows are unchanged. The additional cap
 is reserved together with the first judge, using the larger reviewed
 input/output price ratio (rounded up to a microdollar).
+
+### 2026-11-08: second judge reservation sized for its tokenizer
+
+The additional cap reserved for the automatic second judge is now the
+larger input/output price ratio times a token allowance of 1.5 (still
+rounded up to a microdollar). The price ratio alone assumed the second
+judge spends the first judge's tokens per judgment; Claude Haiku 5.5's
+newer tokenizer counts more tokens for the same text, and on the
+2026-11-08 advice archives `stimuli_20261108T014809Z` and
+`stimuli_20261108T014810Z` its passes stopped at the cap after 759 and
+751 of 784 judgments. Judge-only top-up fires judged the rest. When the
+cap still runs out, the second pass stops, its sidecar records the
+unjudged count, and the analysis of the judge of record still runs. No
+judgment, tier or analysis rule changes; `docs/triggers.md` has the
+operational detail.
