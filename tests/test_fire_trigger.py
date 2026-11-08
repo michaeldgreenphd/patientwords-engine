@@ -622,7 +622,7 @@ def test_the_2026_09_23_fixture_is_refused_with_both_resolved_fires_counted():
     kind, reason = ft.budget_check(params, dashboard, "2026-09-23", entries=journal, now=now, expire_hours=8.0,
                                    overrides=overrides, trigger="petri-audit")
     assert kind == "ceiling", reason
-    assert "max_spend 8.85 + today's committed 12.70 (landed 0.00 + held today 12.70)" in reason
+    assert "max_spend 8.97 + today's committed 12.70 (landed 0.00 + held today 12.70)" in reason
     assert "daily ceiling 15.00 USD [anthropic lane]" in reason
 
 
@@ -884,7 +884,7 @@ def test_fire_commitment_sums_judge_ceiling_only_when_judging():
     assert ft.fire_commitment({"max_spend": "1.0"}) == (1.0, None)
     total, err = ft.fire_commitment(
         {"max_spend": "1.0", "judge": "true", "judge_max_spend": "0.5"})
-    assert (total, err) == (1.55, None)
+    assert (total, err) == (1.575, None)   # 1.0 + 0.5 + the second judge's 0.5 x 0.1 x 1.5
     # judge off: judge_max_spend present but NOT committed
     total, err = ft.fire_commitment(
         {"max_spend": "1.0", "judge": "false", "judge_max_spend": "0.5"})
@@ -924,9 +924,9 @@ def test_judged_fire_journal_entry_records_summed_commitment(repo):
         max_spend="0.60", judge="true", judge_max_spend="0.40", _nonce="j5")) == 0
     entry = json.loads(journal_path(repo).read_text().splitlines()[-1])
     assert entry["trigger"] == "advice-eval"
-    assert entry["max_spend"] == pytest.approx(1.04)
-    # a second paid fire the same day sees the full 1.0 held: 1.2 would
-    # break the 2.0 ceiling (1.0 + 1.2), 0.9 fits
+    assert entry["max_spend"] == pytest.approx(1.06)   # 0.60 + 0.40 + the second judge's 0.40 x 0.1 x 1.5
+    # a second paid fire the same day sees the full 1.06 held: 1.2 would
+    # break the 2.0 ceiling (1.06 + 1.2), 0.9 fits
     assert fire(repo, "scenario-generation", {
         "task": "pairs", "num": "5", "max_spend": "1.2", "_nonce": "j6"}) == 4
     assert fire(repo, "scenario-generation", {
@@ -2283,6 +2283,36 @@ def test_publish_recomputes_a_paid_fires_commitment_from_the_final_params(tmp_pa
     assert all("max_spend" not in e for e in entries2 if e.get("fired_utc") == fired2)
 
 
+def test_publish_recomputes_the_second_judge_share_with_the_commitment(tmp_path, capsys):
+    """A judged advice fire made before the second-judge allocation changed (2026-11-08: price ratio x 1.5) and
+    published after it: publish corrects max_spend from the final params, and must correct the journaled
+    secondary_judge with it, because CI's require_advice_reservation compares that field with its own computation
+    and refuses a mismatch before any judge call."""
+    origin, clone = _publish_fixture(tmp_path)
+    write_dashboard(clone, spent=0.0)
+    _commit(clone, "dashboard")
+    subprocess.run(["git", "-C", str(clone), "push", "-q", "origin", "main"], check=True)
+    params = {"stimuli_file": "data/advice/stimuli_20261108T014809Z.json", "models": "anthropic:claude-haiku-4-5",
+              "arms": "clinical,patient", "samples": 1, "temperature": 1.0, "max_tokens": 1024, "judge": True,
+              "judge_model": "claude-haiku-4-5", "judge_max_spend": 0.5, "judge_max_tokens": 300,
+              "commit_outputs": False, "max_spend": 0.2, "_nonce": "second-share"}
+    old_share = {**ft.secondary_judge_reservation(params), "max_spend_usd": 0.05, "price_ratio": 0.1}
+    old_share.pop("token_allowance")
+    old_share["allocation_basis"] = "max(input_price_ratio, output_price_ratio); round_up_microdollar"
+    fired = ft.iso_utc(ft.utc_now())
+    _fire_locally(clone, "advice-eval", params, fired, max_spend=0.75, lane="anthropic", nonce="second-share",
+                  secondary_judge=old_share)
+    assert ft.main(["publish", "--repo", str(clone)]) == 0
+    out = capsys.readouterr().out
+    assert "max_spend 0.75 -> 0.77" in out and "secondary_judge max_spend_usd 0.05 -> 0.075" in out
+    entries = [json.loads(ln) for ln in _origin_main_files(origin, tmp_path)["ops/trigger_journal.jsonl"].splitlines()
+               if ln.strip()]
+    (mine,) = [e for e in entries if e.get("fired_utc") == fired]
+    assert mine["max_spend"] == ft.fire_commitment(params)[0] == pytest.approx(0.775)
+    assert mine["secondary_judge"] == ft.secondary_judge_reservation(params)
+    assert mine["secondary_judge"]["max_spend_usd"] == 0.075
+
+
 def test_publish_restamp_threshold_follows_the_expiry_window(tmp_path, capsys, monkeypatch):
     """The queue guard expires entries older than MEDLANG_TRIGGER_EXPIRE_HOURS, so
     a fire published later than half that window (not only an hour) would land
@@ -2868,7 +2898,7 @@ def test_budget_gate_requires_a_journal_reservation_for_a_paid_petri_run(repo, t
 
     def entry(**over):
         base = {"trigger": "petri-audit", "fired_utc": ft.iso_utc(ft.utc_now()), "commit": "", "note": "pilot",
-                "resolved": False, "evicted": False, "nonce": "pilot-1", "max_spend": 1.55, "lane": "anthropic",
+                "resolved": False, "evicted": False, "nonce": "pilot-1", "max_spend": 1.575, "lane": "anthropic",
                 "params_sha256": ft.params_digest(content), "ref": "main"}
         return json.dumps({**base, **over}) + "\n"
 
@@ -2993,7 +3023,7 @@ def test_budget_gate_counts_a_petri_fire_resolved_earlier_today_and_its_own_entr
 
     def entry(**over):
         base = {"trigger": "petri-audit", "fired_utc": "2026-09-23T11:55:00Z", "commit": "", "note": "",
-                "resolved": False, "evicted": False, "nonce": "w2e3", "max_spend": 1.55, "lane": "anthropic",
+                "resolved": False, "evicted": False, "nonce": "w2e3", "max_spend": 1.575, "lane": "anthropic",
                 "params_sha256": ft.params_digest(content), "ref": "main"}
         return json.dumps({**base, **over}) + "\n"
 

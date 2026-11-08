@@ -339,12 +339,21 @@ jobs:
         run: |
           : > "$ADVICE_JUDGE_REPORTS"
           STEM=$(basename "$STIMULI" .json)
+          # Exit 3 (advice_eval.SECONDARY_SHORTFALL_EXIT): the first judge finished and only the second judge's
+          # pass cap ran out. analyze reads the first judge's rows, so it still runs; the step then fails with 3.
+          # Any other nonzero exit skips analyze, as before.
+          JUDGE_STATUS=0
           python scripts/advice_eval.py judge --with-secondary \
             --responses "data/advice/responses_${STEM}.jsonl" \
             --rubric "$RUBRIC" --judge-model "$JUDGE_MODEL" --max-spend "$JUDGE_MAX_SPEND" \
-            --judge-max-tokens "$JUDGE_MAX_TOKENS"
+            --judge-max-tokens "$JUDGE_MAX_TOKENS" || JUDGE_STATUS=$?
+          if [ "$JUDGE_STATUS" -ne 0 ] && [ "$JUDGE_STATUS" -ne 3 ]; then exit "$JUDGE_STATUS"; fi
           python scripts/advice_eval.py analyze \
             --judgments "data/advice/judgments_${STEM}.jsonl" --rubric "$RUBRIC"
+          if [ "$JUDGE_STATUS" -eq 3 ]; then
+            echo "secondary_judge_short: analysis written; the second judge's sidecar records the unjudged count" >&2
+          fi
+          exit "$JUDGE_STATUS"
 
       - name: Verify archive chain
         if: always()

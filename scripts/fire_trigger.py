@@ -3740,6 +3740,20 @@ def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Names
             corrections.append(f"max_spend {fire.get('max_spend')!r} -> {expected_spend!r}, "
                                f"lane {fire.get('lane')!r} -> {expected_lane!r}")
             fire["max_spend"], fire["lane"] = expected_spend, expected_lane
+        # ...and the second judge's share of it, which CI compares field for field with what its own code computes
+        # (judge_pair.require_advice_reservation, petri_audit.secondary.require_reservation): a max_spend corrected
+        # here beside a stale share would be refused there (the allocation rule changed on 2026-11-08)
+        if trigger in ("advice-eval", "petri-audit") and judge_is_on(params):
+            try:
+                expected_second = secondary_judge_reservation(params)
+            except ValueError as exc:
+                print(f"refused: {exc}", file=sys.stderr)
+                return 4, head
+            recorded = fire.get("secondary_judge")
+            if recorded != expected_second:
+                was = recorded.get("max_spend_usd") if isinstance(recorded, dict) else recorded
+                corrections.append(f"secondary_judge max_spend_usd {was!r} -> {expected_second['max_spend_usd']!r}")
+                fire["secondary_judge"] = expected_second
         # ...and the campaign it is charged to, from the published params too, or a fire tagged (or re-tagged)
         # during recovery would escape its campaign's totals (campaign_held; Codex on PR #137)
         expected_campaign = str(params["_campaign"]) if params.get("_campaign") not in (None, "") else None

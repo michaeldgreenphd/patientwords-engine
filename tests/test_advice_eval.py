@@ -2454,12 +2454,153 @@ def test_automatic_dual_judging_keeps_primary_and_books_both_passes(
         assert bool(judgments) == (failed_model == "claude-haiku-5-5")
         return
     assert [r["judge_model"] for r in sidecars] == ["claude-haiku-4-5", "anthropic:claude-haiku-5-5"]
-    assert [r["max_spend_usd"] for r in sidecars] == [1.0, 0.1]
+    assert [r["max_spend_usd"] for r in sidecars] == [1.0, 0.15]   # 1.0 x price ratio 0.1 x token allowance 1.5
     assert all(r["cost_usd"] == 0 if failure == "zero" else r["cost_usd"] > 0 for r in sidecars)
     assert sidecars[0]["dual_judge_reservation"] == sidecars[1]["dual_judge_reservation"]
     judgments = ae._read_jsonl(Path(sidecars[0]["judgments_file"]))
     primary = [r for r in judgments if not ae.is_secondary_judge(r["judge_model"])]
     assert primary and len(primary) * 2 == len(judgments)
+
+
+def test_second_judge_cap_exhaustion_keeps_the_first_pass_and_exits_for_analyze(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Regression (advice-eval runs 42455353889 and 42457779557, 2026-11-08): the second judge's pass cap ran out
+    after 759 and 751 of 784 judgments and raised dual_judge_call_unaffordable, which failed the Judge + analyze step
+    before analyze ran. The second pass now stops cleanly, its sidecar records why and how many it left unjudged, and
+    the command exits SECONDARY_SHORTFALL_EXIT so the workflow runs analyze and still fails the step."""
+    from decimal import Decimal
+    from scripts import fire_trigger as ft
+    from scripts import judge_pair
+    from scripts.petri_audit.judge_runner import estimate_input_tokens
+
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    resp, _ = _elicit(tmp_path, monkeypatch, stim_path, samples="2")
+    rubric_path = tmp_path / "rubric.json"
+    rubric_path.write_text(json.dumps(RUBRIC), encoding="utf-8")
+    advice = [r for r in ae._read_jsonl(resp) if r.get("record_type") == "advice"]
+    assert len(advice) >= 4
+    # A second-judge cap of one worst-case call plus 1.5 measured calls admits two or three calls, never all: the
+    # guard's worst case is the rendered prompt's byte bound plus the 300-token output allowance, and each stub call
+    # measures 3000 tokens in and 20 out at Haiku 5.5's $0.10/$0.50 per million, about one worst case per call.
+    worst = max(estimate_input_tokens(ae._judge_prompt(RUBRIC, r["response_text"])) * 0.1e-6 + 300 * 0.5e-6
+                for r in advice)
+    cap = worst + 1.5 * (3000 * 0.1 + 20 * 0.5) / 1e6
+    monkeypatch.setattr(judge_pair, "SECONDARY_TOKEN_ALLOWANCE", Decimal(str(round(cap / 0.1, 9))))
+    monkeypatch.setattr(ae, "_client", lambda *, max_retries: object())
+
+    def send(client: object, model: str, *args: object, **kwargs: object) -> object:
+        response = list(_stub_send(client, model, *args))
+        response[1:3] = [3000, 20]
+        response[3] = {**response[3], "usage": {"input_tokens": 3000, "output_tokens": 20}}
+        return tuple(response)
+
+    monkeypatch.setattr(ae, "_send", send)
+    reports = tmp_path / "reports.txt"
+    monkeypatch.setenv("ADVICE_JUDGE_REPORTS", str(reports))
+    params = {"judge": True, "judge_model": "claude-haiku-4-5", "judge_max_spend": 1.0, "max_spend": 0.1}
+    trigger = tmp_path / ".github/trigger/advice-eval.json"
+    trigger.parent.mkdir(parents=True)
+    content = json.dumps(params)
+    trigger.write_text(content)
+    journal = tmp_path / "ops/trigger_journal.jsonl"
+    journal.parent.mkdir()
+    journal.write_text(json.dumps({"trigger": "advice-eval", "params_sha256": ft.params_digest(content),
+                                   "ref": "test", "max_spend": ft.fire_commitment(params)[0], "lane": "anthropic",
+                                   "secondary_judge": ft.secondary_judge_reservation(params)}) + "\n")
+    monkeypatch.setattr(ae, "REPO_ROOT", tmp_path)
+    for key, value in {"GITHUB_ACTIONS": "true", "GITHUB_EVENT_NAME": "push", "GITHUB_RUN_ATTEMPT": "1",
+                       "GITHUB_REF_NAME": "test"}.items():
+        monkeypatch.setenv(key, value)
+    with pytest.raises(SystemExit) as stopped:
+        ae.main(["judge", "--responses", str(resp), "--rubric", str(rubric_path), "--with-secondary",
+                 "--providers", str(LIVE_PROVIDERS_PATH), "--max-spend", "1.0"])
+    assert stopped.value.code == ae.SECONDARY_SHORTFALL_EXIT == 3
+    first, second = [json.loads(Path(path).read_text()) for path in reports.read_text().splitlines()]
+    assert first["judge_model"] == "claude-haiku-4-5" and first["judged"] == len(advice)
+    assert "stopped_reason" not in first and "unjudged" not in first
+    assert second["judge_model"] == "anthropic:claude-haiku-5-5"
+    assert 2 <= second["judged"] <= 3 < len(advice)
+    assert second["stopped_reason"] == "pass_cap_exhausted" and second["truncated"] is True
+    assert second["unjudged"] == len(advice) - second["judged"]
+    assert second["cost_basis"] == "this_judge_pass" and 0 < second["cost_usd"] <= second["max_spend_usd"]
+    assert second["per_model"]["anthropic:claude-haiku-5-5"]["calls"] == second["judged"]
+    assert second["per_model"]["anthropic:claude-haiku-5-5"]["output_tokens"] == 20 * second["judged"]
+    judgments = ae._read_jsonl(Path(first["judgments_file"]))
+    assert sum(not ae.is_secondary_judge(r["judge_model"]) for r in judgments) == len(advice)
+    assert sum(ae.is_secondary_judge(r["judge_model"]) for r in judgments) == second["judged"]
+    # what the workflow runs next: analyze reads the first judge's complete rows
+    ae.main(["analyze", "--judgments", first["judgments_file"], "--rubric", str(rubric_path)])
+    judgments_path = Path(first["judgments_file"])
+    assert judgments_path.with_name(judgments_path.stem.replace("judgments_", "analysis_") + ".json").exists()
+
+
+def test_first_judge_cap_exhaustion_still_fails_before_the_second_pass(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Only the second pass's shortfall is let through: the first judge running out of its own cap still raises
+    dual_judge_call_unaffordable (the step fails and skips analyze), and now records the stop in its sidecar."""
+    from scripts import fire_trigger as ft
+
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    resp, _ = _elicit(tmp_path, monkeypatch, stim_path, samples="1")
+    rubric_path = tmp_path / "rubric.json"
+    rubric_path.write_text(json.dumps(RUBRIC), encoding="utf-8")
+    advice = [r for r in ae._read_jsonl(resp) if r.get("record_type") == "advice"]
+    called: list[str] = []
+    monkeypatch.setattr(ae, "_client", lambda *, max_retries: object())
+    monkeypatch.setattr(ae, "_send", lambda *a, **k: called.append(a[1]))
+    reports = tmp_path / "reports.txt"
+    monkeypatch.setenv("ADVICE_JUDGE_REPORTS", str(reports))
+    cap = 0.0005   # below one Haiku 4.5 call's worst case (300 output tokens alone are $0.0015)
+    params = {"judge": True, "judge_model": "claude-haiku-4-5", "judge_max_spend": cap, "max_spend": 0.1}
+    trigger = tmp_path / ".github/trigger/advice-eval.json"
+    trigger.parent.mkdir(parents=True)
+    content = json.dumps(params)
+    trigger.write_text(content)
+    journal = tmp_path / "ops/trigger_journal.jsonl"
+    journal.parent.mkdir()
+    journal.write_text(json.dumps({"trigger": "advice-eval", "params_sha256": ft.params_digest(content),
+                                   "ref": "test", "max_spend": ft.fire_commitment(params)[0], "lane": "anthropic",
+                                   "secondary_judge": ft.secondary_judge_reservation(params)}) + "\n")
+    monkeypatch.setattr(ae, "REPO_ROOT", tmp_path)
+    for key, value in {"GITHUB_ACTIONS": "true", "GITHUB_EVENT_NAME": "push", "GITHUB_RUN_ATTEMPT": "1",
+                       "GITHUB_REF_NAME": "test"}.items():
+        monkeypatch.setenv(key, value)
+    with pytest.raises(ValueError, match="dual_judge_call_unaffordable"):
+        ae.main(["judge", "--responses", str(resp), "--rubric", str(rubric_path), "--with-secondary",
+                 "--providers", str(LIVE_PROVIDERS_PATH), "--max-spend", str(cap)])
+    assert called == []
+    (only,) = [json.loads(Path(path).read_text()) for path in reports.read_text().splitlines()]
+    assert only["judge_model"] == "claude-haiku-4-5" and only["judged"] == 0
+    assert only["stopped_reason"] == "pass_cap_exhausted" and only["unjudged"] == len(advice)
+
+
+@pytest.mark.parametrize("judge_status,analyzed", [(0, True), (3, True), (1, False), (2, False)])
+def test_judge_step_analyzes_after_a_second_judge_shortfall_and_keeps_its_exit(
+        tmp_path: Path, judge_status: int, analyzed: bool) -> None:
+    """Execute the workflow's Judge + analyze shell with a stub python: exit 3 from the judge (only the second
+    judge's cap ran out) still runs analyze and then fails the step with 3; any other failure skips analyze."""
+    import os
+    import subprocess
+
+    wf_path = Path(__file__).resolve().parents[1] / ".github" / "workflows" / "advice_evaluation.yml"
+    workflow = yaml.safe_load(wf_path.read_text(encoding="utf-8"))
+    step = next(s for s in workflow["jobs"]["advice"]["steps"] if s.get("name", "").startswith("Judge + analyze"))
+    calls = tmp_path / "calls.txt"
+    stub = tmp_path / "python"
+    stub.write_text('#!/bin/sh\nprintf "%s\\n" "$2" >> "$CALLS"\n'
+                    'if [ "$2" = judge ]; then exit "$JUDGE_EXIT"; fi\nexit 0\n')
+    stub.chmod(0o755)
+    # GitHub runs a bash step as `bash -e {0}`
+    outcome = subprocess.run(["bash", "-e", "-c", step["run"]], capture_output=True, text=True,
+                             env={**os.environ, "PATH": str(tmp_path) + os.pathsep + os.environ["PATH"],
+                                  "CALLS": str(calls), "JUDGE_EXIT": str(judge_status),
+                                  "ADVICE_JUDGE_REPORTS": str(tmp_path / "reports.txt"),
+                                  "STIMULI": "data/advice/stimuli_x.json", "RUBRIC": "r.json",
+                                  "JUDGE_MODEL": "claude-haiku-4-5", "JUDGE_MAX_SPEND": "1.2",
+                                  "JUDGE_MAX_TOKENS": "300"})
+    assert outcome.returncode == judge_status
+    assert calls.read_text().split() == (["judge", "analyze"] if analyzed else ["judge"])
+    assert ("secondary_judge_short" in outcome.stderr) == (judge_status == 3)
 
 
 # ---- register rewrite mode and generation cost (owner decisions 2026-11-06) -------------------------------------

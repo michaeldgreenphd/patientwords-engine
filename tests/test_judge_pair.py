@@ -1,6 +1,7 @@
 """Two independently bounded judge passes occupy one journal reservation."""
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import os
 import shutil
@@ -15,7 +16,36 @@ from scripts.judge_pair import allocation
 def test_ratio_bounds_both_token_prices_and_rounds_up() -> None:
     result = allocation("first", 0.123456, (3.0, 10.0), (0.1, 0.5), "anthropic/first")
     assert result["price_ratio"] == 0.05
-    assert result["max_spend_usd"] == 0.006173
+    assert result["token_allowance"] == 1.5
+    assert result["max_spend_usd"] == 0.00926   # 0.123456 x 0.05 x 1.5 = 0.0092592, rounded up
+
+
+def _judge_pass(stem: str, judge_model: str) -> dict:
+    root = Path(__file__).resolve().parents[1] / "data/advice"
+    reports = [json.loads(path.read_text()) for path in sorted(root.glob(f"judgments_{stem}.judge_*.report.json"))]
+    return next(r for r in reports if r["judge_model"] == judge_model)
+
+
+@pytest.mark.parametrize("stem", ["stimuli_20261108T014809Z", "stimuli_20261108T014810Z"])
+def test_second_judge_reservation_covers_the_measured_haiku_5_5_pass(stem: str) -> None:
+    """Regression (advice-eval, 2026-11-08): on 784-response archives judged with judge_max_spend 1.2 the second
+    judge got 1.2 x price ratio 0.1 = $0.12 and stopped after 759 and 751 judgments, because Haiku 5.5 cost about
+    1.26x the price ratio per judgment (its tokenizer counts more tokens for the same text). The reservation must
+    cover that pass's per-judgment cost even if the first judge spends its whole ceiling, plus the guard's one
+    worst-case call at the fire's judge_max_tokens 4000."""
+    first = _judge_pass(stem, "claude-haiku-4-5")
+    second = _judge_pass(stem, "anthropic:claude-haiku-5-5")
+    assert first["max_spend_usd"] == 1.2 and first["judged"] == 784
+    assert second["max_spend_usd"] == 0.12 and second["truncated"] and second["judged"] < 784
+    per_judgment_ratio = (second["cost_usd"] / second["judged"]) / (first["cost_usd"] / first["judged"])
+    assert 1.2 < per_judgment_ratio / 0.1 < 1.3                       # the measured excess over the price ratio
+    params = {"max_spend": 1.5, "judge": True, "judge_model": "claude-haiku-4-5", "judge_max_spend": 1.2}
+    reserved = secondary_judge_reservation(params)["max_spend_usd"]
+    assert reserved == 0.18
+    worst_call = (8000 * 0.1 + 4000 * 0.5) / 1e6   # input bound above these prompts' largest (6715), 4000 out
+    assert reserved >= 1.2 * per_judgment_ratio + worst_call          # the first judge at its whole ceiling
+    assert reserved >= 784 * second["cost_usd"] / second["judged"] + worst_call   # this archive, observed
+    assert fire_commitment(params) == (pytest.approx(1.5 + 1.2 + 0.18), None)
 
 
 @pytest.mark.parametrize("spec", ["claude-haiku-5-5", "anthropic:claude-haiku-5-5"])
@@ -28,8 +58,8 @@ def test_already_selected_second_judge_is_not_charged_twice(spec: str) -> None:
 def test_judge_pair_total_is_the_sum_of_independent_caps() -> None:
     params = {"mode": "run", "max_spend": "0.4", "judge": True, "judge_model": "claude-haiku-4-5",
               "judge_max_spend": "0.5"}
-    assert fire_commitment(params)[0] == pytest.approx(0.95)
-    assert secondary_judge_reservation(params)["max_spend_usd"] == 0.05
+    assert fire_commitment(params)[0] == pytest.approx(0.975)
+    assert secondary_judge_reservation(params)["max_spend_usd"] == 0.075
 
 
 def test_petri_openrouter_second_judge_preserves_the_billing_account() -> None:
