@@ -71,6 +71,14 @@ pattern, and no result here licenses a statement about casual word choice or uno
 - **File A:** clinical and careful-lay bodies, copied from the source file with `build-stimuli --source selection`.
 - **File B:** clinical and colloquial bodies, built from the two reviewed rewrite batches with `build-stimuli
   --source pairs`.
+- **The two files (built 2026-11-08, owner decision colloquial-v3 "Accept all 3; use the 56 for file B").**
+  - File A: `data/advice/stimuli_20261108T014809Z.json`, the 56 items of `stimuli_20260827T141036Z` copied verbatim
+    by `build-stimuli --source selection` (`data/advice/register_style_selection_20261108.json`).
+  - File B: `data/advice/stimuli_20261108T014810Z.json`, built by `build-stimuli --source pairs` from
+    `data/advice/rewrite_colloquial_v3_20261108T013628Z.json` with the same ask suffix ("... anyway what should I
+    do?").
+  - Checked when built: the clinical messages of A and B are identical, item for item; the clinical bodies join one to
+    one; B's colloquial bodies are exactly the v3 texts; all 56 situations are in both files.
 - **Matching situations across files.** `build-stimuli --source pairs` names each file-B item `<rewrite batch>#<index>`
   and does not carry the source item id. The analysis therefore joins file A and file B on the clinical body. It is
   distinct for all 56 situations and copied unchanged into every rewrite pair (`top_prompt`). Each rewrite also
@@ -132,7 +140,8 @@ A null vocabulary test never licenses "medical terms had no effect", as in wave 
 ## Data handling
 
 - **Archives.** The advice archives under `data/advice/` are append-only and hash-chained, as for the advice arm.
-- **Holdout.** No Tier B holdout text enters the stimuli; the rewrite mode drops any collision and counts it.
+- **Holdout.** No Tier B holdout text enters the stimuli. The rewrite mode drops any text that is a registered holdout
+  phrase and counts it; none of the 112 texts in files A and B is one.
 - **Exploratory.** This sub-study is exploratory relative to the advice arm's registered endpoints and is labelled so
   wherever it appears.
 - **Deviations.** Any departure from this file is recorded in `docs/prereg_divergence_log.md` before the analysis it
