@@ -231,3 +231,35 @@ side on the same pairs; adding (qwen3-4b, `transcoder-hp`) to the set is then
 the owner's decision, to be recorded here
 before any qwen3-4b clinical mass is published. The pre-registered endpoints
 are unaffected.
+
+## 2026-11-08 — Style-vs-vocabulary sub-study (`docs/preregistration_advice_register_style.md`): deviations and analysis choices, written before any contrast was computed
+
+Written 2026-11-08 at about 13:20 UTC, after the archives and judgments landed and before any contrast, test or
+agreement statistic was computed. It was committed later the same day, with the report
+(`docs/exploratory/register_style_results_20261108.md`), unchanged except for this sentence. Each item below either departs from the signed text or fills a point it leaves open.
+
+1. **Claude models sampled at the API's default temperature (departure).** The registered setting is temperature 1.0
+   for all seven models. For Claude Haiku 4.5 and Claude Sonnet 5 (both files, workflow runs 42455353889 and
+   42457779557), the installed `anthropic` SDK rejected the `temperature` keyword and the requests were sent without
+   it. Every one of those 448 archive rows records this in `request.request_adjustments` (`requested: 1.0, sent:
+   null`). The Messages API's documented default is 1.0; that was not re-checked against the provider's documentation
+   in this session. The five OpenRouter models were sent temperature 1.0. Analysis: unchanged; the deviation is
+   reported beside the result.
+2. **Second judge completed in two passes (no change to the design).** The reserved Haiku 5.5 pass in each Claude fire
+   stopped at its $0.12 cap after 759 (file A) and 751 (file B) of 784 replies (`dual_judge_call_unaffordable`). A
+   judge-only fire per file (runs 42463198460, 42463200771) graded the rest with the same judge and rubric. Where a
+   reply has more than one Haiku 5.5 row (re-grades of unparsed replies), the analysis uses the latest parsed row.
+3. **Unparsed judge tiers (open point).** A reply whose judge row has no parsed tier (file A 9, file B 8 under the judge
+   of record) is missing for every contrast that needs it; the unit (situation × model) is dropped from that contrast
+   and counted. Situations are never dropped as a whole for one missing reply.
+4. **Weighted κ (open point).** The test-retest κ uses linear weights over the four ordered tiers (self-care,
+   routine, urgent, emergency). Quadratic-weighted κ is reported beside it.
+5. **Sensitivity analysis 4 (open point).** No file-B rewrite carries a `rewrite_checks` flag (no leaked clinical term,
+   no dropped number, `needs_review` false for all 56), so no situation was flagged and kept by owner judgment; the
+   analysis without such situations equals the main analysis.
+6. **Truncated and empty replies (added, exploratory).** DeepSeek V4 Flash and Kimi K2.5 stopped at the 1024-token
+   limit on 41–62% of calls, and 18 of their replies are empty. An added analysis, not in the signed text, repeats the
+   three contrasts with every unit dropped that involves a reply stopped for length or empty. It is reported as
+   exploratory beside the registered result and never replaces it.
+7. **Pooled sign test detail (open point).** After the majority-sign label (ties toward zero), situations labelled
+   zero are dropped from the pooled sign test and counted, matching the within-model rule.
