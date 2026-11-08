@@ -1,0 +1,514 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 57,
+  "pairs_requested": 4,
+  "completed": true,
+  "screen_targets": 0.02,
+  "environment": {
+    "python": "3.11.18",
+    "engine_sha": "ae43f2f3debb",
+    "runner_image": "20261101.186.1"
+  },
+  "results": [
+    {
+      "index": 57,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "This morning after running out of levetiracetam I had two generalized tonic-clonic seizures without interictal recovery, so I need to go to the",
+        "patient": "This morning after running out of levetiracetam I had two full-body shaking seizures without waking up between them, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.324,
+        "patient": 0.324
+      },
+      "language_penalty": 0.0,
+      "clinical_mass": {
+        "clinical": 0.3984,
+        "patient": 0.371
+      },
+      "error_share": {
+        "clinical": 0.1376,
+        "patient": 0.1287
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.153)",
+        "patient": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.119)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ER",
+        "observed_clinical": [
+          "Output \" ER\"",
+          0.324
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.324
+          ],
+          [
+            "Output \" ER\"",
+            0.324
+          ],
+          [
+            "Output \" emergency\"",
+            0.153
+          ],
+          [
+            "Output \" doctor\"",
+            0.039
+          ],
+          [
+            "Output \" pharmacy\"",
+            0.034
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ER\"",
+            0.324
+          ],
+          [
+            "Output \" hospital\"",
+            0.252
+          ],
+          [
+            "Output \" emergency\"",
+            0.119
+          ],
+          [
+            "Output \" pharmacy\"",
+            0.093
+          ],
+          [
+            "Output \" doctor\"",
+            0.072
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.324,
+            "rank": 1,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.324,
+            "rank": 1,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 697,
+        "unique_to_a": 70,
+        "unique_to_b": 127
+      },
+      "outputs": {
+        "html": "trace_out/agscen_20261108/index_57.html",
+        "png": "trace_out/agscen_20261108/index_57.png",
+        "diff_html": "trace_out/agscen_20261108/index_57_diff.html",
+        "diff_png": "trace_out/agscen_20261108/index_57_diff.png"
+      }
+    },
+    {
+      "index": 58,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After taking ibuprofen with my lithium I developed coarse hand tremor, gait ataxia, and dysarthria, so I need to go to the",
+        "patient": "After taking ibuprofen with my lithium I developed heavy hand shaking, unsteady stumbling, and slurred speech, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.281,
+        "patient": 0.316
+      },
+      "language_penalty": 0.034999999999999976,
+      "clinical_mass": {
+        "clinical": 0.4272,
+        "patient": 0.3996
+      },
+      "error_share": {
+        "clinical": 0.1386,
+        "patient": 0.1346
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.150)",
+        "patient": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.103)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ER",
+        "observed_clinical": [
+          "Output \" ER\"",
+          0.281
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ER\"",
+            0.281
+          ],
+          [
+            "Output \" doctor\"",
+            0.15
+          ],
+          [
+            "Output \" hospital\"",
+            0.104
+          ],
+          [
+            "Output \" emergency\"",
+            0.091
+          ],
+          [
+            "Output \" neuro\"",
+            0.062
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ER\"",
+            0.316
+          ],
+          [
+            "Output \" doctor\"",
+            0.247
+          ],
+          [
+            "Output \" hospital\"",
+            0.117
+          ],
+          [
+            "Output \" emergency\"",
+            0.103
+          ],
+          [
+            "Output \" pharmacy\"",
+            0.023
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.281,
+            "rank": 1,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.316,
+            "rank": 1,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 671,
+        "unique_to_a": 99,
+        "unique_to_b": 93
+      },
+      "outputs": {
+        "html": "trace_out/agscen_20261108/index_58.html",
+        "png": "trace_out/agscen_20261108/index_58.png",
+        "diff_html": "trace_out/agscen_20261108/index_58_diff.html",
+        "diff_png": "trace_out/agscen_20261108/index_58_diff.png"
+      }
+    },
+    {
+      "index": 59,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "This morning after taking lisinopril I developed severe lingual angioedema and dysphagia to saliva, so I need to go to the",
+        "patient": "This morning after taking lisinopril I developed severe tongue swelling and inability to swallow spit, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.402,
+        "patient": 0.375
+      },
+      "language_penalty": -0.027000000000000024,
+      "clinical_mass": {
+        "clinical": 0.4231,
+        "patient": 0.4303
+      },
+      "error_share": {
+        "clinical": 0.1347,
+        "patient": 0.1296
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.131)",
+        "patient": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.138)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ER",
+        "observed_clinical": [
+          "Output \" ER\"",
+          0.402
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ER\"",
+            0.402
+          ],
+          [
+            "Output \" hospital\"",
+            0.215
+          ],
+          [
+            "Output \" emergency\"",
+            0.131
+          ],
+          [
+            "Output \" doctor\"",
+            0.062
+          ],
+          [
+            "Output \" dentist\"",
+            0.029
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ER\"",
+            0.375
+          ],
+          [
+            "Output \" hospital\"",
+            0.258
+          ],
+          [
+            "Output \" emergency\"",
+            0.138
+          ],
+          [
+            "Output \" doctor\"",
+            0.065
+          ],
+          [
+            "Output \" dentist\"",
+            0.027
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.402,
+            "rank": 1,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.375,
+            "rank": 1,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 631,
+        "unique_to_a": 120,
+        "unique_to_b": 136
+      },
+      "outputs": {
+        "html": "trace_out/agscen_20261108/index_59.html",
+        "png": "trace_out/agscen_20261108/index_59.png",
+        "diff_html": "trace_out/agscen_20261108/index_59_diff.html",
+        "diff_png": "trace_out/agscen_20261108/index_59_diff.png"
+      }
+    },
+    {
+      "index": 60,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Yesterday five days after coronary stent placement I discontinued clopidogrel and aspirin due to gingival bleeding, so I need to call my",
+        "patient": "Yesterday five days after coronary stent placement I stopped my clopidogrel and aspirin pills because my gums bled, so I need to call my"
+      },
+      "target_token": "Output \" cardio\"",
+      "probabilities": {
+        "clinical": 0.312,
+        "patient": 0.228
+      },
+      "language_penalty": -0.08399999999999999,
+      "clinical_mass": {
+        "clinical": 0.4579,
+        "patient": 0.4572
+      },
+      "error_share": {
+        "clinical": 0.121,
+        "patient": 0.1229
+      },
+      "top_path": {
+        "clinical": "[L16\u00b7S]  \u2192 [L19\u00b7O] words related to money, taxes, debt, and legal confl \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.312)",
+        "patient": "[L16\u00b7S]  \u2192 [L19\u00b7O] words related to money, taxes, debt, and legal confl \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.482)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " cardiologist",
+        "observed_clinical": [
+          "Output \" cardio\"",
+          0.312
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" cardio\"",
+            0.312
+          ],
+          [
+            "Output \" doctor\"",
+            0.312
+          ],
+          [
+            "Output \" doc\"",
+            0.062
+          ],
+          [
+            "Output \" surgeon\"",
+            0.037
+          ],
+          [
+            "Output \" GP\"",
+            0.026
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.482
+          ],
+          [
+            "Output \" cardio\"",
+            0.228
+          ],
+          [
+            "Output \" doc\"",
+            0.051
+          ],
+          [
+            "Output \" surgeon\"",
+            0.031
+          ],
+          [
+            "Output \" GP\"",
+            0.027
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " cardiologist",
+        "measured_token": "Output \" cardio\"",
+        "match": "leading_wordpiece",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "leading_wordpiece",
+            "token": "Output \" cardio\"",
+            "probability": 0.312,
+            "rank": 1,
+            "returned": 10,
+            "alternatives": [
+              [
+                "Output \" card\"",
+                0.016
+              ]
+            ]
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" cardio\"",
+            "probability": 0.228,
+            "rank": 2,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 662,
+        "unique_to_a": 88,
+        "unique_to_b": 70
+      },
+      "outputs": {
+        "html": "trace_out/agscen_20261108/index_60.html",
+        "png": "trace_out/agscen_20261108/index_60.png",
+        "diff_html": "trace_out/agscen_20261108/index_60_diff.html",
+        "diff_png": "trace_out/agscen_20261108/index_60_diff.png"
+      }
+    }
+  ]
+}
