@@ -45,6 +45,11 @@ pattern, and no result here licenses a statement about casual word choice or uno
   typing: lower case, at most one comma and one full stop inside a message, no stock opener, and every word kept.
   `style_checks` records each rule per item, and the owner reads the second set as the first. File B is built from
   the second set; the first set stays in the archive and is not elicited.
+- **The casual-typing pass on the second set (owner feedback, 2026-11-08).** The owner read the second set (53
+  accepted, 3 excluded, all three for hyphenated ages or dashes) and noted that people type numbers as digits.
+  `scripts/casual_orthography.py` applies fixed rules to the second set: number words from two to ninety-nine become
+  digits; hyphenated ages lose their hyphens; punctuation dashes become spaces. "one", "half" and "a couple" stay as
+  words. The output, `rewrite_colloquial_v3_*`, records each text before the pass, and file B is built from it.
 - **The three regenerated items (first set).** That run's holdout guard was the bare Tier B hash, which marks about 1 in 10 texts
   of any content, and it dropped three rewrites (items 14, 37 and 41), none of them a registered holdout phrase.
   After the guard was corrected, these three are written by one more fire under the same model, system prompt and
