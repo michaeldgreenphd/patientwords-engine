@@ -1,0 +1,412 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 9,
+  "pairs_requested": 4,
+  "completed": true,
+  "screen_targets": 0.02,
+  "environment": {
+    "python": "3.11.18",
+    "engine_sha": "83d559312b7b",
+    "runner_image": "20261101.186.1"
+  },
+  "results": [
+    {
+      "index": 9,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "For ten minutes this morning my right arm went numb and clumsy, so I need to go to the",
+        "patient": "It's probably nothing, but for ten minutes this morning my right arm went numb and clumsy, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.033,
+        "patient": 0.071
+      },
+      "language_penalty": 0.03799999999999999,
+      "clinical_mass": {
+        "clinical": 0.3845,
+        "patient": 0.3487
+      },
+      "error_share": {
+        "clinical": 0.1064,
+        "patient": 0.1074
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.402)",
+        "patient": "[L16\u00b7S]  \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.461)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ER",
+        "observed_clinical": [
+          "Output \" ER\"",
+          0.033
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.402
+          ],
+          [
+            "Output \" hospital\"",
+            0.115
+          ],
+          [
+            "Output \" physio\"",
+            0.079
+          ],
+          [
+            "Output \" gym\"",
+            0.048
+          ],
+          [
+            "Output \" ER\"",
+            0.033
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.461
+          ],
+          [
+            "Output \" hospital\"",
+            0.091
+          ],
+          [
+            "Output \" ER\"",
+            0.071
+          ],
+          [
+            "Output \" doc\"",
+            0.062
+          ],
+          [
+            "Output \" doctors\"",
+            0.033
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.033,
+            "rank": 5,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.071,
+            "rank": 3,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 590,
+        "unique_to_a": 180,
+        "unique_to_b": 239
+      },
+      "outputs": {
+        "html": "trace_out/agscen_scale_20261108/index_09.html",
+        "png": "trace_out/agscen_scale_20261108/index_09.png",
+        "diff_html": "trace_out/agscen_scale_20261108/index_09_diff.html",
+        "diff_png": "trace_out/agscen_scale_20261108/index_09_diff.png"
+      }
+    },
+    {
+      "index": 10,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "For six weeks my voice has been hoarse with a lump in my neck, so I should see an",
+        "patient": "It's probably nothing, but for six weeks my voice has been hoarse with a lump in my neck, so I should see an"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3712
+      },
+      "error_share": {
+        "clinical": 0.1166
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " otolaryngologist",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ENT\"",
+            0.832
+          ],
+          [
+            "Output \" ear\"",
+            0.077
+          ],
+          [
+            "Output \" Ear\"",
+            0.025
+          ],
+          [
+            "Output \" o\"",
+            0.015
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " otolaryngologist",
+        "measured_token": null,
+        "match": null,
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "missing",
+            "reason": "target_not_in_returned_logits",
+            "returned": 4,
+            "prefix_candidates": []
+          }
+        },
+        "intended_read": {
+          "status": "missing",
+          "reason": "target_not_in_returned_logits",
+          "returned": 4,
+          "prefix_candidates": []
+        }
+      },
+      "outputs": {}
+    },
+    {
+      "index": 11,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Today I passed dark blood clots in my pee twice and felt dizzy standing, so I need to go to the",
+        "patient": "It's probably nothing, but today I passed dark blood clots in my pee twice and felt dizzy standing, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.148,
+        "patient": 0.127
+      },
+      "language_penalty": -0.02099999999999999,
+      "clinical_mass": {
+        "clinical": 0.4165,
+        "patient": 0.3742
+      },
+      "error_share": {
+        "clinical": 0.1295,
+        "patient": 0.1294
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.048)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.346)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ER",
+        "observed_clinical": [
+          "Output \" ER\"",
+          0.148
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.355
+          ],
+          [
+            "Output \" doctor\"",
+            0.244
+          ],
+          [
+            "Output \" ER\"",
+            0.148
+          ],
+          [
+            "Output \" emergency\"",
+            0.048
+          ],
+          [
+            "Output \" bathroom\"",
+            0.033
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.346
+          ],
+          [
+            "Output \" hospital\"",
+            0.186
+          ],
+          [
+            "Output \" ER\"",
+            0.127
+          ],
+          [
+            "Output \" bathroom\"",
+            0.087
+          ],
+          [
+            "Output \" doc\"",
+            0.036
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.148,
+            "rank": 3,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.127,
+            "rank": 3,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 550,
+        "unique_to_a": 218,
+        "unique_to_b": 261
+      },
+      "outputs": {
+        "html": "trace_out/agscen_scale_20261108/index_11.html",
+        "png": "trace_out/agscen_scale_20261108/index_11.png",
+        "diff_html": "trace_out/agscen_scale_20261108/index_11_diff.html",
+        "diff_png": "trace_out/agscen_scale_20261108/index_11_diff.png"
+      }
+    },
+    {
+      "index": 12,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "For a month I have lost weight without trying and coughed up streaks of blood, so I need to see a",
+        "patient": "It's probably nothing, but for a month I have lost weight without trying and coughed up streaks of blood, so I need to see a"
+      },
+      "target_token": "Output \" pulmon\"",
+      "probabilities": {
+        "clinical": 0.007,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.459
+      },
+      "error_share": {
+        "clinical": 0.1225
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " pulmonologist",
+        "observed_clinical": [
+          "Output \" pulmon\"",
+          0.007
+        ],
+        "probe_extension": null,
+        "reason": "intended target below min_prob (0.007 < 0.02)"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.762
+          ],
+          [
+            "Output \" specialist\"",
+            0.049
+          ],
+          [
+            "Output \" Dr\"",
+            0.026
+          ],
+          [
+            "Output \" dr\"",
+            0.023
+          ],
+          [
+            "Output \" doc\"",
+            0.016
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " pulmonologist",
+        "measured_token": "Output \" pulmon\"",
+        "match": "leading_wordpiece",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "leading_wordpiece",
+            "token": "Output \" pulmon\"",
+            "probability": 0.007,
+            "rank": 9,
+            "returned": 10
+          }
+        }
+      },
+      "outputs": {}
+    }
+  ]
+}
