@@ -1,0 +1,463 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 1,
+  "pairs_requested": 4,
+  "completed": true,
+  "screen_targets": 0.02,
+  "environment": {
+    "python": "3.11.18",
+    "engine_sha": "5a7b7667c7ec",
+    "runner_image": "20261101.186.1"
+  },
+  "results": [
+    {
+      "index": 1,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "With my cirrhosis today I developed progressive ascites and scleral icterus and asterixis so I need to go to the",
+        "patient": "With my cirrhosis today I developed growing water swelling in my belly and yellow eyes and flapping hands so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.151,
+        "patient": 0.152
+      },
+      "language_penalty": 0.0010000000000000009,
+      "clinical_mass": {
+        "clinical": 0.4913,
+        "patient": 0.4582
+      },
+      "error_share": {
+        "clinical": 0.1385,
+        "patient": 0.1241
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" liver\" (p=0.091)",
+        "patient": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.092)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ER",
+        "observed_clinical": [
+          "Output \" ER\"",
+          0.151
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.527
+          ],
+          [
+            "Output \" ER\"",
+            0.151
+          ],
+          [
+            "Output \" liver\"",
+            0.091
+          ],
+          [
+            "Output \" emergency\"",
+            0.043
+          ],
+          [
+            "Output \" doctor\"",
+            0.026
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.531
+          ],
+          [
+            "Output \" ER\"",
+            0.152
+          ],
+          [
+            "Output \" emergency\"",
+            0.092
+          ],
+          [
+            "Output \" doctor\"",
+            0.072
+          ],
+          [
+            "Output \" er\"",
+            0.013
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.151,
+            "rank": 2,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.152,
+            "rank": 2,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 551,
+        "unique_to_a": 214,
+        "unique_to_b": 206
+      },
+      "outputs": {
+        "html": "trace_out/agscen_r5_20261108/index_01.html",
+        "png": "trace_out/agscen_r5_20261108/index_01.png",
+        "diff_html": "trace_out/agscen_r5_20261108/index_01_diff.html",
+        "diff_png": "trace_out/agscen_r5_20261108/index_01_diff.png"
+      }
+    },
+    {
+      "index": 2,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Five years after my splenectomy I developed sudden pyrexia of 102.4 Fahrenheit with rigors and orthostatic dizziness so I need to go to the",
+        "patient": "Five years after my splenectomy I developed a sudden 102.4 Fahrenheit fever with shaking chills and dizziness when standing so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.03,
+        "patient": 0.036
+      },
+      "language_penalty": 0.005999999999999998,
+      "clinical_mass": {
+        "clinical": 0.3618,
+        "patient": 0.3074
+      },
+      "error_share": {
+        "clinical": 0.1506,
+        "patient": 0.1428
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.063)",
+        "patient": "[L17\u00b7S]  \u2192 [L18\u00b7O] mentions of restrooms and bathrooms | bathroom \u2192 [L25\u00b7O] words relating to plumbing | bathrooms and toilets \u2192 Output \" toilet\" (p=0.097)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ER",
+        "observed_clinical": [
+          "Output \" ER\"",
+          0.03
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" toilet\"",
+            0.248
+          ],
+          [
+            "Output \" bathroom\"",
+            0.193
+          ],
+          [
+            "Output \" hospital\"",
+            0.15
+          ],
+          [
+            "Output \" emergency\"",
+            0.063
+          ],
+          [
+            "Output \" doctor\"",
+            0.063
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" bathroom\"",
+            0.434
+          ],
+          [
+            "Output \" hospital\"",
+            0.124
+          ],
+          [
+            "Output \" toilet\"",
+            0.097
+          ],
+          [
+            "Output \" restroom\"",
+            0.059
+          ],
+          [
+            "Output \" emergency\"",
+            0.04
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.03,
+            "rank": 7,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.036,
+            "rank": 6,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 566,
+        "unique_to_a": 222,
+        "unique_to_b": 241
+      },
+      "outputs": {
+        "html": "trace_out/agscen_r5_20261108/index_02.html",
+        "png": "trace_out/agscen_r5_20261108/index_02.png",
+        "diff_html": "trace_out/agscen_r5_20261108/index_02_diff.html",
+        "diff_png": "trace_out/agscen_r5_20261108/index_02_diff.png"
+      }
+    },
+    {
+      "index": 3,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "At 81 after a fall I have groin pain with inability to walk and a shortened externally rotated leg so I need to go to the",
+        "patient": "At 81 after a fall I have groin pain with inability to walk and a shorter leg turned out so I need to go to the"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.409
+      },
+      "error_share": {
+        "clinical": 0.1293
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " ER",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" physio\"",
+            0.186
+          ],
+          [
+            "Output \" gym\"",
+            0.186
+          ],
+          [
+            "Output \" hospital\"",
+            0.113
+          ],
+          [
+            "Output \" doctor\"",
+            0.088
+          ],
+          [
+            "Output \" chi\"",
+            0.028
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": null,
+        "match": null,
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "missing",
+            "reason": "target_not_in_returned_logits",
+            "returned": 10,
+            "prefix_candidates": []
+          }
+        },
+        "intended_read": {
+          "status": "missing",
+          "reason": "target_not_in_returned_logits",
+          "returned": 10,
+          "prefix_candidates": []
+        }
+      },
+      "outputs": {}
+    },
+    {
+      "index": 4,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "With my prosthetic heart valve I developed fever with rigors and tender fingertip nodules so I need to go to the",
+        "patient": "With my prosthetic heart valve I developed fever with shaking chills and painful fingertip bumps so I need to go to the"
+      },
+      "target_token": "Output \" hospital\"",
+      "probabilities": {
+        "clinical": 0.385,
+        "patient": 0.408
+      },
+      "language_penalty": 0.022999999999999965,
+      "clinical_mass": {
+        "clinical": 0.5336,
+        "patient": 0.5175
+      },
+      "error_share": {
+        "clinical": 0.1264,
+        "patient": 0.1248
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.142)",
+        "patient": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.103)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " hospital",
+        "observed_clinical": [
+          "Output \" hospital\"",
+          0.385
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.385
+          ],
+          [
+            "Output \" doctor\"",
+            0.142
+          ],
+          [
+            "Output \" ER\"",
+            0.125
+          ],
+          [
+            "Output \" emergency\"",
+            0.067
+          ],
+          [
+            "Output \" clinic\"",
+            0.031
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.408
+          ],
+          [
+            "Output \" ER\"",
+            0.192
+          ],
+          [
+            "Output \" doctor\"",
+            0.117
+          ],
+          [
+            "Output \" emergency\"",
+            0.103
+          ],
+          [
+            "Output \" Emergency\"",
+            0.023
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " hospital",
+        "measured_token": "Output \" hospital\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" hospital\"",
+            "probability": 0.385,
+            "rank": 1,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" hospital\"",
+            "probability": 0.408,
+            "rank": 1,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 638,
+        "unique_to_a": 123,
+        "unique_to_b": 103
+      },
+      "outputs": {
+        "html": "trace_out/agscen_r5_20261108/index_04.html",
+        "png": "trace_out/agscen_r5_20261108/index_04.png",
+        "diff_html": "trace_out/agscen_r5_20261108/index_04_diff.html",
+        "diff_png": "trace_out/agscen_r5_20261108/index_04_diff.png"
+      }
+    }
+  ]
+}
