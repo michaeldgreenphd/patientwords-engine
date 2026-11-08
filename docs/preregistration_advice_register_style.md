@@ -1,9 +1,15 @@
-# Pre-registration — single-turn advice, writing style against medical terms (DRAFT, UNSIGNED)
+# Pre-registration — single-turn advice, writing style against medical terms (SIGNED)
 
 **Status.** Drafted 2026-11-06 from the owner's decisions on the decision page (ag-new-runs "Design both";
 structured-lay-go "Generation fire, then your read"). Revised 2026-11-07, before signing, from two more decisions:
 colloquial-strength "Accept as casual orthography" and colloquial-drops "Fix the guard, then regenerate the 3".
-Unsigned.
+
+**Signature.** Signed by the study owner (Michael D. Green), 2026-11-08 UTC, by recorded instruction on the
+session's decision page: card sign-register-prereg, "Sign the preregistration for the style-vs-vocabulary study?",
+answered "I sign it; merge #150 and run" at 2026-11-08T01:51:41Z. The text signed is this file as merged by engine
+PR #150 (merge commit dd89841df), which also added stimulus files A and B; the signing commit adds only this
+paragraph and the title's status.
+
 - **Blocks:** this file must be signed by the study owner, and committed, before the first elicitation fire on the
   stimuli it governs.
 - **Does not block:** the generation fire that writes the colloquial bodies, which only produces stimuli for the
