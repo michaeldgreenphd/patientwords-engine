@@ -117,18 +117,31 @@ def load_replies(data: Path, stem: str) -> tuple[set[Key], set[str]]:
     return bad, models
 
 
-def analyse(data: Path, judge: str, drop_bad: bool = False) -> dict[str, Any]:
-    items_a, items_b = load_items(data, FILE_A), load_items(data, FILE_B)
-    body_to_b = collections.defaultdict(list)
+def join_one_to_one(items_a: dict[str, dict[str, Any]],
+                    items_b: dict[str, dict[str, Any]]) -> tuple[dict[str, str], list[str]]:
+    """Join A to B on the clinical body, keeping only bodies that occur exactly once in each file.
+
+    The prereg requires a one-to-one join; a body repeated on either side would reuse one reply for two
+    situations, so every A item whose body is repeated in A or in B, or absent from B, is reported as unjoined."""
+    count_a = collections.Counter(it["clinical_body"] for it in items_a.values())
+    body_to_b: dict[str, list[str]] = collections.defaultdict(list)
     for sid, it in items_b.items():
         body_to_b[it["clinical_body"]].append(sid)
-    joins, unjoined = {}, []
+    joins: dict[str, str] = {}
+    unjoined: list[str] = []
     for sid, it in items_a.items():
-        matches = body_to_b.get(it["clinical_body"], [])
-        if len(matches) == 1:
+        body = it["clinical_body"]
+        matches = body_to_b.get(body, [])
+        if count_a[body] == 1 and len(matches) == 1:
             joins[sid] = matches[0]
         else:
             unjoined.append(sid)
+    return joins, unjoined
+
+
+def analyse(data: Path, judge: str, drop_bad: bool = False) -> dict[str, Any]:
+    items_a, items_b = load_items(data, FILE_A), load_items(data, FILE_B)
+    joins, unjoined = join_one_to_one(items_a, items_b)
     tiers_a, tiers_b = load_tiers(data, FILE_A, judge), load_tiers(data, FILE_B, judge)
     bad_a, models_a = load_replies(data, FILE_A)
     bad_b, models_b = load_replies(data, FILE_B)

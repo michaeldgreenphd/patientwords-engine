@@ -39,6 +39,17 @@ def test_weighted_kappa_perfect_and_chance() -> None:
     assert k is not None and not math.isnan(k)
 
 
+def test_join_rejects_bodies_repeated_on_either_side() -> None:
+    """Codex review of #155: two A items sharing a body must not both join one B item."""
+    a = {"a1": {"clinical_body": "x"}, "a2": {"clinical_body": "x"}, "a3": {"clinical_body": "y"},
+         "a4": {"clinical_body": "z"}, "a5": {"clinical_body": "w"}}
+    b = {"b1": {"clinical_body": "x"}, "b2": {"clinical_body": "y"},
+         "b3": {"clinical_body": "z"}, "b4": {"clinical_body": "z"}}
+    joins, unjoined = rsa.join_one_to_one(a, b)
+    assert joins == {"a3": "b2"}
+    assert sorted(unjoined) == ["a1", "a2", "a4", "a5"]
+
+
 def test_registered_result_on_committed_archives() -> None:
     """The numbers quoted in docs/exploratory/register_style_results_20261108.md."""
     data = ROOT / "data" / "advice"
