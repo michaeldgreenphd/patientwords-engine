@@ -1,0 +1,508 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 9,
+  "pairs_requested": 4,
+  "completed": true,
+  "screen_targets": 0.02,
+  "environment": {
+    "python": "3.11.18",
+    "engine_sha": "ae43f2f3debb",
+    "runner_image": "20261101.186.1"
+  },
+  "results": [
+    {
+      "index": 9,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "This morning I had coffee-ground hematemesis, melena, and orthostatic dizziness, so I need to go to the",
+        "patient": "This morning I had coffee-ground vomit, black tarry stools, and dizziness when standing, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.316,
+        "patient": 0.432
+      },
+      "language_penalty": 0.11599999999999999,
+      "clinical_mass": {
+        "clinical": 0.4444,
+        "patient": 0.4195
+      },
+      "error_share": {
+        "clinical": 0.1267,
+        "patient": 0.1228
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.132)",
+        "patient": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.085)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ER",
+        "observed_clinical": [
+          "Output \" ER\"",
+          0.316
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.359
+          ],
+          [
+            "Output \" ER\"",
+            0.316
+          ],
+          [
+            "Output \" emergency\"",
+            0.132
+          ],
+          [
+            "Output \" doctor\"",
+            0.055
+          ],
+          [
+            "Output \" clinic\"",
+            0.018
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ER\"",
+            0.432
+          ],
+          [
+            "Output \" hospital\"",
+            0.18
+          ],
+          [
+            "Output \" doctor\"",
+            0.159
+          ],
+          [
+            "Output \" emergency\"",
+            0.085
+          ],
+          [
+            "Output \" E\"",
+            0.017
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.316,
+            "rank": 2,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.432,
+            "rank": 1,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 560,
+        "unique_to_a": 191,
+        "unique_to_b": 181
+      },
+      "outputs": {
+        "html": "trace_out/agscen_20261108/index_09.html",
+        "png": "trace_out/agscen_20261108/index_09.png",
+        "diff_html": "trace_out/agscen_20261108/index_09_diff.html",
+        "diff_png": "trace_out/agscen_20261108/index_09_diff.png"
+      }
+    },
+    {
+      "index": 10,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Today in my right eye I noticed photopsia and a curtain-like visual field defect, so I need to go to the",
+        "patient": "Today in my right eye I noticed bright flashes and a dark curtain across my sight, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.04,
+        "patient": 0.058
+      },
+      "language_penalty": 0.018000000000000002,
+      "clinical_mass": {
+        "clinical": 0.4123,
+        "patient": 0.3766
+      },
+      "error_share": {
+        "clinical": 0.1255,
+        "patient": 0.1134
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" eye\" (p=0.177)",
+        "patient": "embedding \u2192 Output \" eye\" (p=0.231)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ER",
+        "observed_clinical": [
+          "Output \" ER\"",
+          0.04
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ophthal\"",
+            0.258
+          ],
+          [
+            "Output \" eye\"",
+            0.177
+          ],
+          [
+            "Output \" hospital\"",
+            0.156
+          ],
+          [
+            "Output \" doctor\"",
+            0.138
+          ],
+          [
+            "Output \" emergency\"",
+            0.045
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" eye\"",
+            0.231
+          ],
+          [
+            "Output \" doctor\"",
+            0.18
+          ],
+          [
+            "Output \" hospital\"",
+            0.18
+          ],
+          [
+            "Output \" ophthal\"",
+            0.075
+          ],
+          [
+            "Output \" ER\"",
+            0.058
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.04,
+            "rank": 6,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.058,
+            "rank": 5,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 564,
+        "unique_to_a": 190,
+        "unique_to_b": 189
+      },
+      "outputs": {
+        "html": "trace_out/agscen_20261108/index_10.html",
+        "png": "trace_out/agscen_20261108/index_10.png",
+        "diff_html": "trace_out/agscen_20261108/index_10_diff.html",
+        "diff_png": "trace_out/agscen_20261108/index_10_diff.png"
+      }
+    },
+    {
+      "index": 11,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I just woke up with sudden severe unilateral testicular pain, scrotal swelling, and emesis, so I need to go to the",
+        "patient": "I just woke up with sudden severe pain in one testicle, scrotal swelling, and vomiting, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.455,
+        "patient": 0.2
+      },
+      "language_penalty": -0.255,
+      "clinical_mass": {
+        "clinical": 0.4402,
+        "patient": 0.4641
+      },
+      "error_share": {
+        "clinical": 0.1227,
+        "patient": 0.1238
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.131)",
+        "patient": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.138)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ER",
+        "observed_clinical": [
+          "Output \" ER\"",
+          0.455
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ER\"",
+            0.455
+          ],
+          [
+            "Output \" hospital\"",
+            0.189
+          ],
+          [
+            "Output \" emergency\"",
+            0.131
+          ],
+          [
+            "Output \" doctor\"",
+            0.054
+          ],
+          [
+            "Output \" ED\"",
+            0.042
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.424
+          ],
+          [
+            "Output \" ER\"",
+            0.2
+          ],
+          [
+            "Output \" emergency\"",
+            0.138
+          ],
+          [
+            "Output \" doctor\"",
+            0.122
+          ],
+          [
+            "Output \" clinic\"",
+            0.016
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.455,
+            "rank": 1,
+            "returned": 9
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.2,
+            "rank": 2,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 584,
+        "unique_to_a": 153,
+        "unique_to_b": 149
+      },
+      "outputs": {
+        "html": "trace_out/agscen_20261108/index_11.html",
+        "png": "trace_out/agscen_20261108/index_11.png",
+        "diff_html": "trace_out/agscen_20261108/index_11_diff.html",
+        "diff_png": "trace_out/agscen_20261108/index_11_diff.png"
+      }
+    },
+    {
+      "index": 12,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Today with lower back pain I developed perineal saddle anesthesia and urinary retention, so I need to go to the",
+        "patient": "Today with lower back pain I developed groin numbness where I sit and inability to pee, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.081,
+        "patient": 0.174
+      },
+      "language_penalty": 0.09299999999999999,
+      "clinical_mass": {
+        "clinical": 0.4377,
+        "patient": 0.4461
+      },
+      "error_share": {
+        "clinical": 0.1288,
+        "patient": 0.125
+      },
+      "top_path": {
+        "clinical": "[L17\u00b7S]  \u2192 [L18\u00b7O] mentions of restrooms and bathrooms | bathroom \u2192 [L25\u00b7O] words relating to plumbing | bathrooms and toilets \u2192 Output \" toilet\" (p=0.081)",
+        "patient": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.073)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ER",
+        "observed_clinical": [
+          "Output \" ER\"",
+          0.081
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.32
+          ],
+          [
+            "Output \" bathroom\"",
+            0.133
+          ],
+          [
+            "Output \" doctor\"",
+            0.133
+          ],
+          [
+            "Output \" toilet\"",
+            0.081
+          ],
+          [
+            "Output \" ER\"",
+            0.081
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.254
+          ],
+          [
+            "Output \" hospital\"",
+            0.197
+          ],
+          [
+            "Output \" ER\"",
+            0.174
+          ],
+          [
+            "Output \" emergency\"",
+            0.073
+          ],
+          [
+            "Output \" bathroom\"",
+            0.056
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.081,
+            "rank": 4,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.174,
+            "rank": 3,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 574,
+        "unique_to_a": 159,
+        "unique_to_b": 216
+      },
+      "outputs": {
+        "html": "trace_out/agscen_20261108/index_12.html",
+        "png": "trace_out/agscen_20261108/index_12.png",
+        "diff_html": "trace_out/agscen_20261108/index_12_diff.html",
+        "diff_png": "trace_out/agscen_20261108/index_12_diff.png"
+      }
+    }
+  ]
+}
