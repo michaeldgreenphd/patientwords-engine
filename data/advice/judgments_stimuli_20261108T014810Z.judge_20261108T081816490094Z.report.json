@@ -1,0 +1,30 @@
+{
+ "run_utc": "2026-11-08T08:27:41Z",
+ "responses_file": "data/advice/responses_stimuli_20261108T014810Z.jsonl",
+ "rubric_sha256": "bd4aa5596b814592f6be76bcb7488e502cc4cf4ad0fcb6ce38404c73c37cf6c8",
+ "judge_model": "anthropic:claude-haiku-5-5",
+ "judged": 751,
+ "cost_usd": 0.117758,
+ "max_spend_usd": 0.12,
+ "truncated": true,
+ "cost_basis": "this_judge_pass",
+ "judgments_file": "data/advice/judgments_stimuli_20261108T014810Z.jsonl",
+ "dual_judge_reservation": {
+  "judge_model": "anthropic:claude-haiku-5-5",
+  "max_spend_usd": 0.12,
+  "primary_judge_model": "claude-haiku-4-5",
+  "primary_max_spend_usd": 1.2,
+  "primary_price_per_mtok": [
+   1.0,
+   5.0
+  ],
+  "secondary_price_per_mtok": [
+   0.1,
+   0.5
+  ],
+  "price_ratio": 0.1,
+  "allocation_basis": "max(input_price_ratio, output_price_ratio); round_up_microdollar"
+ },
+ "sdk_max_retries": 0,
+ "input_token_estimator": "len(prompt.encode('utf-8')) + 128 framing tokens, upper bound"
+}
