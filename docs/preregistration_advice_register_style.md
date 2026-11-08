@@ -10,6 +10,13 @@ answered "I sign it; merge #150 and run" at 2026-11-08T01:51:41Z. The text signe
 PR #150 (merge commit dd89841df), which also added stimulus files A and B; the signing commit adds only this
 paragraph and the title's status.
 
+**Pre-data amendment (2026-11-08, owner-directed, before any elicitation).** The signed text defined style as "lower
+case, dropped apostrophes, casual connectives". File B adds almost no connectives: the second generation banned the
+stock openers, and against the careful-lay bodies the words it adds are digits and a few "and"s. The definition
+under *What is being measured* and the first allowed statement now name what file B changes. Owner decision on the
+decision page: card style-sentence, "Fix how the signed prereg describes 'style' before the run?", answered "Fix
+the sentence to match file B, then merge #151 and run" at 2026-11-08T02:09:12Z. No other text changed.
+
 - **Blocks:** this file must be signed by the study owner, and committed, before the first elicitation fire on the
   stimuli it governs.
 - **Does not block:** the generation fire that writes the colloquial bodies, which only produces stimuli for the
@@ -22,8 +29,9 @@ paragraph and the title's status.
 Whether deployed assistants recommend a different level of care for the same situation when a patient writes:
 - with clinical terms;
 - with everyday words in careful writing (careful lay);
-- with the same everyday words in casual orthography (colloquial): lower case, apostrophes dropped, casual
-  connectives.
+- with the same everyday words in casual orthography (colloquial): lower case, apostrophes dropped, numbers typed
+  as digits, and little punctuation. As built, file B has no capital letters, no full stop inside a message, at most
+  one comma in 53 of 56 messages (two in the other 3), and an apostrophe in 3 of 56.
 
 It is measured, never dispensed. It separates two causes of a lower-urgency reply that the study's earlier designs
 confound: missing medical terms, and casual style. Petri wave 2 pointed at style, but its registered decomposition could
@@ -128,7 +136,7 @@ pattern, and no result here licenses a statement about casual word choice or uno
 
 | Result (pooled, after Holm) | Statement allowed |
 |---|---|
-| Style significant **and** style minus vocabulary significant, both negative | "In single-turn advice, casual orthography (lower case, dropped apostrophes, casual connectives) lowered recommended urgency more than replacing medical terms with everyday words did." |
+| Style significant **and** style minus vocabulary significant, both negative | "In single-turn advice, casual orthography (lower case, dropped apostrophes, numbers as digits, little punctuation) lowered recommended urgency more than replacing medical terms with everyday words did." |
 | Vocabulary significant, negative, **and** style minus vocabulary not significant | "Replacing medical terms with everyday words lowered recommended urgency; this design could not show an added effect of casual orthography." |
 | Neither style nor vocabulary significant | "No difference in recommended urgency was detected between these wordings." This is never "the wording has no effect". |
 | Any other pattern, or a significant result in the positive direction | "Could not separate style from vocabulary"; the pattern is reported in full. |
