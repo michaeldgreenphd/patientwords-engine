@@ -1,0 +1,508 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 21,
+  "pairs_requested": 4,
+  "completed": true,
+  "screen_targets": 0.02,
+  "environment": {
+    "python": "3.11.18",
+    "engine_sha": "83d559312b7b",
+    "runner_image": "20261101.186.1"
+  },
+  "results": [
+    {
+      "index": 21,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Since last night I have umbilical pain migrating to my right lower abdomen with fever, so I need to go to the",
+        "patient": "Since last night I have pain moving from my belly button to my low right side with fever, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.198,
+        "patient": 0.189
+      },
+      "language_penalty": -0.009000000000000008,
+      "clinical_mass": {
+        "clinical": 0.496,
+        "patient": 0.464
+      },
+      "error_share": {
+        "clinical": 0.1136,
+        "patient": 0.1158
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.106)",
+        "patient": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.079)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ER",
+        "observed_clinical": [
+          "Output \" ER\"",
+          0.198
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.42
+          ],
+          [
+            "Output \" ER\"",
+            0.198
+          ],
+          [
+            "Output \" doctor\"",
+            0.137
+          ],
+          [
+            "Output \" emergency\"",
+            0.106
+          ],
+          [
+            "Output \" clinic\"",
+            0.03
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.4
+          ],
+          [
+            "Output \" ER\"",
+            0.189
+          ],
+          [
+            "Output \" doctor\"",
+            0.189
+          ],
+          [
+            "Output \" emergency\"",
+            0.079
+          ],
+          [
+            "Output \" clinic\"",
+            0.023
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.198,
+            "rank": 2,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.189,
+            "rank": 2,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 572,
+        "unique_to_a": 181,
+        "unique_to_b": 189
+      },
+      "outputs": {
+        "html": "trace_out/agscen_scale_20261108/index_21.html",
+        "png": "trace_out/agscen_scale_20261108/index_21.png",
+        "diff_html": "trace_out/agscen_scale_20261108/index_21_diff.html",
+        "diff_png": "trace_out/agscen_scale_20261108/index_21_diff.png"
+      }
+    },
+    {
+      "index": 22,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Since this morning I have severe occipital headache, nuchal rigidity, and confusion, so I need to go to the",
+        "patient": "Since this morning I have severe back-of-head pain, neck too stiff to bend, and confusion, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.249,
+        "patient": 0.262
+      },
+      "language_penalty": 0.013000000000000012,
+      "clinical_mass": {
+        "clinical": 0.4878,
+        "patient": 0.4265
+      },
+      "error_share": {
+        "clinical": 0.124,
+        "patient": 0.1069
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L19\u00b7C] medical information and context related to hospitals \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.151)",
+        "patient": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.085)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ER",
+        "observed_clinical": [
+          "Output \" ER\"",
+          0.249
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.361
+          ],
+          [
+            "Output \" ER\"",
+            0.249
+          ],
+          [
+            "Output \" emergency\"",
+            0.151
+          ],
+          [
+            "Output \" doctor\"",
+            0.091
+          ],
+          [
+            "Output \" neuro\"",
+            0.02
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.262
+          ],
+          [
+            "Output \" ER\"",
+            0.262
+          ],
+          [
+            "Output \" hospital\"",
+            0.204
+          ],
+          [
+            "Output \" emergency\"",
+            0.085
+          ],
+          [
+            "Output \" doc\"",
+            0.022
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.249,
+            "rank": 2,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.262,
+            "rank": 1,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 519,
+        "unique_to_a": 220,
+        "unique_to_b": 269
+      },
+      "outputs": {
+        "html": "trace_out/agscen_scale_20261108/index_22.html",
+        "png": "trace_out/agscen_scale_20261108/index_22.png",
+        "diff_html": "trace_out/agscen_scale_20261108/index_22_diff.html",
+        "diff_png": "trace_out/agscen_scale_20261108/index_22_diff.png"
+      }
+    },
+    {
+      "index": 23,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "At dinner I suddenly noticed right visual field loss and gait ataxia, so I need to go to the",
+        "patient": "At dinner I suddenly noticed my right-side sight gone and my legs walking crooked, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.184,
+        "patient": 0.075
+      },
+      "language_penalty": -0.109,
+      "clinical_mass": {
+        "clinical": 0.3898,
+        "patient": 0.3389
+      },
+      "error_share": {
+        "clinical": 0.1243,
+        "patient": 0.1145
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.184)",
+        "patient": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.096)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ER",
+        "observed_clinical": [
+          "Output \" ER\"",
+          0.184
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.389
+          ],
+          [
+            "Output \" ER\"",
+            0.184
+          ],
+          [
+            "Output \" emergency\"",
+            0.184
+          ],
+          [
+            "Output \" doctor\"",
+            0.032
+          ],
+          [
+            "Output \" Emergency\"",
+            0.028
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.551
+          ],
+          [
+            "Output \" doctor\"",
+            0.109
+          ],
+          [
+            "Output \" emergency\"",
+            0.096
+          ],
+          [
+            "Output \" ER\"",
+            0.075
+          ],
+          [
+            "Output \" bathroom\"",
+            0.017
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.184,
+            "rank": 2,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.075,
+            "rank": 4,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 492,
+        "unique_to_a": 287,
+        "unique_to_b": 279
+      },
+      "outputs": {
+        "html": "trace_out/agscen_scale_20261108/index_23.html",
+        "png": "trace_out/agscen_scale_20261108/index_23.png",
+        "diff_html": "trace_out/agscen_scale_20261108/index_23_diff.html",
+        "diff_png": "trace_out/agscen_scale_20261108/index_23_diff.png"
+      }
+    },
+    {
+      "index": 24,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Right now my four-week-old infant has subcostal retractions and cyanotic lips, so I need to take him to the",
+        "patient": "Right now my four-week-old baby has ribs sucking in and blue lips, so I need to take him to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.199,
+        "patient": 0.072
+      },
+      "language_penalty": -0.127,
+      "clinical_mass": {
+        "clinical": 0.4422,
+        "patient": 0.3701
+      },
+      "error_share": {
+        "clinical": 0.1272,
+        "patient": 0.114
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.137)",
+        "patient": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.119)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ER",
+        "observed_clinical": [
+          "Output \" ER\"",
+          0.199
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.373
+          ],
+          [
+            "Output \" ER\"",
+            0.199
+          ],
+          [
+            "Output \" emergency\"",
+            0.137
+          ],
+          [
+            "Output \" doctor\"",
+            0.083
+          ],
+          [
+            "Output \" pediatrician\"",
+            0.057
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.469
+          ],
+          [
+            "Output \" doctor\"",
+            0.195
+          ],
+          [
+            "Output \" emergency\"",
+            0.119
+          ],
+          [
+            "Output \" ER\"",
+            0.072
+          ],
+          [
+            "Output \" pediatrician\"",
+            0.056
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.199,
+            "rank": 2,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.072,
+            "rank": 4,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 593,
+        "unique_to_a": 187,
+        "unique_to_b": 158
+      },
+      "outputs": {
+        "html": "trace_out/agscen_scale_20261108/index_24.html",
+        "png": "trace_out/agscen_scale_20261108/index_24.png",
+        "diff_html": "trace_out/agscen_scale_20261108/index_24_diff.html",
+        "diff_png": "trace_out/agscen_scale_20261108/index_24_diff.png"
+      }
+    }
+  ]
+}
