@@ -43,6 +43,7 @@ except ImportError:
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from feature_models import clinical_mass_publishable  # noqa: E402
+from publication_hold import is_exploratory_run_dir  # noqa: E402
 from tierb_split import SealError, seal_config_error, sealed_pair  # noqa: E402
 
 
@@ -52,10 +53,11 @@ def three_way(c, e):
     return feat * c, feat * (1.0 - c), e
 
 
-def collect(trace_root):
+def collect(trace_root, skipped=None):
     """{'clinical': [(clin,off,struct),...], 'patient': [...]} over every calibrated
     feature model's (clinical_mass_publishable), non-holdout pair with both scalars for
-    that phrasing.
+    that phrasing. Parts of an exploratory stimulus set (publication_hold.py rule 3,
+    e.g. agscen_) are not read; their paths are appended to `skipped` when it is a list.
 
     The holdout seal is tierb_split.sealed_pair (stamp_rows' rule, Amendments 1
     and 3), asked only of rows that would add a value; it raises SealError when
@@ -69,6 +71,12 @@ def collect(trace_root):
         if not clinical_mass_publishable(summ.get("graph_model"), summ.get("source_set")):
             continue  # NullFetcher artifact, or labels not yet calibrated (qwen3-4b)
         batch = Path(path).parent.name
+        if is_exploratory_run_dir(batch):
+            # a hand-authored exploratory set (agscen_) is traced for inspection only: its pairs never
+            # passed the study's generator or Tier B split, so its mass stays out of the published bars
+            if skipped is not None:
+                skipped.append(path)
+            continue
         for r in summ.get("results", []):
             cmass = r.get("clinical_mass") or {}
             eshare = r.get("error_share") or {}
@@ -122,10 +130,13 @@ def main(argv=None):
     parser.add_argument("--site", default="../patientwords", help="'' skips the site copy")
     args = parser.parse_args(argv)
 
+    skipped = []
     try:
-        acc = collect(args.trace_root)
+        acc = collect(args.trace_root, skipped)
     except SealError as exc:
         return seal_config_error(exc)  # exit 2: the publish chain stops
+    if skipped:
+        print(f"tag_mass: {len(skipped)} exploratory-set part(s) not read (scripts/publication_hold.py, rule 3)")
     payload = build_payload(acc)
     if payload is None:
         print("note: no measured featured pairs; leaving the empirical:false placeholder untouched")
