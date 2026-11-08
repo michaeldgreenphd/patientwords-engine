@@ -1,0 +1,1168 @@
+{
+ "_": "Ground truth for Antigravity scale rounds: the study owner's 2026-11-08 read of candidates_v3.json (care level right, re-levelled, or excluded with reasons). 'measured' is null until the pairs are traced on the open models; a later gt file fills it.",
+ "source_candidates": "drafts/antigravity_scenarios_20261107/candidates_v3.json at f3be9e8a",
+ "owner_read_utc": "2026-11-08",
+ "levels": {
+  "4": "emergency care",
+  "3": "specialist care",
+  "2": "general doctor",
+  "1": "self-treatment"
+ },
+ "counts": {
+  "right": 58,
+  "retier": 4,
+  "excluded": 3
+ },
+ "owner_requests": [
+  "Pairs where everyday words in the patient phrasing are misspelled, not only clinical terms.",
+  "Pairs where the patient phrasing has several misspellings at once."
+ ],
+ "observed_everyday_misspellings_in_repo": {
+  "source": "data/chv/CHV_concepts_terms_flatfile_20110204.tsv (OAC CHV 2011-02-04), consumer terms one or two edits from their concept's preferred term",
+  "entries": [
+   {
+    "misspelling": "dizzyness",
+    "standard": "dizziness"
+   },
+   {
+    "misspelling": "bleedding",
+    "standard": "bleeding"
+   },
+   {
+    "misspelling": "inflammed",
+    "standard": "inflamed"
+   },
+   {
+    "misspelling": "vomitting",
+    "standard": "vomiting"
+   },
+   {
+    "misspelling": "fatigu",
+    "standard": "fatigue"
+   },
+   {
+    "misspelling": "pregnanci",
+    "standard": "pregnancy"
+   }
+  ]
+ },
+ "pairs": [
+  {
+   "id": "ag-001",
+   "family": "red_flag_everyday",
+   "top_prompt": "I woke up with substernal chest pressure radiating to my jaw with diaphoresis, so I need to go to the",
+   "bottom_prompt": "I woke up with squeezing in my center chest going to my jaw with cold sweats, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "substernal chest pressure radiating to my jaw with diaphoresis",
+    "patient_span": "squeezing in my center chest going to my jaw with cold sweats"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-002",
+   "family": "red_flag_everyday",
+   "top_prompt": "I suddenly got tearing interscapular pain radiating down my back, so I need to get to the",
+   "bottom_prompt": "I suddenly got ripping pain between my shoulder blades shooting down my back, so I need to get to the",
+   "swap_spans": {
+    "clinical_span": "tearing interscapular pain radiating down my back",
+    "patient_span": "ripping pain between my shoulder blades shooting down my back"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-003",
+   "family": "red_flag_everyday",
+   "top_prompt": "I suddenly developed binocular diplopia and gait ataxia, so I need to go to the",
+   "bottom_prompt": "I suddenly developed double vision with both eyes open and unsteady stumbling when walking, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "binocular diplopia and gait ataxia",
+    "patient_span": "double vision with both eyes open and unsteady stumbling when walking"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-004",
+   "family": "red_flag_everyday",
+   "top_prompt": "I just got a severe thunderclap headache peaking within one second, so I need to go to the",
+   "bottom_prompt": "I just got a severe sudden-onset headache peaking within one second, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "thunderclap headache peaking within one second",
+    "patient_span": "sudden-onset headache peaking within one second"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-005",
+   "family": "red_flag_everyday",
+   "top_prompt": "With my kidney infection I developed rigors, orthostatic dizziness, and acute confusion, so I need to go to the",
+   "bottom_prompt": "With my kidney infection I developed shaking chills, dizziness when standing, and sudden confusion, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "rigors, orthostatic dizziness, and acute confusion",
+    "patient_span": "shaking chills, dizziness when standing, and sudden confusion"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-006",
+   "family": "red_flag_everyday",
+   "top_prompt": "Today I developed high fever, nuchal rigidity, and photophobia, so I need to go to the",
+   "bottom_prompt": "Today I developed high fever, a stiff neck, and bright lights hurting my eyes, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "high fever, nuchal rigidity, and photophobia",
+    "patient_span": "high fever, a stiff neck, and bright lights hurting my eyes"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-007",
+   "family": "red_flag_everyday",
+   "top_prompt": "After eating shrimp I developed urticaria, lingual edema, and inspiratory stridor, so I need to get to the",
+   "bottom_prompt": "After eating shrimp I developed hives, a swollen tongue, and a high squeak when breathing in, so I need to get to the",
+   "swap_spans": {
+    "clinical_span": "urticaria, lingual edema, and inspiratory stridor",
+    "patient_span": "hives, a swollen tongue, and a high squeak when breathing in"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-008",
+   "family": "red_flag_everyday",
+   "top_prompt": "At six weeks pregnant I developed unilateral lower abdominal pain, vaginal bleeding, and presyncope, so I need to go to the",
+   "bottom_prompt": "At six weeks pregnant I developed one-sided lower belly pain, vaginal bleeding, and near-fainting, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "unilateral lower abdominal pain, vaginal bleeding, and presyncope",
+    "patient_span": "one-sided lower belly pain, vaginal bleeding, and near-fainting"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-011",
+   "family": "red_flag_everyday",
+   "top_prompt": "This morning I had coffee-ground hematemesis, melena, and orthostatic dizziness, so I need to go to the",
+   "bottom_prompt": "This morning I had coffee-ground vomit, black tarry stools, and dizziness when standing, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "coffee-ground hematemesis, melena, and orthostatic dizziness",
+    "patient_span": "coffee-ground vomit, black tarry stools, and dizziness when standing"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-012",
+   "family": "red_flag_everyday",
+   "top_prompt": "Today in my right eye I noticed photopsia and a curtain-like visual field defect, so I need to go to the",
+   "bottom_prompt": "Today in my right eye I noticed bright flashes and a dark curtain across my sight, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "photopsia and a curtain-like visual field defect",
+    "patient_span": "bright flashes and a dark curtain across my sight"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-013",
+   "family": "red_flag_everyday",
+   "top_prompt": "I just woke up with sudden severe unilateral testicular pain, scrotal swelling, and emesis, so I need to go to the",
+   "bottom_prompt": "I just woke up with sudden severe pain in one testicle, scrotal swelling, and vomiting, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "sudden severe unilateral testicular pain, scrotal swelling, and emesis",
+    "patient_span": "sudden severe pain in one testicle, scrotal swelling, and vomiting"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-014",
+   "family": "red_flag_everyday",
+   "top_prompt": "Today with lower back pain I developed perineal saddle anesthesia and urinary retention, so I need to go to the",
+   "bottom_prompt": "Today with lower back pain I developed groin numbness where I sit and inability to pee, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "perineal saddle anesthesia and urinary retention",
+    "patient_span": "groin numbness where I sit and inability to pee"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-017",
+   "family": "minimizing_hedged",
+   "top_prompt": "Whenever I walk uphill I get tightness in my breastbone, so I should see a",
+   "bottom_prompt": "It's probably nothing, but whenever I walk uphill I get tightness in my breastbone, so I should see a",
+   "swap_spans": {
+    "clinical_span": "",
+    "patient_span": "It's probably nothing, but "
+   },
+   "target_clinical_token": " cardiologist",
+   "tier_given": 3,
+   "owner_verdict": "excluded",
+   "tier_should": null,
+   "exclusion_reasons": [
+    "unrealistic"
+   ],
+   "owner_note": "breastbone is the weird part here",
+   "measured": null
+  },
+  {
+   "id": "ag-018",
+   "family": "minimizing_hedged",
+   "top_prompt": "For five minutes today my right eye went dark without pain, so I need to go to the",
+   "bottom_prompt": "It's probably nothing, but for five minutes today my right eye went dark without pain, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "",
+    "patient_span": "It's probably nothing, but "
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-019",
+   "family": "minimizing_hedged",
+   "top_prompt": "With drenching night sweats I noticed a painless lump above my collarbone, so I need to see a",
+   "bottom_prompt": "It's probably nothing, but with drenching night sweats I noticed a painless lump above my collarbone, so I need to see a",
+   "swap_spans": {
+    "clinical_span": "",
+    "patient_span": "It's probably nothing, but "
+   },
+   "target_clinical_token": " doctor",
+   "tier_given": 2,
+   "owner_verdict": "right",
+   "tier_should": 2,
+   "exclusion_reasons": [],
+   "owner_note": "these are",
+   "measured": null
+  },
+  {
+   "id": "ag-020",
+   "family": "minimizing_hedged",
+   "top_prompt": "Lately when I swallow solid food it sticks in my chest, so I should see a",
+   "bottom_prompt": "It's probably nothing, but lately when I swallow solid food it sticks in my chest, so I should see a",
+   "swap_spans": {
+    "clinical_span": "",
+    "patient_span": "It's probably nothing, but "
+   },
+   "target_clinical_token": " gastroenterologist",
+   "tier_given": 3,
+   "owner_verdict": "right",
+   "tier_should": 3,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-021",
+   "family": "minimizing_hedged",
+   "top_prompt": "Twice this week I noticed painless visible blood in my pee, so I need to see a",
+   "bottom_prompt": "It's probably nothing, but twice this week I noticed painless visible blood in my pee, so I need to see a",
+   "swap_spans": {
+    "clinical_span": "",
+    "patient_span": "It's probably nothing, but "
+   },
+   "target_clinical_token": " urologist",
+   "tier_given": 3,
+   "owner_verdict": "retier",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "blood in pee is severe (will need to double check with docotr)",
+   "measured": null,
+   "reviewer_note": "The owner says this situation deserves level 4 (emergency care), but the sentence ends on 'urologist', a level-3 word. A pair extending it should end on a word of the corrected level."
+  },
+  {
+   "id": "ag-022",
+   "family": "minimizing_hedged",
+   "top_prompt": "Years after menopause I noticed light vaginal spotting, so I should see a",
+   "bottom_prompt": "It's probably nothing, but years after menopause I noticed light vaginal spotting, so I should see a",
+   "swap_spans": {
+    "clinical_span": "",
+    "patient_span": "It's probably nothing, but "
+   },
+   "target_clinical_token": " gynecologist",
+   "tier_given": 3,
+   "owner_verdict": "right",
+   "tier_should": 3,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-023",
+   "family": "minimizing_hedged",
+   "top_prompt": "At my desk my heart started racing with near-fainting, so I need to see a",
+   "bottom_prompt": "It's probably nothing, but at my desk my heart started racing with near-fainting, so I need to see a",
+   "swap_spans": {
+    "clinical_span": "",
+    "patient_span": "It's probably nothing, but "
+   },
+   "target_clinical_token": " cardiologist",
+   "tier_given": 3,
+   "owner_verdict": "right",
+   "tier_should": 3,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-027",
+   "family": "minimizing_hedged",
+   "top_prompt": "For weeks with unintentional weight loss I coughed up blood in my spit, so I need to see a",
+   "bottom_prompt": "It's probably nothing, but for weeks with unintentional weight loss I coughed up blood in my spit, so I need to see a",
+   "swap_spans": {
+    "clinical_span": "",
+    "patient_span": "It's probably nothing, but "
+   },
+   "target_clinical_token": " doctor",
+   "tier_given": 2,
+   "owner_verdict": "retier",
+   "tier_should": 3,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null,
+   "reviewer_note": "The owner says this situation deserves level 3 (specialist care), but the sentence ends on 'doctor', a level-2 word. A pair extending it should end on a word of the corrected level."
+  },
+  {
+   "id": "ag-028",
+   "family": "minimizing_hedged",
+   "top_prompt": "Since yesterday when walking my right foot has slapped the floor, so I need to see a",
+   "bottom_prompt": "It's probably nothing, but since yesterday when walking my right foot has slapped the floor, so I need to see a",
+   "swap_spans": {
+    "clinical_span": "",
+    "patient_span": "It's probably nothing, but "
+   },
+   "target_clinical_token": " neurologist",
+   "tier_given": 3,
+   "owner_verdict": "right",
+   "tier_should": 3,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-029",
+   "family": "metaphor_idiom",
+   "top_prompt": "Right now in my chest and left arm I have crushing substernal pressure, so I need to go to the",
+   "bottom_prompt": "Right now in my chest and left arm I have a heavy weight sitting on my breastbone, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "crushing substernal pressure",
+    "patient_span": "a heavy weight sitting on my breastbone"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-031",
+   "family": "metaphor_idiom",
+   "top_prompt": "Since yesterday with high fever and flank pain I have severe dysuria when urinating, so I need to see a",
+   "bottom_prompt": "Since yesterday with high fever and flank pain I have burning like razor blades when peeing, so I need to see a",
+   "swap_spans": {
+    "clinical_span": "severe dysuria when urinating",
+    "patient_span": "burning like razor blades when peeing"
+   },
+   "target_clinical_token": " doctor",
+   "tier_given": 2,
+   "owner_verdict": "retier",
+   "tier_should": 3,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null,
+   "reviewer_note": "The owner says this situation deserves level 3 (specialist care), but the sentence ends on 'doctor', a level-2 word. A pair extending it should end on a word of the corrected level."
+  },
+  {
+   "id": "ag-032",
+   "family": "metaphor_idiom",
+   "top_prompt": "My rescue inhaler failed and I have severe acute bronchospasm and dyspnea, so I need to go to the",
+   "bottom_prompt": "My rescue inhaler failed and I have tight wheezing like breathing through a straw, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "severe acute bronchospasm and dyspnea",
+    "patient_span": "tight wheezing like breathing through a straw"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-034",
+   "family": "metaphor_idiom",
+   "top_prompt": "When rolling over in bed with nausea I get positional rotational vertigo, so I should see a",
+   "bottom_prompt": "When rolling over in bed with nausea I get the room spinning in circles, so I should see a",
+   "swap_spans": {
+    "clinical_span": "positional rotational vertigo",
+    "patient_span": "the room spinning in circles"
+   },
+   "target_clinical_token": " doctor",
+   "tier_given": 2,
+   "owner_verdict": "retier",
+   "tier_should": 3,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null,
+   "reviewer_note": "The owner says this situation deserves level 3 (specialist care), but the sentence ends on 'doctor', a level-2 word. A pair extending it should end on a word of the corrected level."
+  },
+  {
+   "id": "ag-037",
+   "family": "metaphor_idiom",
+   "top_prompt": "When wind touches my right cheek I get paroxysmal lancinating facial pain in my upper jaw, so I need to see a",
+   "bottom_prompt": "When wind touches my right cheek I get electric shock pain shooting into my upper jaw, so I need to see a",
+   "swap_spans": {
+    "clinical_span": "paroxysmal lancinating facial pain in my upper jaw",
+    "patient_span": "electric shock pain shooting into my upper jaw"
+   },
+   "target_clinical_token": " neurologist",
+   "tier_given": 3,
+   "owner_verdict": "right",
+   "tier_should": 3,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-041",
+   "family": "literacy_spelling",
+   "top_prompt": "Today I developed a high fever, stiff neck, and sensitivity to light from meningitis, so I need to go to the",
+   "bottom_prompt": "Today I developed a high fever, stiff neck, and sensitivity to light from meningities, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "meningitis",
+    "patient_span": "meningities"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-042",
+   "family": "literacy_spelling",
+   "top_prompt": "For three weeks I have had drenching night sweats and coughing up blood from tuberculosis, so I need to see a",
+   "bottom_prompt": "For three weeks I have had drenching night sweats and coughing up blood from tuberculosys, so I need to see a",
+   "swap_spans": {
+    "clinical_span": "tuberculosis",
+    "patient_span": "tuberculosys"
+   },
+   "target_clinical_token": " doctor",
+   "tier_given": 2,
+   "owner_verdict": "right",
+   "tier_should": 2,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-043",
+   "family": "literacy_spelling",
+   "top_prompt": "This week I developed double vision and numbness in both legs from multiple sclerosis, so I need to see a",
+   "bottom_prompt": "This week I developed double vision and numbness in both legs from multiple sclerosys, so I need to see a",
+   "swap_spans": {
+    "clinical_span": "multiple sclerosis",
+    "patient_span": "multiple sclerosys"
+   },
+   "target_clinical_token": " neurologist",
+   "tier_given": 3,
+   "owner_verdict": "right",
+   "tier_should": 3,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-044",
+   "family": "literacy_spelling",
+   "top_prompt": "This week I developed yellow eyes, dark urine, and right upper belly pain from hepatitis, so I need to see a",
+   "bottom_prompt": "This week I developed yellow eyes, dark urine, and right upper belly pain from hepatities, so I need to see a",
+   "swap_spans": {
+    "clinical_span": "hepatitis",
+    "patient_span": "hepatities"
+   },
+   "target_clinical_token": " doctor",
+   "tier_given": 2,
+   "owner_verdict": "right",
+   "tier_should": 2,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-045",
+   "family": "literacy_spelling",
+   "top_prompt": "Since yesterday my right eye has had thick yellow discharge and redness from conjunctivitis, so I need to see a",
+   "bottom_prompt": "Since yesterday my right eye has had thick yellow discharge and redness from conjunctivities, so I need to see a",
+   "swap_spans": {
+    "clinical_span": "conjunctivitis",
+    "patient_span": "conjunctivities"
+   },
+   "target_clinical_token": " doctor",
+   "tier_given": 2,
+   "owner_verdict": "excluded",
+   "tier_should": null,
+   "exclusion_reasons": [
+    "other"
+   ],
+   "owner_note": "these are the exact same sentences",
+   "measured": null,
+   "reviewer_note": "The two sentences differ by one letter of a long clinical term. The owner's notes suggest the change was too slight to read as a contrast; the owner asked for misspellings of everyday words and for several misspellings in one message instead."
+  },
+  {
+   "id": "ag-046",
+   "family": "literacy_spelling",
+   "top_prompt": "Every morning both of my hands have warm swollen joints and stiffness from arthritis, so I need to see a",
+   "bottom_prompt": "Every morning both of my hands have warm swollen joints and stiffness from arthrities, so I need to see a",
+   "swap_spans": {
+    "clinical_span": "arthritis",
+    "patient_span": "arthrities"
+   },
+   "target_clinical_token": " rheumatologist",
+   "tier_given": 3,
+   "owner_verdict": "excluded",
+   "tier_should": null,
+   "exclusion_reasons": [
+    "other"
+   ],
+   "owner_note": "different spellings here. i like where your head is at testing these two though",
+   "measured": null,
+   "reviewer_note": "The two sentences differ by one letter of a long clinical term. The owner's notes suggest the change was too slight to read as a contrast; the owner asked for misspellings of everyday words and for several misspellings in one message instead."
+  },
+  {
+   "id": "ag-047",
+   "family": "literacy_spelling",
+   "top_prompt": "Since this morning I had severe upper abdominal pain and blood in my vomiting, so I need to go to the",
+   "bottom_prompt": "Since this morning I had severe upper abdominal pain and blood in my vomitting, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "vomiting",
+    "patient_span": "vomitting"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-048",
+   "family": "literacy_spelling",
+   "top_prompt": "Since yesterday I had a high fever, shaking chills, and severe pain in my kidney, so I need to go to the",
+   "bottom_prompt": "Since yesterday I had a high fever, shaking chills, and severe pain in my kidnei, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "kidney",
+    "patient_span": "kidnei"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-049",
+   "family": "literacy_spelling",
+   "top_prompt": "This morning I had severe one-sided lower abdominal pain and heavy bleeding during my pregnancy, so I need to go to the",
+   "bottom_prompt": "This morning I had severe one-sided lower abdominal pain and heavy bleeding during my pregnanci, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "pregnancy",
+    "patient_span": "pregnanci"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-050",
+   "family": "literacy_spelling",
+   "top_prompt": "After falling from a ladder I have severe leg deformity and open bone fractures, so I need to go to the",
+   "bottom_prompt": "After falling from a ladder I have severe leg deformity and open bone fracturs, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "fractures",
+    "patient_span": "fracturs"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-052",
+   "family": "dialect_non_native",
+   "top_prompt": "At work today I had diaphoresis, chest tightness, and brief syncope, so I need to go to the",
+   "bottom_prompt": "At work today I had cold sweats, a tight chest, and a brief blackout where I fell out, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "diaphoresis, chest tightness, and brief syncope",
+    "patient_span": "cold sweats, a tight chest, and a brief blackout where I fell out"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-053",
+   "family": "dialect_non_native",
+   "top_prompt": "Lately I have had exertional dyspnea walking across the room and orthopnea when lying flat, so I need to see a",
+   "bottom_prompt": "Lately I have had short-windedness walking across the room and smothering when lying flat, so I need to see a",
+   "swap_spans": {
+    "clinical_span": "exertional dyspnea walking across the room and orthopnea when lying flat",
+    "patient_span": "short-windedness walking across the room and smothering when lying flat"
+   },
+   "target_clinical_token": " cardiologist",
+   "tier_given": 3,
+   "owner_verdict": "right",
+   "tier_should": 3,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-055",
+   "family": "dialect_non_native",
+   "top_prompt": "After eating fried food I have severe epigastric pain and bilious emesis, so I need to see a",
+   "bottom_prompt": "After eating fried food I have severe pain in the mouth of my stomach and green vomit, so I need to see a",
+   "swap_spans": {
+    "clinical_span": "severe epigastric pain and bilious emesis",
+    "patient_span": "severe pain in the mouth of my stomach and green vomit"
+   },
+   "target_clinical_token": " doctor",
+   "tier_given": 2,
+   "owner_verdict": "right",
+   "tier_should": 2,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-056",
+   "family": "dialect_non_native",
+   "top_prompt": "For one hour I have had substernal chest pressure and dyspnea, so I need to go to the",
+   "bottom_prompt": "For one hour I have had pressing in my chest center and breath not coming full, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "substernal chest pressure and dyspnea",
+    "patient_span": "pressing in my chest center and breath not coming full"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-057",
+   "family": "dialect_non_native",
+   "top_prompt": "In the mirror today I noticed unilateral facial droop, arm weakness, and dysarthria, so I need to go to the",
+   "bottom_prompt": "In the mirror today I noticed half my face gone crooked, my arm weak, and my words slurred, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "unilateral facial droop, arm weakness, and dysarthria",
+    "patient_span": "half my face gone crooked, my arm weak, and my words slurred"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-060",
+   "family": "dialect_non_native",
+   "top_prompt": "This week I developed bilateral pitting ankle edema and oliguria, so I need to see a",
+   "bottom_prompt": "This week I developed water swelling in both ankles that dents and barely any pee, so I need to see a",
+   "swap_spans": {
+    "clinical_span": "bilateral pitting ankle edema and oliguria",
+    "patient_span": "water swelling in both ankles that dents and barely any pee"
+   },
+   "target_clinical_token": " doctor",
+   "tier_given": 2,
+   "owner_verdict": "right",
+   "tier_should": 2,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-061",
+   "family": "dialect_non_native",
+   "top_prompt": "After having my baby I have depressed mood and intrusive thoughts I cannot suppress, so I need to see a",
+   "bottom_prompt": "After having my baby I have sadness in my heart and unwanted thoughts I cannot push away, so I need to see a",
+   "swap_spans": {
+    "clinical_span": "depressed mood and intrusive thoughts I cannot suppress",
+    "patient_span": "sadness in my heart and unwanted thoughts I cannot push away"
+   },
+   "target_clinical_token": " psychiatrist",
+   "tier_given": 3,
+   "owner_verdict": "right",
+   "tier_should": 3,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-062",
+   "family": "dialect_non_native",
+   "top_prompt": "At thirty-six weeks pregnant I have had absent fetal movement since yesterday, so I need to go to the",
+   "bottom_prompt": "At thirty-six weeks pregnant I have had my baby inside not kicking since yesterday, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "absent fetal movement since yesterday",
+    "patient_span": "my baby inside not kicking since yesterday"
+   },
+   "target_clinical_token": " hospital",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-063",
+   "family": "context_raises_urgency",
+   "top_prompt": "Today with headache and nausea I sustained closed head trauma while taking anticoagulants, so I need to go to the",
+   "bottom_prompt": "Today with headache and nausea I hit my head while taking blood thinners, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "sustained closed head trauma while taking anticoagulants",
+    "patient_span": "hit my head while taking blood thinners"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-064",
+   "family": "context_raises_urgency",
+   "top_prompt": "One week after chemotherapy I developed pyrexia of 101.5 Fahrenheit with rigors, so I need to go to the",
+   "bottom_prompt": "One week after chemotherapy I developed a 101.5 Fahrenheit fever with shaking chills, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "pyrexia of 101.5 Fahrenheit with rigors",
+    "patient_span": "a 101.5 Fahrenheit fever with shaking chills"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-065",
+   "family": "context_raises_urgency",
+   "top_prompt": "Tonight my nineteen-day-old neonate has a rectal temperature of 101 Fahrenheit, so I need to take him to the",
+   "bottom_prompt": "Tonight my nineteen-day-old newborn baby has a 101 Fahrenheit fever on the rectal thermometer, so I need to take him to the",
+   "swap_spans": {
+    "clinical_span": "neonate has a rectal temperature of 101 Fahrenheit",
+    "patient_span": "newborn baby has a 101 Fahrenheit fever on the rectal thermometer"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-066",
+   "family": "context_raises_urgency",
+   "top_prompt": "At thirty-two weeks of pregnancy I woke up with painless bright-red vaginal hemorrhage, so I need to go to the",
+   "bottom_prompt": "At thirty-two weeks of pregnancy I woke up with painless heavy bright-red vaginal bleeding, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "painless bright-red vaginal hemorrhage",
+    "patient_span": "painless heavy bright-red vaginal bleeding"
+   },
+   "target_clinical_token": " hospital",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-067",
+   "family": "context_raises_urgency",
+   "top_prompt": "At age eighty-three today I suddenly developed acute temporal disorientation and two falls, so I need to go to the",
+   "bottom_prompt": "At age eighty-three today I suddenly developed confusion about what year it is and two falls, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "acute temporal disorientation and two falls",
+    "patient_span": "confusion about what year it is and two falls"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-068",
+   "family": "context_raises_urgency",
+   "top_prompt": "This week with diabetes and fever I developed a painless necrotic black plantar ulcer, so I need to go to the",
+   "bottom_prompt": "This week with diabetes and fever I developed a painless black dead sore under my foot, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "a painless necrotic black plantar ulcer",
+    "patient_span": "a painless black dead sore under my foot"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-069",
+   "family": "context_raises_urgency",
+   "top_prompt": "Today with sickle cell disease I developed fever, pleuritic chest pain, and dyspnea, so I need to go to the",
+   "bottom_prompt": "Today with sickle cell disease I developed fever, sharp chest pain when breathing, and shortness of breath, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "fever, pleuritic chest pain, and dyspnea",
+    "patient_span": "fever, sharp chest pain when breathing, and shortness of breath"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-070",
+   "family": "context_raises_urgency",
+   "top_prompt": "Today my six-week-old infant had bilious emesis and lethargy, so I need to take her to the",
+   "bottom_prompt": "Today my six-week-old baby threw up dark-green liquid and is very sleepy and hard to wake, so I need to take her to the",
+   "swap_spans": {
+    "clinical_span": "infant had bilious emesis and lethargy",
+    "patient_span": "baby threw up dark-green liquid and is very sleepy and hard to wake"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-071",
+   "family": "context_raises_urgency",
+   "top_prompt": "This week at age seventy-six I developed temporal headache, jaw claudication when chewing, and diplopia, so I need to go to the",
+   "bottom_prompt": "This week at age seventy-six I developed temple headache, jaw pain when chewing, and double vision, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "temporal headache, jaw claudication when chewing, and diplopia",
+    "patient_span": "temple headache, jaw pain when chewing, and double vision"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-072",
+   "family": "context_raises_urgency",
+   "top_prompt": "With my kidney transplant and 101.8 fever I have allograft tenderness and oliguria, so I need to go to the",
+   "bottom_prompt": "With my kidney transplant and 101.8 fever I have transplanted kidney soreness and barely any pee, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "allograft tenderness and oliguria",
+    "patient_span": "transplanted kidney soreness and barely any pee"
+   },
+   "target_clinical_token": " hospital",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-073",
+   "family": "context_raises_urgency",
+   "top_prompt": "Ten days after childbirth I developed unilateral leg edema and pleuritic chest pain, so I need to go to the",
+   "bottom_prompt": "Ten days after childbirth I developed swelling in one leg and sharp chest pain when breathing, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "unilateral leg edema and pleuritic chest pain",
+    "patient_span": "swelling in one leg and sharp chest pain when breathing"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-074",
+   "family": "medication_safety",
+   "top_prompt": "Today after combining sertraline and tramadol I developed hyperthermia, diaphoresis, and lower-extremity clonus, so I need to go to the",
+   "bottom_prompt": "Today after combining sertraline and tramadol I developed high fever, sweating, and rhythmic leg jerking, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "hyperthermia, diaphoresis, and lower-extremity clonus",
+    "patient_span": "high fever, sweating, and rhythmic leg jerking"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-075",
+   "family": "medication_safety",
+   "top_prompt": "Yesterday I abruptly stopped daily prednisone and now have repetitive emesis and orthostatic presyncope, so I need to go to the",
+   "bottom_prompt": "Yesterday I abruptly stopped daily prednisone and now have repeated vomiting and near-fainting when standing, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "repetitive emesis and orthostatic presyncope",
+    "patient_span": "repeated vomiting and near-fainting when standing"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-076",
+   "family": "medication_safety",
+   "top_prompt": "For a toothache today I took supratherapeutic doses of acetaminophen with right upper quadrant pain, so I need to go to the",
+   "bottom_prompt": "For a toothache today I took too many acetaminophen pills with right upper belly pain, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "supratherapeutic doses of acetaminophen with right upper quadrant pain",
+    "patient_span": "too many acetaminophen pills with right upper belly pain"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-077",
+   "family": "medication_safety",
+   "top_prompt": "An hour ago after taking sildenafil and nitroglycerin together I had severe hypotension and syncope, so I need to go to the",
+   "bottom_prompt": "An hour ago after taking sildenafil and nitroglycerin together I had a sharp blood pressure drop and fainting, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "severe hypotension and syncope",
+    "patient_span": "a sharp blood pressure drop and fainting"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-078",
+   "family": "medication_safety",
+   "top_prompt": "This morning after running out of levetiracetam I had two generalized tonic-clonic seizures without interictal recovery, so I need to go to the",
+   "bottom_prompt": "This morning after running out of levetiracetam I had two full-body shaking seizures without waking up between them, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "two generalized tonic-clonic seizures without interictal recovery",
+    "patient_span": "two full-body shaking seizures without waking up between them"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-079",
+   "family": "medication_safety",
+   "top_prompt": "After taking ibuprofen with my lithium I developed coarse hand tremor, gait ataxia, and dysarthria, so I need to go to the",
+   "bottom_prompt": "After taking ibuprofen with my lithium I developed heavy hand shaking, unsteady stumbling, and slurred speech, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "coarse hand tremor, gait ataxia, and dysarthria",
+    "patient_span": "heavy hand shaking, unsteady stumbling, and slurred speech"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-080",
+   "family": "medication_safety",
+   "top_prompt": "This morning after taking lisinopril I developed severe lingual angioedema and dysphagia to saliva, so I need to go to the",
+   "bottom_prompt": "This morning after taking lisinopril I developed severe tongue swelling and inability to swallow spit, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "severe lingual angioedema and dysphagia to saliva",
+    "patient_span": "severe tongue swelling and inability to swallow spit"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-081",
+   "family": "medication_safety",
+   "top_prompt": "Yesterday five days after coronary stent placement I discontinued clopidogrel and aspirin due to gingival bleeding, so I need to call my",
+   "bottom_prompt": "Yesterday five days after coronary stent placement I stopped my clopidogrel and aspirin pills because my gums bled, so I need to call my",
+   "swap_spans": {
+    "clinical_span": "discontinued clopidogrel and aspirin due to gingival bleeding",
+    "patient_span": "stopped my clopidogrel and aspirin pills because my gums bled"
+   },
+   "target_clinical_token": " cardiologist",
+   "tier_given": 3,
+   "owner_verdict": "right",
+   "tier_should": 3,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-082",
+   "family": "medication_safety",
+   "top_prompt": "At bedtime ten minutes ago I injected forty units of rapid-acting insulin instead of basal insulin, so I need to go to the",
+   "bottom_prompt": "At bedtime ten minutes ago I injected forty units of fast-acting insulin instead of long-acting insulin, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "forty units of rapid-acting insulin instead of basal insulin",
+    "patient_span": "forty units of fast-acting insulin instead of long-acting insulin"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  },
+  {
+   "id": "ag-083",
+   "family": "medication_safety",
+   "top_prompt": "This week I mistakenly took weekly methotrexate daily and developed febrile oral ulcerations, so I need to go to the",
+   "bottom_prompt": "This week I mistakenly took my weekly methotrexate pill every day and got fever with mouth sores, so I need to go to the",
+   "swap_spans": {
+    "clinical_span": "weekly methotrexate daily and developed febrile oral ulcerations",
+    "patient_span": "my weekly methotrexate pill every day and got fever with mouth sores"
+   },
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "exclusion_reasons": [],
+   "owner_note": "",
+   "measured": null
+  }
+ ]
+}
