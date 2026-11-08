@@ -86,6 +86,18 @@ def test_collect_gates_featured_and_holdout(tmp_path, monkeypatch):
     assert ext.build_payload({"clinical": [], "patient": []}) is None
 
 
+
+def test_collect_skips_an_exploratory_set(tmp_path, monkeypatch):
+    # an exploratory set (scripts/publication_hold.py rule 3) with calibrated, unsealed rows stays out
+    monkeypatch.setattr(ext, "sealed_pair", functools.partial(ext.sealed_pair, **_seal_paths(tmp_path)))
+    root = tmp_path / "trace_out"
+    _summary(root, "pairs_F", FEATURED, [_row(1, EXPLORE_B)])
+    _summary(root, "agscen_20990101", FEATURED, [_row(1, EXPLORE_B, mass=0.9), _row(2, EXPLORE_A, mass=0.9)])
+    skipped = []
+    acc = ext.collect(str(root), skipped)
+    assert len(acc["clinical"]) == 1 and len(acc["patient"]) == 1   # only the study pair
+    assert [Path(p).parent.name for p in skipped] == ["agscen_20990101"]
+
 def test_main_refuses_when_seal_cannot_be_evaluated(tmp_path, monkeypatch, capsys):
     # a dashboard with no Tier B start: the seal raises and nothing is written (exit 2)
     monkeypatch.setattr(ext, "sealed_pair",

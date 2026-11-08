@@ -15,6 +15,11 @@ every generated batch is preserved and reproducible.
   C register shift only, D both axes shifted).
 - `dialects_<UTC timestamp>.json` — dialect/register variant sets around a
   fixed term (`--mode dialect` batch schema).
+- `agscen_<date>.json` — exploratory hand-authored 2panel pairs (not generated
+  by the Action and not a study batch): owner-read scenario drafts copied with
+  their verdicts under `generation`, traceable at $0 by the circuit-trace and
+  logits-eval lanes. Their `trace_out/agscen_*` outputs never enter a published
+  aggregate (`EXPLORATORY_STEM_PREFIXES` in `scripts/publication_hold.py`).
 - `*.report.json` — the cost/provenance sidecar for each batch: run
   timestamp, Anthropic model, **USD spent vs. the ceiling**, token usage,
   accept/reject counts with rejection reasons, and the run's steering

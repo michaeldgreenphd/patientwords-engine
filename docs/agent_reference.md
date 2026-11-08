@@ -157,7 +157,12 @@ the site's `../patientwords/data/urgency_shift.json`);
 flat per-(pair × model) collaborator CSV. `scripts/publication_hold.py`'s `HELD_MODELS`, and
 logits parts missing from `data/publication_release/logits_parts.json`, stay out of every published
 number: each collector that pools `trace_out/*` skips them with a count (its docstring lists them; a new
-one must too). Only the owner releases (`scripts/publication_release.py --release`).
+one must too). Only the owner releases (`scripts/publication_release.py --release`). Exploratory stimulus sets
+(`EXPLORATORY_STEM_PREFIXES` in `scripts/publication_hold.py`, today `agscen_`: the owner-read hand-authored
+pairs in `data/simulated/agscen_20261108.json`) are refused by stem in every model and backend, released or
+not; collectors that pool `trace_out/*` without the gate (`scripts/export_tag_mass.py`,
+`scripts/retrace_consistency.py`) skip them too. Lens consumers read only `__jlens_`/`__loglens_` dirs and
+do not yet skip them: add the skip before any lens fire on such a set.
 
 **Publishing (`scripts/export_frontend_simulated.py`).** Merges every model's trace dir per
 batch stamp into `scenario.models[<id>]`, mirrors the gemma base to the top level for

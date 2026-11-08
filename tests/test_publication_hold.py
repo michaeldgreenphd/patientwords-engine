@@ -391,3 +391,56 @@ def test_translation_scale_reads_only_released_logits_parts(engine_root):
     assert "gemma-4-e2b" not in out["per_model"]
     assert "unreleased logits part" in gate.report()
     assert "held model gemma-4-e2b" in gate.report()
+
+
+# ---------------------------------------------------------------- exploratory stimulus sets (rule 3)
+
+EXPLORATORY = "agscen_20990101"
+
+
+def _land_exploratory_parts(root: Path) -> None:
+    """A hosted part and a logits part of an exploratory set over the study batch's own prompts, the logits part
+    listed in the release manifest: only the stem keeps them out, and a pooled read would change every output."""
+    logits = Path("trace_out") / f"{EXPLORATORY}__model-x" / "batch_summary.part_01.json"
+    _write(root / "trace_out" / EXPLORATORY / "batch_summary.part_01.json", _summary([1, 2, 3], "model-x", "hosted"))
+    _write(root / logits, _summary([1, 2, 3], "model-x"))
+    _manifest(root, [QWEN_PART, logits])
+
+
+def test_the_gate_refuses_an_exploratory_set_by_stem_whatever_its_release(engine_root):
+    assert hold.is_exploratory_run_dir(EXPLORATORY) and hold.is_exploratory_run_dir(f"{EXPLORATORY}__model-x")
+    assert hold.is_exploratory_run_dir(f"{EXPLORATORY}__jlens_model-x")
+    assert not hold.is_exploratory_run_dir(BATCH) and not hold.is_exploratory_run_dir(f"{BATCH}__model-x")
+    _land_exploratory_parts(engine_root)
+    gate = hold.Gate(engine_root)
+    for run_dir in (EXPLORATORY, f"{EXPLORATORY}__model-x"):
+        part = engine_root / "trace_out" / run_dir / "batch_summary.part_01.json"
+        assert gate.admit(part, json.loads(part.read_text())) is False
+    assert gate.report() == ("publication hold (scripts/publication_hold.py), parts not read: "
+                             "exploratory set (not a study batch) 2")
+
+
+def test_urgency_shift_publishes_the_same_bytes_after_an_exploratory_set_lands(engine_root):
+    rc, rows_before, site_before, out_before = _urgency(engine_root, "before_x")
+    assert rc == 0, out_before
+    _land_exploratory_parts(engine_root)
+    rc, rows_after, site_after, out_after = _urgency(engine_root, "after_x")
+    assert rc == 0, out_after
+    assert rows_after == rows_before and site_after == site_before
+    assert "exploratory set (not a study batch) 2" in out_after
+
+
+def test_the_timeline_and_the_audit_mirror_and_interp_skip_an_exploratory_set(engine_root, monkeypatch):
+    _land_exploratory_parts(engine_root)
+    tl = _load("study_timeline")
+    monkeypatch.chdir(engine_root)
+    assert tl.main(["--out", "timeline.json", "--site", ""]) == 0
+    totals = json.loads((engine_root / "timeline.json").read_text())["totals"]
+    assert totals["trace_summary_parts"] == 2 and totals["held_trace_summary_parts"] == 2
+    audit = _load("audit_target_reads")
+    loaded = {d: [(p, json.loads(p.read_text())) for p in sorted(d.glob("batch_summary*.json"))]
+              for d in sorted((engine_root / "trace_out").iterdir())}
+    reads = {part for part, _ in audit.urgency_reads(engine_root, loaded)}
+    assert reads and not any(EXPLORATORY in p for p in reads)
+    interp = _load("interp_analyses")
+    assert {name for name, _ in interp.load_parts(engine_root / "trace_out")} == {BATCH, QWEN_PART.parent.name}

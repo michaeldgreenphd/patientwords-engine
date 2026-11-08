@@ -181,6 +181,10 @@ for part in sorted(glob.glob("trace_out/*/batch_summary.part_*.json")):
         # translated sentences masquerade as patient measurements in the
         # all-rows sensitivity and the urgency aggregates (2026-07-14).
         continue
+    # Exploratory stimulus sets (agscen_: hand-authored pairs, owner-read 2026-11-08, never through the
+    # generator's validators or the Tier B split) are traced for inspection only. gate.admit below refuses
+    # them by stem and counts them on stdout (scripts/publication_hold.py, rule 3), so none of their rows
+    # reaches the aggregates, the headline pick or the row file that paired_stats_rigor.py reads.
     summary = json.loads(Path(part).read_text(encoding="utf-8"))
     model = summary.get("graph_model") or model_suffix or "gemma-2-2b"
     try:

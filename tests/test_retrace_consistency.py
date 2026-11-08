@@ -39,3 +39,12 @@ def test_moved_retrace_reports_spread_and_instability(tmp_path):
 def test_single_trace_pairs_excluded(tmp_path):
     write_run(tmp_path, "run_a", ("clin A", "pat A"), (0.5, 0.2), ("x", "y"))
     assert compare(collect(tmp_path)) == []
+
+
+def test_exploratory_set_never_enters_the_repeatability_rows(tmp_path):
+    # an exploratory set (scripts/publication_hold.py rule 3) that shares a prompt pair with a study run
+    write_run(tmp_path, "pairs_a", ("clin A", "pat A"), (0.5, 0.2), ("x", "y"))
+    write_run(tmp_path, "agscen_20990101", ("clin A", "pat A"), (0.4, 0.2), ("z", "y"))
+    skipped: list[str] = []
+    assert compare(collect(tmp_path, skipped)) == []
+    assert [Path(p).parent.name for p in skipped] == ["agscen_20990101"]

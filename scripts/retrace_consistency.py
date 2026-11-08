@@ -40,11 +40,16 @@ except ImportError:
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from feature_models import clinical_mass_publishable  # noqa: E402
+from publication_hold import is_exploratory_run_dir  # noqa: E402
 from tierb_split import holdout_phrases  # noqa: E402  (script-style module)
 
 
-def collect(trace_root: Path):
+def collect(trace_root: Path, skipped: list[str] | None = None):
     """{(model, clinical, patient): [record, ...]} across every batch summary.
+
+    Parts of an exploratory stimulus set (scripts/publication_hold.py rule 3,
+    e.g. agscen_) are not read; their paths are appended to `skipped` when it
+    is a list.
 
     Amendment 3 (2026-07-14): a Tier B holdout phrase is sealed from every
     public data file, keyed on the phrase and applied to every re-run stem
@@ -53,6 +58,12 @@ def collect(trace_root: Path):
     sealed = holdout_phrases()
     groups = defaultdict(list)
     for part in sorted(trace_root.glob("*/batch_summary*.json")):
+        if is_exploratory_run_dir(part.parent.name):
+            # hand-authored exploratory sets (agscen_) are traced for inspection only; a prompt pair
+            # they share with a study run would otherwise enter the published repeatability figures
+            if skipped is not None:
+                skipped.append(str(part))
+            continue
         try:
             summary = json.loads(part.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
@@ -142,7 +153,11 @@ def main():
     parser.add_argument("--out", default="ops/retrace_consistency.json")
     args = parser.parse_args()
 
-    rows = compare(collect(Path(args.trace_root)))
+    skipped: list[str] = []
+    rows = compare(collect(Path(args.trace_root), skipped))
+    if skipped:
+        print(f"retrace consistency: {len(skipped)} exploratory-set part(s) not read "
+              "(scripts/publication_hold.py, rule 3)")
     spreads = [r["spread_p_clinical"] for r in rows if r["spread_p_clinical"] is not None] + \
               [r["spread_p_patient"] for r in rows if r["spread_p_patient"] is not None]
     stable_tops = sum(1 for r in rows if r["top_clinical_stable"] and r["top_patient_stable"])
