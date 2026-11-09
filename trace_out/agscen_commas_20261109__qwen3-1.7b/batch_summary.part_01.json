@@ -1,0 +1,4241 @@
+{
+  "mode": "2panel",
+  "backend": "logits",
+  "graph_model": "qwen3-1.7b",
+  "source_set": null,
+  "generation_params": {},
+  "start_index": 1,
+  "pairs_requested": 36,
+  "completed": true,
+  "screen_targets": null,
+  "inference": {
+    "method": "logits",
+    "hf_id": "Qwen/Qwen3-1.7B",
+    "dtype": "bfloat16",
+    "revision": "70d244cc86ccca08cf5af4e1e306ecf908b1ad5e",
+    "revision_pinned": "70d244cc86ccca08cf5af4e1e306ecf908b1ad5e",
+    "environment": {
+      "python": "3.11.18",
+      "platform": "Linux-7.0.0-1019-azure-x86_64-with-glibc2.43",
+      "engine_sha": "dc8b1736a6d2",
+      "runner_image": "20261101.186.1",
+      "torch": "2.13.0+cpu",
+      "transformers": "5.14.1",
+      "accelerate": "1.14.0"
+    }
+  },
+  "results": [
+    {
+      "index": 1,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "With my cirrhosis today I developed progressive ascites, scleral icterus, and asterixis, so I need to go to the",
+        "patient": "With my cirrhosis today I developed growing water swelling in my belly, yellow eyes, and flapping hands, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.0802,
+        "patient": 0.1211
+      },
+      "language_penalty": 0.0409,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.8624
+          ],
+          [
+            "Output \" ER\"",
+            0.0802
+          ],
+          [
+            "Output \" doctor\"",
+            0.0295
+          ],
+          [
+            "Output \" emergency\"",
+            0.0158
+          ],
+          [
+            "Output \" clinic\"",
+            0.0019
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0017
+          ],
+          [
+            "Output \" physician\"",
+            0.0015
+          ],
+          [
+            "Output \" doctors\"",
+            0.0006
+          ],
+          [
+            "Output \" in\"",
+            0.0005
+          ],
+          [
+            "Output \" ED\"",
+            0.0005
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.7898
+          ],
+          [
+            "Output \" ER\"",
+            0.1211
+          ],
+          [
+            "Output \" doctor\"",
+            0.0393
+          ],
+          [
+            "Output \" emergency\"",
+            0.0393
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0028
+          ],
+          [
+            "Output \" clinic\"",
+            0.0013
+          ],
+          [
+            "Output \" doctors\"",
+            0.001
+          ],
+          [
+            "Output \" ED\"",
+            0.0007
+          ],
+          [
+            "Output \" physician\"",
+            0.0004
+          ],
+          [
+            "Output \" urgent\"",
+            0.0004
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital. What",
+          "ER": "ER. What",
+          "doctor": "doctor. What",
+          "emergency": "emergency room."
+        },
+        "patient": {
+          "hospital": "hospital. I",
+          "ER": "ER. I",
+          "doctor": "doctor. What",
+          "emergency": "emergency room."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 2,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "With my cirrhosis today I developed progressive ascites scleral icterus and asterixis so I need to go to the",
+        "patient": "With my cirrhosis today I developed growing water swelling in my belly yellow eyes and flapping hands so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.0899,
+        "patient": 0.1433
+      },
+      "language_penalty": 0.0534,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.8528
+          ],
+          [
+            "Output \" ER\"",
+            0.0899
+          ],
+          [
+            "Output \" doctor\"",
+            0.0258
+          ],
+          [
+            "Output \" emergency\"",
+            0.0201
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0015
+          ],
+          [
+            "Output \" clinic\"",
+            0.0013
+          ],
+          [
+            "Output \" doctors\"",
+            0.0009
+          ],
+          [
+            "Output \" physician\"",
+            0.0007
+          ],
+          [
+            "Output \" ED\"",
+            0.0004
+          ],
+          [
+            "Output \" Hospital\"",
+            0.0004
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.7278
+          ],
+          [
+            "Output \" ER\"",
+            0.1433
+          ],
+          [
+            "Output \" doctor\"",
+            0.0597
+          ],
+          [
+            "Output \" emergency\"",
+            0.0527
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0034
+          ],
+          [
+            "Output \" doctors\"",
+            0.0023
+          ],
+          [
+            "Output \" clinic\"",
+            0.0018
+          ],
+          [
+            "Output \" urgent\"",
+            0.0008
+          ],
+          [
+            "Output \" ED\"",
+            0.0007
+          ],
+          [
+            "Output \" physician\"",
+            0.0006
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital. I",
+          "ER": "ER. I",
+          "doctor": "doctor. I",
+          "emergency": "emergency room."
+        },
+        "patient": {
+          "hospital": "hospital. I",
+          "ER": "ER. I",
+          "doctor": "doctor. I",
+          "emergency": "emergency room."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 3,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Five years after my splenectomy I developed sudden pyrexia of 102.4 Fahrenheit, rigors, and orthostatic dizziness, so I need to go to the",
+        "patient": "Five years after my splenectomy I developed a sudden 102.4 Fahrenheit fever, shaking chills, and dizziness when standing, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.2201,
+        "patient": 0.393
+      },
+      "language_penalty": 0.1729,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.4659
+          ],
+          [
+            "Output \" ER\"",
+            0.2201
+          ],
+          [
+            "Output \" emergency\"",
+            0.104
+          ],
+          [
+            "Output \" doctor\"",
+            0.0917
+          ],
+          [
+            "Output \" clinic\"",
+            0.0631
+          ],
+          [
+            "Output \" physician\"",
+            0.0232
+          ],
+          [
+            "Output \" urgent\"",
+            0.0052
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0046
+          ],
+          [
+            "Output \" ED\"",
+            0.0024
+          ],
+          [
+            "Output \" doctors\"",
+            0.0022
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ER\"",
+            0.393
+          ],
+          [
+            "Output \" doctor\"",
+            0.2701
+          ],
+          [
+            "Output \" hospital\"",
+            0.2384
+          ],
+          [
+            "Output \" emergency\"",
+            0.0532
+          ],
+          [
+            "Output \" clinic\"",
+            0.0196
+          ],
+          [
+            "Output \" physician\"",
+            0.0105
+          ],
+          [
+            "Output \" doctors\"",
+            0.0034
+          ],
+          [
+            "Output \" urgent\"",
+            0.0021
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0016
+          ],
+          [
+            "Output \" office\"",
+            0.0005
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital. What",
+          "ER": "ER. What",
+          "emergency": "emergency room.",
+          "doctor": "doctor. What"
+        },
+        "patient": {
+          "ER": "ER. What",
+          "doctor": "doctor. What",
+          "hospital": "hospital. What",
+          "emergency": "emergency room."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 4,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Five years after my splenectomy I developed sudden pyrexia of 102.4 Fahrenheit rigors and orthostatic dizziness so I need to go to the",
+        "patient": "Five years after my splenectomy I developed a sudden 102.4 Fahrenheit fever shaking chills and dizziness when standing so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.2283,
+        "patient": 0.4942
+      },
+      "language_penalty": 0.2659,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.5476
+          ],
+          [
+            "Output \" ER\"",
+            0.2283
+          ],
+          [
+            "Output \" doctor\"",
+            0.084
+          ],
+          [
+            "Output \" emergency\"",
+            0.0741
+          ],
+          [
+            "Output \" clinic\"",
+            0.0273
+          ],
+          [
+            "Output \" physician\"",
+            0.01
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0042
+          ],
+          [
+            "Output \" urgent\"",
+            0.0033
+          ],
+          [
+            "Output \" doctors\"",
+            0.0029
+          ],
+          [
+            "Output \" ED\"",
+            0.0017
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ER\"",
+            0.4942
+          ],
+          [
+            "Output \" hospital\"",
+            0.2335
+          ],
+          [
+            "Output \" doctor\"",
+            0.1818
+          ],
+          [
+            "Output \" emergency\"",
+            0.0521
+          ],
+          [
+            "Output \" clinic\"",
+            0.0116
+          ],
+          [
+            "Output \" doctors\"",
+            0.0038
+          ],
+          [
+            "Output \" physician\"",
+            0.0038
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0023
+          ],
+          [
+            "Output \" urgent\"",
+            0.0023
+          ],
+          [
+            "Output \" dr\"",
+            0.0014
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital. What",
+          "ER": "ER. What",
+          "doctor": "doctor. I",
+          "emergency": "emergency room."
+        },
+        "patient": {
+          "ER": "ER. I",
+          "hospital": "hospital. I",
+          "doctor": "doctor. I",
+          "emergency": "emergency room."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 5,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "At eighty-one after a fall I have groin pain, inability to walk, and a shortened externally rotated leg, so I need to go to the",
+        "patient": "At eighty-one after a fall I have groin pain, inability to walk, and a shorter outward-turned leg, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.2255,
+        "patient": 0.1923
+      },
+      "language_penalty": -0.0332,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.4213
+          ],
+          [
+            "Output \" ER\"",
+            0.2255
+          ],
+          [
+            "Output \" doctor\"",
+            0.1207
+          ],
+          [
+            "Output \" orth\"",
+            0.1065
+          ],
+          [
+            "Output \" emergency\"",
+            0.0732
+          ],
+          [
+            "Output \" clinic\"",
+            0.0144
+          ],
+          [
+            "Output \" physician\"",
+            0.0047
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0032
+          ],
+          [
+            "Output \" gym\"",
+            0.0028
+          ],
+          [
+            "Output \" doctors\"",
+            0.0022
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.5227
+          ],
+          [
+            "Output \" ER\"",
+            0.1923
+          ],
+          [
+            "Output \" doctor\"",
+            0.1166
+          ],
+          [
+            "Output \" orth\"",
+            0.0624
+          ],
+          [
+            "Output \" emergency\"",
+            0.0624
+          ],
+          [
+            "Output \" clinic\"",
+            0.0123
+          ],
+          [
+            "Output \" Emergency\"",
+            0.004
+          ],
+          [
+            "Output \" physician\"",
+            0.0031
+          ],
+          [
+            "Output \" doctors\"",
+            0.0024
+          ],
+          [
+            "Output \" gym\"",
+            0.0011
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital. What",
+          "ER": "ER. What",
+          "doctor": "doctor. What",
+          "orth": "ortho."
+        },
+        "patient": {
+          "hospital": "hospital. What",
+          "ER": "ER. What",
+          "doctor": "doctor. What",
+          "orth": "ortho."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 6,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "At eighty-one after a fall I have groin pain inability to walk and a shortened externally rotated leg so I need to go to the",
+        "patient": "At eighty-one after a fall I have groin pain inability to walk and a shorter outward-turned leg so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.0997,
+        "patient": 0.0788
+      },
+      "language_penalty": -0.0209,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.5739
+          ],
+          [
+            "Output \" doctor\"",
+            0.1451
+          ],
+          [
+            "Output \" ER\"",
+            0.0997
+          ],
+          [
+            "Output \" orth\"",
+            0.0777
+          ],
+          [
+            "Output \" emergency\"",
+            0.0367
+          ],
+          [
+            "Output \" clinic\"",
+            0.0105
+          ],
+          [
+            "Output \" doctors\"",
+            0.005
+          ],
+          [
+            "Output \" surgeon\"",
+            0.0044
+          ],
+          [
+            "Output \" physician\"",
+            0.0039
+          ],
+          [
+            "Output \" gym\"",
+            0.0039
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.5824
+          ],
+          [
+            "Output \" doctor\"",
+            0.1891
+          ],
+          [
+            "Output \" ER\"",
+            0.0788
+          ],
+          [
+            "Output \" orth\"",
+            0.0422
+          ],
+          [
+            "Output \" emergency\"",
+            0.0372
+          ],
+          [
+            "Output \" clinic\"",
+            0.0121
+          ],
+          [
+            "Output \" doctors\"",
+            0.0065
+          ],
+          [
+            "Output \" physician\"",
+            0.0044
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0027
+          ],
+          [
+            "Output \" gym\"",
+            0.0021
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital. I",
+          "doctor": "doctor. I",
+          "ER": "ER. I",
+          "orth": "ortho."
+        },
+        "patient": {
+          "hospital": "hospital. I",
+          "doctor": "doctor. What",
+          "ER": "ER. I",
+          "orth": "ortho."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 7,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "With my prosthetic heart valve I developed fever, rigors, and tender fingertip nodules, so I need to go to the",
+        "patient": "With my prosthetic heart valve I developed fever, shaking chills, and painful fingertip bumps, so I need to go to the"
+      },
+      "target_token": "Output \" hospital\"",
+      "probabilities": {
+        "clinical": 0.3938,
+        "patient": 0.2476
+      },
+      "language_penalty": -0.1462,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.3938
+          ],
+          [
+            "Output \" hospital\"",
+            0.3938
+          ],
+          [
+            "Output \" ER\"",
+            0.0604
+          ],
+          [
+            "Output \" clinic\"",
+            0.0366
+          ],
+          [
+            "Output \" physician\"",
+            0.0366
+          ],
+          [
+            "Output \" emergency\"",
+            0.0323
+          ],
+          [
+            "Output \" cardi\"",
+            0.0119
+          ],
+          [
+            "Output \" doctors\"",
+            0.0072
+          ],
+          [
+            "Output \" card\"",
+            0.0021
+          ],
+          [
+            "Output \" urgent\"",
+            0.0016
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.4082
+          ],
+          [
+            "Output \" hospital\"",
+            0.2476
+          ],
+          [
+            "Output \" ER\"",
+            0.2185
+          ],
+          [
+            "Output \" emergency\"",
+            0.0552
+          ],
+          [
+            "Output \" clinic\"",
+            0.0261
+          ],
+          [
+            "Output \" physician\"",
+            0.0158
+          ],
+          [
+            "Output \" doctors\"",
+            0.0066
+          ],
+          [
+            "Output \" urgent\"",
+            0.0031
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0031
+          ],
+          [
+            "Output \" cardi\"",
+            0.0019
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. What",
+          "hospital": "hospital. What",
+          "ER": "ER. What",
+          "clinic": "clinic. What"
+        },
+        "patient": {
+          "doctor": "doctor. What",
+          "hospital": "hospital. What",
+          "ER": "ER. What",
+          "emergency": "emergency room."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 8,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "With my prosthetic heart valve I developed fever rigors and tender fingertip nodules so I need to go to the",
+        "patient": "With my prosthetic heart valve I developed fever shaking chills and painful fingertip bumps so I need to go to the"
+      },
+      "target_token": "Output \" hospital\"",
+      "probabilities": {
+        "clinical": 0.3865,
+        "patient": 0.3548
+      },
+      "language_penalty": -0.0317,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.3865
+          ],
+          [
+            "Output \" doctor\"",
+            0.2069
+          ],
+          [
+            "Output \" ER\"",
+            0.1826
+          ],
+          [
+            "Output \" emergency\"",
+            0.0761
+          ],
+          [
+            "Output \" physician\"",
+            0.0462
+          ],
+          [
+            "Output \" clinic\"",
+            0.0407
+          ],
+          [
+            "Output \" cardi\"",
+            0.0091
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0055
+          ],
+          [
+            "Output \" ED\"",
+            0.0049
+          ],
+          [
+            "Output \" doctors\"",
+            0.0049
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.3548
+          ],
+          [
+            "Output \" ER\"",
+            0.3131
+          ],
+          [
+            "Output \" doctor\"",
+            0.2152
+          ],
+          [
+            "Output \" emergency\"",
+            0.0544
+          ],
+          [
+            "Output \" clinic\"",
+            0.02
+          ],
+          [
+            "Output \" physician\"",
+            0.0107
+          ],
+          [
+            "Output \" doctors\"",
+            0.0065
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0039
+          ],
+          [
+            "Output \" urgent\"",
+            0.0027
+          ],
+          [
+            "Output \" ED\"",
+            0.0021
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital. I",
+          "doctor": "doctor. What",
+          "ER": "ER. What",
+          "emergency": "emergency room."
+        },
+        "patient": {
+          "hospital": "hospital. I",
+          "ER": "ER. What",
+          "doctor": "doctor. What",
+          "emergency": "emergency room."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 9,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After stopping daily clonidine I developed blood pressure 210 over 126, severe cephalalgia, and diaphoresis, so I need to go to the",
+        "patient": "After stopping daily clonidine I developed blood pressure 210 over 126, severe headache, and cold sweats, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.4083,
+        "patient": 0.2892
+      },
+      "language_penalty": -0.1191,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ER\"",
+            0.4083
+          ],
+          [
+            "Output \" hospital\"",
+            0.3604
+          ],
+          [
+            "Output \" emergency\"",
+            0.1502
+          ],
+          [
+            "Output \" ED\"",
+            0.0203
+          ],
+          [
+            "Output \" doctor\"",
+            0.0158
+          ],
+          [
+            "Output \" clinic\"",
+            0.014
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0096
+          ],
+          [
+            "Output \" urgent\"",
+            0.004
+          ],
+          [
+            "Output \" physician\"",
+            0.0031
+          ],
+          [
+            "Output \" E\"",
+            0.0007
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.5403
+          ],
+          [
+            "Output \" ER\"",
+            0.2892
+          ],
+          [
+            "Output \" emergency\"",
+            0.1206
+          ],
+          [
+            "Output \" doctor\"",
+            0.0144
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0077
+          ],
+          [
+            "Output \" clinic\"",
+            0.0068
+          ],
+          [
+            "Output \" ED\"",
+            0.0068
+          ],
+          [
+            "Output \" urgent\"",
+            0.0028
+          ],
+          [
+            "Output \" physician\"",
+            0.001
+          ],
+          [
+            "Output \" nearest\"",
+            0.0006
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "ER": "ER. What",
+          "hospital": "hospital. What",
+          "emergency": "emergency room.",
+          "ED": "ED. What"
+        },
+        "patient": {
+          "hospital": "hospital. What",
+          "ER": "ER. What",
+          "emergency": "emergency room.",
+          "doctor": "doctor. What"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 10,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After stopping daily clonidine I developed blood pressure 210 over 126 severe cephalalgia and diaphoresis so I need to go to the",
+        "patient": "After stopping daily clonidine I developed blood pressure 210 over 126 severe headache and cold sweats so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.3594,
+        "patient": 0.2813
+      },
+      "language_penalty": -0.0781,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.4072
+          ],
+          [
+            "Output \" ER\"",
+            0.3594
+          ],
+          [
+            "Output \" emergency\"",
+            0.1322
+          ],
+          [
+            "Output \" doctor\"",
+            0.026
+          ],
+          [
+            "Output \" ED\"",
+            0.0158
+          ],
+          [
+            "Output \" clinic\"",
+            0.0158
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0066
+          ],
+          [
+            "Output \" urgent\"",
+            0.0051
+          ],
+          [
+            "Output \" physician\"",
+            0.0035
+          ],
+          [
+            "Output \" A\"",
+            0.0011
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.5255
+          ],
+          [
+            "Output \" ER\"",
+            0.2813
+          ],
+          [
+            "Output \" emergency\"",
+            0.1035
+          ],
+          [
+            "Output \" doctor\"",
+            0.0431
+          ],
+          [
+            "Output \" clinic\"",
+            0.0096
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0058
+          ],
+          [
+            "Output \" ED\"",
+            0.0045
+          ],
+          [
+            "Output \" urgent\"",
+            0.0028
+          ],
+          [
+            "Output \" doctors\"",
+            0.0015
+          ],
+          [
+            "Output \" physician\"",
+            0.0015
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital. What",
+          "ER": "ER. What",
+          "emergency": "emergency room.",
+          "doctor": "doctor. What"
+        },
+        "patient": {
+          "hospital": "hospital. What",
+          "ER": "ER. What",
+          "emergency": "emergency room.",
+          "doctor": "doctor. What"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 11,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Two weeks after starting lamotrigine I developed fever, painful oral mucosal erosions, and blistering skin detachment, so I need to go to the",
+        "patient": "Two weeks after starting lamotrigine I developed fever, painful raw sores inside my mouth, and peeling skin blisters, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.0713,
+        "patient": 0.2035
+      },
+      "language_penalty": 0.1322,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.5972
+          ],
+          [
+            "Output \" emergency\"",
+            0.151
+          ],
+          [
+            "Output \" doctor\"",
+            0.0713
+          ],
+          [
+            "Output \" ER\"",
+            0.0713
+          ],
+          [
+            "Output \" clinic\"",
+            0.0382
+          ],
+          [
+            "Output \" physician\"",
+            0.0204
+          ],
+          [
+            "Output \" dermat\"",
+            0.0124
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0059
+          ],
+          [
+            "Output \" ED\"",
+            0.0036
+          ],
+          [
+            "Output \" urgent\"",
+            0.0028
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.3355
+          ],
+          [
+            "Output \" hospital\"",
+            0.2613
+          ],
+          [
+            "Output \" ER\"",
+            0.2035
+          ],
+          [
+            "Output \" emergency\"",
+            0.1234
+          ],
+          [
+            "Output \" clinic\"",
+            0.0275
+          ],
+          [
+            "Output \" physician\"",
+            0.013
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0061
+          ],
+          [
+            "Output \" urgent\"",
+            0.0048
+          ],
+          [
+            "Output \" dermat\"",
+            0.0048
+          ],
+          [
+            "Output \" doctors\"",
+            0.0048
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital. What",
+          "emergency": "emergency room.",
+          "doctor": "doctor. What",
+          "ER": "ER. What"
+        },
+        "patient": {
+          "doctor": "doctor. What",
+          "hospital": "hospital. What",
+          "ER": "ER. What",
+          "emergency": "emergency room."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 12,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Two weeks after starting lamotrigine I developed fever painful oral mucosal erosions and blistering skin detachment so I need to go to the",
+        "patient": "Two weeks after starting lamotrigine I developed fever painful raw sores inside my mouth and peeling skin blisters so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.0766,
+        "patient": 0.2151
+      },
+      "language_penalty": 0.1385,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.6412
+          ],
+          [
+            "Output \" emergency\"",
+            0.0983
+          ],
+          [
+            "Output \" doctor\"",
+            0.0766
+          ],
+          [
+            "Output \" ER\"",
+            0.0766
+          ],
+          [
+            "Output \" clinic\"",
+            0.0319
+          ],
+          [
+            "Output \" physician\"",
+            0.0117
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0071
+          ],
+          [
+            "Output \" dermat\"",
+            0.0055
+          ],
+          [
+            "Output \" doctors\"",
+            0.0038
+          ],
+          [
+            "Output \" health\"",
+            0.003
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.4554
+          ],
+          [
+            "Output \" ER\"",
+            0.2151
+          ],
+          [
+            "Output \" emergency\"",
+            0.1478
+          ],
+          [
+            "Output \" doctor\"",
+            0.1305
+          ],
+          [
+            "Output \" clinic\"",
+            0.0095
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0083
+          ],
+          [
+            "Output \" doctors\"",
+            0.0051
+          ],
+          [
+            "Output \" physician\"",
+            0.0035
+          ],
+          [
+            "Output \" ED\"",
+            0.0027
+          ],
+          [
+            "Output \" urgent\"",
+            0.0024
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital. What",
+          "emergency": "emergency room.",
+          "doctor": "doctor. What",
+          "ER": "ER. What"
+        },
+        "patient": {
+          "hospital": "hospital. What",
+          "ER": "ER. What",
+          "emergency": "emergency room.",
+          "doctor": "doctor. What"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 13,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "With a high fever I got violent shivering, flank kidney aching, and nonstop vomiting, so I need to go to the",
+        "patient": "With a high fever I got violent shiverring, flank kidney aching, and nonstop vomiting, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.0069,
+        "patient": 0.0181
+      },
+      "language_penalty": 0.0112,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.9064
+          ],
+          [
+            "Output \" doctor\"",
+            0.031
+          ],
+          [
+            "Output \" emergency\"",
+            0.0242
+          ],
+          [
+            "Output \" clinic\"",
+            0.0188
+          ],
+          [
+            "Output \" ER\"",
+            0.0069
+          ],
+          [
+            "Output \" medical\"",
+            0.0017
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0011
+          ],
+          [
+            "Output \" hospitals\"",
+            0.0005
+          ],
+          [
+            "Output \" health\"",
+            0.0005
+          ],
+          [
+            "Output \" doctors\"",
+            0.0004
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.8726
+          ],
+          [
+            "Output \" doctor\"",
+            0.0434
+          ],
+          [
+            "Output \" emergency\"",
+            0.0338
+          ],
+          [
+            "Output \" ER\"",
+            0.0181
+          ],
+          [
+            "Output \" clinic\"",
+            0.0124
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0017
+          ],
+          [
+            "Output \" medical\"",
+            0.0015
+          ],
+          [
+            "Output \" doctors\"",
+            0.0009
+          ],
+          [
+            "Output \" urgent\"",
+            0.0008
+          ],
+          [
+            "Output \" hospitals\"",
+            0.0007
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital. I",
+          "doctor": "doctor. What",
+          "emergency": "emergency room.",
+          "clinic": "clinic. What"
+        },
+        "patient": {
+          "hospital": "hospital. I",
+          "doctor": "doctor. What",
+          "emergency": "emergency room.",
+          "ER": "ER. What"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 14,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "With a high fever I got violent shivering flank kidney aching and nonstop vomiting so I need to go to the",
+        "patient": "With a high fever I got violent shiverring flank kidney aching and nonstop vomiting so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.0159,
+        "patient": 0.0353
+      },
+      "language_penalty": 0.0194,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.867
+          ],
+          [
+            "Output \" doctor\"",
+            0.0628
+          ],
+          [
+            "Output \" emergency\"",
+            0.0262
+          ],
+          [
+            "Output \" ER\"",
+            0.0159
+          ],
+          [
+            "Output \" clinic\"",
+            0.0075
+          ],
+          [
+            "Output \" doctors\"",
+            0.0021
+          ],
+          [
+            "Output \" medical\"",
+            0.0015
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0012
+          ],
+          [
+            "Output \" hospitals\"",
+            0.001
+          ],
+          [
+            "Output \"\n\"",
+            0.0009
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.8024
+          ],
+          [
+            "Output \" doctor\"",
+            0.0846
+          ],
+          [
+            "Output \" ER\"",
+            0.0353
+          ],
+          [
+            "Output \" emergency\"",
+            0.0353
+          ],
+          [
+            "Output \" clinic\"",
+            0.0069
+          ],
+          [
+            "Output \" doctors\"",
+            0.0048
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0023
+          ],
+          [
+            "Output \" -\"",
+            0.0015
+          ],
+          [
+            "Output \" medical\"",
+            0.0015
+          ],
+          [
+            "Output \"\n\"",
+            0.0014
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital. I",
+          "doctor": "doctor. I",
+          "emergency": "emergency room.",
+          "ER": "ER. What"
+        },
+        "patient": {
+          "hospital": "hospital. I",
+          "doctor": "doctor. I",
+          "ER": "ER. I",
+          "emergency": "emergency room."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 15,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Five minutes after a bee sting I got full-body itching, throat choking, and severe dizziness, so I need to go to the",
+        "patient": "Five minutes after a bee sting I got full-body itchhing, throat choking, and severe dizziness, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.0099,
+        "patient": 0.0398
+      },
+      "language_penalty": 0.0299,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.7849
+          ],
+          [
+            "Output \" doctor\"",
+            0.1062
+          ],
+          [
+            "Output \" emergency\"",
+            0.0345
+          ],
+          [
+            "Output \" clinic\"",
+            0.0269
+          ],
+          [
+            "Output \" ER\"",
+            0.0099
+          ],
+          [
+            "Output \" medical\"",
+            0.0047
+          ],
+          [
+            "Output \" nearest\"",
+            0.0028
+          ],
+          [
+            "Output \" doctors\"",
+            0.0019
+          ],
+          [
+            "Output \" local\"",
+            0.0013
+          ],
+          [
+            "Output \" physician\"",
+            0.0012
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.5492
+          ],
+          [
+            "Output \" doctor\"",
+            0.2594
+          ],
+          [
+            "Output \" emergency\"",
+            0.0579
+          ],
+          [
+            "Output \" ER\"",
+            0.0398
+          ],
+          [
+            "Output \" clinic\"",
+            0.0241
+          ],
+          [
+            "Output \" doctors\"",
+            0.0054
+          ],
+          [
+            "Output \" medical\"",
+            0.0042
+          ],
+          [
+            "Output \"...\"",
+            0.0033
+          ],
+          [
+            "Output \"...\n\n\"",
+            0.0033
+          ],
+          [
+            "Output \" physician\"",
+            0.0029
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital. But",
+          "doctor": "doctor. What",
+          "emergency": "emergency room.",
+          "clinic": "clinic. What"
+        },
+        "patient": {
+          "hospital": "hospital. What",
+          "doctor": "doctor. What",
+          "emergency": "emergency room.",
+          "ER": "ER. What"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 16,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Five minutes after a bee sting I got full-body itching throat choking and severe dizziness so I need to go to the",
+        "patient": "Five minutes after a bee sting I got full-body itchhing throat choking and severe dizziness so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.0435,
+        "patient": 0.0867
+      },
+      "language_penalty": 0.0432,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.6808
+          ],
+          [
+            "Output \" doctor\"",
+            0.1183
+          ],
+          [
+            "Output \" emergency\"",
+            0.0559
+          ],
+          [
+            "Output \" ER\"",
+            0.0435
+          ],
+          [
+            "Output \" clinic\"",
+            0.016
+          ],
+          [
+            "Output \"...\"",
+            0.0086
+          ],
+          [
+            "Output \"...\n\n\"",
+            0.0076
+          ],
+          [
+            "Output \" -\"",
+            0.0067
+          ],
+          [
+            "Output \" doctors\"",
+            0.0059
+          ],
+          [
+            "Output \" nearest\"",
+            0.0036
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.6406
+          ],
+          [
+            "Output \" doctor\"",
+            0.1113
+          ],
+          [
+            "Output \" ER\"",
+            0.0867
+          ],
+          [
+            "Output \" emergency\"",
+            0.0675
+          ],
+          [
+            "Output \" clinic\"",
+            0.0117
+          ],
+          [
+            "Output \" doctors\"",
+            0.0063
+          ],
+          [
+            "Output \"...\"",
+            0.0055
+          ],
+          [
+            "Output \"...\n\n\"",
+            0.0043
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0034
+          ],
+          [
+            "Output \" nearest\"",
+            0.0034
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital. What",
+          "doctor": "doctor. What",
+          "emergency": "emergency room.",
+          "ER": "ER. What"
+        },
+        "patient": {
+          "hospital": "hospital. What",
+          "doctor": "doctor. What",
+          "ER": "ER. What",
+          "emergency": "emergency room."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 17,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "With a high fever today I got drenching cold sweating, uncontrollable shaking, and blood-streaked coughing, so I need to go to the",
+        "patient": "With a high fever today I got drenching cold sweatting, uncontrollable shaking, and blood-streaked coughing, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.0162,
+        "patient": 0.0228
+      },
+      "language_penalty": 0.0066,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.6887
+          ],
+          [
+            "Output \" doctor\"",
+            0.1973
+          ],
+          [
+            "Output \" clinic\"",
+            0.0389
+          ],
+          [
+            "Output \" emergency\"",
+            0.0184
+          ],
+          [
+            "Output \" ER\"",
+            0.0162
+          ],
+          [
+            "Output \" doctors\"",
+            0.0077
+          ],
+          [
+            "Output \" medical\"",
+            0.0046
+          ],
+          [
+            "Output \" physician\"",
+            0.0017
+          ],
+          [
+            "Output \" local\"",
+            0.0013
+          ],
+          [
+            "Output \" health\"",
+            0.0013
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.7563
+          ],
+          [
+            "Output \" doctor\"",
+            0.1314
+          ],
+          [
+            "Output \" clinic\"",
+            0.0293
+          ],
+          [
+            "Output \" emergency\"",
+            0.0259
+          ],
+          [
+            "Output \" ER\"",
+            0.0228
+          ],
+          [
+            "Output \" doctors\"",
+            0.0051
+          ],
+          [
+            "Output \" medical\"",
+            0.004
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0017
+          ],
+          [
+            "Output \" physician\"",
+            0.0015
+          ],
+          [
+            "Output \" local\"",
+            0.0013
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital. I",
+          "doctor": "doctor. I",
+          "clinic": "clinic. What",
+          "emergency": "emergency room."
+        },
+        "patient": {
+          "hospital": "hospital. I",
+          "doctor": "doctor. What",
+          "clinic": "clinic. What",
+          "emergency": "emergency room."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 18,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "With a high fever today I got drenching cold sweating uncontrollable shaking and blood-streaked coughing so I need to go to the",
+        "patient": "With a high fever today I got drenching cold sweatting uncontrollable shaking and blood-streaked coughing so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.0451,
+        "patient": 0.0455
+      },
+      "language_penalty": 0.0004,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.4282
+          ],
+          [
+            "Output \" doctor\"",
+            0.4282
+          ],
+          [
+            "Output \" ER\"",
+            0.0451
+          ],
+          [
+            "Output \" emergency\"",
+            0.0242
+          ],
+          [
+            "Output \" clinic\"",
+            0.0188
+          ],
+          [
+            "Output \" doctors\"",
+            0.0188
+          ],
+          [
+            "Output \" physician\"",
+            0.0033
+          ],
+          [
+            "Output \" medical\"",
+            0.0018
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0015
+          ],
+          [
+            "Output \" dr\"",
+            0.0015
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.5548
+          ],
+          [
+            "Output \" doctor\"",
+            0.297
+          ],
+          [
+            "Output \" ER\"",
+            0.0455
+          ],
+          [
+            "Output \" emergency\"",
+            0.0355
+          ],
+          [
+            "Output \" doctors\"",
+            0.0168
+          ],
+          [
+            "Output \" clinic\"",
+            0.0168
+          ],
+          [
+            "Output \" physician\"",
+            0.0023
+          ],
+          [
+            "Output \" Emergency\"",
+            0.002
+          ],
+          [
+            "Output \" medical\"",
+            0.002
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0014
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital. I",
+          "doctor": "doctor. What",
+          "ER": "ER. What",
+          "emergency": "emergency room."
+        },
+        "patient": {
+          "hospital": "hospital. I",
+          "doctor": "doctor. What",
+          "ER": "ER. What",
+          "emergency": "emergency room."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 19,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Tonight with a high fever I got barking coughing, throat choking, and an inflamed throat with drooling, so I need to go to the",
+        "patient": "Tonight with a high fever I got barking coughhing, throat choking, and an inflamed throat with drooling, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.0613,
+        "patient": 0.0776
+      },
+      "language_penalty": 0.0163,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.5821
+          ],
+          [
+            "Output \" hospital\"",
+            0.2141
+          ],
+          [
+            "Output \" ER\"",
+            0.0613
+          ],
+          [
+            "Output \" emergency\"",
+            0.0478
+          ],
+          [
+            "Output \" clinic\"",
+            0.0199
+          ],
+          [
+            "Output \" doctors\"",
+            0.0199
+          ],
+          [
+            "Output \" dentist\"",
+            0.0065
+          ],
+          [
+            "Output \" physician\"",
+            0.005
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0035
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0031
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.6499
+          ],
+          [
+            "Output \" hospital\"",
+            0.145
+          ],
+          [
+            "Output \" ER\"",
+            0.0776
+          ],
+          [
+            "Output \" emergency\"",
+            0.0367
+          ],
+          [
+            "Output \" doctors\"",
+            0.0196
+          ],
+          [
+            "Output \" clinic\"",
+            0.0153
+          ],
+          [
+            "Output \" dentist\"",
+            0.005
+          ],
+          [
+            "Output \" dr\"",
+            0.0044
+          ],
+          [
+            "Output \" physician\"",
+            0.0044
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0039
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. What",
+          "hospital": "hospital. But",
+          "ER": "ER. I",
+          "emergency": "emergency room."
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "hospital": "hospital. But",
+          "ER": "ER. I",
+          "emergency": "emergency room."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 20,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Tonight with a high fever I got barking coughing throat choking and an inflamed throat with drooling so I need to go to the",
+        "patient": "Tonight with a high fever I got barking coughhing throat choking and an inflamed throat with drooling so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.0952,
+        "patient": 0.0739
+      },
+      "language_penalty": -0.0213,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.4833
+          ],
+          [
+            "Output \" hospital\"",
+            0.2587
+          ],
+          [
+            "Output \" ER\"",
+            0.0952
+          ],
+          [
+            "Output \" emergency\"",
+            0.0577
+          ],
+          [
+            "Output \" doctors\"",
+            0.0241
+          ],
+          [
+            "Output \" clinic\"",
+            0.0165
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0047
+          ],
+          [
+            "Output \" dentist\"",
+            0.0042
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0037
+          ],
+          [
+            "Output \" dr\"",
+            0.0033
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.5457
+          ],
+          [
+            "Output \" hospital\"",
+            0.2275
+          ],
+          [
+            "Output \" ER\"",
+            0.0739
+          ],
+          [
+            "Output \" emergency\"",
+            0.0448
+          ],
+          [
+            "Output \" doctors\"",
+            0.024
+          ],
+          [
+            "Output \" clinic\"",
+            0.0165
+          ],
+          [
+            "Output \" dr\"",
+            0.0061
+          ],
+          [
+            "Output \" dentist\"",
+            0.0053
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0047
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0029
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. I",
+          "hospital": "hospital. I",
+          "ER": "ER. I",
+          "emergency": "emergency room."
+        },
+        "patient": {
+          "doctor": "doctor.",
+          "hospital": "hospital. I",
+          "ER": "ER. I",
+          "emergency": "emergency room."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 21,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "With an ear infection and fever I got muffled hearing, painful bulging behind my ear, and violent shaking, so I need to go to the",
+        "patient": "With an ear infection and fever I got muffled hearring, painful bulging behind my ear, and violent shaking, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.3612,
+        "patient": 0.4272
+      },
+      "language_penalty": 0.066,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ER\"",
+            0.3612
+          ],
+          [
+            "Output \" doctor\"",
+            0.3188
+          ],
+          [
+            "Output \" hospital\"",
+            0.2191
+          ],
+          [
+            "Output \" emergency\"",
+            0.0554
+          ],
+          [
+            "Output \" clinic\"",
+            0.018
+          ],
+          [
+            "Output \" doctors\"",
+            0.0066
+          ],
+          [
+            "Output \" physician\"",
+            0.0045
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0028
+          ],
+          [
+            "Output \" urgent\"",
+            0.0024
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0006
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ER\"",
+            0.4272
+          ],
+          [
+            "Output \" doctor\"",
+            0.2936
+          ],
+          [
+            "Output \" hospital\"",
+            0.1781
+          ],
+          [
+            "Output \" emergency\"",
+            0.051
+          ],
+          [
+            "Output \" clinic\"",
+            0.0146
+          ],
+          [
+            "Output \" doctors\"",
+            0.0078
+          ],
+          [
+            "Output \" physician\"",
+            0.0042
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0029
+          ],
+          [
+            "Output \" urgent\"",
+            0.0025
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0011
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "ER": "ER. What",
+          "doctor": "doctor. What",
+          "hospital": "hospital. What",
+          "emergency": "emergency room."
+        },
+        "patient": {
+          "ER": "ER. What",
+          "doctor": "doctor. What",
+          "hospital": "hospital. I",
+          "emergency": "emergency room."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 22,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "With an ear infection and fever I got muffled hearing painful bulging behind my ear and violent shaking so I need to go to the",
+        "patient": "With an ear infection and fever I got muffled hearring painful bulging behind my ear and violent shaking so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.3719,
+        "patient": 0.3415
+      },
+      "language_penalty": -0.0304,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ER\"",
+            0.3719
+          ],
+          [
+            "Output \" hospital\"",
+            0.2896
+          ],
+          [
+            "Output \" doctor\"",
+            0.2256
+          ],
+          [
+            "Output \" emergency\"",
+            0.0646
+          ],
+          [
+            "Output \" clinic\"",
+            0.0127
+          ],
+          [
+            "Output \" doctors\"",
+            0.0077
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0036
+          ],
+          [
+            "Output \" urgent\"",
+            0.0028
+          ],
+          [
+            "Output \" physician\"",
+            0.0022
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0009
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ER\"",
+            0.3415
+          ],
+          [
+            "Output \" hospital\"",
+            0.3014
+          ],
+          [
+            "Output \" doctor\"",
+            0.2347
+          ],
+          [
+            "Output \" emergency\"",
+            0.0673
+          ],
+          [
+            "Output \" clinic\"",
+            0.0103
+          ],
+          [
+            "Output \" doctors\"",
+            0.0091
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0038
+          ],
+          [
+            "Output \" urgent\"",
+            0.0023
+          ],
+          [
+            "Output \" physician\"",
+            0.002
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0014
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "ER": "ER. I",
+          "hospital": "hospital. I",
+          "doctor": "doctor. I",
+          "emergency": "emergency room."
+        },
+        "patient": {
+          "ER": "ER. I",
+          "hospital": "hospital. I",
+          "doctor": "doctor. I",
+          "emergency": "emergency room."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 23,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Early in pregnancy today I got heavy vaginal bleeding, lower belly aching, and severe dizziness, so I need to go to the",
+        "patient": "Early in pregnancy today I got heavy vaginal bleedding, lower belly acheing, and severe dizzyness, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.0288,
+        "patient": 0.0327
+      },
+      "language_penalty": 0.0039,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.8409
+          ],
+          [
+            "Output \" doctor\"",
+            0.0419
+          ],
+          [
+            "Output \" clinic\"",
+            0.0419
+          ],
+          [
+            "Output \" emergency\"",
+            0.0369
+          ],
+          [
+            "Output \" ER\"",
+            0.0288
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0013
+          ],
+          [
+            "Output \" doctors\"",
+            0.0011
+          ],
+          [
+            "Output \" urgent\"",
+            0.001
+          ],
+          [
+            "Output \" g\"",
+            0.0007
+          ],
+          [
+            "Output \" nearest\"",
+            0.0003
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.7433
+          ],
+          [
+            "Output \" doctor\"",
+            0.114
+          ],
+          [
+            "Output \" clinic\"",
+            0.0419
+          ],
+          [
+            "Output \" emergency\"",
+            0.037
+          ],
+          [
+            "Output \" ER\"",
+            0.0327
+          ],
+          [
+            "Output \" doctors\"",
+            0.005
+          ],
+          [
+            "Output \" g\"",
+            0.0021
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0021
+          ],
+          [
+            "Output \" urgent\"",
+            0.0016
+          ],
+          [
+            "Output \" Hospital\"",
+            0.0011
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital. I",
+          "doctor": "doctor. What",
+          "clinic": "clinic. What",
+          "emergency": "emergency room."
+        },
+        "patient": {
+          "hospital": "hospital. I",
+          "doctor": "doctor. What",
+          "clinic": "clinic. What",
+          "emergency": "emergency room."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 24,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Early in pregnancy today I got heavy vaginal bleeding lower belly aching and severe dizziness so I need to go to the",
+        "patient": "Early in pregnancy today I got heavy vaginal bleedding lower belly acheing and severe dizzyness so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.0809,
+        "patient": 0.045
+      },
+      "language_penalty": -0.0359,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.6775
+          ],
+          [
+            "Output \" doctor\"",
+            0.1177
+          ],
+          [
+            "Output \" ER\"",
+            0.0809
+          ],
+          [
+            "Output \" emergency\"",
+            0.063
+          ],
+          [
+            "Output \" clinic\"",
+            0.0337
+          ],
+          [
+            "Output \" doctors\"",
+            0.0059
+          ],
+          [
+            "Output \" urgent\"",
+            0.0024
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0022
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0007
+          ],
+          [
+            "Output \" g\"",
+            0.0007
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.7039
+          ],
+          [
+            "Output \" doctor\"",
+            0.1223
+          ],
+          [
+            "Output \" emergency\"",
+            0.045
+          ],
+          [
+            "Output \" ER\"",
+            0.045
+          ],
+          [
+            "Output \" clinic\"",
+            0.0397
+          ],
+          [
+            "Output \" doctors\"",
+            0.0069
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0022
+          ],
+          [
+            "Output \" g\"",
+            0.002
+          ],
+          [
+            "Output \" urgent\"",
+            0.0017
+          ],
+          [
+            "Output \" doc\"",
+            0.0014
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital. I",
+          "doctor": "doctor. I",
+          "ER": "ER. I",
+          "emergency": "emergency room."
+        },
+        "patient": {
+          "hospital": "hospital. I",
+          "doctor": "doctor. I",
+          "emergency": "emergency room.",
+          "ER": "ER. What"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 25,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Since midnight I had repeated dark vomiting, crampy stomach pain, and heavy rectal bleeding, so I need to go to the",
+        "patient": "Since midnight I had repeated dark vomitting, crampy stomache pain, and heavy rectal bleedding, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.106,
+        "patient": 0.1109
+      },
+      "language_penalty": 0.0049,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.4751
+          ],
+          [
+            "Output \" doctor\"",
+            0.2882
+          ],
+          [
+            "Output \" ER\"",
+            0.106
+          ],
+          [
+            "Output \" emergency\"",
+            0.0442
+          ],
+          [
+            "Output \" clinic\"",
+            0.0304
+          ],
+          [
+            "Output \" doctors\"",
+            0.0077
+          ],
+          [
+            "Output \" physician\"",
+            0.0077
+          ],
+          [
+            "Output \" bathroom\"",
+            0.0032
+          ],
+          [
+            "Output \" urgent\"",
+            0.0028
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0028
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.4388
+          ],
+          [
+            "Output \" doctor\"",
+            0.3417
+          ],
+          [
+            "Output \" ER\"",
+            0.1109
+          ],
+          [
+            "Output \" emergency\"",
+            0.0281
+          ],
+          [
+            "Output \" clinic\"",
+            0.0193
+          ],
+          [
+            "Output \" doctors\"",
+            0.0091
+          ],
+          [
+            "Output \" physician\"",
+            0.0071
+          ],
+          [
+            "Output \" Emergency\"",
+            0.003
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0023
+          ],
+          [
+            "Output \" dr\"",
+            0.002
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital. I",
+          "doctor": "doctor. I",
+          "ER": "ER. I",
+          "emergency": "emergency room."
+        },
+        "patient": {
+          "hospital": "hospital.",
+          "doctor": "doctor.",
+          "ER": "ER. I",
+          "emergency": "emergency room."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 26,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Since midnight I had repeated dark vomiting crampy stomach pain and heavy rectal bleeding so I need to go to the",
+        "patient": "Since midnight I had repeated dark vomitting crampy stomache pain and heavy rectal bleedding so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.1062,
+        "patient": 0.1632
+      },
+      "language_penalty": 0.057,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.5392
+          ],
+          [
+            "Output \" doctor\"",
+            0.1984
+          ],
+          [
+            "Output \" ER\"",
+            0.1062
+          ],
+          [
+            "Output \" emergency\"",
+            0.0502
+          ],
+          [
+            "Output \" clinic\"",
+            0.0209
+          ],
+          [
+            "Output \" doctors\"",
+            0.0077
+          ],
+          [
+            "Output \" physician\"",
+            0.006
+          ],
+          [
+            "Output \" -\"",
+            0.0047
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0036
+          ],
+          [
+            "Output \"...\n\n\"",
+            0.0032
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.3916
+          ],
+          [
+            "Output \" doctor\"",
+            0.305
+          ],
+          [
+            "Output \" ER\"",
+            0.1632
+          ],
+          [
+            "Output \" emergency\"",
+            0.0413
+          ],
+          [
+            "Output \" clinic\"",
+            0.0152
+          ],
+          [
+            "Output \" doctors\"",
+            0.0104
+          ],
+          [
+            "Output \" dr\"",
+            0.0056
+          ],
+          [
+            "Output \" physician\"",
+            0.0049
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0034
+          ],
+          [
+            "Output \" Doctor\"",
+            0.003
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital.",
+          "doctor": "doctor.",
+          "ER": "ER. I",
+          "emergency": "emergency room."
+        },
+        "patient": {
+          "hospital": "hospital.",
+          "doctor": "doctor.",
+          "ER": "ER. I",
+          "emergency": "emergency room."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 27,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "With a high fever I got violent shivering, flank kidney aching, and nonstop vomiting, so I need to go to the",
+        "patient": "With a high fever I got violent shiverring, flank kidney acheing, and nonstop vomitting, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.0069,
+        "patient": 0.1174
+      },
+      "language_penalty": 0.1105,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.9064
+          ],
+          [
+            "Output \" doctor\"",
+            0.031
+          ],
+          [
+            "Output \" emergency\"",
+            0.0242
+          ],
+          [
+            "Output \" clinic\"",
+            0.0188
+          ],
+          [
+            "Output \" ER\"",
+            0.0069
+          ],
+          [
+            "Output \" medical\"",
+            0.0017
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0011
+          ],
+          [
+            "Output \" hospitals\"",
+            0.0005
+          ],
+          [
+            "Output \" health\"",
+            0.0005
+          ],
+          [
+            "Output \" doctors\"",
+            0.0004
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.6759
+          ],
+          [
+            "Output \" doctor\"",
+            0.1174
+          ],
+          [
+            "Output \" ER\"",
+            0.1174
+          ],
+          [
+            "Output \" emergency\"",
+            0.049
+          ],
+          [
+            "Output \" clinic\"",
+            0.0075
+          ],
+          [
+            "Output \" doctors\"",
+            0.0046
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0035
+          ],
+          [
+            "Output \" physician\"",
+            0.0013
+          ],
+          [
+            "Output \" urgent\"",
+            0.0013
+          ],
+          [
+            "Output \" hospitals\"",
+            0.001
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital. I",
+          "doctor": "doctor. What",
+          "emergency": "emergency room.",
+          "clinic": "clinic. What"
+        },
+        "patient": {
+          "hospital": "hospital. I",
+          "doctor": "doctor. What",
+          "ER": "ER. What",
+          "emergency": "emergency room."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 28,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "With a high fever I got violent shivering flank kidney aching and nonstop vomiting so I need to go to the",
+        "patient": "With a high fever I got violent shiverring flank kidney acheing and nonstop vomitting so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.0159,
+        "patient": 0.1185
+      },
+      "language_penalty": 0.1026,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.867
+          ],
+          [
+            "Output \" doctor\"",
+            0.0628
+          ],
+          [
+            "Output \" emergency\"",
+            0.0262
+          ],
+          [
+            "Output \" ER\"",
+            0.0159
+          ],
+          [
+            "Output \" clinic\"",
+            0.0075
+          ],
+          [
+            "Output \" doctors\"",
+            0.0021
+          ],
+          [
+            "Output \" medical\"",
+            0.0015
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0012
+          ],
+          [
+            "Output \" hospitals\"",
+            0.001
+          ],
+          [
+            "Output \"\n\"",
+            0.0009
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.6821
+          ],
+          [
+            "Output \" ER\"",
+            0.1185
+          ],
+          [
+            "Output \" doctor\"",
+            0.1046
+          ],
+          [
+            "Output \" emergency\"",
+            0.0494
+          ],
+          [
+            "Output \" clinic\"",
+            0.0067
+          ],
+          [
+            "Output \" doctors\"",
+            0.0052
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0032
+          ],
+          [
+            "Output \" Hospital\"",
+            0.0013
+          ],
+          [
+            "Output \" nearest\"",
+            0.0013
+          ],
+          [
+            "Output \" hospitals\"",
+            0.0013
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital. I",
+          "doctor": "doctor. I",
+          "emergency": "emergency room.",
+          "ER": "ER. What"
+        },
+        "patient": {
+          "hospital": "hospital. I",
+          "ER": "ER. What",
+          "doctor": "doctor. What",
+          "emergency": "emergency room."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 29,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Five minutes after a bee sting I got full-body itching, throat choking, and severe dizziness, so I need to go to the",
+        "patient": "Five minutes after a bee sting I got full-body itchhing, throat chokeing, and severe dizzyness, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.0099,
+        "patient": 0.0591
+      },
+      "language_penalty": 0.0492,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.7849
+          ],
+          [
+            "Output \" doctor\"",
+            0.1062
+          ],
+          [
+            "Output \" emergency\"",
+            0.0345
+          ],
+          [
+            "Output \" clinic\"",
+            0.0269
+          ],
+          [
+            "Output \" ER\"",
+            0.0099
+          ],
+          [
+            "Output \" medical\"",
+            0.0047
+          ],
+          [
+            "Output \" nearest\"",
+            0.0028
+          ],
+          [
+            "Output \" doctors\"",
+            0.0019
+          ],
+          [
+            "Output \" local\"",
+            0.0013
+          ],
+          [
+            "Output \" physician\"",
+            0.0012
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.495
+          ],
+          [
+            "Output \" doctor\"",
+            0.265
+          ],
+          [
+            "Output \" emergency\"",
+            0.067
+          ],
+          [
+            "Output \" ER\"",
+            0.0591
+          ],
+          [
+            "Output \" clinic\"",
+            0.0279
+          ],
+          [
+            "Output \" doctors\"",
+            0.0055
+          ],
+          [
+            "Output \" physician\"",
+            0.0055
+          ],
+          [
+            "Output \" medical\"",
+            0.0043
+          ],
+          [
+            "Output \"...\"",
+            0.0033
+          ],
+          [
+            "Output \"...\n\n\"",
+            0.0029
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital. But",
+          "doctor": "doctor. What",
+          "emergency": "emergency room.",
+          "clinic": "clinic. What"
+        },
+        "patient": {
+          "hospital": "hospital. I",
+          "doctor": "doctor. What",
+          "emergency": "emergency room.",
+          "ER": "ER. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 30,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Five minutes after a bee sting I got full-body itching throat choking and severe dizziness so I need to go to the",
+        "patient": "Five minutes after a bee sting I got full-body itchhing throat chokeing and severe dizzyness so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.0435,
+        "patient": 0.1027
+      },
+      "language_penalty": 0.0592,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.6808
+          ],
+          [
+            "Output \" doctor\"",
+            0.1183
+          ],
+          [
+            "Output \" emergency\"",
+            0.0559
+          ],
+          [
+            "Output \" ER\"",
+            0.0435
+          ],
+          [
+            "Output \" clinic\"",
+            0.016
+          ],
+          [
+            "Output \"...\"",
+            0.0086
+          ],
+          [
+            "Output \"...\n\n\"",
+            0.0076
+          ],
+          [
+            "Output \" -\"",
+            0.0067
+          ],
+          [
+            "Output \" doctors\"",
+            0.0059
+          ],
+          [
+            "Output \" nearest\"",
+            0.0036
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.5913
+          ],
+          [
+            "Output \" doctor\"",
+            0.1319
+          ],
+          [
+            "Output \" ER\"",
+            0.1027
+          ],
+          [
+            "Output \" emergency\"",
+            0.0623
+          ],
+          [
+            "Output \" clinic\"",
+            0.0139
+          ],
+          [
+            "Output \" doctors\"",
+            0.0074
+          ],
+          [
+            "Output \"...\"",
+            0.0051
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0035
+          ],
+          [
+            "Output \" store\"",
+            0.0031
+          ],
+          [
+            "Output \"...\n\n\"",
+            0.0031
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital. What",
+          "doctor": "doctor. What",
+          "emergency": "emergency room.",
+          "ER": "ER. What"
+        },
+        "patient": {
+          "hospital": "hospital. What",
+          "doctor": "doctor. What",
+          "ER": "ER. What",
+          "emergency": "emergency room."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 31,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "With a high fever today I got drenching cold sweating, uncontrollable shaking, and blood-streaked coughing, so I need to go to the",
+        "patient": "With a high fever today I got drenching cold sweatting, uncontrollable shakeing, and blood-streaked coughhing, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.0162,
+        "patient": 0.0176
+      },
+      "language_penalty": 0.0014,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.6887
+          ],
+          [
+            "Output \" doctor\"",
+            0.1973
+          ],
+          [
+            "Output \" clinic\"",
+            0.0389
+          ],
+          [
+            "Output \" emergency\"",
+            0.0184
+          ],
+          [
+            "Output \" ER\"",
+            0.0162
+          ],
+          [
+            "Output \" doctors\"",
+            0.0077
+          ],
+          [
+            "Output \" medical\"",
+            0.0046
+          ],
+          [
+            "Output \" physician\"",
+            0.0017
+          ],
+          [
+            "Output \" local\"",
+            0.0013
+          ],
+          [
+            "Output \" health\"",
+            0.0013
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.7492
+          ],
+          [
+            "Output \" doctor\"",
+            0.1475
+          ],
+          [
+            "Output \" clinic\"",
+            0.0226
+          ],
+          [
+            "Output \" emergency\"",
+            0.02
+          ],
+          [
+            "Output \" ER\"",
+            0.0176
+          ],
+          [
+            "Output \" doctors\"",
+            0.0065
+          ],
+          [
+            "Output \" medical\"",
+            0.0035
+          ],
+          [
+            "Output \" hospitals\"",
+            0.0016
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0013
+          ],
+          [
+            "Output \" physician\"",
+            0.0011
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital. I",
+          "doctor": "doctor. I",
+          "clinic": "clinic. What",
+          "emergency": "emergency room."
+        },
+        "patient": {
+          "hospital": "hospital.",
+          "doctor": "doctor. What",
+          "clinic": "clinic. What",
+          "emergency": "emergency room."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 32,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "With a high fever today I got drenching cold sweating uncontrollable shaking and blood-streaked coughing so I need to go to the",
+        "patient": "With a high fever today I got drenching cold sweatting uncontrollable shakeing and blood-streaked coughhing so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.0451,
+        "patient": 0.0286
+      },
+      "language_penalty": -0.0165,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.4282
+          ],
+          [
+            "Output \" doctor\"",
+            0.4282
+          ],
+          [
+            "Output \" ER\"",
+            0.0451
+          ],
+          [
+            "Output \" emergency\"",
+            0.0242
+          ],
+          [
+            "Output \" clinic\"",
+            0.0188
+          ],
+          [
+            "Output \" doctors\"",
+            0.0188
+          ],
+          [
+            "Output \" physician\"",
+            0.0033
+          ],
+          [
+            "Output \" medical\"",
+            0.0018
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0015
+          ],
+          [
+            "Output \" dr\"",
+            0.0015
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.5746
+          ],
+          [
+            "Output \" doctor\"",
+            0.3076
+          ],
+          [
+            "Output \" ER\"",
+            0.0286
+          ],
+          [
+            "Output \" emergency\"",
+            0.0223
+          ],
+          [
+            "Output \" doctors\"",
+            0.0153
+          ],
+          [
+            "Output \" clinic\"",
+            0.0135
+          ],
+          [
+            "Output \" medical\"",
+            0.0021
+          ],
+          [
+            "Output \" dr\"",
+            0.0021
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0018
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0016
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital. I",
+          "doctor": "doctor. What",
+          "ER": "ER. What",
+          "emergency": "emergency room."
+        },
+        "patient": {
+          "hospital": "hospital. What",
+          "doctor": "doctor. What",
+          "ER": "ER. What",
+          "emergency": "emergency room."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 33,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Tonight with a high fever I got barking coughing, throat choking, and an inflamed throat with drooling, so I need to go to the",
+        "patient": "Tonight with a high fever I got barking coughhing, throat chokeing, and an inflammed throat with drooling, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.0613,
+        "patient": 0.0711
+      },
+      "language_penalty": 0.0098,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.5821
+          ],
+          [
+            "Output \" hospital\"",
+            0.2141
+          ],
+          [
+            "Output \" ER\"",
+            0.0613
+          ],
+          [
+            "Output \" emergency\"",
+            0.0478
+          ],
+          [
+            "Output \" clinic\"",
+            0.0199
+          ],
+          [
+            "Output \" doctors\"",
+            0.0199
+          ],
+          [
+            "Output \" dentist\"",
+            0.0065
+          ],
+          [
+            "Output \" physician\"",
+            0.005
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0035
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0031
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.5955
+          ],
+          [
+            "Output \" hospital\"",
+            0.1933
+          ],
+          [
+            "Output \" ER\"",
+            0.0711
+          ],
+          [
+            "Output \" emergency\"",
+            0.0336
+          ],
+          [
+            "Output \" doctors\"",
+            0.0231
+          ],
+          [
+            "Output \" clinic\"",
+            0.0159
+          ],
+          [
+            "Output \" dr\"",
+            0.0075
+          ],
+          [
+            "Output \" dentist\"",
+            0.0058
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0045
+          ],
+          [
+            "Output \" physician\"",
+            0.004
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. What",
+          "hospital": "hospital. But",
+          "ER": "ER. I",
+          "emergency": "emergency room."
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "hospital": "hospital. But",
+          "ER": "ER. I",
+          "emergency": "emergency room."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 34,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Tonight with a high fever I got barking coughing throat choking and an inflamed throat with drooling so I need to go to the",
+        "patient": "Tonight with a high fever I got barking coughhing throat chokeing and an inflammed throat with drooling so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.0952,
+        "patient": 0.0729
+      },
+      "language_penalty": -0.0223,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.4833
+          ],
+          [
+            "Output \" hospital\"",
+            0.2587
+          ],
+          [
+            "Output \" ER\"",
+            0.0952
+          ],
+          [
+            "Output \" emergency\"",
+            0.0577
+          ],
+          [
+            "Output \" doctors\"",
+            0.0241
+          ],
+          [
+            "Output \" clinic\"",
+            0.0165
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0047
+          ],
+          [
+            "Output \" dentist\"",
+            0.0042
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0037
+          ],
+          [
+            "Output \" dr\"",
+            0.0033
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.5387
+          ],
+          [
+            "Output \" hospital\"",
+            0.2246
+          ],
+          [
+            "Output \" ER\"",
+            0.0729
+          ],
+          [
+            "Output \" emergency\"",
+            0.039
+          ],
+          [
+            "Output \" doctors\"",
+            0.0268
+          ],
+          [
+            "Output \" clinic\"",
+            0.0163
+          ],
+          [
+            "Output \" dr\"",
+            0.0099
+          ],
+          [
+            "Output \" dentist\"",
+            0.0068
+          ],
+          [
+            "Output \" Doctor\"",
+            0.006
+          ],
+          [
+            "Output \" doc\"",
+            0.0028
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. I",
+          "hospital": "hospital. I",
+          "ER": "ER. I",
+          "emergency": "emergency room."
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "hospital": "hospital. I",
+          "ER": "ER. I",
+          "emergency": "emergency room."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 35,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "With an ear infection and fever I got muffled hearing, painful bulging behind my ear, and violent shaking, so I need to go to the",
+        "patient": "With an ear infection and fever I got muffled hearring, painful bulgeing behind my ear, and violent shakeing, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.3612,
+        "patient": 0.3407
+      },
+      "language_penalty": -0.0205,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ER\"",
+            0.3612
+          ],
+          [
+            "Output \" doctor\"",
+            0.3188
+          ],
+          [
+            "Output \" hospital\"",
+            0.2191
+          ],
+          [
+            "Output \" emergency\"",
+            0.0554
+          ],
+          [
+            "Output \" clinic\"",
+            0.018
+          ],
+          [
+            "Output \" doctors\"",
+            0.0066
+          ],
+          [
+            "Output \" physician\"",
+            0.0045
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0028
+          ],
+          [
+            "Output \" urgent\"",
+            0.0024
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0006
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.3861
+          ],
+          [
+            "Output \" ER\"",
+            0.3407
+          ],
+          [
+            "Output \" hospital\"",
+            0.1609
+          ],
+          [
+            "Output \" emergency\"",
+            0.0461
+          ],
+          [
+            "Output \" clinic\"",
+            0.017
+          ],
+          [
+            "Output \" doctors\"",
+            0.0103
+          ],
+          [
+            "Output \" physician\"",
+            0.0043
+          ],
+          [
+            "Output \" dr\"",
+            0.0038
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0029
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0026
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "ER": "ER. What",
+          "doctor": "doctor. What",
+          "hospital": "hospital. What",
+          "emergency": "emergency room."
+        },
+        "patient": {
+          "doctor": "doctor. What",
+          "ER": "ER. What",
+          "hospital": "hospital. I",
+          "emergency": "emergency room."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 36,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "With an ear infection and fever I got muffled hearing painful bulging behind my ear and violent shaking so I need to go to the",
+        "patient": "With an ear infection and fever I got muffled hearring painful bulgeing behind my ear and violent shakeing so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.3719,
+        "patient": 0.2915
+      },
+      "language_penalty": -0.0804,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ER\"",
+            0.3719
+          ],
+          [
+            "Output \" hospital\"",
+            0.2896
+          ],
+          [
+            "Output \" doctor\"",
+            0.2256
+          ],
+          [
+            "Output \" emergency\"",
+            0.0646
+          ],
+          [
+            "Output \" clinic\"",
+            0.0127
+          ],
+          [
+            "Output \" doctors\"",
+            0.0077
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0036
+          ],
+          [
+            "Output \" urgent\"",
+            0.0028
+          ],
+          [
+            "Output \" physician\"",
+            0.0022
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0009
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.2915
+          ],
+          [
+            "Output \" doctor\"",
+            0.2915
+          ],
+          [
+            "Output \" ER\"",
+            0.2915
+          ],
+          [
+            "Output \" emergency\"",
+            0.0574
+          ],
+          [
+            "Output \" doctors\"",
+            0.0113
+          ],
+          [
+            "Output \" clinic\"",
+            0.0113
+          ],
+          [
+            "Output \" er\"",
+            0.0037
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0032
+          ],
+          [
+            "Output \" dr\"",
+            0.0032
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0025
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "ER": "ER. I",
+          "hospital": "hospital. I",
+          "doctor": "doctor. I",
+          "emergency": "emergency room."
+        },
+        "patient": {
+          "hospital": "hospital. I",
+          "doctor": "doctor. I",
+          "ER": "ER. I",
+          "emergency": "emergency room."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    }
+  ]
+}
