@@ -29,17 +29,35 @@ Seven models, as for the earlier agscen rounds: hosted gemma-2-2b (2panel traces
 
 A model's row counts only when both variants of the pair have a numeric value for that measure.
 
+## Units: 13 clinical sentences, not 18 pairs
+
+Five dose groups share one clinical sentence and target between two pairs (one and three misspellings on the
+everyday side): sc-039/sc-049, sc-040/sc-050, sc-042/sc-052, sc-043/sc-053 and sc-044/sc-054. Their clinical-side
+measurements are the same prompt measured twice, so the two pairs of a group are not independent. Every test below
+therefore uses one unit per distinct (clinical sentence, target): 13 units. A unit's value is the mean of its pairs'
+values (one pair for 8 units, two for 5).
+
 ## Contrasts
 
-1. **Commas (primary).** For each pair, the mean over models of penalty(comma) − penalty(nocomma). Two-sided exact
-   sign test over the 18 pairs; ties (a mean of exactly 0) are dropped and counted.
-2. **Commas on the clinical baseline.** The same for p_clinical(comma) − p_clinical(nocomma).
+1. **Commas (primary).** For each pair, the mean over models of penalty(comma) − penalty(nocomma); then the unit
+   mean. Two-sided exact sign test over the 13 units; ties (a mean of exactly 0) are dropped and counted. The 18
+   pair values are also reported, without a test.
+2. **Commas on the clinical baseline.** p_clinical(comma) − p_clinical(nocomma), once per unit (the clinical prompt
+   is identical within a group), with the same sign test over the 13 units.
 3. **Commas on the class.** Pairs and model rows that downgrade, comma against nocomma. Descriptive only.
-4. **Connective wording (secondary).** Contrasts 1 and 3 for `-nocomma` against `-r5`. sc-029 is reported, then
-   left out of contrast 4, because its rewrite changed more than one connective.
+4. **Connective wording (secondary).** Contrasts 1 and 3 for `-nocomma` against `-r5`, on the 13 pairs whose
+   rewrite differs from the comma-free original only by the connective that replaced a comma. Five pairs are left
+   out of the test and reported on their own, because their rewrite also changed hyphens: sc-029 ("eighty-one" to
+   "81", "outward-turned leg" to "leg turned out"), sc-040 and sc-050 ("full-body" to "full body"), and sc-042 and
+   sc-052 ("blood-streaked" to "blood streaked"). The 13 kept pairs form 10 units (sc-039/sc-049, sc-043/sc-053 and
+   sc-044/sc-054 share a clinical sentence); the sign test runs over those 10.
 
 No correction across contrasts; nothing here is confirmatory. The wording for a null result is "no difference was
-detected on these 18 pairs", not "commas have no effect". One sample per pair and model; small models only.
+detected on these 13 clinical sentences", not "commas have no effect". One sample per pair and model; small models
+only.
+
+Amended 2026-11-09, still before any trace, after review (engine #158): units by shared clinical sentence, and the
+four further hyphen-changing rewrites left out of contrast 4.
 
 ## Reproduce
 
