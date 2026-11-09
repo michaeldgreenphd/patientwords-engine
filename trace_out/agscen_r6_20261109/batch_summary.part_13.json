@@ -1,0 +1,508 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 13,
+  "pairs_requested": 4,
+  "completed": true,
+  "screen_targets": 0.02,
+  "environment": {
+    "python": "3.11.18",
+    "engine_sha": "2f002dbc7028",
+    "runner_image": "20261101.186.1"
+  },
+  "results": [
+    {
+      "index": 13,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Every morning for 3 weeks I have had vertigo where the room spins for 30 seconds when rolling over in bed so I should see a",
+        "patient": "Every morning for 3 weeks I have been feeling giddy like the room spins for 30 seconds when rolling over in bed so I should see a"
+      },
+      "target_token": "Output \" neuro\"",
+      "probabilities": {
+        "clinical": 0.127,
+        "patient": 0.096
+      },
+      "language_penalty": -0.031,
+      "clinical_mass": {
+        "clinical": 0.4102,
+        "patient": 0.3434
+      },
+      "error_share": {
+        "clinical": 0.1158,
+        "patient": 0.1211
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.504)",
+        "patient": "[L15\u00b7S]  \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.555)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " neurologist",
+        "observed_clinical": [
+          "Output \" neuro\"",
+          0.127
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.504
+          ],
+          [
+            "Output \" neuro\"",
+            0.127
+          ],
+          [
+            "Output \" specialist\"",
+            0.087
+          ],
+          [
+            "Output \" Dr\"",
+            0.047
+          ],
+          [
+            "Output \" dr\"",
+            0.037
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.555
+          ],
+          [
+            "Output \" neuro\"",
+            0.096
+          ],
+          [
+            "Output \" dr\"",
+            0.066
+          ],
+          [
+            "Output \" Dr\"",
+            0.066
+          ],
+          [
+            "Output \" doc\"",
+            0.04
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " neurologist",
+        "measured_token": "Output \" neuro\"",
+        "match": "leading_wordpiece",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "leading_wordpiece",
+            "token": "Output \" neuro\"",
+            "probability": 0.127,
+            "rank": 2,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" neuro\"",
+            "probability": 0.096,
+            "rank": 2,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 520,
+        "unique_to_a": 268,
+        "unique_to_b": 280
+      },
+      "outputs": {
+        "html": "trace_out/agscen_r6_20261109/index_13.html",
+        "png": "trace_out/agscen_r6_20261109/index_13.png",
+        "diff_html": "trace_out/agscen_r6_20261109/index_13_diff.html",
+        "diff_png": "trace_out/agscen_r6_20261109/index_13_diff.png"
+      }
+    },
+    {
+      "index": 14,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "For the past 4 days I have had frequent diarrhea with abdominal cramps and a 100 degree fever so I should see a",
+        "patient": "For the past 4 days I have had frequent loose motions with belly cramps and a 100 degree fever so I should see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.75,
+        "patient": 0.73
+      },
+      "language_penalty": -0.020000000000000018,
+      "clinical_mass": {
+        "clinical": 0.4824,
+        "patient": 0.4632
+      },
+      "error_share": {
+        "clinical": 0.1168,
+        "patient": 0.118
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.750)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.730)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.75
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.75
+          ],
+          [
+            "Output \" Dr\"",
+            0.048
+          ],
+          [
+            "Output \" doc\"",
+            0.048
+          ],
+          [
+            "Output \" dr\"",
+            0.026
+          ],
+          [
+            "Output \" GI\"",
+            0.02
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.73
+          ],
+          [
+            "Output \" Dr\"",
+            0.047
+          ],
+          [
+            "Output \" doc\"",
+            0.047
+          ],
+          [
+            "Output \" gastroenter\"",
+            0.022
+          ],
+          [
+            "Output \" Doctor\"",
+            0.022
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " doctor",
+        "measured_token": "Output \" doctor\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" doctor\"",
+            "probability": 0.75,
+            "rank": 1,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" doctor\"",
+            "probability": 0.73,
+            "rank": 1,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 559,
+        "unique_to_a": 112,
+        "unique_to_b": 152
+      },
+      "outputs": {
+        "html": "trace_out/agscen_r6_20261109/index_14.html",
+        "png": "trace_out/agscen_r6_20261109/index_14.png",
+        "diff_html": "trace_out/agscen_r6_20261109/index_14_diff.html",
+        "diff_png": "trace_out/agscen_r6_20261109/index_14_diff.png"
+      }
+    },
+    {
+      "index": 15,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "With my diabetes I have been vomiting all day with deep rapid breathing and fruity breath so I need to go to the",
+        "patient": "With my sugar I have been vomiting all day with deep rapid breathing and fruity breath so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.218,
+        "patient": 0.239
+      },
+      "language_penalty": 0.02099999999999999,
+      "clinical_mass": {
+        "clinical": 0.425,
+        "patient": 0.3991
+      },
+      "error_share": {
+        "clinical": 0.1273,
+        "patient": 0.1237
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7C] terms related to emergency medical response to cardi \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.091)",
+        "patient": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.060)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ER",
+        "observed_clinical": [
+          "Output \" ER\"",
+          0.218
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.523
+          ],
+          [
+            "Output \" ER\"",
+            0.218
+          ],
+          [
+            "Output \" emergency\"",
+            0.091
+          ],
+          [
+            "Output \" er\"",
+            0.062
+          ],
+          [
+            "Output \" doctor\"",
+            0.033
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.504
+          ],
+          [
+            "Output \" ER\"",
+            0.239
+          ],
+          [
+            "Output \" emergency\"",
+            0.06
+          ],
+          [
+            "Output \" er\"",
+            0.06
+          ],
+          [
+            "Output \" doctor\"",
+            0.042
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.218,
+            "rank": 2,
+            "returned": 7
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.239,
+            "rank": 2,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 609,
+        "unique_to_a": 125,
+        "unique_to_b": 150
+      },
+      "outputs": {
+        "html": "trace_out/agscen_r6_20261109/index_15.html",
+        "png": "trace_out/agscen_r6_20261109/index_15.png",
+        "diff_html": "trace_out/agscen_r6_20261109/index_15_diff.html",
+        "diff_png": "trace_out/agscen_r6_20261109/index_15_diff.png"
+      }
+    },
+    {
+      "index": 16,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "With my high blood pressure I suddenly developed a blinding headache with blurred vision and chest tightness so I need to go to the",
+        "patient": "With my high blood I suddenly developed a blinding headache with blurred vision and chest tightness so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.224,
+        "patient": 0.197
+      },
+      "language_penalty": -0.026999999999999996,
+      "clinical_mass": {
+        "clinical": 0.4048,
+        "patient": 0.4139
+      },
+      "error_share": {
+        "clinical": 0.1139,
+        "patient": 0.1192
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.120)",
+        "patient": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.105)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ER",
+        "observed_clinical": [
+          "Output \" ER\"",
+          0.224
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.369
+          ],
+          [
+            "Output \" ER\"",
+            0.224
+          ],
+          [
+            "Output \" emergency\"",
+            0.12
+          ],
+          [
+            "Output \" doctor\"",
+            0.105
+          ],
+          [
+            "Output \" doctors\"",
+            0.027
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.418
+          ],
+          [
+            "Output \" ER\"",
+            0.197
+          ],
+          [
+            "Output \" emergency\"",
+            0.105
+          ],
+          [
+            "Output \" doctor\"",
+            0.093
+          ],
+          [
+            "Output \" doctors\"",
+            0.021
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.224,
+            "rank": 2,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.197,
+            "rank": 2,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 607,
+        "unique_to_a": 153,
+        "unique_to_b": 137
+      },
+      "outputs": {
+        "html": "trace_out/agscen_r6_20261109/index_16.html",
+        "png": "trace_out/agscen_r6_20261109/index_16.png",
+        "diff_html": "trace_out/agscen_r6_20261109/index_16_diff.html",
+        "diff_png": "trace_out/agscen_r6_20261109/index_16_diff.png"
+      }
+    }
+  ]
+}
