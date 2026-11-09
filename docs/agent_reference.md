@@ -160,7 +160,8 @@ number: each collector that pools `trace_out/*` skips them with a count (its doc
 one must too). Only the owner releases (`scripts/publication_release.py --release`). Exploratory stimulus sets
 (`EXPLORATORY_STEM_PREFIXES` in `scripts/publication_hold.py`, today `agscen_`: the owner-read hand-authored
 pairs in `data/simulated/agscen_20261108.json`, `data/simulated/agscen_scale_20261108.json`,
-`data/simulated/agscen_r5_20261108.json` and the comma test `data/simulated/agscen_commas_20261109.json`) are refused by stem in every model and backend, released or
+`data/simulated/agscen_r5_20261108.json`, `data/simulated/agscen_r6_20261109.json` and the comma test
+`data/simulated/agscen_commas_20261109.json`) are refused by stem in every model and backend, released or
 not; collectors that pool `trace_out/*` without the gate (`scripts/export_tag_mass.py`,
 `scripts/retrace_consistency.py`) skip them too. Lens consumers read only `__jlens_`/`__loglens_` dirs and
 do not yet skip them: add the skip before any lens fire on such a set.
