@@ -15,9 +15,10 @@ def _mod():
     return mod
 
 
-def test_sign_test_is_exact_and_two_sided() -> None:
+def test_the_shared_exact_sign_test_is_used() -> None:
     m = _mod()
-    assert m.sign_test(0, 0) == 1.0
+    assert m.sign_test.__module__.endswith("sign_test_exact")
+    assert m.sign_test(0, 0) is None
     assert m.sign_test(10, 3) == m.sign_test(3, 10)
     assert abs(m.sign_test(10, 3) - 0.09228515625) < 1e-12      # 2 * P(X <= 3), X ~ Bin(13, 1/2)
     assert m.sign_test(4, 4) == 1.0

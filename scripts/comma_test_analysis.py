@@ -32,10 +32,17 @@ import argparse
 import collections
 import glob
 import json
-import math
 import re
 from pathlib import Path
 from typing import Any
+
+# The exact two-sided sign test the urgency analyses share (None when there are no signed units).
+try:  # repo root on sys.path (tests) vs sibling import (python scripts/comma_test_analysis.py)
+    from scripts.sign_test_exact import sign_test
+except ImportError:
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from sign_test_exact import sign_test
 
 COMMAS = "agscen_commas_20261109"
 R5 = "agscen_r5_20261108"
@@ -77,15 +84,6 @@ def classify(vocab: dict[str, Any], top_c: str | None, top_p: str | None,
     if tc is None or tp is None:
         return "uninformative"
     return "downgrade" if tp < tc else "upgrade" if tp > tc else "lateral"
-
-
-def sign_test(pos: int, neg: int) -> float:
-    """Exact two-sided sign test."""
-    n = pos + neg
-    if n == 0:
-        return 1.0
-    k = min(pos, neg)
-    return min(1.0, 2 * sum(math.comb(n, i) for i in range(k + 1)) / 2 ** n)
 
 
 def num(x: Any) -> float | None:
@@ -131,7 +129,7 @@ def contrast(diffs: dict[str, dict[str, float]], unit_of: dict[str, str]) -> dic
     neg = sum(v < 0 for v in unit_val.values())
     zero = sum(v == 0 for v in unit_val.values())
     vals = list(unit_val.values())
-    return {"units": len(unit_val), "up": pos, "down": neg, "zero": zero, "p": round(sign_test(pos, neg), 4),
+    return {"units": len(unit_val), "up": pos, "down": neg, "zero": zero, "p": None if (p := sign_test(pos, neg)) is None else round(p, 4),
             "mean_unit": round(sum(vals) / len(vals), 4) if vals else None,
             "median_unit": round(sorted(vals)[len(vals) // 2] if len(vals) % 2 else
                                  sum(sorted(vals)[len(vals) // 2 - 1:len(vals) // 2 + 1]) / 2, 4) if vals else None,
