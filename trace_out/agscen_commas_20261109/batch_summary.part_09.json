@@ -1,0 +1,508 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 9,
+  "pairs_requested": 4,
+  "completed": true,
+  "screen_targets": 0.02,
+  "environment": {
+    "python": "3.11.18",
+    "engine_sha": "c6c630552630",
+    "runner_image": "20261101.186.1"
+  },
+  "results": [
+    {
+      "index": 9,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After stopping daily clonidine I developed blood pressure 210 over 126, severe cephalalgia, and diaphoresis, so I need to go to the",
+        "patient": "After stopping daily clonidine I developed blood pressure 210 over 126, severe headache, and cold sweats, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.187,
+        "patient": 0.275
+      },
+      "language_penalty": 0.08800000000000002,
+      "clinical_mass": {
+        "clinical": 0.4292,
+        "patient": 0.4044
+      },
+      "error_share": {
+        "clinical": 0.1262,
+        "patient": 0.1245
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.240)",
+        "patient": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.130)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ER",
+        "observed_clinical": [
+          "Output \" ER\"",
+          0.187
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.24
+          ],
+          [
+            "Output \" doctor\"",
+            0.24
+          ],
+          [
+            "Output \" ER\"",
+            0.187
+          ],
+          [
+            "Output \" emergency\"",
+            0.128
+          ],
+          [
+            "Output \" clinic\"",
+            0.025
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ER\"",
+            0.275
+          ],
+          [
+            "Output \" doctor\"",
+            0.242
+          ],
+          [
+            "Output \" hospital\"",
+            0.189
+          ],
+          [
+            "Output \" emergency\"",
+            0.13
+          ],
+          [
+            "Output \" doc\"",
+            0.018
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.187,
+            "rank": 3,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.275,
+            "rank": 1,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 767,
+        "unique_to_a": 69,
+        "unique_to_b": 59
+      },
+      "outputs": {
+        "html": "trace_out/agscen_commas_20261109/index_09.html",
+        "png": "trace_out/agscen_commas_20261109/index_09.png",
+        "diff_html": "trace_out/agscen_commas_20261109/index_09_diff.html",
+        "diff_png": "trace_out/agscen_commas_20261109/index_09_diff.png"
+      }
+    },
+    {
+      "index": 10,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After stopping daily clonidine I developed blood pressure 210 over 126 severe cephalalgia and diaphoresis so I need to go to the",
+        "patient": "After stopping daily clonidine I developed blood pressure 210 over 126 severe headache and cold sweats so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.178,
+        "patient": 0.192
+      },
+      "language_penalty": 0.014000000000000012,
+      "clinical_mass": {
+        "clinical": 0.4368,
+        "patient": 0.4167
+      },
+      "error_share": {
+        "clinical": 0.1328,
+        "patient": 0.129
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.201)",
+        "patient": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.103)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ER",
+        "observed_clinical": [
+          "Output \" ER\"",
+          0.178
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.258
+          ],
+          [
+            "Output \" doctor\"",
+            0.201
+          ],
+          [
+            "Output \" ER\"",
+            0.178
+          ],
+          [
+            "Output \" emergency\"",
+            0.095
+          ],
+          [
+            "Output \" doc\"",
+            0.024
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.247
+          ],
+          [
+            "Output \" doctor\"",
+            0.219
+          ],
+          [
+            "Output \" ER\"",
+            0.192
+          ],
+          [
+            "Output \" emergency\"",
+            0.103
+          ],
+          [
+            "Output \" er\"",
+            0.033
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.178,
+            "rank": 3,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.192,
+            "rank": 3,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 747,
+        "unique_to_a": 77,
+        "unique_to_b": 71
+      },
+      "outputs": {
+        "html": "trace_out/agscen_commas_20261109/index_10.html",
+        "png": "trace_out/agscen_commas_20261109/index_10.png",
+        "diff_html": "trace_out/agscen_commas_20261109/index_10_diff.html",
+        "diff_png": "trace_out/agscen_commas_20261109/index_10_diff.png"
+      }
+    },
+    {
+      "index": 11,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Two weeks after starting lamotrigine I developed fever, painful oral mucosal erosions, and blistering skin detachment, so I need to go to the",
+        "patient": "Two weeks after starting lamotrigine I developed fever, painful raw sores inside my mouth, and peeling skin blisters, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.113,
+        "patient": 0.122
+      },
+      "language_penalty": 0.008999999999999994,
+      "clinical_mass": {
+        "clinical": 0.4429,
+        "patient": 0.4288
+      },
+      "error_share": {
+        "clinical": 0.1273,
+        "patient": 0.123
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.188)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.375)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ER",
+        "observed_clinical": [
+          "Output \" ER\"",
+          0.113
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.309
+          ],
+          [
+            "Output \" doctor\"",
+            0.188
+          ],
+          [
+            "Output \" ER\"",
+            0.113
+          ],
+          [
+            "Output \" dermatologist\"",
+            0.113
+          ],
+          [
+            "Output \" emergency\"",
+            0.113
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.375
+          ],
+          [
+            "Output \" hospital\"",
+            0.2
+          ],
+          [
+            "Output \" ER\"",
+            0.122
+          ],
+          [
+            "Output \" dermatologist\"",
+            0.065
+          ],
+          [
+            "Output \" emergency\"",
+            0.051
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.113,
+            "rank": 3,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.122,
+            "rank": 3,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 687,
+        "unique_to_a": 100,
+        "unique_to_b": 115
+      },
+      "outputs": {
+        "html": "trace_out/agscen_commas_20261109/index_11.html",
+        "png": "trace_out/agscen_commas_20261109/index_11.png",
+        "diff_html": "trace_out/agscen_commas_20261109/index_11_diff.html",
+        "diff_png": "trace_out/agscen_commas_20261109/index_11_diff.png"
+      }
+    },
+    {
+      "index": 12,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Two weeks after starting lamotrigine I developed fever painful oral mucosal erosions and blistering skin detachment so I need to go to the",
+        "patient": "Two weeks after starting lamotrigine I developed fever painful raw sores inside my mouth and peeling skin blisters so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.127,
+        "patient": 0.11
+      },
+      "language_penalty": -0.017,
+      "clinical_mass": {
+        "clinical": 0.4568,
+        "patient": 0.4313
+      },
+      "error_share": {
+        "clinical": 0.1344,
+        "patient": 0.1305
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.099)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.299)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ER",
+        "observed_clinical": [
+          "Output \" ER\"",
+          0.127
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.346
+          ],
+          [
+            "Output \" doctor\"",
+            0.163
+          ],
+          [
+            "Output \" ER\"",
+            0.127
+          ],
+          [
+            "Output \" emergency\"",
+            0.099
+          ],
+          [
+            "Output \" dermatologist\"",
+            0.087
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.299
+          ],
+          [
+            "Output \" hospital\"",
+            0.206
+          ],
+          [
+            "Output \" ER\"",
+            0.11
+          ],
+          [
+            "Output \" dentist\"",
+            0.076
+          ],
+          [
+            "Output \" emergency\"",
+            0.059
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.127,
+            "rank": 3,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.11,
+            "rank": 3,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 663,
+        "unique_to_a": 110,
+        "unique_to_b": 140
+      },
+      "outputs": {
+        "html": "trace_out/agscen_commas_20261109/index_12.html",
+        "png": "trace_out/agscen_commas_20261109/index_12.png",
+        "diff_html": "trace_out/agscen_commas_20261109/index_12_diff.html",
+        "diff_png": "trace_out/agscen_commas_20261109/index_12_diff.png"
+      }
+    }
+  ]
+}
