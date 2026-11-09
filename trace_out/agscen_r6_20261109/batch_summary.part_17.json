@@ -1,0 +1,508 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 17,
+  "pairs_requested": 4,
+  "completed": true,
+  "screen_targets": 0.02,
+  "environment": {
+    "python": "3.11.18",
+    "engine_sha": "2f002dbc7028",
+    "runner_image": "20261101.186.1"
+  },
+  "results": [
+    {
+      "index": 17,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Because of my diabetes I have noticed wavy blurry center vision and dark floaters over the past 3 weeks so I should see a",
+        "patient": "Because of my sugar I have noticed wavy blurry center vision and dark floaters over the past 3 weeks so I should see a"
+      },
+      "target_token": "Output \" eye\"",
+      "probabilities": {
+        "clinical": 0.058,
+        "patient": 0.044
+      },
+      "language_penalty": -0.014000000000000005,
+      "clinical_mass": {
+        "clinical": 0.4393,
+        "patient": 0.3988
+      },
+      "error_share": {
+        "clinical": 0.1246,
+        "patient": 0.1275
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.428)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.289)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " eye doctor",
+        "observed_clinical": [
+          "Output \" eye\"",
+          0.058
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.428
+          ],
+          [
+            "Output \" neuro\"",
+            0.084
+          ],
+          [
+            "Output \" specialist\"",
+            0.074
+          ],
+          [
+            "Output \" retina\"",
+            0.074
+          ],
+          [
+            "Output \" eye\"",
+            0.058
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.289
+          ],
+          [
+            "Output \" retina\"",
+            0.106
+          ],
+          [
+            "Output \" neuro\"",
+            0.106
+          ],
+          [
+            "Output \" specialist\"",
+            0.073
+          ],
+          [
+            "Output \" dr\"",
+            0.05
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " eye doctor",
+        "measured_token": "Output \" eye\"",
+        "match": "leading_wordpiece",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "leading_wordpiece",
+            "token": "Output \" eye\"",
+            "probability": 0.058,
+            "rank": 5,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" eye\"",
+            "probability": 0.044,
+            "rank": 6,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 627,
+        "unique_to_a": 124,
+        "unique_to_b": 159
+      },
+      "outputs": {
+        "html": "trace_out/agscen_r6_20261109/index_17.html",
+        "png": "trace_out/agscen_r6_20261109/index_17.png",
+        "diff_html": "trace_out/agscen_r6_20261109/index_17_diff.html",
+        "diff_png": "trace_out/agscen_r6_20261109/index_17_diff.png"
+      }
+    },
+    {
+      "index": 18,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Because of my anemia I have been feeling tired and pale when climbing stairs this month so I should see a",
+        "patient": "Because of my low blood I have been feeling tired and pale when climbing stairs this month so I should see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.707,
+        "patient": 0.516
+      },
+      "language_penalty": -0.19099999999999995,
+      "clinical_mass": {
+        "clinical": 0.4196,
+        "patient": 0.4054
+      },
+      "error_share": {
+        "clinical": 0.1205,
+        "patient": 0.12
+      },
+      "top_path": {
+        "clinical": "[L16\u00b7S]  \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.707)",
+        "patient": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.516)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.707
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.707
+          ],
+          [
+            "Output \" hemat\"",
+            0.051
+          ],
+          [
+            "Output \" specialist\"",
+            0.051
+          ],
+          [
+            "Output \" doc\"",
+            0.024
+          ],
+          [
+            "Output \" Dr\"",
+            0.015
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.516
+          ],
+          [
+            "Output \" GP\"",
+            0.079
+          ],
+          [
+            "Output \" specialist\"",
+            0.062
+          ],
+          [
+            "Output \" doc\"",
+            0.042
+          ],
+          [
+            "Output \" Dr\"",
+            0.029
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " doctor",
+        "measured_token": "Output \" doctor\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" doctor\"",
+            "probability": 0.707,
+            "rank": 1,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" doctor\"",
+            "probability": 0.516,
+            "rank": 1,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 531,
+        "unique_to_a": 172,
+        "unique_to_b": 210
+      },
+      "outputs": {
+        "html": "trace_out/agscen_r6_20261109/index_18.html",
+        "png": "trace_out/agscen_r6_20261109/index_18.png",
+        "diff_html": "trace_out/agscen_r6_20261109/index_18_diff.html",
+        "diff_png": "trace_out/agscen_r6_20261109/index_18_diff.png"
+      }
+    },
+    {
+      "index": 19,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "For my high blood pressure my home cuff readings have stayed around 155 over 95 all week without any symptoms so I should see a",
+        "patient": "For my high blood my home cuff readings have stayed around 155 over 95 all week without any symptoms so I should see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.231,
+        "patient": 0.125
+      },
+      "language_penalty": -0.10600000000000001,
+      "clinical_mass": {
+        "clinical": 0.3426,
+        "patient": 0.3438
+      },
+      "error_share": {
+        "clinical": 0.1246,
+        "patient": 0.1364
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.231)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.125)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.231
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.231
+          ],
+          [
+            "Output \" drop\"",
+            0.141
+          ],
+          [
+            "Output \" dr\"",
+            0.096
+          ],
+          [
+            "Output \" cardio\"",
+            0.045
+          ],
+          [
+            "Output \" doc\"",
+            0.045
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" drop\"",
+            0.16
+          ],
+          [
+            "Output \" doctor\"",
+            0.125
+          ],
+          [
+            "Output \" dr\"",
+            0.125
+          ],
+          [
+            "Output \" big\"",
+            0.059
+          ],
+          [
+            "Output \" cardio\"",
+            0.041
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " doctor",
+        "measured_token": "Output \" doctor\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" doctor\"",
+            "probability": 0.231,
+            "rank": 1,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" doctor\"",
+            "probability": 0.125,
+            "rank": 2,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 561,
+        "unique_to_a": 239,
+        "unique_to_b": 265
+      },
+      "outputs": {
+        "html": "trace_out/agscen_r6_20261109/index_19.html",
+        "png": "trace_out/agscen_r6_20261109/index_19.png",
+        "diff_html": "trace_out/agscen_r6_20261109/index_19_diff.html",
+        "diff_png": "trace_out/agscen_r6_20261109/index_19_diff.png"
+      }
+    },
+    {
+      "index": 20,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After dinner tonight I have had 45 minutes of heavy center chest pressure with cold sweat and nausea so I need to go to the",
+        "patient": "After dinner tonight I have had 45 minutes of heavy center chest pressure with cold sweat and nausea and I think it is just gastric so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.154,
+        "patient": 0.01
+      },
+      "language_penalty": -0.144,
+      "clinical_mass": {
+        "clinical": 0.2391,
+        "patient": 0.199
+      },
+      "error_share": {
+        "clinical": 0.1287,
+        "patient": 0.127
+      },
+      "top_path": {
+        "clinical": "[L17\u00b7S]  \u2192 [L18\u00b7O] mentions of restrooms and bathrooms | bathroom \u2192 [L25\u00b7O] words relating to plumbing | bathrooms and toilets \u2192 Output \" toilet\" (p=0.121)",
+        "patient": "[L17\u00b7S]  \u2192 [L18\u00b7O] mentions of restrooms and bathrooms | bathroom \u2192 [L25\u00b7O] words relating to plumbing | bathrooms and toilets \u2192 Output \" toilet\" (p=0.227)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ER",
+        "observed_clinical": [
+          "Output \" ER\"",
+          0.154
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" bathroom\"",
+            0.289
+          ],
+          [
+            "Output \" ER\"",
+            0.154
+          ],
+          [
+            "Output \" hospital\"",
+            0.121
+          ],
+          [
+            "Output \" toilet\"",
+            0.121
+          ],
+          [
+            "Output \" loo\"",
+            0.064
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" bathroom\"",
+            0.48
+          ],
+          [
+            "Output \" toilet\"",
+            0.227
+          ],
+          [
+            "Output \" loo\"",
+            0.122
+          ],
+          [
+            "Output \" restroom\"",
+            0.027
+          ],
+          [
+            "Output \" wash\"",
+            0.019
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.154,
+            "rank": 2,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.01,
+            "rank": 8,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 655,
+        "unique_to_a": 156,
+        "unique_to_b": 152
+      },
+      "outputs": {
+        "html": "trace_out/agscen_r6_20261109/index_20.html",
+        "png": "trace_out/agscen_r6_20261109/index_20.png",
+        "diff_html": "trace_out/agscen_r6_20261109/index_20_diff.html",
+        "diff_png": "trace_out/agscen_r6_20261109/index_20_diff.png"
+      }
+    }
+  ]
+}
