@@ -189,6 +189,7 @@ out.
 | `extract_site_text.py` | Extracts the site's page text into one Rmd for the owner's editing | operator tool | `ops/site_text_outline.Rmd` (default) | owner or session, on request |
 | `jev_audit_sidecar.py` | Writes the cost sidecar of a live jev-audit run (billed cost, the estimate for unbilled calls, or the whole `max_spend` when no report was left) | live | `data/jev/runs/<run>.report.json` | `.github/workflows/jev_pilot.yml` in CI, after every live run |
 | `audit_jev_calibration.py` | Audits and benchmarks classifier calibration against golden sets, advice responses and Petri transcripts | live | `--out-markdown`, `--out-json` reports | owner or session, and `.github/workflows/jev_pilot.yml` in CI |
+| `check_candidate_pairs.py` | Exploratory: mechanical checks on hand-authored 2panel candidate pairs before anyone reads them (declared edits reproduce the everyday side, carrier frame, a variant copies its original, duplicates, Tier B holdout, target tier; warnings for punctuation and number changes, untiered targets, lexicon entries); exit 1 on any error | operator tool | stdout; `--out <file>` only | session, before each hand-authored round |
 
 ## Builders
 
