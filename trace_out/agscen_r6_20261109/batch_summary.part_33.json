@@ -1,0 +1,463 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 33,
+  "pairs_requested": 4,
+  "completed": true,
+  "screen_targets": 0.02,
+  "environment": {
+    "python": "3.11.18",
+    "engine_sha": "2f002dbc7028",
+    "runner_image": "20261101.186.1"
+  },
+  "results": [
+    {
+      "index": 33,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Over the past 10 days at age 71 I have developed painless central metamorphopsia and a central scotoma in my right eye when reading so I should see a",
+        "patient": "Over the past 10 days at age 71 I have developed painless wavy doorframes and a blurry dark spot in the center of my right eye when reading so I should see a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2847
+      },
+      "error_share": {
+        "clinical": 0.1294
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " eye doctor",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" black\"",
+            0.052
+          ],
+          [
+            "Output \" doctor\"",
+            0.052
+          ],
+          [
+            "Output \" neuro\"",
+            0.052
+          ],
+          [
+            "Output \" specialist\"",
+            0.032
+          ],
+          [
+            "Output \" blur\"",
+            0.025
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " eye doctor",
+        "measured_token": null,
+        "match": null,
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "missing",
+            "reason": "target_not_in_returned_logits",
+            "returned": 10,
+            "prefix_candidates": []
+          }
+        },
+        "intended_read": {
+          "status": "missing",
+          "reason": "target_not_in_returned_logits",
+          "returned": 10,
+          "prefix_candidates": []
+        }
+      },
+      "outputs": {}
+    },
+    {
+      "index": 34,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Over the past 2 weeks I have developed progressive right ankle dorsiflexion weakness with steppage gait and numbness over the dorsum of my foot so I should see a",
+        "patient": "Over the past 2 weeks I have developed worsening weakness lifting my right toes with my foot slapping the floor and numbness on top of my foot so I should see a"
+      },
+      "target_token": "Output \" neuro\"",
+      "probabilities": {
+        "clinical": 0.209,
+        "patient": 0.342
+      },
+      "language_penalty": 0.13300000000000003,
+      "clinical_mass": {
+        "clinical": 0.4701,
+        "patient": 0.4693
+      },
+      "error_share": {
+        "clinical": 0.1312,
+        "patient": 0.1278
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.053)",
+        "patient": "[L15\u00b7S]  \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.207)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " neurologist",
+        "observed_clinical": [
+          "Output \" neuro\"",
+          0.209
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" po\"",
+            0.305
+          ],
+          [
+            "Output \" neuro\"",
+            0.209
+          ],
+          [
+            "Output \" foot\"",
+            0.112
+          ],
+          [
+            "Output \" specialist\"",
+            0.053
+          ],
+          [
+            "Output \" doctor\"",
+            0.053
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" neuro\"",
+            0.342
+          ],
+          [
+            "Output \" doctor\"",
+            0.207
+          ],
+          [
+            "Output \" specialist\"",
+            0.076
+          ],
+          [
+            "Output \" foot\"",
+            0.067
+          ],
+          [
+            "Output \" po\"",
+            0.052
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " neurologist",
+        "measured_token": "Output \" neuro\"",
+        "match": "leading_wordpiece",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "leading_wordpiece",
+            "token": "Output \" neuro\"",
+            "probability": 0.209,
+            "rank": 2,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" neuro\"",
+            "probability": 0.342,
+            "rank": 1,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 617,
+        "unique_to_a": 224,
+        "unique_to_b": 179
+      },
+      "outputs": {
+        "html": "trace_out/agscen_r6_20261109/index_34.html",
+        "png": "trace_out/agscen_r6_20261109/index_34.png",
+        "diff_html": "trace_out/agscen_r6_20261109/index_34_diff.html",
+        "diff_png": "trace_out/agscen_r6_20261109/index_34_diff.png"
+      }
+    },
+    {
+      "index": 35,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Over the past 3 weeks I have had 4 brief episodes of regular rapid palpitations at 170 beats a minute that stop when I bear down so I should see a",
+        "patient": "Over the past 3 weeks I have had 4 brief spells where my heart races evenly at 170 beats a minute that stop when I bear down so I should see a"
+      },
+      "target_token": "Output \" cardio\"",
+      "probabilities": {
+        "clinical": 0.236,
+        "patient": 0.038
+      },
+      "language_penalty": -0.19799999999999998,
+      "clinical_mass": {
+        "clinical": 0.4197,
+        "patient": 0.3345
+      },
+      "error_share": {
+        "clinical": 0.1314,
+        "patient": 0.1301
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.268)",
+        "patient": "[L17\u00b7S]  \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.314)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " cardiologist",
+        "observed_clinical": [
+          "Output \" cardio\"",
+          0.236
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" GP\"",
+            0.268
+          ],
+          [
+            "Output \" doctor\"",
+            0.268
+          ],
+          [
+            "Output \" cardio\"",
+            0.236
+          ],
+          [
+            "Output \" doc\"",
+            0.036
+          ],
+          [
+            "Output \" heart\"",
+            0.025
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.314
+          ],
+          [
+            "Output \" GP\"",
+            0.217
+          ],
+          [
+            "Output \" Dr\"",
+            0.043
+          ],
+          [
+            "Output \" cardio\"",
+            0.038
+          ],
+          [
+            "Output \" doc\"",
+            0.033
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " cardiologist",
+        "measured_token": "Output \" cardio\"",
+        "match": "leading_wordpiece",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "leading_wordpiece",
+            "token": "Output \" cardio\"",
+            "probability": 0.236,
+            "rank": 3,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" cardio\"",
+            "probability": 0.038,
+            "rank": 4,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 585,
+        "unique_to_a": 295,
+        "unique_to_b": 295
+      },
+      "outputs": {
+        "html": "trace_out/agscen_r6_20261109/index_35.html",
+        "png": "trace_out/agscen_r6_20261109/index_35.png",
+        "diff_html": "trace_out/agscen_r6_20261109/index_35_diff.html",
+        "diff_png": "trace_out/agscen_r6_20261109/index_35_diff.png"
+      }
+    },
+    {
+      "index": 36,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Over the past 4 weeks at age 68 I have developed a painless firm supraclavicular lymph node with nocturnal diaphoresis and a 12 pound weight loss so I should see a",
+        "patient": "Over the past 4 weeks at age 68 I have developed a painless hard lump above my collarbone with drenching night sweats and a 12 pound weight loss so I should see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.332,
+        "patient": 0.555
+      },
+      "language_penalty": 0.22300000000000003,
+      "clinical_mass": {
+        "clinical": 0.4197,
+        "patient": 0.4065
+      },
+      "error_share": {
+        "clinical": 0.1247,
+        "patient": 0.1188
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" lymph\" (p=0.035)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.555)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.332
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.332
+          ],
+          [
+            "Output \" specialist\"",
+            0.051
+          ],
+          [
+            "Output \" hemat\"",
+            0.045
+          ],
+          [
+            "Output \" lymph\"",
+            0.035
+          ],
+          [
+            "Output \" physician\"",
+            0.035
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.555
+          ],
+          [
+            "Output \" specialist\"",
+            0.066
+          ],
+          [
+            "Output \" Dr\"",
+            0.045
+          ],
+          [
+            "Output \" doc\"",
+            0.04
+          ],
+          [
+            "Output \" dr\"",
+            0.04
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " doctor",
+        "measured_token": "Output \" doctor\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" doctor\"",
+            "probability": 0.332,
+            "rank": 1,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" doctor\"",
+            "probability": 0.555,
+            "rank": 1,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 654,
+        "unique_to_a": 184,
+        "unique_to_b": 145
+      },
+      "outputs": {
+        "html": "trace_out/agscen_r6_20261109/index_36.html",
+        "png": "trace_out/agscen_r6_20261109/index_36.png",
+        "diff_html": "trace_out/agscen_r6_20261109/index_36_diff.html",
+        "diff_png": "trace_out/agscen_r6_20261109/index_36_diff.png"
+      }
+    }
+  ]
+}
