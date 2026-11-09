@@ -1,0 +1,508 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 5,
+  "pairs_requested": 4,
+  "completed": true,
+  "screen_targets": 0.02,
+  "environment": {
+    "python": "3.11.18",
+    "engine_sha": "f371cfffcbcd",
+    "runner_image": "20261101.186.1"
+  },
+  "results": [
+    {
+      "index": 5,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "At age eighty-three today I suddenly developed acute temporal disorientation and two falls, so I need to go to the",
+        "patient": "At age eighty-three today I suddenly lost track of the day and month and fell down 2 times, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.188,
+        "patient": 0.078
+      },
+      "language_penalty": -0.11,
+      "clinical_mass": {
+        "clinical": 0.416,
+        "patient": 0.3043
+      },
+      "error_share": {
+        "clinical": 0.1134,
+        "patient": 0.1138
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.146)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.311)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ER",
+        "observed_clinical": [
+          "Output \" ER\"",
+          0.188
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.451
+          ],
+          [
+            "Output \" ER\"",
+            0.188
+          ],
+          [
+            "Output \" emergency\"",
+            0.146
+          ],
+          [
+            "Output \" doctor\"",
+            0.089
+          ],
+          [
+            "Output \" Emergency\"",
+            0.029
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.352
+          ],
+          [
+            "Output \" doctor\"",
+            0.311
+          ],
+          [
+            "Output \" ER\"",
+            0.078
+          ],
+          [
+            "Output \" emergency\"",
+            0.054
+          ],
+          [
+            "Output \" doctors\"",
+            0.022
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.188,
+            "rank": 2,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.078,
+            "rank": 3,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 510,
+        "unique_to_a": 284,
+        "unique_to_b": 293
+      },
+      "outputs": {
+        "html": "trace_out/agscen_r7_20261109/index_05.html",
+        "png": "trace_out/agscen_r7_20261109/index_05.png",
+        "diff_html": "trace_out/agscen_r7_20261109/index_05_diff.html",
+        "diff_png": "trace_out/agscen_r7_20261109/index_05_diff.png"
+      }
+    },
+    {
+      "index": 6,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "At age eighty-three today I suddenly developed acute temporal disorientation and two falls, so I need to go to the",
+        "patient": "At age eighty-three today I suddenly got mixed up on the date and fell on the floor 2 times, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.188,
+        "patient": 0.078
+      },
+      "language_penalty": -0.11,
+      "clinical_mass": {
+        "clinical": 0.4162,
+        "patient": 0.3276
+      },
+      "error_share": {
+        "clinical": 0.1136,
+        "patient": 0.1073
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.146)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.309)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ER",
+        "observed_clinical": [
+          "Output \" ER\"",
+          0.188
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.451
+          ],
+          [
+            "Output \" ER\"",
+            0.188
+          ],
+          [
+            "Output \" emergency\"",
+            0.146
+          ],
+          [
+            "Output \" doctor\"",
+            0.089
+          ],
+          [
+            "Output \" Emergency\"",
+            0.029
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.35
+          ],
+          [
+            "Output \" doctor\"",
+            0.309
+          ],
+          [
+            "Output \" ER\"",
+            0.078
+          ],
+          [
+            "Output \" emergency\"",
+            0.053
+          ],
+          [
+            "Output \" doctors\"",
+            0.022
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.188,
+            "rank": 2,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.078,
+            "rank": 3,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 517,
+        "unique_to_a": 276,
+        "unique_to_b": 293
+      },
+      "outputs": {
+        "html": "trace_out/agscen_r7_20261109/index_06.html",
+        "png": "trace_out/agscen_r7_20261109/index_06.png",
+        "diff_html": "trace_out/agscen_r7_20261109/index_06_diff.html",
+        "diff_png": "trace_out/agscen_r7_20261109/index_06_diff.png"
+      }
+    },
+    {
+      "index": 7,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "This week I mistakenly took weekly methotrexate daily and developed febrile oral ulcerations, so I need to go to the",
+        "patient": "This week I mistakenly took 1 time a week methotrexate each day and started running a temperature with open blisters inside my mouth, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.13,
+        "patient": 0.091
+      },
+      "language_penalty": -0.03900000000000001,
+      "clinical_mass": {
+        "clinical": 0.4337,
+        "patient": 0.4299
+      },
+      "error_share": {
+        "clinical": 0.1291,
+        "patient": 0.1236
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.089)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.281)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ER",
+        "observed_clinical": [
+          "Output \" ER\"",
+          0.13
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.189
+          ],
+          [
+            "Output \" hospital\"",
+            0.189
+          ],
+          [
+            "Output \" ER\"",
+            0.13
+          ],
+          [
+            "Output \" clinic\"",
+            0.089
+          ],
+          [
+            "Output \" emergency\"",
+            0.089
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.281
+          ],
+          [
+            "Output \" hospital\"",
+            0.193
+          ],
+          [
+            "Output \" ER\"",
+            0.091
+          ],
+          [
+            "Output \" dentist\"",
+            0.062
+          ],
+          [
+            "Output \" emergency\"",
+            0.062
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.13,
+            "rank": 3,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.091,
+            "rank": 3,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 556,
+        "unique_to_a": 180,
+        "unique_to_b": 258
+      },
+      "outputs": {
+        "html": "trace_out/agscen_r7_20261109/index_07.html",
+        "png": "trace_out/agscen_r7_20261109/index_07.png",
+        "diff_html": "trace_out/agscen_r7_20261109/index_07_diff.html",
+        "diff_png": "trace_out/agscen_r7_20261109/index_07_diff.png"
+      }
+    },
+    {
+      "index": 8,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "This week I mistakenly took weekly methotrexate daily and developed febrile oral ulcerations, so I need to go to the",
+        "patient": "This week I mistakenly took methotrexate meant for 1 day a week on all 7 days and got hot with raw places in my mouth, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.13,
+        "patient": 0.095
+      },
+      "language_penalty": -0.035,
+      "clinical_mass": {
+        "clinical": 0.4337,
+        "patient": 0.4094
+      },
+      "error_share": {
+        "clinical": 0.1292,
+        "patient": 0.1219
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.089)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.256)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ER",
+        "observed_clinical": [
+          "Output \" ER\"",
+          0.13
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.189
+          ],
+          [
+            "Output \" hospital\"",
+            0.189
+          ],
+          [
+            "Output \" ER\"",
+            0.13
+          ],
+          [
+            "Output \" clinic\"",
+            0.089
+          ],
+          [
+            "Output \" emergency\"",
+            0.089
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.256
+          ],
+          [
+            "Output \" dentist\"",
+            0.227
+          ],
+          [
+            "Output \" hospital\"",
+            0.107
+          ],
+          [
+            "Output \" ER\"",
+            0.095
+          ],
+          [
+            "Output \" emergency\"",
+            0.074
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.13,
+            "rank": 3,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.095,
+            "rank": 4,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 528,
+        "unique_to_a": 208,
+        "unique_to_b": 344
+      },
+      "outputs": {
+        "html": "trace_out/agscen_r7_20261109/index_08.html",
+        "png": "trace_out/agscen_r7_20261109/index_08.png",
+        "diff_html": "trace_out/agscen_r7_20261109/index_08_diff.html",
+        "diff_png": "trace_out/agscen_r7_20261109/index_08_diff.png"
+      }
+    }
+  ]
+}
