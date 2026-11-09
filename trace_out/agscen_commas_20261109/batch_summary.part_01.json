@@ -1,0 +1,508 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 1,
+  "pairs_requested": 4,
+  "completed": true,
+  "screen_targets": 0.02,
+  "environment": {
+    "python": "3.11.18",
+    "engine_sha": "c6c630552630",
+    "runner_image": "20261101.186.1"
+  },
+  "results": [
+    {
+      "index": 1,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "With my cirrhosis today I developed progressive ascites, scleral icterus, and asterixis, so I need to go to the",
+        "patient": "With my cirrhosis today I developed growing water swelling in my belly, yellow eyes, and flapping hands, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.152,
+        "patient": 0.155
+      },
+      "language_penalty": 0.0030000000000000027,
+      "clinical_mass": {
+        "clinical": 0.4943,
+        "patient": 0.4548
+      },
+      "error_share": {
+        "clinical": 0.1351,
+        "patient": 0.1201
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" liver\" (p=0.092)",
+        "patient": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.107)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ER",
+        "observed_clinical": [
+          "Output \" ER\"",
+          0.152
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.531
+          ],
+          [
+            "Output \" ER\"",
+            0.152
+          ],
+          [
+            "Output \" liver\"",
+            0.092
+          ],
+          [
+            "Output \" emergency\"",
+            0.044
+          ],
+          [
+            "Output \" doctor\"",
+            0.026
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.543
+          ],
+          [
+            "Output \" ER\"",
+            0.155
+          ],
+          [
+            "Output \" emergency\"",
+            0.107
+          ],
+          [
+            "Output \" doctor\"",
+            0.073
+          ],
+          [
+            "Output \" Emergency\"",
+            0.013
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.152,
+            "rank": 2,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.155,
+            "rank": 2,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 555,
+        "unique_to_a": 225,
+        "unique_to_b": 206
+      },
+      "outputs": {
+        "html": "trace_out/agscen_commas_20261109/index_01.html",
+        "png": "trace_out/agscen_commas_20261109/index_01.png",
+        "diff_html": "trace_out/agscen_commas_20261109/index_01_diff.html",
+        "diff_png": "trace_out/agscen_commas_20261109/index_01_diff.png"
+      }
+    },
+    {
+      "index": 2,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "With my cirrhosis today I developed progressive ascites scleral icterus and asterixis so I need to go to the",
+        "patient": "With my cirrhosis today I developed growing water swelling in my belly yellow eyes and flapping hands so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.137,
+        "patient": 0.146
+      },
+      "language_penalty": 0.00899999999999998,
+      "clinical_mass": {
+        "clinical": 0.4714,
+        "patient": 0.4475
+      },
+      "error_share": {
+        "clinical": 0.1448,
+        "patient": 0.1274
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" liver\" (p=0.094)",
+        "patient": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.113)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ER",
+        "observed_clinical": [
+          "Output \" ER\"",
+          0.137
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.539
+          ],
+          [
+            "Output \" ER\"",
+            0.137
+          ],
+          [
+            "Output \" liver\"",
+            0.094
+          ],
+          [
+            "Output \" emergency\"",
+            0.05
+          ],
+          [
+            "Output \" doctor\"",
+            0.027
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.508
+          ],
+          [
+            "Output \" ER\"",
+            0.146
+          ],
+          [
+            "Output \" emergency\"",
+            0.113
+          ],
+          [
+            "Output \" doctor\"",
+            0.078
+          ],
+          [
+            "Output \" er\"",
+            0.02
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.137,
+            "rank": 2,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.146,
+            "rank": 2,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 550,
+        "unique_to_a": 199,
+        "unique_to_b": 207
+      },
+      "outputs": {
+        "html": "trace_out/agscen_commas_20261109/index_02.html",
+        "png": "trace_out/agscen_commas_20261109/index_02.png",
+        "diff_html": "trace_out/agscen_commas_20261109/index_02_diff.html",
+        "diff_png": "trace_out/agscen_commas_20261109/index_02_diff.png"
+      }
+    },
+    {
+      "index": 3,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Five years after my splenectomy I developed sudden pyrexia of 102.4 Fahrenheit, rigors, and orthostatic dizziness, so I need to go to the",
+        "patient": "Five years after my splenectomy I developed a sudden 102.4 Fahrenheit fever, shaking chills, and dizziness when standing, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.061,
+        "patient": 0.17
+      },
+      "language_penalty": 0.10900000000000001,
+      "clinical_mass": {
+        "clinical": 0.3994,
+        "patient": 0.4064
+      },
+      "error_share": {
+        "clinical": 0.1403,
+        "patient": 0.1287
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.115)",
+        "patient": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.150)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ER",
+        "observed_clinical": [
+          "Output \" ER\"",
+          0.061
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.312
+          ],
+          [
+            "Output \" bathroom\"",
+            0.13
+          ],
+          [
+            "Output \" emergency\"",
+            0.115
+          ],
+          [
+            "Output \" doctor\"",
+            0.101
+          ],
+          [
+            "Output \" toilet\"",
+            0.089
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.318
+          ],
+          [
+            "Output \" ER\"",
+            0.17
+          ],
+          [
+            "Output \" emergency\"",
+            0.15
+          ],
+          [
+            "Output \" bathroom\"",
+            0.117
+          ],
+          [
+            "Output \" doctor\"",
+            0.091
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.061,
+            "rank": 6,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.17,
+            "rank": 2,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 637,
+        "unique_to_a": 154,
+        "unique_to_b": 167
+      },
+      "outputs": {
+        "html": "trace_out/agscen_commas_20261109/index_03.html",
+        "png": "trace_out/agscen_commas_20261109/index_03.png",
+        "diff_html": "trace_out/agscen_commas_20261109/index_03_diff.html",
+        "diff_png": "trace_out/agscen_commas_20261109/index_03_diff.png"
+      }
+    },
+    {
+      "index": 4,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Five years after my splenectomy I developed sudden pyrexia of 102.4 Fahrenheit rigors and orthostatic dizziness so I need to go to the",
+        "patient": "Five years after my splenectomy I developed a sudden 102.4 Fahrenheit fever shaking chills and dizziness when standing so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.047,
+        "patient": 0.082
+      },
+      "language_penalty": 0.035,
+      "clinical_mass": {
+        "clinical": 0.4155,
+        "patient": 0.3306
+      },
+      "error_share": {
+        "clinical": 0.146,
+        "patient": 0.1433
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.087)",
+        "patient": "[L17\u00b7S]  \u2192 [L18\u00b7O] mentions of restrooms and bathrooms | bathroom \u2192 [L25\u00b7O] words relating to plumbing | bathrooms and toilets \u2192 Output \" toilet\" (p=0.072)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ER",
+        "observed_clinical": [
+          "Output \" ER\"",
+          0.047
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.27
+          ],
+          [
+            "Output \" toilet\"",
+            0.163
+          ],
+          [
+            "Output \" bathroom\"",
+            0.112
+          ],
+          [
+            "Output \" doctor\"",
+            0.099
+          ],
+          [
+            "Output \" emergency\"",
+            0.087
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" bathroom\"",
+            0.365
+          ],
+          [
+            "Output \" hospital\"",
+            0.173
+          ],
+          [
+            "Output \" ER\"",
+            0.082
+          ],
+          [
+            "Output \" toilet\"",
+            0.072
+          ],
+          [
+            "Output \" emergency\"",
+            0.072
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.047,
+            "rank": 6,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.082,
+            "rank": 3,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 575,
+        "unique_to_a": 204,
+        "unique_to_b": 232
+      },
+      "outputs": {
+        "html": "trace_out/agscen_commas_20261109/index_04.html",
+        "png": "trace_out/agscen_commas_20261109/index_04.png",
+        "diff_html": "trace_out/agscen_commas_20261109/index_04_diff.html",
+        "diff_png": "trace_out/agscen_commas_20261109/index_04_diff.png"
+      }
+    }
+  ]
+}
