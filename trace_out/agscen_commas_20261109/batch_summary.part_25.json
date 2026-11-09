@@ -1,0 +1,266 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 25,
+  "pairs_requested": 4,
+  "completed": false,
+  "screen_targets": 0.02,
+  "environment": {
+    "python": "3.11.18",
+    "engine_sha": "c6c630552630",
+    "runner_image": "20261101.186.1"
+  },
+  "results": [
+    {
+      "index": 25,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Since midnight I had repeated dark vomiting, crampy stomach pain, and heavy rectal bleeding, so I need to go to the",
+        "patient": "Since midnight I had repeated dark vomitting, crampy stomache pain, and heavy rectal bleedding, so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.344,
+        "patient": 0.21
+      },
+      "language_penalty": -0.13399999999999998,
+      "clinical_mass": {
+        "clinical": 0.4189,
+        "patient": 0.3825
+      },
+      "error_share": {
+        "clinical": 0.1235,
+        "patient": 0.1301
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.111)",
+        "patient": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.060)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ER",
+        "observed_clinical": [
+          "Output \" ER\"",
+          0.344
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.389
+          ],
+          [
+            "Output \" ER\"",
+            0.344
+          ],
+          [
+            "Output \" emergency\"",
+            0.111
+          ],
+          [
+            "Output \" doctor\"",
+            0.046
+          ],
+          [
+            "Output \" bathroom\"",
+            0.017
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.443
+          ],
+          [
+            "Output \" ER\"",
+            0.21
+          ],
+          [
+            "Output \" emergency\"",
+            0.06
+          ],
+          [
+            "Output \" doctor\"",
+            0.053
+          ],
+          [
+            "Output \" er\"",
+            0.036
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.344,
+            "rank": 2,
+            "returned": 9
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.21,
+            "rank": 2,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 648,
+        "unique_to_a": 84,
+        "unique_to_b": 100
+      },
+      "outputs": {
+        "html": "trace_out/agscen_commas_20261109/index_25.html",
+        "png": "trace_out/agscen_commas_20261109/index_25.png",
+        "diff_html": "trace_out/agscen_commas_20261109/index_25_diff.html",
+        "diff_png": "trace_out/agscen_commas_20261109/index_25_diff.png"
+      }
+    },
+    {
+      "index": 26,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Since midnight I had repeated dark vomiting crampy stomach pain and heavy rectal bleeding so I need to go to the",
+        "patient": "Since midnight I had repeated dark vomitting crampy stomache pain and heavy rectal bleedding so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.297,
+        "patient": 0.128
+      },
+      "language_penalty": -0.16899999999999998,
+      "clinical_mass": {
+        "clinical": 0.4176,
+        "patient": 0.3859
+      },
+      "error_share": {
+        "clinical": 0.1305,
+        "patient": 0.1371
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.085)",
+        "patient": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.042)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ER",
+        "observed_clinical": [
+          "Output \" ER\"",
+          0.297
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.381
+          ],
+          [
+            "Output \" ER\"",
+            0.297
+          ],
+          [
+            "Output \" emergency\"",
+            0.085
+          ],
+          [
+            "Output \" er\"",
+            0.045
+          ],
+          [
+            "Output \" doctor\"",
+            0.04
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.395
+          ],
+          [
+            "Output \" ER\"",
+            0.128
+          ],
+          [
+            "Output \" toilet\"",
+            0.1
+          ],
+          [
+            "Output \" bathroom\"",
+            0.042
+          ],
+          [
+            "Output \" emergency\"",
+            0.042
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.297,
+            "rank": 2,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.128,
+            "rank": 2,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 633,
+        "unique_to_a": 104,
+        "unique_to_b": 120
+      },
+      "outputs": {
+        "html": "trace_out/agscen_commas_20261109/index_26.html",
+        "png": "trace_out/agscen_commas_20261109/index_26.png",
+        "diff_html": "trace_out/agscen_commas_20261109/index_26_diff.html",
+        "diff_png": "trace_out/agscen_commas_20261109/index_26_diff.png"
+      }
+    }
+  ]
+}
