@@ -46,7 +46,8 @@ values (one pair for 8 units, two for 5).
    is identical within a group), with the same sign test over the 13 units.
 3. **Commas on the class.** Pairs and model rows that downgrade, comma against nocomma. Descriptive only.
 4. **Connective wording (secondary).** Contrasts 1 and 3 for `-nocomma` against `-r5`, on the 13 pairs whose
-   rewrite differs from the comma-free original only by the connective that replaced a comma. Five pairs are left
+   rewrite differs from the comma-free original only in connectives: an "and" or "with" where a comma stood,
+   and in sc-035, sc-039 and sc-049 also the final "and" changed to "with". Five pairs are left
    out of the test and reported on their own, because their rewrite also changed hyphens: sc-029 ("eighty-one" to
    "81", "outward-turned leg" to "leg turned out"), sc-040 and sc-050 ("full-body" to "full body"), and sc-042 and
    sc-052 ("blood-streaked" to "blood streaked"). The 13 kept pairs form 10 units (sc-039/sc-049, sc-043/sc-053 and
