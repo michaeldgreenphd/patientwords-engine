@@ -51,7 +51,9 @@ values (one pair for 8 units, two for 5).
    out of the test and reported on their own, because their rewrite also changed hyphens: sc-029 ("eighty-one" to
    "81", "outward-turned leg" to "leg turned out"), sc-040 and sc-050 ("full-body" to "full body"), and sc-042 and
    sc-052 ("blood-streaked" to "blood streaked"). The 13 kept pairs form 10 units (sc-039/sc-049, sc-043/sc-053 and
-   sc-044/sc-054 share a clinical sentence); the sign test runs over those 10.
+   sc-044/sc-054 share a clinical sentence); the sign test runs over those 10. Sensitivity: the same test without
+   sc-035, sc-039 and sc-049, whose rewrites also change an existing "and" to "with" (10 pairs, 8 units), so that
+   what remains is only a connective inserted where a comma stood.
 
 No correction across contrasts; nothing here is confirmatory. The wording for a null result is "no difference was
 detected on these 13 clinical sentences", not "commas have no effect". One sample per pair and model; small models
