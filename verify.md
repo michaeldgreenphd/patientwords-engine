@@ -256,6 +256,17 @@ python scripts/check_pages.py --site "$PW_SITE_ROOT" --port 8901
   chain requires `--strict` once urgency regeneration has written `unjoinable_rows`;
   the temporary regeneration below uses that stronger gate. `--strict` makes every
   warning fail; do not remove it from a publication check to hide drift.
+- The validator also recomputes `summary.penalty` in `data/simulated_scenarios.json`
+  from the payload's own rows (`check_summary_penalty`; the rule is in its docstring)
+  and fails on any disagreement. One temporary exception exists. The site's payload
+  was exported before the 2026-11-10 phrase-key correction in
+  `scripts/payload_summary.py`, so its summary counts every row as its own phrase.
+  That exact form is printed as a `note:` on every run and is accepted through
+  2026-12-15 UTC (`LEGACY_SUMMARY_ACCEPTED_THROUGH`). From 2026-12-16 it is an error
+  in report mode and under `--strict`. A note is never promoted by `--strict`, so
+  both modes pass until then. The remedy is to re-export with the corrected producer
+  and publish the result; then delete the constant, the legacy branch and their
+  tests. Do not move the date to keep a check green.
 - `claim_check.py` compares public prose against `data/claims_manifest.json` and
   data expressions. Exit 1 means failed claims. **Warnings can exit 0**: a missing
   snippet still needs investigation/manifest coordination, not a clean report.
