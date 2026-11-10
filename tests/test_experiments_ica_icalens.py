@@ -18,6 +18,7 @@ or speed. The fit here has 48 rows of width 8.
 """
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import json
 import resource
@@ -32,7 +33,7 @@ import pytest
 from scripts.experiments import activation_dataset as ad
 from scripts.experiments import capabilities, planner
 from scripts.experiments.adapters import ica
-from scripts.experiments.common import json_bytes, sha256_file
+from scripts.experiments.common import Refusal, json_bytes, sha256_file
 from scripts.experiments.store import RunStore
 
 STATUS = ica.icalens_status()
@@ -299,6 +300,59 @@ def test_the_constructor_default_is_l2_so_the_mode_must_be_passed_and_read_back(
     manifest = read(save_with_manifest(lens, tmp_path))
     assert read(tmp_path / "lens" / "icalens.json")["input_preprocessing"]["icalens_preprocessing"] == "l2"
     assert manifest["preprocessing"]["mode"] == "l2"
+
+
+def test_the_icalens_path_refuses_a_lens_whose_model_is_not_the_manifests(tmp_path: Path) -> None:
+    """The lens ``icalens`` loads carries its own model id and revision. The icalens path used to run it
+    whatever the basis manifest said, so a payload could name one model while the lens belonged to another."""
+    import icalens
+
+    basis = ica.load_basis(save_with_manifest(fit_lens("none"), tmp_path / "fitted"))
+    rows = ad.open_activation_dataset(PAIRS).layer(1)
+    loaded = icalens.ICALens.from_pretrained(basis.root)
+    assert (loaded.model_id, loaded.model_revision) == (basis.manifest["model"]["hf_id"],
+                                                        basis.manifest["model"]["revision"])
+    assert ica.apply_basis(basis, rows, layer=1, path="icalens")["execution_path"]["used"] == "icalens"
+    for change in ({"hf_id": "fixture/other-model"}, {"revision": "2" * 40}, {"revision": None}, {"hf_id": None},
+                   {"revision": "unknown"}):
+        claimed = dataclasses.replace(basis, manifest={**basis.manifest,
+                                                       "model": {**basis.manifest["model"], **change}})
+        for path in ("icalens", "auto"):
+            with pytest.raises(Refusal) as caught:
+                ica.apply_basis(claimed, rows, layer=1, path=path)
+            assert caught.value.code == "identity_mismatch" and "icalens loaded the artifact" in str(caught.value)
+
+    # The verifier's artifact: format_version 1 with a matching "model" block and a "base_model" block that
+    # names another model. icalens reads the second (shown here); the adapter refuses the artifact.
+    other = {"repo_id": "some-org/other-model", "revision": "3" * 40, "type": "base"}
+    two_blocks = tmp_path / "two_blocks"
+    shutil.copytree(basis.root, two_blocks / "lens")
+    saved = read(two_blocks / "lens" / "icalens.json")
+    saved.update(format_version=1, base_model=other)
+    (two_blocks / "lens" / "icalens.json").write_bytes(json_bytes(saved))
+    assert code_of(lambda: manifest_for(two_blocks / "lens", "lens")) == "identity_mismatch"
+    assert ica.artifact_model({**saved, "model": other}) == other        # equal blocks: the one icalens reads
+
+    # An artifact that records no revision, under a manifest that records none either: icalens fills in the
+    # string "unknown", which is the same statement as the manifest's null, so the arithmetic still runs. The
+    # identity stays unknown and score_task produces no payload from it.
+    unrevised = tmp_path / "unrevised"
+    fit_lens("none").save(unrevised / "lens")
+    saved = read(unrevised / "lens" / "icalens.json")
+    saved["model"].pop("revision")
+    (unrevised / "lens" / "icalens.json").write_bytes(json_bytes(saved))
+    path = unrevised / "basis_manifest.json"
+    path.write_bytes(json_bytes(manifest_for(unrevised / "lens", "lens")))
+    unknown = ica.load_basis(path)
+    assert unknown.manifest["model"]["revision"] is None and unknown.identity["status"] == "unknown"
+    assert icalens.ICALens.from_pretrained(unknown.root).model_revision == "unknown"
+    assert ica.apply_basis(unknown, rows, layer=1, path="icalens")["execution_path"]["used"] == "icalens"
+
+
+def code_of(call: Any) -> str:
+    with pytest.raises(Refusal) as caught:
+        call()
+    return caught.value.code
 
 
 def test_a_cpu_fit_repeats_with_the_same_seed_and_differs_with_another() -> None:

@@ -324,6 +324,45 @@ def test_link_functions_take_no_text_argument() -> None:
     assert list(inspect.signature(nps.link_or_fallback).parameters) == ["target", "component_id", "layer", "record"]
 
 
+def test_the_integers_of_a_url_are_bounded_so_a_hash_written_as_an_integer_is_refused(
+        real: dict, fixture_registry: dict) -> None:
+    """``build_link(entry, int("a" * 64, 16), layer=1)`` used to return a URL that ended in 77 digits."""
+    verified, alias = entry(fixture_registry, FX_VERIFIED), entry(fixture_registry, FX_ALIAS)
+    as_integer = int("a" * 64, 16)
+    assert verified["component_id"]["count"] == 4096 and "count" not in alias["component_id"]
+    assert (nps.MAX_COMPONENT_ID, nps.MAX_LAYER) == (2 ** 20, 4096)
+    for target, layer in ((verified, 1), (alias, 2)):
+        for component in (as_integer, 10 ** 80, 2 ** 32, 2 ** 20):
+            with pytest.raises(Refusal) as caught:
+                nps.build_link(target, component, layer=layer)
+            assert caught.value.code == "free_text_in_url"
+            assert component == 2 ** 20 or str(component) not in str(caught.value)     # the bound itself is named
+            assert code_of(lambda: nps.link_or_fallback(target, component, layer=layer)) == "free_text_in_url"
+        for big_layer in (4096, as_integer):
+            assert code_of(lambda: nps.build_link(target, 3, layer=big_layer)) == "free_text_in_url"
+            assert code_of(lambda: nps.link_or_fallback(target, 3, layer=big_layer)) == "free_text_in_url"
+    # Below the entry's recorded component count when it records one; below 2**20 otherwise.
+    assert nps.build_link(verified, 4095, layer=1).url.endswith("/4095")
+    assert code_of(lambda: nps.build_link(verified, 4096, layer=1)) == "free_text_in_url"
+    assert code_of(lambda: nps.build_link(verified, 2 ** 20 - 1, layer=1)) == "free_text_in_url"
+    assert nps.build_link(alias, 2 ** 20 - 1, layer=2).reason == nps.REASON_NOT_VERIFIED     # in range, no link
+    unmapped = nps.resolve("gemma-2-2b", "neuron", registry=real)
+    assert nps.link_or_fallback(unmapped, 2 ** 20 - 1, layer=4095)["link"] is None
+    assert code_of(lambda: nps.link_or_fallback(unmapped, 2 ** 20, layer=1)) == "free_text_in_url"
+    assert code_of(lambda: nps.link_or_fallback(unmapped, 3, layer=4096)) == "free_text_in_url"
+    # A recorded count is itself a bounded positive integer.
+    for count in (0, -1, 2 ** 20 + 1, "4096", 4096.0, True, None):
+        doc = mutated(fixture_registry, FX_VERIFIED, lambda e: e["component_id"].update(count=count))
+        assert code_of(lambda: nps.validate_registry(doc)) in ("registry_entry", "invalid_input"), count
+    # The committed registry records no count and still yields no link, for any entry and any in-range integers.
+    assert all(nps._component_count(item) is None for item in real["entries"])
+    for item in real["entries"]:
+        for layer in (None, 0, 1, 12, 4095):
+            for component in (0, 3, 99999, 2 ** 20 - 1):
+                assert nps.build_link(item, component, layer=layer).url is None, item["registry_id"]
+                assert nps.link_or_fallback(item, component, layer=layer)["link"] is None
+
+
 @pytest.mark.parametrize("component", ["alpha beta tail", "12", "C3", 3.0, True, -1, None, ["3"]])
 def test_a_non_integer_component_id_never_reaches_a_url(fixture_registry: dict, component: Any) -> None:
     target = entry(fixture_registry, FX_VERIFIED)
@@ -652,15 +691,298 @@ def test_a_string_value_is_accepted_only_as_an_id_under_a_known_key(change: Call
         assert "alpha beta tail" not in str(caught.value)            # neither a value nor a text key is echoed
 
 
-@pytest.mark.parametrize("value", ["sk-placeholder", "hf_placeholder", "AIzaPlaceholder", "ghp_placeholder"])
-def test_an_id_shaped_string_with_a_credential_prefix_is_refused_under_an_id_key(value: str) -> None:
-    """Placeholders: the issuer prefix followed by the word "placeholder". None is a credential."""
+WORDS = ["PLACEHOLDER", "WORDS", "STANDING", "IN", "FOR", "A", "PRIVATE", "SENTENCE", "OF"]      # nine constants
+
+
+@pytest.mark.parametrize("key", ["type", "lens", "lens_type", "model_id", "modelId", "source_set", "sourceSetName",
+                                 "sourceId", "dtype", "instrument_revision", "model_revision"])
+def test_a_list_of_strings_is_accepted_only_as_a_short_list_of_constants_under_type(key: str) -> None:
+    """A sentence stored one word per item used to validate under every id key, at any length."""
+    def code(value: Any, block: str = "effective_request_settings") -> str | None:
+        doc = request_document()
+        doc[block][key] = value
+        try:
+            nps.validate_request_record(doc)
+        except Refusal as refusal:
+            assert not any(str(word) in str(refusal) for word in value if isinstance(word, str) and len(word) > 2)
+            return refusal.code
+        return None
+
+    lower = [word.lower() for word in WORDS[:4]]
+    for block in ("effective_request_settings", "service_identity"):
+        assert code(lower, block) == "free_text_in_record"                  # id-shaped words, not constants
+        assert code(WORDS, block) == "free_text_in_record"                  # nine items: one over the cap
+        assert code(WORDS * 60, block) == "free_text_in_record"
+        assert code(["JACOBIAN_LENS", "JACOBIAN_LENS"], block) == "free_text_in_record"     # an item twice
+        assert code(["JACOBIAN_LENS", 3], block) == "free_text_in_record"
+        assert code(["JACOBIAN_LENS", ["LOGIT_LENS"]], block) == "free_text_in_record"
+        assert code(["org/JACOBIAN_LENS"], block) == "free_text_in_record"
+        assert code(["A" * 33], block) == "free_text_in_record"
+        assert code([], block) == "free_text_in_record"
+    # The engine's own shape, and the longest list the rule accepts: under "type" only.
+    allowed = None if key == "type" else "free_text_in_record"
+    assert code(["JACOBIAN_LENS"]) == code(["JACOBIAN_LENS", "LOGIT_LENS"]) == code(WORDS[:8]) == allowed
+    assert nps.LIST_VALUE_KEYS == {"type"} and nps.MAX_LIST_ITEMS == 8
+    assert all(nps.LIST_ITEM.fullmatch(name) for name in jlens_readout.LENS_TYPES)
+
+
+# Dummies: an issuer prefix followed by filler. None of these strings is or was a credential.
+FILLER = "x" * 34
+PREFIXED = ["sk-placeholder", "hf_placeholder", "AIzaPlaceholder", "ghp_placeholder", "hf_" + FILLER,
+            "AIza" + FILLER, "sk-" + FILLER, "gho_" + FILLER, "github_pat_" + FILLER, "xoxb-" + FILLER]
+
+
+@pytest.mark.parametrize("value", PREFIXED)
+def test_a_string_with_a_credential_prefix_is_refused_wherever_it_sits(value: str) -> None:
+    """The prefix test used to read the first characters of an id value only: ``org/<value>``, a key name, a
+    path segment and a host label all validated."""
+    def refused(change: Callable[[dict], None]) -> str:
+        doc = request_document()
+        change(doc)
+        with pytest.raises(Refusal) as caught:
+            nps.validate_request_record(doc)
+        assert caught.value.code == "secret_in_record"
+        assert value not in str(caught.value) and value.lower() not in str(caught.value).lower()
+        return str(caught.value)
+
+    def settings(**update: Any) -> Callable[[dict], None]:
+        return lambda doc: doc["effective_request_settings"].update(update)
+
+    refused(settings(model_id=value))
+    refused(settings(model_id=value.upper()))
+    refused(settings(model_id="org/" + value))                      # the part after the slash
+    refused(settings(modelId=value + "/name"))
+    refused(lambda doc: doc["service_identity"].update(type=["TOY_LENS", value]))
+    refused(settings(type=["org/" + value]))
+    refused(settings(notes=value))                                  # under a key that takes no string
+    refused(settings(extra=[1, [value]]))                           # inside a nested list
+    host_form = value.replace("_", "-")                             # a host holds no underscore
+    refused(lambda doc: doc["endpoint"].update(path="/api/" + value))
+    refused(lambda doc: doc["endpoint"].update(path="/api/toy/" + value + "/readout"))
+    refused(lambda doc: doc["endpoint"].update(host=host_form + ".invalid"))
+    refused(lambda doc: doc["endpoint"].update(host="api." + host_form + ".invalid"))
+    # As a key name, with a number, with a string (key and value swapped) and nested: refused by position.
+    for change in (settings(**{value: 1}), settings(**{value: "y"}), settings(bounds={value: [1, 2]}),
+                   settings(options=[{"deeper": {value: None}}]),
+                   lambda doc: doc["service_identity"].update({value: 1})):
+        assert "key number" in refused(change)
+
+
+def test_an_id_value_shaped_like_a_token_is_refused_and_a_commit_id_under_a_revision_key_is_not() -> None:
+    """Filler strings built here from repeated letters and digits; none is a credential."""
+    mixed = "Ab3" * 9                                  # 27 characters, three classes, no separator
+    assert len(mixed) == 27 and nps.TOKEN_RUN_LENGTH == 24
+
+    def code(key: str, value: str, block: str = "effective_request_settings") -> str | None:
+        doc = request_document()
+        doc[block][key] = value
+        try:
+            nps.validate_request_record(doc)
+        except Refusal as refusal:
+            assert value not in str(refusal)
+            return refusal.code
+        return None
+
+    for key in ("model_id", "modelId", "source_set", "sourceId", "service", "type", "lens", "dtype",
+                "instrument_revision", "model_revision", "dictionary_revision"):
+        assert code(key, mixed) == "secret_in_record", key
+        assert code(key, "org/" + mixed) == "secret_in_record", key
+        assert code(key, "v1." + mixed + "-x") == "secret_in_record", key      # a run between separators
+        assert code(key, "ab" * 13) is None, key                               # one class: not token-shaped
+        assert code(key, "a1" * 12) is None, key                               # 24 characters: at the limit
+        assert code(key, "a1" * 13) == "secret_in_record", key                 # 26: lower-case and digits
+        assert code(key, "0123456789abcdef" * 2) == "secret_in_record", key    # 32 hex: not a commit id
+    # 40 or 64 lower-case hex digits are a commit id or a content hash under a revision key, and only there.
+    for digits in ("0123456789abcdef0123" * 2, "0123456789abcdef" * 4):
+        for key in ("model_revision", "instrument_revision", "dictionary_revision"):
+            assert code(key, digits) is None, key
+            assert code(key, digits.upper()) == "secret_in_record", key
+            assert code(key, "org/" + digits) == "secret_in_record", key
+        for key in ("model_id", "source_set", "service", "type"):
+            assert code(key, digits) == "secret_in_record", key
+    recorded = request_document()
+    recorded["service_identity"]["instrument_revision"], recorded["not_recorded"] = "0123456789abcdef0123" * 2, []
+    assert nps.validate_request_record(recorded)
+    assert code("prompt_sha256", "6" * 64) is None                              # a hash key keeps its own rule
+    # Ids the registry and the engine use pass.
+    for value in ("gemma-2-2b", "google/gemma-2-2b", "gemmascope-transcoder-16k", "qwen3.5-2b-pt",
+                  "sida/icalens-qwen3.5-2b-ultrachat-1m", "JACOBIAN_LENS", "float32"):
+        assert code("model_id", value) is None, value
+
+
+SENTINEL = "ZZSENTINEL"
+
+
+@pytest.mark.parametrize("entry_value", [
+    SENTINEL + " words here", SENTINEL, "hf_" + FILLER, "/" + SENTINEL, "/notes/" + SENTINEL,
+    "/effective_request_settings/" + SENTINEL + " words", "/effective_request_settings/" + "a" * 49,
+    "/effective_request_settings/hf_" + FILLER, "/endpoint/host", "/schema_version", "/not_recorded/0",
+    "effective_request_settings/top_n", "/effective_request_settings/", "", 7, None, [SENTINEL], {SENTINEL: 1},
+    # Well-formed pointers under a known root that point at no null field of the record.
+    "/effective_request_settings/" + SENTINEL, "/service_identity/model_id", "/response_sha256",
+    "/effective_request_settings/bounds/top_n/0", "/effective_request_settings/bounds/top_n/7",
+])
+def test_a_not_recorded_entry_is_checked_as_a_pointer_and_never_repeated(entry_value: Any) -> None:
+    """The refusal used to print every entry that pointed at no null field, so a sentence or a credential
+    appended to ``not_recorded`` came back in the message."""
     doc = request_document()
-    doc["effective_request_settings"]["model_id"] = value
-    assert code_of(lambda: nps.validate_request_record(doc)) == "secret_in_record"
-    listed = request_document()
-    listed["service_identity"]["type"] = ["toy-lens", value]
-    assert code_of(lambda: nps.validate_request_record(listed)) == "secret_in_record"
+    doc["not_recorded"].append(entry_value)
+    with pytest.raises(Refusal) as caught:
+        nps.validate_request_record(doc)
+    message = str(caught.value)
+    assert caught.value.code == "not_recorded_pointer"
+    assert SENTINEL not in message and FILLER not in message and "a" * 49 not in message
+    assert "position(s) [1]" in message and "1 of the 2" in message
+    # The builder passes the list on and gives the same refusal, also for entries it cannot sort.
+    with pytest.raises(Refusal) as built:
+        nps.request_record(**{**{k: v for k, v in request_document().items() if k != "schema_version"},
+                              "not_recorded": doc["not_recorded"]})
+    assert built.value.code == "not_recorded_pointer" and SENTINEL not in str(built.value)
+
+
+def test_not_recorded_must_be_a_list_of_distinct_pointers() -> None:
+    for value in (None, "/service_identity/instrument_revision", {"/service_identity/instrument_revision": 1}, 3):
+        doc = {**request_document(), "not_recorded": value}
+        assert code_of(lambda: nps.validate_request_record(doc)) == "not_recorded_pointer"
+    twice = request_document()
+    twice["not_recorded"] = twice["not_recorded"] * 2
+    assert code_of(lambda: nps.validate_request_record(twice)) == "not_recorded_pointer"
+    many = {**request_document(), "not_recorded": ["/service_identity/instrument_revision"] * 300}
+    assert code_of(lambda: nps.validate_request_record(many)) == "not_recorded_pointer"
+    # The pointer check runs before the settings are read: a record with both faults reports this one.
+    both = request_document()
+    both["not_recorded"].append(SENTINEL)
+    both["effective_request_settings"]["api_key"] = "x"
+    assert code_of(lambda: nps.validate_request_record(both)) == "not_recorded_pointer"
+
+
+def request_refusal(change: Callable[[dict], None]) -> Refusal:
+    doc = request_document()
+    change(doc)
+    with pytest.raises(Refusal) as caught:
+        nps.validate_request_record(doc)
+    return caught.value
+
+
+@pytest.mark.parametrize("change", [
+    lambda d: d["effective_request_settings"].update(note=SENTINEL),
+    lambda d: d["effective_request_settings"].update(model_id=SENTINEL + " a b"),
+    lambda d: d["effective_request_settings"].update(api_key=SENTINEL),
+    lambda d: d["effective_request_settings"].update({SENTINEL + " a b": 1}),
+    lambda d: d["effective_request_settings"].update(type=[SENTINEL, "a b"]),
+    lambda d: d["effective_request_settings"].update(prompt_sha256=SENTINEL),
+    lambda d: d["effective_request_settings"].update(max_tokens=SENTINEL),
+    lambda d: d["service_identity"].update(service=[SENTINEL]),
+    lambda d: d["service_identity"].update(service=SENTINEL + " a"),
+    lambda d: d.update(response_sha256=SENTINEL + " a"),
+    lambda d: d.update(retrieved_utc=SENTINEL + " a"),
+    lambda d: d["endpoint"].update(path="/" + SENTINEL + " a"),
+    lambda d: d["endpoint"].update(path="/api/" + SENTINEL + "?prompt=" + SENTINEL),
+    lambda d: d["endpoint"].update(host=SENTINEL + " a"),
+    lambda d: d["endpoint"].update(method=SENTINEL),
+    lambda d: d["endpoint"].update({SENTINEL: 1}),
+    lambda d: d.update(schema_version=SENTINEL),
+    lambda d: d.update({SENTINEL: SENTINEL}),
+    lambda d: d.update(effective_request_settings=SENTINEL),
+    lambda d: d.update(service_identity=[SENTINEL]),
+    lambda d: d.update(endpoint=SENTINEL),
+    lambda d: d.update(not_recorded=[{SENTINEL: 1}]),
+    lambda d: d.update(not_recorded=SENTINEL),
+])
+def test_no_refusal_of_a_request_record_repeats_a_value(change: Callable[[dict], None]) -> None:
+    """docs/experiment_interface/neuronpedia.md says a refusal never repeats a value; this holds it to that."""
+    assert SENTINEL not in str(request_refusal(change))
+
+
+def test_a_record_nested_beyond_the_recursion_limit_is_a_refusal() -> None:
+    node: Any = 1
+    for _ in range(sys.getrecursionlimit() + 100):
+        node = {"a": node}
+    deep = request_document()
+    deep["effective_request_settings"]["bounds"] = node
+    assert code_of(lambda: nps.validate_request_record(deep)) == "invalid_input"
+
+
+def test_the_endpoint_host_and_path_are_bounded() -> None:
+    assert request_refusal(lambda d: d["endpoint"].update(path="/a" * 9)).code == "request_record"
+    assert nps.validate_request_record({**request_document(), "endpoint": {
+        "method": "GET", "host": "www.service.invalid", "path": "/a" * 8}})
+    for host in ("a" * 64 + ".invalid", ".".join(["a"] * 9), "service..invalid", ".invalid", "service.invalid.",
+                 "under_score.invalid", 5):
+        assert request_refusal(lambda d: d["endpoint"].update(host=host)).code == "request_record", host
+    # A host label that begins hf- is refused as well: an over-refusal the doc states.
+    assert request_refusal(lambda d: d["endpoint"].update(host="hf-mirror.invalid")).code == "secret_in_record"
+
+
+def test_refusals_of_the_other_records_repeat_no_value_that_failed_its_check(
+        real: dict, fixture_registry: dict, explanations: dict, graph_ref: dict, tmp_path: Path) -> None:
+    """Each case puts the sentinel where a value or a key fails a check, and reads the message."""
+    def message(call: Callable[[], Any], code: str) -> str:
+        with pytest.raises(Refusal) as caught:
+            call()
+        assert caught.value.code == code and SENTINEL not in str(caught.value), str(caught.value)
+        return str(caught.value)
+
+    text_key = SENTINEL + " a b"
+    # Registry.
+    message(lambda: nps.validate_registry(mutated(fixture_registry, FX_VERIFIED, lambda e: e.update(
+        method=SENTINEL))), "unknown_method")
+    message(lambda: nps.validate_registry(mutated(fixture_registry, FX_VERIFIED, lambda e: e["verification"].update(
+        status=SENTINEL))), "verification_status")
+    message(lambda: nps.validate_registry(mutated(fixture_registry, FX_VERIFIED, lambda e: e["not_recorded"].append(
+        SENTINEL + " words"))), "not_recorded_pointer")
+    # A superscript two passes str.isdigit and fails int(): it used to come back inside a ValueError text.
+    message(lambda: nps.validate_registry(mutated(fixture_registry, FX_VERIFIED, lambda e: e["not_recorded"].append(
+        "/site/layers/\u00b2"))), "not_recorded_pointer")
+    unread = copy.deepcopy(real)
+    unread["sources_not_read"] = [{"url": "https://exports.invalid/v1?X-Amz-Signature=" + SENTINEL,
+                                   "attempted_utc_date": "2026-11-10", "result": "not read"}]
+    assert "sources_not_read[0]" in message(lambda: nps.validate_registry(unread), "registry_entry")
+    named = copy.deepcopy(entry(fixture_registry, FX_VERIFIED))
+    named["registry_id"] = SENTINEL + " words"
+    message(lambda: nps.build_link(named, 3, layer=1), "registry_entry")
+    # resolve: the argument is reported by type.
+    assert "got list" in message(lambda: nps.resolve([SENTINEL], "ica_component", registry=real), "invalid_input")
+    message(lambda: nps.resolve("toy-model", SENTINEL, registry=real), "representation_type")
+    # Explanation records.
+    def explained(change: Callable[[dict], None]) -> Callable[[], Any]:
+        doc = copy.deepcopy(explanations)
+        change(doc)
+        return lambda: nps.validate_feature_explanations(doc)
+    counted = message(explained(lambda d: d["labels"][0].update({text_key: 1})), "explanation_record")
+    assert "1 name(s) that are not short identifiers" in counted
+    message(explained(lambda d: d["labels"][0].update({text_key + " score": 1})), "merged_score")
+    message(explained(lambda d: d["labels"][0]["source"].update({text_key: "x"})), "explanation_record")
+    message(explained(lambda d: d["quantities"].update({text_key: []})), "merged_score")
+    message(explained(lambda d: d["quantities"]["lens_token_rank"][0].update(kind=SENTINEL)), "score_kind_mismatch")
+    message(explained(lambda d: d["quantities"]["lens_token_rank"][0].update({text_key: 1})), "quantity_fields")
+    message(explained(lambda d: d["not_recorded"].append(SENTINEL)), "not_recorded_pointer")
+    message(lambda: nps.collect_quantity(SENTINEL, []), "score_kind_merge")
+    message(lambda: nps.collect_quantity("lens_token_rank", [{"kind": SENTINEL}]), "score_kind_merge")
+    # A key that is a short identifier is still named, so the message stays usable.
+    assert "'confidence'" in str(code_and_text(explained(lambda d: d["labels"][0].update(confidence=0.9))))
+    # Graph references and snapshot records.
+    def referenced(change: Callable[[dict], None]) -> Callable[[], Any]:
+        doc = copy.deepcopy(graph_ref)
+        change(doc)
+        return lambda: nps.validate_graph_reference(doc)
+    message(referenced(lambda r: r.update({text_key: 1})), "graph_ref_keys")
+    message(referenced(lambda r: r["graph"].update({text_key: SENTINEL})), "graph_ref_keys")
+    message(referenced(lambda r: r["model"].update(hf_id=SENTINEL + " a")), "free_text_in_reference")
+    message(referenced(lambda r: r.update(not_recorded=[SENTINEL])), "not_recorded_pointer")
+    export = tmp_path / "export.jsonl"
+    export.write_bytes(b"alpha\n")
+    record = nps.record_snapshot(export, None, None)
+    message(lambda: nps.verify_snapshot(export, {**record, "not_recorded": record["not_recorded"] + [SENTINEL]}),
+            "not_recorded_pointer")
+    message(lambda: nps.verify_snapshot(export, {**record, "source_url": "https://x.invalid/?k=" + SENTINEL}),
+            "snapshot_url")
+
+
+def code_and_text(call: Callable[[], Any]) -> Refusal:
+    with pytest.raises(Refusal) as caught:
+        call()
+    return caught.value
 
 
 def test_the_engines_own_request_settings_validate_once_the_prompt_is_named_by_hash() -> None:

@@ -84,7 +84,7 @@ when a model has an entry of another type.
 | `model` | the engine's study identity: short id, Hugging Face id, pinned commit. It is not a statement about what a hosted service loads |
 | `neuronpedia` | `model_id`, `source_set`, `source_id` and `id_source` (where the ids were read), or null |
 | `site` | capture site, layer index base, layer list |
-| `component_id` | the form of a component id and its source |
+| `component_id` | the form of a component id and its source; optionally `count`, the number of components one layer's source holds (an integer from 1 to 2**20). No committed entry records a count on 2026-11-10 |
 | `fitted_artifact_sha256`, `artifact` | content hash, repository, revision, and the model the artifact was fitted on |
 | `calibration`, `use` | whether the pair is the calibrated reference; what the project does with it |
 | `label_source` | `name`, `version`, `explanation_type`, `explanation_model`, `scorer`, `retrieved_utc` |
@@ -184,12 +184,18 @@ entries give `ambiguous` with both ids; the caller narrows the query. Nothing is
 2. The entry records a `url_pattern` with the source it was read in. Otherwise the reason is
    `no recorded URL pattern`.
 
-No text can enter a URL. The rule has four parts.
+No text can enter a URL. The rule has five parts.
 
 - `build_link` and `link_or_fallback` take a registry entry, an integer component id and an
   integer layer. They have no text parameter.
 - A component id or layer that is not a non-negative integer is refused (`free_text_in_url`)
   before the entry's status is looked at.
+- Both integers are bounded, with the same code. A component id is below the entry's
+  `component_id.count` when the entry records one, and below 2**20 (1,048,576) in every case. A
+  layer is below 4096. An integer is data like any other: a SHA-256 written as a decimal integer
+  has up to 78 digits, and before this bound `build_link` put such a number at the end of a URL.
+  The refusal message does not repeat the integer. What the bound leaves open: 20 bits in the
+  component id and 12 bits in the layer, on an entry that records no count.
 - A template is `https`, with a fixed host and path segments made of id characters and the
   placeholders `{model_id}`, `{source_set}`, `{source_id}`, `{layer}`, `{component}`. A query
   string, a fragment, percent-encoding and any other placeholder are refused at registry load
@@ -252,21 +258,71 @@ so the check has three parts.
 - **By value type.** A value is null, a boolean, a finite number, an object, or a list of those. A
   string is accepted only under an id key (`model_id`, `modelId`, `source_set`, `sourceSetName`,
   `source_id`, `service`, `instrument_revision`, `model_revision`, `dictionary_revision`, `type`,
-  `lens`, `lens_type`, `dtype`), where it must have the form of an id (at most 64 characters, no
-  whitespace, optionally `owner/name`) or be a list of ids. Any other string, and any string
-  inside another list, is refused (`free_text_in_record`). A key must itself be a short
-  identifier.
-- **By prefix.** An id-shaped string that starts like a credential of a known issuer (`sk-`,
-  `hf_`, `AIza`, `ghp_`, `gho_`, `github_pat_`, `xox`) is refused under an id key
-  (`secret_in_record`).
+  `lens`, `lens_type`, `dtype`), where it must be one id (at most 64 characters, no whitespace,
+  optionally `owner/name`). A list of strings is accepted under one key, `type`. That is the only
+  field of the engine's own request bodies that holds one: the lens request sends
+  `"type": [lens_type]` with `JACOBIAN_LENS` or `LOGIT_LENS` (`scripts/jlens_readout.py:52-68`), and
+  the graph request holds no list (`medlang_circuits/graph_client.py:304-321`). Such a list has 1
+  to 8 distinct items, each an upper-case constant (`[A-Z][A-Z0-9_]{0,31}`). A list under any other
+  id key, a longer list, a repeated item and an item of another form are refused, as is any
+  string inside any other list (`free_text_in_record`). A key must itself be a short identifier.
+- **By the credential screen** (`secret_in_record`). Two tests.
+  - *Issuer prefix.* A string is refused when a `/`-separated part of it starts like a credential
+    of a known issuer (`sk-`, `hf_`, `AIza`, `ghp_`, `gho_`, `github_pat_`, `xox`; any letter
+    case), wherever the string sits. The same test is applied to every key name, to every segment
+    of the endpoint path and to every label of the endpoint host. A host cannot hold an
+    underscore, so a host label is also tested against the prefixes with a hyphen in its place: a
+    host label that begins `hf-` is refused. That refuses some harmless host names. The rule is kept
+    because a validated record is committed to a public repository.
+  - *Token form.* A string under an id key is refused when it holds a run of more than 24 letters
+    and digits with no separator that draws on at least two of lower-case letters, upper-case
+    letters and digits. Issued tokens have that form; the ids the engine and the registry use do
+    not. The one exception is 40 or 64 lower-case hex digits under `model_revision`,
+    `instrument_revision` or `dictionary_revision`: a commit id or a content hash. A key that ends
+    in `sha256` holds 64 hex digits by its own rule.
+- **`not_recorded`.** The list is checked before anything else reads it. It holds at most 256
+  distinct entries. Each is a JSON pointer made of key names and list indexes under
+  `/effective_request_settings`, `/service_identity`, `/response_sha256` or `/retrieved_utc`, and
+  each must point at a field that is null (`not_recorded_pointer`). A sentence or a credential
+  appended to the list is refused by the first rule, and a well-formed pointer that names no null
+  field by the second.
 
-A refusal message names the key and never repeats a value.
+The endpoint host has at most 8 labels of letters, digits and hyphens, each at most 63 characters.
+The endpoint path has at most 8 segments of id characters, each at most 64 characters, with no
+query string.
 
-What the check cannot see: a credential or a short text that has the form of an id and is stored
-under one of the id keys; words spelled as a key name or as an endpoint path segment (the path is
-limited to id characters and 64 characters per segment); a number that encodes something. The
-check reads key names, value types and character classes. It does not read meaning. A request
-record still needs a person's review before it is committed.
+No refusal of a request record repeats a value, an entry of `not_recorded`, or a key that failed
+the key-form check or the prefix test. A message names the keys that passed both, list positions
+and counts: a refused entry of `not_recorded` is reported as "1 of the 2 entries, at position(s)
+[1]", and a refused key as "key number 3" of its object in sorted order. A key that is a short
+identifier and is refused for a fragment (`api_key`, `user_prompt`) is named, because the name is
+what the reader has to remove. `test_no_refusal_of_a_request_record_repeats_a_value` and
+`test_a_not_recorded_entry_is_checked_as_a_pointer_and_never_repeated` place a sentinel string in
+each position and read the message.
+
+The other validators of the module follow the same rule in a weaker form, because the documents
+they check hold ids and public label text. A message repeats a value only after that value passed
+an id, hash, date or integer check. A value that failed its check (a method id, a verification
+status, a quantity kind, a source URL, an entry of `not_recorded`) and a key that is not a short
+identifier are reported by position, count or type
+(`test_refusals_of_the_other_records_repeat_no_value_that_failed_its_check`). One exception is
+outside this module: a structural error of the registry comes from the shared schema checker
+(`scripts/experiments/common.py`, `require_structure`), which prints the path of the offending
+key, including a key the schema does not allow.
+
+What the check cannot see.
+
+- A credential that passes the screen: one of 24 characters or fewer; one with a separator at
+  least every 24 characters; one made of a single character class (lower-case letters only, for
+  example); one from an issuer whose prefix is not in the list; one whose issuer prefix is not at
+  the start of a `/`-separated part and whose remainder is not token-shaped.
+- A short text that has the form of an id and is stored under one of the id keys (one id, 64
+  characters per part), and up to 8 upper-case words in the `type` list.
+- Words spelled as a key name, as a host label or as one of the at most 8 path segments.
+- A number that encodes something.
+
+The check reads key names, value types, character classes and string forms. It does not read
+meaning. A request record still needs a person's review before it is committed.
 
 Why the record asks for effective settings and service identity. The hosted graph API ignores an
 unknown key without an error (`graph_client.py:319-320`), so the request that was sent is weaker
@@ -459,7 +515,9 @@ Conditions attached to the later rows.
 | The registry rules, link rules, snapshot checks, record validators and graph-reference rules behave as written | `tests/test_experiments_neuronpedia.py`, offline, on a synthetic registry and the real registry file |
 | Real entries agree with the engine's tables | the same tests compare study ids, Hugging Face ids and pins with `scripts/logits_eval.py`, source sets with `neuronpedia_features.MODEL_SOURCE_SETS`, the calibrated pair with `scripts/feature_models.py`, and artifact ids with the capability matrix |
 | The module opens no socket | `test_importing_and_using_the_module_opens_no_socket` replaces `socket.socket`, `socket.create_connection` and `socket.getaddrinfo`, loads the module from its file, calls each of its sixteen public functions and asserts that the set it called equals the set the module defines; `test_module_imports_no_network_or_process_library` lists the imports |
-| A request record holds no credential and no prompt text | checked by key name, value type and character class, on abstract placeholders. Not verified: a credential that has the form of an id under an id key, which the check cannot tell from an id |
+| A request record holds no credential and no prompt text | checked by key name, value type, character class and the credential screen (issuer prefix; token form), on abstract placeholders and on dummy strings made of an issuer prefix and filler. Not verified: the cases listed under "What the check cannot see", which the check cannot tell from an id |
+| A refusal of a request record repeats no value | a sentinel string is placed under each key, in `not_recorded`, in the endpoint and as a key, and the message is read (`test_no_refusal_of_a_request_record_repeats_a_value`, `test_a_not_recorded_entry_is_checked_as_a_pointer_and_never_repeated`, `test_a_string_with_a_credential_prefix_is_refused_wherever_it_sits`) |
+| An integer in a URL is a component index or a layer number | bounded as described under *Resolving and linking*; `test_the_integers_of_a_url_are_bounded_so_a_hash_written_as_an_integer_is_refused` also builds no URL from any committed entry over layers 0 to 4095 and component ids up to 2**20 - 1 |
 | Any Neuronpedia id resolves on the site | not verified. No page was read and no request was made |
 | Any hosted checkpoint equals a study pin | not verified. No hosted revision is recorded anywhere |
 | Any page URL pattern | not verified. None is recorded |

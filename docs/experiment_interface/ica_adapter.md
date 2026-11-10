@@ -95,6 +95,18 @@ difference means the manifest was edited after it was built.
 - A model id, model type or revision in the manifest that differs from a value the artifact
   records is refused (`identity_mismatch`). The capture site and the layer-indexing label are
   compared in the same place (`layer_metadata`).
+- The artifact's model block is the one `icalens` itself reads: `base_model` when
+  `int(format_version) == 1`, `model` otherwise (`src/icalens/lens.py:651-652`,
+  `ICALens.from_pretrained`; confirmed in the installed 0.4.0 package). `ica.artifact_model` makes
+  the same choice and never falls back to the other block, so the adapter and the reference name
+  the same model for one artifact. An artifact that holds both blocks with different contents is
+  refused (`identity_mismatch`) when a manifest is built from it and when a basis is loaded: no
+  `icalens` writer produces one, and which model it belongs to would depend on the reader.
+- On the `icalens` execution path the lens that `icalens` loaded must carry the manifest's model
+  id and revision (`identity_mismatch` otherwise). `icalens` fills in the string `"unknown"` for a
+  revision the artifact lacks; that and a null manifest revision both mean "not recorded" and
+  count as equal, so the arithmetic can still be run on such a basis through `apply_basis`, while
+  `score_task` produces no payload from it (`unknown_identity`).
 - When the artifact's revision is absent, null or the placeholder `"unknown"`, the basis identity
   is `unknown` whatever revision the manifest states, and `artifact_revision` is listed among the
   unknown fields. The manifest cannot know more about the fit than the artifact the fit wrote.
@@ -116,6 +128,12 @@ site name without having been captured there. The reference refuses the same cas
 command (`src/icalens/cli/profile.py:627-630`, "activation site differs", "layer indexing
 differs"). The payload records the dataset's two values under `capture.activation_site` and
 `capture.layer_indexing`, beside `capture.site`, which is the protocol's own name for the site.
+
+A fit dataset, when one is supplied, is held to the same rule: its `activation_site` and
+`layer_indexing` must be recorded and equal the basis artifact's (`layer_metadata`). A basis
+manifest that names, by hash, a dataset captured at another site does not describe where the basis
+was fitted, and the split-leakage report on that dataset would say `checked` about the wrong
+rows.
 
 This is a comparison of two recorded strings. It does not establish that the capture code read the
 site those strings name.
@@ -146,8 +164,22 @@ adapter checks them against the protocol and refuses `split_leakage` when:
   held-out variant's, or a dataset-level `corpus_id` that is a held-out family id;
 - the basis was fit on the dataset that is being scored while that dataset holds held-out families.
 
+The fit dataset's row map is read through the structural check the scored dataset gets
+(`activation_dataset.row_map_documents`) before any document is compared. A document that is not
+an object, a `family_id`, `corpus_id` or `variant` that is not a string (null and absent are
+allowed), a `token_sha256` that is not 64 lower-case hex digits (null and absent are allowed), a
+document index listed twice, an unknown role and a dataset-level `corpus_id` that is not a string
+are refused (`row_alignment`). The reason: a list such as `["fam-2"]` under `family_id` equals no
+held-out id, so a membership test would pass it as if it named nothing. A provenance block that
+lists no documents (`documents` null or absent, or an empty list) is reported as
+`fit_dataset_has_no_row_map`.
+
 Each payload records which of these checks ran (`split_leakage_checks`), one word per check. A
-check that had nothing to compare says so and is never reported as `checked`:
+check that had nothing to compare says so and is never reported as `checked`. The object holds
+exactly these seven keys, and each key holds one of the words listed for it; `validate_payload`
+refuses any other key set and any other word (`split_leakage`), and refuses a payload that says
+`fit_dataset_not_supplied` under one of the two fit-dataset keys and not under the other. The list
+is `ica.LEAKAGE_WORDS`:
 
 | Key | Words |
 |---|---|
@@ -282,9 +314,43 @@ both cases. With `file_pins: "verified"` those hashes equal the manifest's recor
 
 Writing. Every check on the arguments runs before a file is created; finiteness is checked on the
 values after the cast, so a float64 value that overflows float32 is refused (`non_finite`). The
-files are written to a staging directory inside the target, validated there in full, and moved
-into place with the manifest last. A refused write removes the staging directory and leaves the
-target as it was: no new directory, and an existing dataset unchanged byte for byte.
+files are written to a staging directory inside the target (`.staging-*`), validated there in
+full, and moved into place with the manifest last.
+
+Where the writer writes. The target passes `common.check_output_path`, and the files are then
+moved only through real directories inside that target. A symbolic link at the target, at
+`layers` or at a destination file is refused (`protected_root`, the code of the path guard such a
+link would get around) before anything is created. Before this check, a target whose `layers` was
+a link to another directory had its layer file moved into that directory, which no path rule had
+looked at. The check reads the directory entries right before the move. It is not a
+descriptor-relative write, so a link that another process creates between the check and the move
+is not covered.
+
+What a write that does not complete leaves behind:
+
+- Refused, or failed, before the move into place: the target is as it was. No new directory, no
+  changed file, no staging directory.
+- A failure during the move into place that Python can handle (an I/O error on one file, an
+  interrupt): the previous dataset is put back. Each file being replaced is first moved into
+  `.staging-*/.replaced/`, the old manifest before any other file; the new files are then moved
+  in, the new manifest last; the installed dataset is validated; only then are the old files
+  removed. On a failure at any of those steps the new files are removed and the old ones moved
+  back, and the previous dataset reads byte for byte as before. The test fails each of the six
+  moves of a three-file overwrite in turn, with an `OSError` and with a `KeyboardInterrupt`.
+- The moves back fail as well (the disk keeps failing): the staging directory is kept, the
+  refusal (`incomplete`) names it, and the old files are in its `.replaced` directory.
+- The process is killed during the move into place, or power is lost: no handler runs. The old
+  manifest left first and the new one arrives last, so the target has no `activations.json` and
+  every reader refuses the directory (`dataset_format`); a reader never sees a manifest beside
+  files it was not written with. The replaced files are under `.staging-*/.replaced/` with their
+  relative names and can be moved back by hand. A kill after the new manifest is in place leaves
+  the complete new dataset and a leftover staging directory. A later write to a target that holds
+  a `.staging-*` directory is refused (`incomplete`) until a person has dealt with it. The moves
+  are renames and are not fsynced; nothing is claimed about a filesystem that reorders them across
+  a power loss. This case was not tested: no test kills the process.
+
+A file of the previous dataset that the new dataset does not name (a layer the new one lacks, or a
+layer file of another dtype) is left in place; the new manifest does not list it.
 
 Limits of this module: it writes float16, float32 and float64 and reads bfloat16 without writing
 it; it assumes little-endian bytes, which the format does not declare (the reference writer emits
@@ -306,6 +372,11 @@ and token ids, it requires:
 - the basis's synthetic flag to equal the payload's (`synthetic_label`), the fit split to be the
   protocol's discovery split (`split_leakage`), and the capture site and layer index base to be the
   task's (`layer_metadata`);
+- `split_leakage_checks` to hold exactly the seven keys `check_split_leakage` returns and, under
+  each, one of the words of the table in *Fitting uses the discovery split only*
+  (`split_leakage`). A filed payload cannot say `passed`, and cannot turn
+  `checked_without_token_hashes` into a word the adapter never reports. It can still be edited from
+  one listed word to another (for example to `checked`); see the last paragraph of this section;
 - the dataset's manifest hash, sample hash and one layer hash per scored layer, with `file_pins`
   one of its two words (`artifact_hash`);
 - every squared-coordinate share to equal `score**2 / sum(score**2)` recomputed from the scores of
@@ -338,7 +409,7 @@ Verified by running the reference implementation, in an isolated environment, on
 (Python 3.12.3; torch 2.13.0+cu130, the PyPI build, run on CPU; `icalens` 0.4.0 installed from a
 `git archive` export of `aa3b95c`; numpy 2.4.6; safetensors 0.8.0). Command and result:
 `/home/user/.venvs/ica/bin/python -m pytest -q -p no:cacheprovider tests/test_experiments_ica_icalens.py`,
-13 passed.
+14 passed.
 
 | Statement | How |
 |---|---|
@@ -349,6 +420,7 @@ Verified by running the reference implementation, in an isolated environment, on
 | For a lens fitted by `icalens` on the 48 toy rows (4 components, 50 iterations, seed 7, CPU), in each of the three preprocessing modes, the numpy path and `icalens` agree on the 24 toy pair rows. | Largest absolute score difference: 0 against the package's numpy code path (it repeats the same float64 operations, so zero is expected and shows only that the formula is the same); at most 4.4e-16 against its torch code path; at most 4.8e-7 when `icalens` is given the stored float32 rows and computes in float32. The largest absolute score was 3.7, 2.5 and 1.4 in the three modes. Row cosines at least 1 - 1e-9. Asserted tolerances: 1e-9 (float64) and 1e-4 (float32 input), relative to the largest absolute score. |
 | The manifest's preprocessing mode equals what the saved `icalens.json` records, in all three modes and for the constructor default (`l2`). | field comparison after `save` |
 | A CPU fit repeats exactly with the same seed in one process and differs with another seed. | two fits compared entry by entry |
+| `icalens` 0.4.0 reads `base_model` from an artifact whose `format_version` is 1 and `model` otherwise, and fills in `"unknown"` for a missing revision. The adapter refuses the icalens path when the loaded lens's model id or revision is not the manifest's. | `ICALens.from_pretrained(...).model_id`, `.model_revision` on a fitted lens, on a copy with `format_version` 1 and two differing blocks, and on a copy with no revision |
 
 Verified only by reading the fork's source, not by running it: the per-layer `status` and `shape`
 entries (the reference reader ignores them, `src/icalens/_activation_dataset.py:75-95`); the

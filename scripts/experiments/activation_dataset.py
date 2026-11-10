@@ -33,6 +33,12 @@ then covers the values. The reader verifies those pins whenever it reads a file.
 written by the reference writer) is accepted and reported with ``file_pins: "not_recorded"``: such a dataset is
 identified by its manifest only, and nothing here fills the missing pins in.
 
+The writer. ``write_activation_dataset`` stages a dataset inside the target, validates it and moves it into
+place. It writes only through real directories inside the target that ``common.check_output_path`` accepted
+(a symbolic link at the target, at ``layers`` or at a destination file is ``protected_root``), and it keeps the
+files it replaces until the new dataset has validated, so a failed overwrite puts the previous dataset back.
+Its docstring states what a killed process leaves.
+
 Model and tokenizer identity are never invented. The format has no tokenizer field, so this module reads the
 tokenizer from ``provenance.patientwords.tokenizer`` when a PatientWords writer put it there. A dataset that
 lacks a full model revision or a tokenizer identity is read with ``identity.status == "unknown"``.
@@ -49,6 +55,7 @@ import json
 import math
 import os
 import shutil
+import stat
 import struct
 import tempfile
 from dataclasses import dataclass
@@ -71,6 +78,10 @@ ROWS_SCHEMA = "patientwords.activation-rows/1"
 FILES_KEY = "patientwords_files"
 FILES_SCHEMA = "patientwords.activation-files/1"
 PINS_VERIFIED, PINS_NOT_RECORDED = "verified", "not_recorded"
+# The writer stages a dataset in <target>/.staging-XXXXXXXX and, while it replaces an existing dataset, keeps the
+# files it replaces in a subdirectory of that staging directory until every replacement has succeeded.
+STAGING_PREFIX = ".staging-"
+REPLACED_DIR = ".replaced"
 DOCUMENT_ROLES = ("fit_corpus", "protocol_variant")
 POSITION_POLICIES = ("all", "last")
 
@@ -484,6 +495,17 @@ def _documents(dataset: ActivationDataset) -> dict[int, dict[str, Any]]:
                 "row_alignment", "each document needs document_index, role, split and n_tokens")
         require(entry["document_index"] not in documents, "row_alignment",
                 f"document_index {entry['document_index']} is listed twice in the row map")
+        # An id is a string or is not there. A list or a number under an id key would pass a membership test
+        # against a set of held-out ids without ever being compared with one.
+        for key in ("family_id", "corpus_id", "variant"):
+            named = entry.get(key)
+            require(named is None or isinstance(named, str), "row_alignment",
+                    f"document {entry['document_index']}: {key} must be a string, null or absent; found "
+                    f"{type(named).__name__}")
+        token_hash = entry.get("token_sha256")
+        require(token_hash is None or (isinstance(token_hash, str) and bool(HEX64.fullmatch(token_hash))),
+                "row_alignment", f"document {entry['document_index']}: token_sha256 must be 64 lower-case hex "
+                "digits, null or absent")
         if entry["role"] == "protocol_variant":
             require(text(entry.get("family_id")) and text(entry.get("variant")), "row_alignment",
                     f"document {entry['document_index']}: a protocol_variant document names family_id and variant")
@@ -492,6 +514,15 @@ def _documents(dataset: ActivationDataset) -> dict[int, dict[str, Any]]:
                     f"document {entry['document_index']}: a fit_corpus document names its corpus_id")
         documents[entry["document_index"]] = entry
     return documents
+
+
+def row_map_documents(dataset: ActivationDataset) -> dict[int, dict[str, Any]]:
+    """The dataset's row-map documents by ``document_index``, after the structural check every reader of a row
+    map goes through: the ``patientwords.activation-rows/1`` block with a position policy, and per document an
+    integer index listed once, a known role, a split, a token count, ids that are strings (or absent) and a
+    token hash that is 64 hex digits (or absent). Refuses ``row_alignment``. The scored dataset and a supplied
+    fit dataset are both read through this function."""
+    return _documents(dataset)
 
 
 def row_index(dataset: ActivationDataset, samples: Mapping[str, np.ndarray] | None = None
@@ -639,6 +670,101 @@ def document_entry(document_index: int, token_ids: Iterable[int], *, role: str, 
     return entry
 
 
+def _entry_kind(path: Path) -> str:
+    """``absent``, ``directory``, ``file``, ``link`` or ``other`` for the entry at ``path`` itself (a link is
+    never followed)."""
+    try:
+        mode = os.lstat(path).st_mode
+    except FileNotFoundError:
+        return "absent"
+    if stat.S_ISLNK(mode):
+        return "link"
+    return "directory" if stat.S_ISDIR(mode) else "file" if stat.S_ISREG(mode) else "other"
+
+
+def _check_destinations(given: Path, directory: Path, relatives: Iterable[str]) -> None:
+    """Refuse a target through which a write would leave the directory ``check_output_path`` checked.
+
+    ``directory`` is the resolved target. Every destination ``directory / relative`` must be reached through
+    real directories inside it: the target itself, each directory between it and the file, and the file's own
+    entry may be absent, and may not be a symbolic link. A link at ``layers`` would send ``os.replace`` to the
+    directory the link names, which was never checked against the protected roots or the Git-checkout rule.
+    A link is refused with ``protected_root``, the code of the path guard it would get around; an entry of
+    another unexpected kind (a directory where a file goes, a file where a directory goes) is ``dataset_format``.
+    """
+    link = ("is a symbolic link. The writer does not write through a link: the path that was checked against "
+            "the protected roots would not be the path that is written")
+    require(_entry_kind(Path(os.path.abspath(given))) != "link" and _entry_kind(directory) != "link",
+            "protected_root", f"the target {given} {link}")
+    require(_entry_kind(directory) in ("absent", "directory"), "dataset_format",
+            f"{directory} exists and is not a directory")
+    for relative in relatives:
+        parts = Path(relative).parts
+        node = directory
+        for part in parts[:-1]:
+            node = node / part
+            kind = _entry_kind(node)
+            require(kind != "link", "protected_root", f"{node} {link}")
+            require(kind in ("absent", "directory"), "dataset_format", f"{node} exists and is not a directory")
+        kind = _entry_kind(directory / relative)
+        require(kind != "link", "protected_root", f"{directory / relative} {link}")
+        require(kind in ("absent", "file"), "dataset_format",
+                f"{directory / relative} exists and is not a regular file")
+        # One more statement of the same rule, on the resolved path: the file's directory is inside the target.
+        parent = (directory / relative).parent
+        require(parent.resolve() == parent, "protected_root",
+                f"{parent} does not resolve to itself; a component of it {link}")
+
+
+def _install(staging: Path, directory: Path, relatives: list[str]) -> "ActivationDataset":
+    """Move the staged files into ``directory``, validate the result, and put everything back if a step fails.
+
+    ``relatives`` ends with the manifest. Each file that is already in ``directory`` is first moved to
+    ``staging / REPLACED_DIR`` under its relative name, the old manifest before any other file; then the new
+    files are moved in, the new manifest last; then the installed dataset is read and validated. So at every
+    moment the directory holds either a manifest with exactly the files it was written with, or no manifest.
+    On an exception (an I/O error, an interrupt, a refusal of the installed dataset) the new files that were
+    moved in are removed, the directories this call created are removed, and the old files are moved back, the
+    old manifest last; the exception is then raised again. If moving back fails as well, the staging directory
+    is kept and the error names it, because it holds the old files.
+    """
+    kept = staging / REPLACED_DIR
+    ordered = [relatives[-1], *relatives[:-1]]       # the old manifest leaves first
+    aside: list[str] = []
+    installed: list[str] = []
+    created: list[Path] = []
+    try:
+        for relative in ordered:
+            if _entry_kind(directory / relative) != "absent":
+                (kept / relative).parent.mkdir(parents=True, exist_ok=True)
+                os.replace(directory / relative, kept / relative)
+                aside.append(relative)
+        for relative in relatives:
+            parent = (directory / relative).parent
+            missing = [node for node in (parent, *parent.parents) if directory in node.parents
+                       and _entry_kind(node) == "absent"]
+            for node in reversed(missing):
+                node.mkdir()
+                created.append(node)
+            os.replace(staging / relative, directory / relative)
+            installed.append(relative)
+        return read_activation_dataset(directory)
+    except BaseException as error:
+        try:
+            for relative in reversed(installed):
+                (directory / relative).unlink(missing_ok=True)
+            for node in reversed(created):
+                node.rmdir()
+            for relative in reversed(aside):          # the old manifest returns last
+                os.replace(kept / relative, directory / relative)
+        except OSError as second:
+            raise Refusal("incomplete",
+                          f"the write to {directory} failed ({type(error).__name__}: {error}) and the previous "
+                          f"files could not be moved back ({type(second).__name__}: {second}). They are in "
+                          f"{kept}; the target has no complete dataset until they are moved back") from error
+        raise
+
+
 def write_activation_dataset(root: Path | str, *, model: Mapping[str, Any], layers: Mapping[int, np.ndarray],
                              samples: Mapping[str, np.ndarray], provenance: Mapping[str, Any],
                              dtype: str = "float32", activation_site: str = "resid_post",
@@ -657,12 +783,37 @@ def write_activation_dataset(root: Path | str, *, model: Mapping[str, Any], laye
 
     Nothing is put in place until the whole dataset has passed this module's own validation. Every check on the
     arguments runs before a file is created. The files are then written to a staging directory inside the
-    target, validated there with ``read_activation_dataset``, and moved into place, the manifest last. A
-    refused write removes the staging directory and leaves the target as it was: no new directory, and no
-    manifest that describes files it was not written with. A malformed argument is a ``Refusal``.
+    target (``.staging-*``), validated there with ``read_activation_dataset``, and moved into place, the
+    manifest last (``_install``). A malformed argument is a ``Refusal``.
+
+    What is guaranteed when the write does not complete:
+
+    * A write that is refused, or that fails with an error, before the move into place leaves the target as it
+      was: no new directory, no changed file, no staging directory.
+    * A failure during the move into place that Python can handle (an I/O error on one file, an interrupt)
+      puts the previous dataset back: the files that were replaced are kept inside the staging directory until
+      every replacement has succeeded and the installed dataset has validated, and they are moved back
+      otherwise. The previous dataset then reads byte for byte as before. If moving back fails as well, the
+      staging directory is kept and the refusal (``incomplete``) names it.
+    * A process that is killed during the move into place (or a power loss) runs no handler. The old manifest
+      is moved away before any other file and the new manifest arrives last, so the target then has no
+      ``activations.json``, and ``open_activation_dataset`` refuses the directory (``dataset_format``): a
+      reader never sees a manifest beside files it was not written with. The files that had been replaced are
+      under ``<target>/.staging-*/.replaced/`` with their relative names and can be moved back by hand. A kill
+      after the new manifest is in place leaves the complete new dataset and a leftover staging directory.
+      A later write to a target that holds a ``.staging-*`` directory is refused (``incomplete``) until a
+      person has dealt with it. The moves are renames inside one directory tree; they are not fsynced, so
+      nothing is claimed about what a power loss leaves on a filesystem that reorders them.
+
+    A file of the previous dataset that the new dataset does not name (a layer the new one lacks) is left in
+    place; the new manifest does not list it.
 
     The target must pass ``common.check_output_path``: never under a protected root, and inside a Git checkout
-    only under a directory named in ``allow_roots``.
+    only under a directory named in ``allow_roots``. The files are written only through real directories inside
+    that target: a symbolic link at the target, at ``layers`` or at a destination file is refused
+    (``protected_root``) before anything is created, because a move through it would land outside the path
+    that was checked. This is a check of the entries right before the move, not a descriptor-relative write:
+    a link that another process puts in place between the check and the move is not covered.
     """
     directory = check_output_path(root, allow_roots)
     require(isinstance(dtype, str) and dtype in LAYER_DTYPES, "dataset_format",
@@ -722,30 +873,36 @@ def write_activation_dataset(root: Path | str, *, model: Mapping[str, Any], laye
     }
     files = {**layer_bytes, SAMPLES_NAME: samples_bytes, MANIFEST_NAME: manifest_bytes(manifest)}  # manifest last
 
-    require(not directory.exists() or directory.is_dir(), "dataset_format",
-            f"{directory} exists and is not a directory")
+    _check_destinations(Path(root), directory, files)
     existed = directory.exists()
     if existed:
         partial = sorted(path.relative_to(directory).as_posix() for path in directory.rglob("*.partial"))
         require(not partial, "incomplete", f"the target holds partial capture files: {partial}")
+        stale = sorted(path.name for path in directory.glob(f"{STAGING_PREFIX}*"))
+        require(not stale, "incomplete",
+                f"the target holds {stale} from a write that did not finish. A {REPLACED_DIR} directory inside "
+                "one holds the files that write had replaced; move them back or remove the directory, then "
+                "write again")
     directory.mkdir(parents=True, exist_ok=True)
-    staging = Path(tempfile.mkdtemp(dir=directory, prefix=".staging-"))
+    staging = Path(tempfile.mkdtemp(dir=directory, prefix=STAGING_PREFIX))
     try:
         for relative, data in files.items():
             atomic_write_bytes(staging / relative, data)
         read_activation_dataset(staging)
-        # From here the target is changed. Its old manifest goes first, so the directory never holds a manifest
-        # beside files that manifest was not written with.
-        (directory / MANIFEST_NAME).unlink(missing_ok=True)
-        for relative in files:
-            (directory / relative).parent.mkdir(parents=True, exist_ok=True)
-            os.replace(staging / relative, directory / relative)
-    except BaseException:
-        shutil.rmtree(staging, ignore_errors=True)
+        # Checked again right before the target is changed: staging and validation took time.
+        _check_destinations(Path(root), directory, files)
+        written = _install(staging, directory, list(files))
+    except BaseException as error:
+        # _install keeps the staging directory only when it could not move the previous files back.
+        if not (isinstance(error, Refusal) and error.code == "incomplete" and (staging / REPLACED_DIR).is_dir()
+                and any(path.is_file() for path in (staging / REPLACED_DIR).rglob("*"))):
+            shutil.rmtree(staging, ignore_errors=True)
         if not existed:
             for leftover in (directory / "layers", directory):
                 if leftover.is_dir() and not any(leftover.iterdir()):
                     leftover.rmdir()
         raise
+    # The files that were replaced were inside the staging directory until here: the installed dataset has
+    # validated, so they go now.
     shutil.rmtree(staging)
-    return read_activation_dataset(directory)
+    return written

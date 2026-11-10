@@ -52,7 +52,7 @@ import numpy as np
 
 from scripts.experiments.activation_dataset import (
     PINS_NOT_RECORDED, PINS_VERIFIED, ActivationDataset, exact_revision, open_activation_dataset, read_safetensors,
-    row_index, validate_activation_dataset, variant_rows,
+    row_index, row_map_documents, validate_activation_dataset, variant_rows,
 )
 from scripts.experiments.common import (
     FIXTURE_BACKEND, FIXTURE_MODEL, HEX64, Refusal, digest, integer, read_json, require, require_structure,
@@ -110,6 +110,17 @@ SYNTHETIC_LIMITATION = "synthetic_not_measurement"
 # What a saved artifact holds when no revision was given: nothing, or the string `icalens fit activations` writes.
 PLACEHOLDER_REVISIONS = (None, "", "unknown")
 LEAKAGE_STAGE_WORDS = ("checked", "no_ids_listed")
+FIT_DATASET_NOT_SUPPLIED = "fit_dataset_not_supplied"
+# Every key of the report check_split_leakage returns, with the words it can hold. validate_payload requires
+# exactly these keys and one of these words per key; docs/experiment_interface/ica_adapter.md has the same table.
+LEAKAGE_WORDS: dict[str, tuple[str, ...]] = {
+    **{f"{stage}_stage_ids": LEAKAGE_STAGE_WORDS for stage in STAGES},
+    "document_token_hashes": ("checked", "not_listed_in_manifest"),
+    "fit_dataset_row_map": ("checked", "checked_without_token_hashes", "fit_dataset_has_no_row_map",
+                            FIT_DATASET_NOT_SUPPLIED),
+    "fit_dataset_file_pins": (PINS_VERIFIED, PINS_NOT_RECORDED, FIT_DATASET_NOT_SUPPLIED),
+    "scoring_dataset_is_fit_dataset": ("checked", "not_checked"),
+}
 INPUT_IDENTITY_SCHEMA = "patientwords.ica-input-identity/1"
 # An annotation row of a payload holds these keys and no other: a "verified" key has nowhere to sit. The basis
 # manifest's schema closes the same set for the manifest.
@@ -156,12 +167,27 @@ def artifact_preprocessing(artifact_manifest: Mapping[str, Any]) -> dict[str, An
 
 
 def artifact_model(artifact_manifest: Mapping[str, Any]) -> dict[str, Any]:
-    """The model block of a saved ``icalens.json`` (``model``, or ``base_model``), or an empty dict."""
-    for key in ("model", "base_model"):
-        block = artifact_manifest.get(key)
-        if isinstance(block, dict) and block:
-            return block
-    return {}
+    """The model block of a saved ``icalens.json`` that ``icalens`` itself reads, or an empty dict.
+
+    ``icalens`` 0.4.0 reads ``base_model`` when ``int(format_version) == 1`` and ``model`` otherwise
+    (``src/icalens/lens.py:651-652``, ``ICALens.from_pretrained``). This function makes the same choice, so the
+    adapter and the reference name the same model for one artifact. A block that is absent, empty or not an
+    object gives ``{}``: the other block is never used in its place, because ``icalens`` would not load the
+    artifact from it. An artifact that holds both blocks with different contents is refused
+    (``identity_mismatch``): no ``icalens`` writer produces one, and which model it belongs to depends on who
+    reads it.
+    """
+    model, base = (artifact_manifest.get(key) for key in ("model", "base_model"))
+    both = isinstance(model, dict) and bool(model) and isinstance(base, dict) and bool(base)
+    require(not both or model == base, "identity_mismatch",
+            f"{ARTIFACT_MANIFEST} holds a 'model' block and a 'base_model' block that differ; the artifact does "
+            "not say which model it was fitted on")
+    try:
+        legacy = int(artifact_manifest.get("format_version")) == 1
+    except (TypeError, ValueError, OverflowError):
+        legacy = False
+    block = base if legacy else model
+    return block if isinstance(block, dict) else {}
 
 
 def basis_identity(manifest: Mapping[str, Any], saved_model: Mapping[str, Any] | None = None) -> dict[str, Any]:
@@ -532,6 +558,13 @@ def _numpy_path(basis: Basis, layer: BasisLayer, activations: np.ndarray) -> tup
 def _icalens_path(basis: Basis, layer: BasisLayer, activations: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     icalens = importlib.import_module("icalens")
     lens = icalens.ICALens.from_pretrained(basis.root)
+    # The lens icalens loaded must belong to the model the manifest names. icalens writes "unknown" for a
+    # revision the artifact lacks; that and a null manifest revision both mean "not recorded".
+    model = basis.manifest["model"]
+    loaded_revision = None if lens.model_revision in PLACEHOLDER_REVISIONS else lens.model_revision
+    require(lens.model_id == model["hf_id"] and loaded_revision == model["revision"], "identity_mismatch",
+            f"icalens loaded the artifact as model {lens.model_id!r} at revision {lens.model_revision!r}; the "
+            f"basis manifest says {model['hf_id']!r} at {model['revision']!r}")
     require(lens.icalens_preprocessing == basis.mode, "preprocessing_mismatch",
             f"icalens loaded the artifact with preprocessing {lens.icalens_preprocessing!r}; the manifest says "
             f"{basis.mode!r}")
@@ -654,9 +687,17 @@ def check_split_leakage(manifest: Mapping[str, Any], protocol: Mapping[str, Any]
     and the dataset-level corpus id); and whether the basis was fit on the dataset that is being scored while it
     holds held-out families. A supplied fit dataset is also verified against its recorded file hashes.
 
-    Returns which of these checks ran, one word per check. A check that had nothing to compare says so and is
-    never reported as ``checked``: a stage that names no id is ``no_ids_listed``, and a fit dataset with a
-    document that carries no token hash is ``checked_without_token_hashes``.
+    A supplied fit dataset gets two further checks before its documents are compared. Its ``activation_site``
+    and ``layer_indexing`` must be recorded and equal the basis artifact's (``layer_metadata``): a manifest that
+    names a dataset captured at another site does not describe where the basis was fitted. Its row map goes
+    through the structural check the scored dataset gets (``row_map_documents``): a document whose
+    ``family_id`` or ``corpus_id`` is not a string, or whose ``token_sha256`` is not 64 hex digits, is refused
+    (``row_alignment``) and is never compared as if it named nothing.
+
+    Returns which of these checks ran, one word per check, with exactly the keys and words of
+    ``LEAKAGE_WORDS``. A check that had nothing to compare says so and is never reported as ``checked``: a
+    stage that names no id is ``no_ids_listed``, and a fit dataset with a document that carries no token hash
+    is ``checked_without_token_hashes``.
     """
     held_out = {f["family_id"]: f["split"] for f in protocol["case_families"] if f["split"] != "discovery"}
     require(manifest["fit"]["split"] == "discovery", "split_leakage",
@@ -671,8 +712,8 @@ def check_split_leakage(manifest: Mapping[str, Any], protocol: Mapping[str, Any]
     held_tokens = {entry["token_sha256"]: f"{f['family_id']}:{name}" for f in protocol["case_families"]
                    if f["split"] != "discovery" for name, entry in f["variants"].items()}
     report.update({"document_token_hashes": "not_listed_in_manifest",
-                   "fit_dataset_row_map": "fit_dataset_not_supplied",
-                   "fit_dataset_file_pins": "fit_dataset_not_supplied",
+                   "fit_dataset_row_map": FIT_DATASET_NOT_SUPPLIED,
+                   "fit_dataset_file_pins": FIT_DATASET_NOT_SUPPLIED,
                    "scoring_dataset_is_fit_dataset": "not_checked"})
     listed = manifest["fit"]["document_token_sha256"]
     if listed is not None:
@@ -683,25 +724,32 @@ def check_split_leakage(manifest: Mapping[str, Any], protocol: Mapping[str, Any]
     if fit_dataset is not None:
         require(fit_sha is None or fit_dataset.manifest_sha256 == fit_sha, "split_leakage",
                 "the supplied fit dataset is not the one the basis manifest names by SHA-256")
+        capture = manifest["capture"]
+        recorded = (capture["artifact_activation_site"], capture["artifact_layer_indexing"])
+        captured = (fit_dataset.activation_site, fit_dataset.layer_indexing)
+        require(all(text(value) for value in recorded) and captured == recorded, "layer_metadata",
+                f"the fit dataset records activation_site {captured[0]!r} and layer_indexing {captured[1]!r}; "
+                f"the basis artifact records {recorded[0]!r} and {recorded[1]!r}. Both must be recorded and equal")
         report["fit_dataset_file_pins"] = fit_dataset.verify_files()["file_pins"]
         block = fit_dataset.row_map or {}
-        documents = block.get("documents")
-        require(documents is None or (isinstance(documents, list) and all(isinstance(d, dict) for d in documents)),
-                "row_alignment", "the fit dataset's row map must list its documents as objects")
+        # A provenance block that lists no documents (an upstream dataset to which only a tokenizer identity was
+        # added) has no row map. One that lists them is read through the structural check, never around it.
+        documents = [] if block.get("documents") is None else list(row_map_documents(fit_dataset).values())
         corpus = block.get("corpus_id")
-        require(not (isinstance(corpus, str) and corpus in held_out), "split_leakage",
+        require(corpus is None or isinstance(corpus, str), "row_alignment",
+                f"the fit dataset's corpus_id must be a string, null or absent; found {type(corpus).__name__}")
+        require(corpus not in held_out, "split_leakage",
                 f"the fit dataset names corpus {corpus!r}, which is the id of a held-out family")
         without_hash = 0
-        for document in documents or []:
-            where = f"fit dataset document {document.get('document_index')}"
+        for document in documents:
+            where = f"fit dataset document {document['document_index']}"
+            # row_map_documents has established: each id is a string or None, the hash 64 hex digits or None.
             family, corpus, token_hash = (document.get(key) for key in ("family_id", "corpus_id", "token_sha256"))
-            require(document.get("split") == "discovery", "split_leakage",
-                    f"{where} is in split {document.get('split')!r}")
-            require(not (isinstance(family, str) and family in held_out), "split_leakage",
-                    f"{where} belongs to held-out family {family!r}")
-            require(not (isinstance(corpus, str) and corpus in held_out), "split_leakage",
+            require(document["split"] == "discovery", "split_leakage", f"{where} is in split {document['split']!r}")
+            require(family not in held_out, "split_leakage", f"{where} belongs to held-out family {family!r}")
+            require(corpus not in held_out, "split_leakage",
                     f"{where} names corpus {corpus!r}, which is the id of a held-out family")
-            if not text(token_hash):
+            if token_hash is None:
                 without_hash += 1
                 continue
             require(token_hash not in held_tokens, "split_leakage",
@@ -709,8 +757,10 @@ def check_split_leakage(manifest: Mapping[str, Any], protocol: Mapping[str, Any]
         report["fit_dataset_row_map"] = ("fit_dataset_has_no_row_map" if not documents
                                          else "checked_without_token_hashes" if without_hash else "checked")
     if scoring_dataset is not None and fit_sha is not None:
-        documents = (scoring_dataset.row_map or {}).get("documents", [])
-        held = sorted({d.get("family_id") for d in documents if d.get("split") != "discovery"} - {None})
+        # Read through the same structural check, so an id that is not a string is refused, not compared.
+        documents = ([] if (scoring_dataset.row_map or {}).get("documents") is None
+                     else list(row_map_documents(scoring_dataset).values()))
+        held = sorted({d.get("family_id") for d in documents if d["split"] != "discovery"} - {None})
         require(scoring_dataset.manifest_sha256 != fit_sha or not held, "split_leakage",
                 f"the basis was fit on the dataset being scored, which holds held-out families {held}")
         report["scoring_dataset_is_fit_dataset"] = "checked"
@@ -1005,7 +1055,10 @@ class IcaAdapter:
             saved = read_json(manifest_path.parent / manifest["artifact"]["root"] / ARTIFACT_MANIFEST)
         except (OSError, ValueError, KeyError, TypeError):
             return None
-        return artifact_model(saved) if isinstance(saved, dict) else None
+        try:
+            return artifact_model(saved) if isinstance(saved, dict) else None
+        except Refusal:
+            return None  # two differing model blocks: execution refuses identity_mismatch when the basis loads
 
     def input_identity(self, task: dict, context: dict | None = None) -> str | None:
         """The run store's optional reuse hook (``scripts.experiments.adapters.input_identity``): one SHA-256.
@@ -1160,10 +1213,12 @@ class IcaAdapter:
         Beyond structure and the task's own identity: every fixed statement must equal this module's constant
         (``payload_labels``); ``limitations`` must include every entry of ``LIMITATIONS``, and
         ``synthetic_not_measurement`` for a synthetic payload; the basis's synthetic flag must equal the
-        payload's; the fit split and the capture site must be the task's; the dataset's file hashes must be
-        present; and every squared-coordinate share is recomputed from the row's scores
-        (``energy_share_mismatch``), so a payload whose shares were edited is refused, not only one whose shares
-        fail to sum to 1.
+        payload's; the fit split and the capture site must be the task's; ``split_leakage_checks`` must hold
+        exactly the keys of ``LEAKAGE_WORDS`` and, per key, one of its words (``split_leakage``), so a word such
+        as ``checked_without_token_hashes`` cannot be rewritten to a word this module never reports; the
+        dataset's file hashes must be present; and every squared-coordinate share is recomputed from the row's
+        scores (``energy_share_mismatch``), so a payload whose shares were edited is refused, not only one whose
+        shares fail to sum to 1.
         """
         spec = task["spec"]
         method = spec["method"]
@@ -1207,11 +1262,15 @@ class IcaAdapter:
                 "the basis's synthetic flag differs from the payload's")
         require(basis["fit_split"] == method["basis"]["fit_split"] == "discovery", "split_leakage",
                 "the payload's fit split is not the protocol's discovery split")
-        stage_words = {key: value for key, value in payload["split_leakage_checks"].items()
-                       if key.endswith("_stage_ids")}
-        require(set(stage_words) == {f"{stage}_stage_ids" for stage in STAGES}
-                and set(stage_words.values()) <= set(LEAKAGE_STAGE_WORDS), "split_leakage",
-                f"split_leakage_checks must say {list(LEAKAGE_STAGE_WORDS)} for each of the stages {list(STAGES)}")
+        checks = payload["split_leakage_checks"]
+        require(set(checks) == set(LEAKAGE_WORDS), "split_leakage",
+                f"split_leakage_checks must hold exactly the keys {sorted(LEAKAGE_WORDS)}")
+        allowed = {key: list(words) for key, words in LEAKAGE_WORDS.items() if checks[key] not in words}
+        require(not allowed, "split_leakage",
+                f"split_leakage_checks holds a word outside the closed list of its key; the lists are {allowed}")
+        require((checks["fit_dataset_row_map"] == FIT_DATASET_NOT_SUPPLIED)
+                == (checks["fit_dataset_file_pins"] == FIT_DATASET_NOT_SUPPLIED), "split_leakage",
+                "split_leakage_checks says the fit dataset was supplied for one check and not for the other")
         require(payload["execution_path"]["used"] in EXECUTION_PATHS, "execution_path",
                 f"execution_path.used must be one of {list(EXECUTION_PATHS)}")
         require((payload["execution_path"]["used"] == "icalens") == text(

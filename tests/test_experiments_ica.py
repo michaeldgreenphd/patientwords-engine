@@ -534,6 +534,159 @@ def test_a_refused_write_leaves_no_dataset_on_disk(tmp_path: Path) -> None:
     assert ad.validate_activation_dataset(replaced)["file_pins"] == "verified"
 
 
+def tree(root: Path) -> dict[str, bytes]:
+    """Every regular file under ``root`` (links followed, as a reader would) by relative name."""
+    return {path.relative_to(root).as_posix(): path.read_bytes() for path in sorted(root.rglob("*"))
+            if path.is_file()}
+
+
+def test_the_writer_refuses_to_write_through_a_symbolic_link_inside_the_target(tmp_path: Path) -> None:
+    """Review, 2026-11-10: with ``layers`` a link to another directory, ``mkdir(exist_ok=True)`` accepted it and
+    ``os.replace`` moved the layer file to the directory the link names, which no path rule had checked."""
+    # A scratch directory named like a protected root, holding a file that must stay as it is.
+    outside = tmp_path / "elsewhere" / "trace_out"
+    outside.mkdir(parents=True)
+    (outside / "layer_01.float32.bin").write_bytes(b"a landed measurement")
+    assert common.protected_root(outside) == "trace_out" and common.protected_root(tmp_path / "target") is None
+
+    # 1. An existing dataset whose layers directory was replaced by a link to that directory.
+    target = toy_write(tmp_path / "target").root
+    kept = (target / "layers" / "layer_01.float32.bin").read_bytes()
+    shutil.rmtree(target / "layers")
+    (target / "layers").symlink_to(outside, target_is_directory=True)
+    before = tree(target)
+    with pytest.raises(Refusal) as caught:
+        toy_write(target, activation_site="mlp_out")
+    assert caught.value.code == "protected_root" and "symbolic link" in str(caught.value)
+    assert tree(outside) == {"layer_01.float32.bin": b"a landed measurement"}       # nothing went through the link
+    assert tree(target) == before and (target / "layers").is_symlink()
+    assert not list(target.glob(".staging-*")) and kept != b"a landed measurement"
+
+    # 2. A directory that holds only the link, and a link that points at nothing.
+    for name, destination in (("bare", outside), ("dangling", tmp_path / "absent")):
+        (tmp_path / name).mkdir()
+        (tmp_path / name / "layers").symlink_to(destination, target_is_directory=True)
+        assert code_of(lambda: toy_write(tmp_path / name)) == "protected_root", name
+        assert sorted(path.name for path in (tmp_path / name).iterdir()) == ["layers"], name
+        assert not (tmp_path / "absent").exists()
+    assert tree(outside) == {"layer_01.float32.bin": b"a landed measurement"}
+
+    # 3. A link at a destination file, and a link at the target itself.
+    for name in ("samples.safetensors", "activations.json", "layers/layer_01.float32.bin"):
+        linked = toy_write(tmp_path / f"file_{name.split('/')[-1]}").root
+        (linked / name).unlink()
+        (linked / name).symlink_to(outside / "layer_01.float32.bin")
+        assert code_of(lambda: toy_write(linked)) == "protected_root", name
+        assert (linked / name).is_symlink() and not list(linked.glob(".staging-*"))
+    real = toy_write(tmp_path / "real").root
+    (tmp_path / "alias").symlink_to(real, target_is_directory=True)
+    before = tree(real)
+    assert code_of(lambda: toy_write(tmp_path / "alias", activation_site="mlp_out")) == "protected_root"
+    assert tree(real) == before and tree(outside) == {"layer_01.float32.bin": b"a landed measurement"}
+    # 4. An entry of another kind in the way is named as such, and the path rules themselves are unchanged.
+    blocked = toy_write(tmp_path / "blocked").root
+    (blocked / "samples.safetensors").unlink()
+    (blocked / "samples.safetensors").mkdir()
+    assert code_of(lambda: toy_write(blocked)) == "dataset_format"
+    (tmp_path / "plain_file").write_bytes(b"x")
+    assert code_of(lambda: toy_write(tmp_path / "plain_file")) == "dataset_format"
+    assert ad.validate_activation_dataset(toy_write(real, activation_site="mlp_out"))["activation_site"] == "mlp_out"
+
+
+def failing_replace(monkeypatch: pytest.MonkeyPatch, fail_from: int, error: BaseException, only: int | None = None
+                    ) -> list[int]:
+    """Make the Nth move of the install step raise (and every later one, unless ``only`` says how many).
+
+    ``atomic_write_bytes`` also calls ``os.replace``, from a temporary file whose name ends in ``.tmp``; those
+    calls write the staged files and are let through uncounted."""
+    real_replace, calls = ad.os.replace, [0]
+
+    def replace(source: Any, destination: Any, **keywords: Any) -> None:
+        if str(source).endswith(".tmp"):
+            return real_replace(source, destination, **keywords)
+        calls[0] += 1
+        if calls[0] >= fail_from and (only is None or calls[0] < fail_from + only):
+            raise error
+        return real_replace(source, destination, **keywords)
+    monkeypatch.setattr(ad.os, "replace", replace)
+    return calls
+
+
+class CountedReplace:
+    """``os.replace`` with a count of the install step's moves (see ``failing_replace``)."""
+
+    def __init__(self, real_replace: Callable[..., None]) -> None:
+        self.real_replace, self.moves = real_replace, 0
+
+    def __call__(self, source: Any, destination: Any, **keywords: Any) -> None:
+        self.moves += 0 if str(source).endswith(".tmp") else 1
+        return self.real_replace(source, destination, **keywords)
+
+
+@pytest.mark.parametrize("fail_at", [1, 2, 3, 4, 5, 6])
+@pytest.mark.parametrize("error", [OSError(28, "No space left on device"), KeyboardInterrupt()])
+def test_a_failed_overwrite_puts_the_previous_dataset_back(tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+                                                           fail_at: int, error: BaseException) -> None:
+    """Review, 2026-11-10: the old manifest was unlinked and the files were replaced one by one, so an I/O error
+    after the first step left the previous dataset destroyed and the target holding a mixture.
+
+    Overwriting a three-file dataset takes six moves: three old files aside (the manifest first), three new
+    files in (the manifest last). Each of the six is made to fail here once."""
+    good = toy_write(tmp_path / "kept")
+    before = tree(good.root)
+    assert sorted(before) == ["activations.json", "layers/layer_01.float32.bin", "samples.safetensors"]
+    calls = failing_replace(monkeypatch, fail_at, error, only=1)
+    original = good.layer(1)
+    doubled = {1: original * 2}                                      # other layer bytes under the same file name
+    with pytest.raises(type(error)):
+        toy_write(tmp_path / "kept", activation_site="mlp_out", layers=doubled)
+    monkeypatch.undo()
+    assert calls[0] >= fail_at                                       # the injected failure was reached
+    assert tree(good.root) == before                                 # byte for byte, and no other file
+    assert not list(good.root.glob(".staging-*")) and not list(good.root.rglob(".replaced"))
+    report = ad.validate_activation_dataset(tmp_path / "kept")
+    assert report["file_pins"] == "verified" and report["manifest_sha256"] == good.manifest_sha256
+    assert report["activation_site"] == "resid_post" and report["dtype"] == "float32"
+    # The same write then succeeds, in all six moves.
+    monkeypatch.setattr(ad.os, "replace", counted := CountedReplace(ad.os.replace))
+    replaced = toy_write(tmp_path / "kept", activation_site="mlp_out", layers=doubled)
+    assert counted.moves == 6 and replaced.manifest["activation_site"] == "mlp_out"
+    assert np.array_equal(replaced.layer(1), original * 2) and not list(replaced.root.glob(".staging-*"))
+
+
+def test_a_failed_first_write_leaves_no_directory_and_a_failed_restore_keeps_the_old_files(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # A new target: three moves in. A failure at any of them leaves nothing behind.
+    for fail_at in (1, 2, 3):
+        failing_replace(monkeypatch, fail_at, OSError(5, "Input/output error"), only=1)
+        with pytest.raises(OSError):
+            toy_write(tmp_path / "fresh")
+        monkeypatch.undo()
+        assert not (tmp_path / "fresh").exists(), fail_at
+
+    # The disk keeps failing, so the old files cannot be moved back either. They stay in the staging directory,
+    # the refusal names it, the target has no manifest and no reader accepts it, and a later write is refused.
+    good = toy_write(tmp_path / "kept")
+    before = tree(good.root)
+    failing_replace(monkeypatch, 5, OSError(5, "Input/output error"))
+    with pytest.raises(Refusal) as caught:
+        toy_write(tmp_path / "kept", activation_site="mlp_out")
+    monkeypatch.undo()
+    assert caught.value.code == "incomplete" and ".replaced" in str(caught.value)
+    staging = list(good.root.glob(".staging-*"))
+    assert len(staging) == 1 and tree(staging[0] / ".replaced") == before
+    assert not (good.root / "activations.json").exists()
+    assert code_of(lambda: ad.open_activation_dataset(good.root)) == "dataset_format"
+    with pytest.raises(Refusal) as again:
+        toy_write(tmp_path / "kept")
+    assert again.value.code == "incomplete" and "did not finish" in str(again.value)
+    # Moved back by hand, the previous dataset is whole again.
+    for relative in before:
+        (staging[0] / ".replaced" / relative).replace(good.root / relative)
+    shutil.rmtree(staging[0])
+    assert tree(good.root) == before and ad.validate_activation_dataset(good.root)["file_pins"] == "verified"
+
+
 @pytest.mark.parametrize("changes", [
     {"layers": {1: [[1.0, 2.0], [3.0]]}},            # ragged rows
     {"layers": {"1": np.zeros((24, 8), dtype=np.float32)}},
@@ -908,6 +1061,144 @@ def test_split_leakage_covers_the_fit_corpus_id_and_says_when_nothing_was_listed
         "split_leakage")
 
 
+def relabelled_as_fit_corpus(doc: dict) -> None:
+    """The held-out pair rows presented as a fit corpus under ids that name no family, with no token hash."""
+    for document in doc["provenance"]["patientwords"]["documents"]:
+        document.pop("family_id")
+        document.pop("variant")
+        document.pop("token_sha256")
+        document.update(role="fit_corpus", split="discovery", corpus_id="other-corpus")
+
+
+@pytest.mark.parametrize("name,damage", [
+    # The verifier's two cases: a list where an id or a hash belongs. Before the first fix round these stopped
+    # with a TypeError; after it they completed with fit_dataset_row_map "checked_without_token_hashes".
+    ("family_id_list", lambda document: document.update(family_id=["fam-2"])),
+    ("token_sha256_list", lambda document: document.update(token_sha256=["0" * 64])),
+    ("corpus_id_list", lambda document: document.update(corpus_id=["fam-2"])),
+    ("corpus_id_number", lambda document: document.update(corpus_id=2)),
+    ("family_id_object", lambda document: document.update(family_id={"id": "fam-2"})),
+    ("variant_list", lambda document: document.update(variant=["clinical"])),
+    ("token_sha256_short", lambda document: document.update(token_sha256="0" * 63)),
+    ("token_sha256_upper_case", lambda document: document.update(token_sha256="A" * 64)),
+    ("token_sha256_number", lambda document: document.update(token_sha256=7)),
+    ("token_sha256_empty", lambda document: document.update(token_sha256="")),
+    ("not_an_object", None),
+])
+def test_a_fit_dataset_document_with_a_malformed_id_or_token_hash_is_refused(
+        matrix: dict, tmp_path: Path, name: str, damage: Callable[[dict], None] | None) -> None:
+    def edit(doc: dict) -> None:
+        relabelled_as_fit_corpus(doc)
+        documents = doc["provenance"]["patientwords"]["documents"]
+        if damage is None:
+            documents[2] = "fam-2"
+        else:
+            damage(documents[2])
+    shutil.copytree(PAIRS, tmp_path / "fit")
+    rewrite_json(tmp_path / "fit" / "activations.json", edit)
+    manifest = make_basis(tmp_path / "basis", fit={
+        "split": "discovery", "corpus_id": "c", "corpus_ids": ["c"],
+        "activation_manifest_sha256": sha256_file(tmp_path / "fit" / "activations.json")})
+    with pytest.raises(Refusal) as caught:
+        score(matrix, "fam-2", "clinical", manifest=manifest, fit=tmp_path / "fit")
+    assert caught.value.code == "row_alignment", name
+    # The same structural check serves the scored dataset, also where the leakage check reads its row map
+    # (a basis manifest that names a fit dataset by hash): a refusal, where a list-valued id used to end in a
+    # TypeError.
+    assert code_of(lambda: ad.validate_activation_dataset(tmp_path / "fit")) == "row_alignment"
+    assert code_of(lambda: ad.row_map_documents(ad.open_activation_dataset(tmp_path / "fit"))) == "row_alignment"
+    assert code_of(lambda: ica.check_split_leakage(read(manifest), read(FX / "protocol_synthetic.json"),
+                                                   scoring_dataset=ad.open_activation_dataset(tmp_path / "fit"))
+                   ) == "row_alignment"
+
+
+def test_the_fit_dataset_row_map_gets_the_structural_check_of_the_scored_dataset(matrix: dict,
+                                                                                tmp_path: Path) -> None:
+    def fit_with(name: str, edit: Callable[[dict], None]) -> tuple[Path, Path]:
+        shutil.copytree(DISCOVERY, tmp_path / name)
+        rewrite_json(tmp_path / name / "activations.json", edit)
+        return make_basis(tmp_path / f"{name}_basis"), tmp_path / name
+
+    def rows(doc: dict) -> dict:
+        return doc["provenance"]["patientwords"]
+
+    refused = {
+        "dataset_corpus_id_list": lambda d: rows(d).update(corpus_id=["fam-3"]),
+        "dataset_corpus_id_number": lambda d: rows(d).update(corpus_id=3),
+        "documents_not_a_list": lambda d: rows(d).update(documents={"0": {}}),
+        "document_listed_twice": lambda d: rows(d)["documents"].append(dict(rows(d)["documents"][0])),
+        "unknown_role": lambda d: rows(d)["documents"][0].update(role="held_out_copy"),
+        "no_split": lambda d: rows(d)["documents"][0].pop("split"),
+        "other_rows_schema": lambda d: rows(d).update(schema_version="patientwords.activation-rows/0"),
+    }
+    for name, edit in refused.items():
+        manifest, fit = fit_with(name, edit)
+        assert code_of(lambda: score(matrix, "fam-1", "clinical", manifest=manifest, fit=fit)) == (
+            "row_alignment"), name
+    # Accepted as before, each with its own word: an id or a hash that is null or absent, an empty document
+    # list, and a provenance block that lists no documents at all.
+    accepted = {
+        "hash_null": (lambda d: [doc.update(token_sha256=None) for doc in rows(d)["documents"]],
+                      "checked_without_token_hashes"),
+        "hash_absent": (lambda d: rows(d)["documents"][0].pop("token_sha256"), "checked_without_token_hashes"),
+        "family_null": (lambda d: rows(d)["documents"][0].update(family_id=None), "checked"),
+        "no_documents": (lambda d: rows(d).update(documents=[]), "fit_dataset_has_no_row_map"),
+        "documents_null": (lambda d: rows(d).update(documents=None), "fit_dataset_has_no_row_map"),
+        "documents_absent": (lambda d: rows(d).pop("documents"), "fit_dataset_has_no_row_map"),
+    }
+    for name, (edit, word) in accepted.items():
+        manifest, fit = fit_with(name, edit)
+        report = score(matrix, "fam-1", "clinical", manifest=manifest, fit=fit)["split_leakage_checks"]
+        assert report["fit_dataset_row_map"] == word, name
+        assert set(report) == set(ica.LEAKAGE_WORDS)
+        assert all(report[key] in words for key, words in ica.LEAKAGE_WORDS.items()), name
+
+
+def test_a_supplied_fit_dataset_must_be_captured_at_the_site_of_the_basis_artifact(matrix: dict,
+                                                                                  tmp_path: Path) -> None:
+    """A copy of the discovery fixture that records another site, named by its hash in the basis manifest, was
+    accepted as the fit dataset of a basis whose icalens.json records resid_post."""
+    cases = {
+        "site": lambda d: d.update(activation_site="mlp_out"),
+        "indexing": lambda d: d.update(layer_indexing="hidden_states"),
+        "site_absent": lambda d: d.pop("activation_site"),
+        "indexing_null": lambda d: d.update(layer_indexing=None),
+        "site_upper_case": lambda d: d.update(activation_site="RESID_POST"),
+        "site_list": lambda d: d.update(activation_site=["resid_post"]),
+    }
+    for name, edit in cases.items():
+        shutil.copytree(DISCOVERY, tmp_path / name)
+        rewrite_json(tmp_path / name / "activations.json", edit)
+        ad.validate_activation_dataset(tmp_path / name)             # a well-formed dataset in its own right
+        for label, fit in (("named", {"activation_manifest_sha256": sha256_file(tmp_path / name / "activations.json")}),
+                           ("unnamed", {})):
+            manifest = make_basis(tmp_path / f"{name}_{label}", fit={
+                "split": "discovery", "corpus_id": "toy-discovery-corpus-1", **fit})
+            with pytest.raises(Refusal) as caught:
+                score(matrix, "fam-2", "clinical", manifest=manifest, fit=tmp_path / name)
+            assert caught.value.code == "layer_metadata" and "the fit dataset records" in str(caught.value), name
+    # A basis whose artifact records no site cannot be matched with a fit dataset either.
+    siteless = make_basis(tmp_path / "siteless", saved=lambda saved: saved.pop("layer_indexing"))
+    basis = ica.load_basis(siteless)
+    assert code_of(lambda: ica.check_split_leakage(basis.manifest, read(FX / "protocol_synthetic.json"),
+                                                   fit_dataset=ad.open_activation_dataset(DISCOVERY))) == (
+        "layer_metadata")
+    # Through the run store: the fixtures' fit dataset edited to another site gives no payload.
+    fixtures = copy_fixtures(tmp_path / "store")
+    rewrite_json(fixtures / "ica" / "discovery_activations" / "activations.json",
+                 lambda d: d.update(activation_site="mlp_out"))
+
+    def rename_fit(manifest: dict) -> None:
+        manifest["fit"]["activation_manifest_sha256"] = sha256_file(
+            fixtures / "ica" / "discovery_activations" / "activations.json")
+    rewrite_json(fixtures / "ica" / "basis_manifest.json", rename_fit)
+    store, _, _ = run(tmp_path / "store", ica_protocol(fixtures / "ica" / "basis_manifest.json"), matrix, fixtures)
+    envelopes = ica_envelopes(store)
+    assert {(e["status"]["execution"], e["status"]["reason"].split(":")[0]) for e in envelopes.values()} == {
+        ("invalid", "layer_metadata")}
+    assert all(e["payload"] is None for e in envelopes.values())
+
+
 def test_the_dataset_capture_site_and_layer_indexing_must_equal_the_basis_artifact(matrix: dict,
                                                                                    tmp_path: Path) -> None:
     baseline = score(matrix, "fam-2", "clinical")
@@ -993,6 +1284,81 @@ def test_the_basis_manifest_identity_is_compared_with_the_saved_icalens_json(mat
     assert list(reasons) == ["unavailable"] and reasons["unavailable"].startswith("unknown_identity: the basis")
     assert "artifact_revision" in reasons["unavailable"]
     assert summary["by_state"]["invalid"] == 0 and summary["by_state"]["failed"] == 0
+
+
+def test_the_model_block_is_the_one_icalens_reads_and_two_differing_blocks_are_refused(matrix: dict,
+                                                                                      tmp_path: Path) -> None:
+    """icalens 0.4.0 reads ``base_model`` when ``format_version`` is 1 and ``model`` otherwise (lens.py:651-652).
+    ``artifact_model`` used to take ``model`` first whatever the version, so a version-1 artifact with a matching
+    ``model`` block and a ``base_model`` block naming another model scored as the first while icalens loaded it
+    as the second."""
+    protocol_model = {"repo_id": "fixture/toy-model", "revision": "1" * 40, "type": "base"}
+    other = {"repo_id": "some-org/other-model", "revision": "3" * 40, "type": "base"}
+    assert BUILDER.toy_artifact_manifest(LAYER_FILE)["model"] == protocol_model
+
+    # Which block is read.
+    assert ica.artifact_model({"format_version": 4, "model": protocol_model}) == protocol_model
+    assert ica.artifact_model({"format_version": 1, "base_model": other}) == other
+    for version in (1, "1", 1.0, True):                                 # icalens applies int() to the value
+        assert ica.artifact_model({"format_version": version, "model": protocol_model}) == {}
+        assert ica.artifact_model({"format_version": version, "base_model": other}) == other
+    for version in (2, 4, "4", None, "one", [1], float("nan"), float("inf")):
+        assert ica.artifact_model({"format_version": version, "base_model": other}) == {}, version
+        assert ica.artifact_model({"format_version": version, "model": protocol_model}) == protocol_model
+    assert ica.artifact_model({"model": protocol_model}) == protocol_model      # no version: not version 1
+    assert ica.artifact_model({"format_version": 4, "model": "fixture/toy-model", "base_model": other}) == {}
+    assert ica.artifact_model({"format_version": 1, "model": protocol_model, "base_model": {}}) == {}
+    assert ica.artifact_model({}) == {}
+    # Both blocks, different contents: refused whatever the version. Equal blocks are one statement.
+    for version in (1, 4, None):
+        assert code_of(lambda: ica.artifact_model({"format_version": version, "model": protocol_model,
+                                                   "base_model": other})) == "identity_mismatch"
+        assert code_of(lambda: ica.artifact_model({"format_version": version, "model": other,
+                                                   "base_model": {**other, "type": "chat"}})) == "identity_mismatch"
+        assert ica.artifact_model({"format_version": version, "model": other, "base_model": dict(other)}) == other
+
+    def claim(manifest: dict) -> None:
+        manifest["model"].update(hf_id="fixture/toy-model", revision="1" * 40, type="base")
+        manifest["not_recorded"] = sorted(null_pointers({k: v for k, v in manifest.items() if k != "not_recorded"}))
+
+    # The verifier's artifact is refused when a manifest is built from it, with either version.
+    for name, version in (("as_built", 4), ("legacy", 1)):
+        assert code_of(lambda: make_basis(tmp_path / name, saved=lambda a: a.update(
+            format_version=version, base_model=dict(other)), edit=claim)) == "identity_mismatch", name
+    # A version-1 artifact whose base_model is another model, under a manifest that claims the protocol's model.
+    moved = make_basis(tmp_path / "moved", edit=claim, saved=lambda a: (
+        a.update(format_version=1, base_model=dict(other)), a.pop("model")))
+    with pytest.raises(Refusal) as caught:
+        ica.load_basis(moved)
+    assert caught.value.code == "identity_mismatch" and "some-org/other-model" in str(caught.value)
+    # A version-1 artifact with only a "model" block: icalens reads no model from it, and neither does this.
+    orphan = make_basis(tmp_path / "orphan", saved=lambda a: a.update(format_version=1))
+    assert read(orphan)["model"]["hf_id"] is None and "/model/hf_id" in read(orphan)["not_recorded"]
+    assert ica.load_basis(orphan).identity["status"] == "unknown"
+    assert code_of(lambda: ica.load_basis(make_basis(tmp_path / "orphan_claimed", edit=claim, saved=lambda a: a.update(
+        format_version=1)))) == "identity_mismatch"
+    # A version-1 artifact that names the protocol's model under base_model scores as before.
+    legacy = make_basis(tmp_path / "legacy_ok", saved=lambda a: a.update(format_version=1, base_model=a.pop("model")))
+    assert ica.load_basis(legacy).identity["status"] == "recorded"
+    assert values(score(matrix, "fam-1", "clinical", manifest=legacy, fit=None)) == [3.0, -4.0, 0.0, 0.0]
+
+    # A manifest built before the artifact gained a second block: load_basis refuses, and through the run
+    # store every task is invalid with no payload.
+    fixtures = copy_fixtures(tmp_path / "store")
+    rewrite_json(fixtures / "ica" / "toy_basis" / "icalens.json",
+                 lambda d: d.update(format_version=1, base_model=dict(other)))
+
+    def repin_artifact(manifest: dict) -> None:
+        for entry in manifest["artifact"]["files"]:
+            entry["sha256"] = sha256_file(fixtures / "ica" / "toy_basis" / entry["path"])
+            entry["bytes"] = (fixtures / "ica" / "toy_basis" / entry["path"]).stat().st_size
+    rewrite_json(fixtures / "ica" / "basis_manifest.json", repin_artifact)
+    assert code_of(lambda: ica.load_basis(fixtures / "ica" / "basis_manifest.json")) == "identity_mismatch"
+    store, _, _ = run(tmp_path / "store", ica_protocol(fixtures / "ica" / "basis_manifest.json"), matrix, fixtures)
+    envelopes = ica_envelopes(store)
+    assert {(e["status"]["execution"], e["status"]["reason"].split(":")[0]) for e in envelopes.values()} == {
+        ("invalid", "identity_mismatch")}
+    assert all(e["payload"] is None for e in envelopes.values())
 
 
 def test_basis_mismatch_between_protocol_manifest_and_pair_members(matrix: dict, tmp_path: Path) -> None:
@@ -1229,6 +1595,24 @@ def test_a_payload_filed_for_another_task_or_edited_is_refused(matrix: dict) -> 
     assert refused(lambda p: p["capture"]["activation_dataset"].pop("samples_sha256")) == "payload_structure"
     assert refused(lambda p: p["split_leakage_checks"].update(fit_stage_ids="fine")) == "split_leakage"
     assert refused(lambda p: p["split_leakage_checks"].pop("profile_stage_ids")) == "split_leakage"
+    # The exact key set of check_split_leakage and, per key, its closed list of words. Each edit below keeps
+    # the type (a string under a string key) and used to pass: only the three stage keys were constrained.
+    checks = payload["split_leakage_checks"]
+    assert set(checks) == set(ica.LEAKAGE_WORDS) and len(ica.LEAKAGE_WORDS) == 7
+    assert all(checks[key] in words for key, words in ica.LEAKAGE_WORDS.items())
+    for key, words in ica.LEAKAGE_WORDS.items():
+        assert refused(lambda p: p["split_leakage_checks"].update({key: "passed"})) == "split_leakage", key
+        assert refused(lambda p: p["split_leakage_checks"].update({key: ""})) == "split_leakage", key
+        assert refused(lambda p: p["split_leakage_checks"].pop(key)) == "split_leakage", key
+        foreign = next(word for other in ica.LEAKAGE_WORDS.values() for word in other if word not in words)
+        assert refused(lambda p: p["split_leakage_checks"].update({key: foreign})) == "split_leakage", key
+    assert refused(lambda p: p["split_leakage_checks"].update(holdout_overlap="checked")) == "split_leakage"
+    assert refused(lambda p: p["split_leakage_checks"].update(fit_dataset_row_map="fit_dataset_not_supplied")) == (
+        "split_leakage")                                # the file pins say a fit dataset was supplied
+    for word in ("checked_without_token_hashes", "fit_dataset_has_no_row_map"):     # words the adapter reports
+        reworded = copy.deepcopy(payload)
+        reworded["split_leakage_checks"]["fit_dataset_row_map"] = word
+        ica.ADAPTER.validate_payload(reworded, task, context)
 
     # Shares are recomputed from the scores. The scores here are [3, -4, 0, 0]: shares [0.36, 0.64, 0, 0].
     assert values(payload) == [3.0, -4.0, 0.0, 0.0] and values(payload, "energy_share") == [0.36, 0.64, 0.0, 0.0]
