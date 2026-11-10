@@ -1,5 +1,29 @@
 {
  "_": "Vocabulary-sensitivity bounds for the downgrade asymmetry and the advice near-null. Scenarios bracket every checklist-flagged token: exclude / floor(0) / ceiling(4). A claim that survives all scenarios cannot be flipped by re-tiering the flagged set. Spec: data/tier_sensitivity_spec.draft.json; vocabulary: data/urgency_tiers.draft.json (draft, domain review pending).",
+ "_provenance": {
+  "generator": "scripts/tier_sensitivity.py",
+  "engine_sha": "d0bb4f5ca4da",
+  "generated_utc": "2026-11-10T16:53:43Z"
+ },
+ "note": "Inputs are the files as committed on 2026-07-30: urgency_shift.json, data/urgency_tiers.draft.json and data/tier_sensitivity_spec.draft.json at engine commit 994d754a (the commit that first added this file), and data/advice_scenarios.json at site commit 62c7c2c6 (2026-07-29, the site version current on 2026-07-30). Regenerated on 2026-11-10 with the Amendment 1 holdout exclusion; the 2026-07-30 version of this file pooled the holdout (docs/prereg_divergence_log.md, entry 2026-11-10).",
+ "sources": {
+  "rows": {
+   "path": "urgency_shift.json",
+   "sha256": "fce3900f41ab3d18fe56aedf93d80aaa6fb11bcf6b8c7daab06c6ccd6d04eb1f"
+  },
+  "tiers": {
+   "path": "data/urgency_tiers.draft.json",
+   "sha256": "7f76a7b12114dd4cc0183593d5d9661759eb2869053e3f7cce7060eeee941f0d"
+  },
+  "spec": {
+   "path": "data/tier_sensitivity_spec.draft.json",
+   "sha256": "514fff6a7e5561b1bce3bb397ce71936cfaa079fb2863d5e3d45d8016bfa33a0"
+  },
+  "advice": {
+   "path": "../patientwords/data/advice_scenarios.json",
+   "sha256": "720092440f0781bbaa647299f7416afabd3654f4fee275f40ae219132b6e0764"
+  }
+ },
  "flagged_tokens": {
   "deciders": [
    "sleep",
@@ -31,6 +55,14 @@
    "little"
   ]
  },
+ "holdout_exclusion": {
+  "rule": "Amendment 1, phrase-keyed: a clinical prompt flagged tierb_split == 'holdout' on any row is excluded on every row (scripts/tierb_split.drop_holdout_phrase_rows)",
+  "rows_read": 8151,
+  "rows_with_split_flag": 6202,
+  "rows_excluded": 622,
+  "phrases_excluded": 108,
+  "rows_analyzed": 7529
+ },
  "next_token": {
   "baseline": {
    "apertus-8b-meditronfo": {
@@ -39,29 +71,29 @@
     "sign_p": 1.0
    },
    "gemma-2-2b": {
-    "downgrades": 200,
-    "upgrades": 25,
-    "sign_p": 0.0
+    "downgrades": 199,
+    "upgrades": 23,
+    "sign_p": 3.682486123619417e-36
    },
    "gemma-2-2b-it": {
-    "downgrades": 27,
-    "upgrades": 20,
-    "sign_p": 0.38169
+    "downgrades": 25,
+    "upgrades": 17,
+    "sign_p": 0.27995623852893914
    },
    "gemma-3-4b-it": {
-    "downgrades": 48,
-    "upgrades": 14,
-    "sign_p": 2e-05
+    "downgrades": 44,
+    "upgrades": 13,
+    "sign_p": 4.710437609395379e-05
    },
    "llama-3.2-3b": {
-    "downgrades": 31,
-    "upgrades": 12,
-    "sign_p": 0.0054
+    "downgrades": 29,
+    "upgrades": 9,
+    "sign_p": 0.0016580525261815637
    },
    "medgemma-4b-it": {
-    "downgrades": 21,
-    "upgrades": 8,
-    "sign_p": 0.02412
+    "downgrades": 20,
+    "upgrades": 6,
+    "sign_p": 0.009355306625366211
    },
    "meditron3-8b": {
     "downgrades": 1,
@@ -70,18 +102,18 @@
    },
    "olmo-2-1b": {
     "downgrades": 33,
-    "upgrades": 10,
-    "sign_p": 0.00061
+    "upgrades": 5,
+    "sign_p": 4.255962267052382e-06
    },
    "qwen3-1.7b": {
-    "downgrades": 40,
-    "upgrades": 16,
-    "sign_p": 0.00184
+    "downgrades": 38,
+    "upgrades": 13,
+    "sign_p": 0.0006210434562277101
    },
    "qwen3-4b": {
-    "downgrades": 43,
-    "upgrades": 9,
-    "sign_p": 0.0
+    "downgrades": 41,
+    "upgrades": 7,
+    "sign_p": 6.240408438884515e-07
    }
   },
   "exclude": {
@@ -91,29 +123,29 @@
     "sign_p": 1.0
    },
    "gemma-2-2b": {
-    "downgrades": 147,
-    "upgrades": 17,
-    "sign_p": 0.0
+    "downgrades": 146,
+    "upgrades": 16,
+    "sign_p": 1.9183175748447403e-27
    },
    "gemma-2-2b-it": {
-    "downgrades": 25,
-    "upgrades": 14,
-    "sign_p": 0.10813
+    "downgrades": 23,
+    "upgrades": 13,
+    "sign_p": 0.13249816396273673
    },
    "gemma-3-4b-it": {
-    "downgrades": 36,
-    "upgrades": 6,
-    "sign_p": 0.0
+    "downgrades": 33,
+    "upgrades": 5,
+    "sign_p": 4.255962267052382e-06
    },
    "llama-3.2-3b": {
-    "downgrades": 23,
-    "upgrades": 7,
-    "sign_p": 0.00522
+    "downgrades": 21,
+    "upgrades": 6,
+    "sign_p": 0.005924612283706665
    },
    "medgemma-4b-it": {
     "downgrades": 14,
-    "upgrades": 4,
-    "sign_p": 0.03088
+    "upgrades": 3,
+    "sign_p": 0.012725830078125
    },
    "meditron3-8b": {
     "downgrades": 1,
@@ -122,18 +154,18 @@
    },
    "olmo-2-1b": {
     "downgrades": 29,
-    "upgrades": 6,
-    "sign_p": 0.00012
+    "upgrades": 4,
+    "sign_p": 1.0928604751825333e-05
    },
    "qwen3-1.7b": {
-    "downgrades": 34,
-    "upgrades": 10,
-    "sign_p": 0.00039
+    "downgrades": 32,
+    "upgrades": 8,
+    "sign_p": 0.0001821658297558315
    },
    "qwen3-4b": {
-    "downgrades": 34,
-    "upgrades": 6,
-    "sign_p": 1e-05
+    "downgrades": 32,
+    "upgrades": 5,
+    "sign_p": 7.427530363202095e-06
    }
   },
   "floor": {
@@ -143,29 +175,29 @@
     "sign_p": 1.0
    },
    "gemma-2-2b": {
-    "downgrades": 202,
-    "upgrades": 36,
-    "sign_p": 0.0
+    "downgrades": 197,
+    "upgrades": 33,
+    "sign_p": 1.2401359711976916e-29
    },
    "gemma-2-2b-it": {
-    "downgrades": 43,
-    "upgrades": 18,
-    "sign_p": 0.00187
+    "downgrades": 39,
+    "upgrades": 17,
+    "sign_p": 0.00456153274640822
    },
    "gemma-3-4b-it": {
-    "downgrades": 51,
-    "upgrades": 19,
-    "sign_p": 0.00017
+    "downgrades": 45,
+    "upgrades": 17,
+    "sign_p": 0.0004970915863810334
    },
    "llama-3.2-3b": {
-    "downgrades": 34,
-    "upgrades": 19,
-    "sign_p": 0.05344
+    "downgrades": 30,
+    "upgrades": 17,
+    "sign_p": 0.07894069368148848
    },
    "medgemma-4b-it": {
-    "downgrades": 32,
-    "upgrades": 11,
-    "sign_p": 0.00191
+    "downgrades": 30,
+    "upgrades": 9,
+    "sign_p": 0.0010650196345523
    },
    "meditron3-8b": {
     "downgrades": 1,
@@ -173,19 +205,19 @@
     "sign_p": 1.0
    },
    "olmo-2-1b": {
-    "downgrades": 43,
-    "upgrades": 12,
-    "sign_p": 3e-05
+    "downgrades": 40,
+    "upgrades": 9,
+    "sign_p": 9.263546409954415e-06
    },
    "qwen3-1.7b": {
-    "downgrades": 52,
-    "upgrades": 20,
-    "sign_p": 0.00021
+    "downgrades": 49,
+    "upgrades": 18,
+    "sign_p": 0.00019429778641481447
    },
    "qwen3-4b": {
-    "downgrades": 46,
-    "upgrades": 16,
-    "sign_p": 0.00018
+    "downgrades": 43,
+    "upgrades": 14,
+    "sign_p": 0.00015388902244434233
    }
   },
   "ceiling": {
@@ -195,29 +227,29 @@
     "sign_p": 1.0
    },
    "gemma-2-2b": {
-    "downgrades": 170,
-    "upgrades": 75,
-    "sign_p": 0.0
+    "downgrades": 167,
+    "upgrades": 70,
+    "sign_p": 2.543540913502594e-10
    },
    "gemma-2-2b-it": {
-    "downgrades": 30,
-    "upgrades": 32,
-    "sign_p": 0.89908
+    "downgrades": 27,
+    "upgrades": 29,
+    "sign_p": 0.8938530948350217
    },
    "gemma-3-4b-it": {
-    "downgrades": 52,
-    "upgrades": 22,
-    "sign_p": 0.00064
+    "downgrades": 48,
+    "upgrades": 18,
+    "sign_p": 0.00028711844966164033
    },
    "llama-3.2-3b": {
-    "downgrades": 38,
-    "upgrades": 19,
-    "sign_p": 0.01635
+    "downgrades": 35,
+    "upgrades": 16,
+    "sign_p": 0.010973562899720513
    },
    "medgemma-4b-it": {
-    "downgrades": 24,
-    "upgrades": 26,
-    "sign_p": 0.88772
+    "downgrades": 22,
+    "upgrades": 23,
+    "sign_p": 1.0
    },
    "meditron3-8b": {
     "downgrades": 1,
@@ -225,19 +257,19 @@
     "sign_p": 1.0
    },
    "olmo-2-1b": {
-    "downgrades": 35,
-    "upgrades": 20,
-    "sign_p": 0.05806
+    "downgrades": 34,
+    "upgrades": 15,
+    "sign_p": 0.009399241523873059
    },
    "qwen3-1.7b": {
-    "downgrades": 48,
-    "upgrades": 32,
-    "sign_p": 0.09291
+    "downgrades": 46,
+    "upgrades": 29,
+    "sign_p": 0.06394991646706695
    },
    "qwen3-4b": {
-    "downgrades": 50,
-    "upgrades": 19,
-    "sign_p": 0.00024
+    "downgrades": 47,
+    "upgrades": 17,
+    "sign_p": 0.0002268823828832806
    }
   }
  },
@@ -261,12 +293,12 @@
    "significant_all_scenarios": true,
    "down_up_range": [
     [
-     147,
-     202
+     146,
+     199
     ],
     [
-     17,
-     75
+     16,
+     70
     ]
    ]
   },
@@ -275,12 +307,12 @@
    "significant_all_scenarios": false,
    "down_up_range": [
     [
-     25,
-     43
+     23,
+     39
     ],
     [
-     14,
-     32
+     13,
+     29
     ]
    ]
   },
@@ -289,12 +321,12 @@
    "significant_all_scenarios": true,
    "down_up_range": [
     [
-     36,
-     52
+     33,
+     48
     ],
     [
-     6,
-     22
+     5,
+     18
     ]
    ]
   },
@@ -303,12 +335,12 @@
    "significant_all_scenarios": false,
    "down_up_range": [
     [
-     23,
-     38
+     21,
+     35
     ],
     [
-     7,
-     19
+     6,
+     17
     ]
    ]
   },
@@ -318,11 +350,11 @@
    "down_up_range": [
     [
      14,
-     32
+     30
     ],
     [
-     4,
-     26
+     3,
+     23
     ]
    ]
   },
@@ -342,15 +374,15 @@
   },
   "olmo-2-1b": {
    "asymmetry_all_scenarios": true,
-   "significant_all_scenarios": false,
+   "significant_all_scenarios": true,
    "down_up_range": [
     [
      29,
-     43
+     40
     ],
     [
-     6,
-     20
+     4,
+     15
     ]
    ]
   },
@@ -359,12 +391,12 @@
    "significant_all_scenarios": false,
    "down_up_range": [
     [
-     34,
-     52
+     32,
+     49
     ],
     [
-     10,
-     32
+     8,
+     29
     ]
    ]
   },
@@ -373,12 +405,12 @@
    "significant_all_scenarios": true,
    "down_up_range": [
     [
-     34,
-     50
+     32,
+     47
     ],
     [
-     6,
-     19
+     5,
+     17
     ]
    ]
   }
@@ -388,25 +420,25 @@
    "down": 37,
    "up": 35,
    "unchanged": 324,
-   "sign_p": 0.90629
+   "sign_p": 0.9062943247030809
   },
   "merge_urgent_emergency": {
    "down": 32,
    "up": 28,
    "unchanged": 336,
-   "sign_p": 0.69888
+   "sign_p": 0.6988834276200057
   },
   "merge_selfcare_routine": {
    "down": 20,
    "up": 28,
    "unchanged": 348,
-   "sign_p": 0.31233
+   "sign_p": 0.31232680747326924
   },
   "merge_both_ends": {
    "down": 15,
    "up": 21,
    "unchanged": 360,
-   "sign_p": 0.40503
+   "sign_p": 0.40503224614076316
   }
  }
 }

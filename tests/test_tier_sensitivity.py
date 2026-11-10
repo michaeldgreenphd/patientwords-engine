@@ -4,6 +4,7 @@ Synthetic vocabulary and rows only - no medical vocabulary in this file.
 Phrases are abstract placeholders (PHRASE-A, PHRASE-H), never study stimuli.
 """
 
+import hashlib
 import importlib.util
 import json
 from pathlib import Path
@@ -28,8 +29,8 @@ def row(model, top_c, top_p, phrase="PHRASE-A", split=None, batch="pairs_2026010
     return r
 
 
-def run_main(tmp_path, rows, name):
-    """Run the script's main on a synthetic row file; return its output document."""
+def run_main(tmp_path, rows, name, extra=()):
+    """Run the script's main on a synthetic row file; return the path of its output."""
     rows_file = tmp_path / f"{name}_rows.json"
     rows_file.write_text(json.dumps({"rows": rows}), encoding="utf-8")
     tiers = tmp_path / "tiers.json"
@@ -38,7 +39,7 @@ def run_main(tmp_path, rows, name):
     spec.write_text(json.dumps(SPEC), encoding="utf-8")
     out = tmp_path / f"{name}_out.json"
     ts.main(["--rows", str(rows_file), "--tiers", str(tiers), "--spec", str(spec),
-             "--advice", str(tmp_path / "absent.json"), "--out", str(out)])
+             "--advice", str(tmp_path / "absent.json"), "--out", str(out), *extra])
     return out
 
 
@@ -132,3 +133,22 @@ def test_a_row_without_a_phrase_key_is_refused(tmp_path):
     with pytest.raises(RuntimeError, match="1 of 2 rows carry no clinical_prompt"):
         run_main(tmp_path, [row("m1", "alpha", "beta"), unkeyed], "unkeyed")
     assert not (tmp_path / "unkeyed_out.json").exists()
+
+
+def test_the_output_records_its_inputs(tmp_path):
+    """The file says what it was computed from: each input's path and sha256, a null
+    sha256 for the absent advice payload, the generating script, and the caller's note."""
+    out = run_main(tmp_path, EXPLORE_ROWS, "src", extra=("--note", "inputs read from commit abc1234"))
+    doc = json.loads(out.read_text(encoding="utf-8"))
+    rows_file = tmp_path / "src_rows.json"
+    assert doc["sources"]["rows"] == {"path": str(rows_file),
+                                      "sha256": hashlib.sha256(rows_file.read_bytes()).hexdigest()}
+    for key, name in (("tiers", "tiers.json"), ("spec", "spec.json")):
+        assert doc["sources"][key]["sha256"] == hashlib.sha256((tmp_path / name).read_bytes()).hexdigest()
+    assert doc["sources"]["advice"] == {"path": str(tmp_path / "absent.json"), "sha256": None}
+    assert doc["advice_pooled"] == {}
+    assert doc["note"] == "inputs read from commit abc1234"
+    assert doc["_provenance"]["generator"] == "scripts/tier_sensitivity.py"
+    assert set(doc["_provenance"]) == {"generator", "engine_sha", "generated_utc"}
+    # without --note the field is present and null
+    assert json.loads(run_main(tmp_path, EXPLORE_ROWS, "nonote").read_text(encoding="utf-8"))["note"] is None

@@ -28,20 +28,29 @@ rows before anything is counted. The exclusion is
 ``scripts/tierb_split.drop_holdout_phrase_rows``, the rule
 ``paired_stats_rigor.load_rows`` applies. The numbers of rows and phrases
 excluded are printed and written to the output's ``holdout_exclusion`` block.
-The exclusion was added on 2026-11-10: the committed ops/tier_sensitivity.json
-(2026-07-30) was computed without it.
+The exclusion was added on 2026-11-10. The file committed on 2026-07-30 was
+computed without it and pooled the holdout; the committed file was regenerated
+on 2026-11-10 from the same inputs with the exclusion
+(docs/prereg_divergence_log.md, entry 2026-11-10).
+
+The output records what it was computed from: ``sources`` holds the path and
+sha256 of each input file (sha256 null for an advice payload that is absent),
+``_provenance`` the script, this checkout's commit and the UTC time, and
+``note`` the free text given with ``--note`` (for example the commit the inputs
+were read from; the script does not check it).
 
 Usage:
   python scripts/tier_sensitivity.py [--rows urgency_shift.json]
       [--tiers data/urgency_tiers.draft.json]
       [--spec data/tier_sensitivity_spec.draft.json]
       [--advice ../patientwords/data/advice_scenarios.json]
-      [--out ops/tier_sensitivity.json]
+      [--out ops/tier_sensitivity.json] [--note "where the inputs came from"]
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from collections import defaultdict
 from pathlib import Path
@@ -49,11 +58,13 @@ from pathlib import Path
 # Two-sided exact sign test, unrounded, None when there are no directional flips.
 # The same function urgency_shift.py and paired_stats_rigor.py use.
 try:  # repo root on sys.path (tests) vs sibling import (python scripts/tier_sensitivity.py)
+    from scripts.provenance_stamp import engine_sha, provenance
     from scripts.sign_test_exact import sign_test
     from scripts.tierb_split import drop_holdout_phrase_rows
 except ImportError:
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from provenance_stamp import engine_sha, provenance
     from sign_test_exact import sign_test
     from tierb_split import drop_holdout_phrase_rows
 
@@ -78,6 +89,14 @@ def tier_of(vocab: dict, token) -> int | None:
         return None
     e = vocab.get(str(token).strip().lower())
     return e["tier"] if e and e.get("tier") is not None else None
+
+
+def source_record(path: str) -> dict:
+    """The path as given and the sha256 of the file's bytes, so a reader can tell
+    which version of an input the output was computed from. sha256 is None when
+    the file is absent (only the advice payload may be)."""
+    p = Path(path)
+    return {"path": path, "sha256": hashlib.sha256(p.read_bytes()).hexdigest() if p.is_file() else None}
 
 
 def interim_rows(rows: list[dict]) -> tuple[list[dict], dict]:
@@ -189,6 +208,8 @@ def main(argv=None) -> None:
     ap.add_argument("--spec", default="data/tier_sensitivity_spec.draft.json")
     ap.add_argument("--advice", default="../patientwords/data/advice_scenarios.json")
     ap.add_argument("--out", default="ops/tier_sensitivity.json")
+    ap.add_argument("--note", default=None,
+                    help="free text recorded in the output's note field, e.g. the commit the inputs were read from")
     args = ap.parse_args(argv)
 
     rows_doc = json.loads(Path(args.rows).read_text(encoding="utf-8"))
@@ -210,11 +231,18 @@ def main(argv=None) -> None:
         adv = advice_scenarios(payload, spec)
 
     v = verdicts(nt)
+    stamp = provenance("tier_sensitivity.py")
+    # this script's checkout, whatever the working directory the inputs are read from
+    stamp["engine_sha"] = engine_sha(Path(__file__).resolve().parents[1])
     out = {
         "_": ("Vocabulary-sensitivity bounds for the downgrade asymmetry and the advice near-null. "
               "Scenarios bracket every checklist-flagged token: exclude / floor(0) / ceiling(4). "
               "A claim that survives all scenarios cannot be flipped by re-tiering the flagged set. "
               "Spec: " + args.spec + "; vocabulary: " + args.tiers + " (draft, domain review pending)."),
+        "_provenance": stamp,
+        "note": args.note,
+        "sources": {"rows": source_record(args.rows), "tiers": source_record(args.tiers),
+                    "spec": source_record(args.spec), "advice": source_record(args.advice)},
         "flagged_tokens": {"deciders": spec["deciders"], "blockers": spec["blockers"]},
         "holdout_exclusion": holdout_exclusion,
         "next_token": nt,
