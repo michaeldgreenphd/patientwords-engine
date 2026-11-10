@@ -394,18 +394,23 @@ def ci_tree(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, request: pytest.Fix
     root = tmp_path / 'repo'
     root.mkdir()
     remote = tmp_path / 'remote.git'
-    # The caller's git configuration must not reach these repositories: identity,
-    # signing and hooks are decided here. The two variables also cover the admission
-    # code's own git reads. Git older than 2.32 ignores them, so the helper also
-    # overrides signing and the hooks directory on its own command line.
-    monkeypatch.setenv('GIT_CONFIG_GLOBAL', os.devnull)
-    monkeypatch.setenv('GIT_CONFIG_SYSTEM', os.devnull)
+    # The caller's git configuration must not reach these repositories or the
+    # admission code's own git reads: identity, signing and hooks are decided here.
+    # An empty HOME and XDG_CONFIG_HOME with GIT_CONFIG_NOSYSTEM hide every user and
+    # system setting on any git. The two null-device variables do the same on git
+    # 2.32 or later, where a caller's own GIT_CONFIG_GLOBAL would otherwise win.
+    git_home = tmp_path / 'git-home'
+    git_home.mkdir()
+    for name, value in {'HOME': git_home, 'XDG_CONFIG_HOME': git_home / 'xdg', 'GIT_CONFIG_NOSYSTEM': '1',
+                        'GIT_CONFIG_GLOBAL': os.devnull, 'GIT_CONFIG_SYSTEM': os.devnull}.items():
+        monkeypatch.setenv(name, str(value))
     # Not named env: the helper is returned and must keep this environment after
     # the CI environment below is built.
     git_env = {**os.environ, 'GIT_AUTHOR_NAME': 'Fixture', 'GIT_COMMITTER_NAME': 'Fixture',
                'GIT_AUTHOR_EMAIL': 'fixture', 'GIT_COMMITTER_EMAIL': 'fixture'}
 
     def git(*args: str) -> str:
+        # Redundant with the environment above; kept so a commit never signs or runs a hook.
         done = subprocess.run(['git', '-c', 'commit.gpgsign=false', '-c', f'core.hooksPath={os.devnull}', *args],
                               cwd=root, env=git_env, capture_output=True, text=True)
         assert done.returncode == 0, f'git {args} exited {done.returncode}: {done.stderr}'
@@ -451,7 +456,7 @@ def ci_tree(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, request: pytest.Fix
 
 def test_ci_tree_ignores_the_callers_git_configuration(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest) -> None:
-    """A caller whose global config signs commits or runs hooks must not change the fixture."""
+    """A caller whose global config signs commits or pushes, or runs hooks, must not change the fixture."""
     home = tmp_path / 'home'
     hooks = home / 'hooks'
     hooks.mkdir(parents=True)
@@ -459,7 +464,8 @@ def test_ci_tree_ignores_the_callers_git_configuration(
     (hooks / 'pre-commit').chmod(0o755)
     (home / '.gitconfig').write_text(
         f'[commit]\n\tgpgsign = true\n[gpg]\n\tformat = ssh\n[gpg "ssh"]\n\tprogram = {home / "no-signer"}\n'
-        f'[user]\n\tsigningkey = {home / "no-key.pub"}\n[core]\n\thooksPath = {hooks}\n')
+        f'[user]\n\tsigningkey = {home / "no-key.pub"}\n[core]\n\thooksPath = {hooks}\n'
+        '[push]\n\tgpgSign = true\n')
     monkeypatch.setenv('HOME', str(home))
     for name in ('XDG_CONFIG_HOME', 'GIT_CONFIG_GLOBAL', 'GIT_CONFIG_SYSTEM'):
         monkeypatch.delenv(name, raising=False)
