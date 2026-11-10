@@ -1247,7 +1247,7 @@ def main(argv: list[str] | None = None) -> int:
                 if penalty["changed"]:
                     print(f"  {penalty['path']} {penalty['pointer']}: {json.dumps(penalty['before'])} -> "
                           f"{json.dumps(penalty['after'])}")
-            print("  no published number changed; commit the snapshot file and data/analysis_snapshots/index.json,")
+            print("  creating the snapshot changed no file but its own; commit the snapshot file and data/analysis_snapshots/index.json,")
             print("  then run check-release before any push")
             return 0
         if args.command == "verify":
