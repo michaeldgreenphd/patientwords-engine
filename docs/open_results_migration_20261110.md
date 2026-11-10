@@ -21,11 +21,25 @@ change applied; site payload at `b7da45303be3057c5993d1bb192219827d1acda9`.
 | Check | Result |
 |---|---|
 | `scripts/urgency_shift.py` as it was at `d8d0855d`, and the same script reading through `scripts/results_policy.py`, over identical inputs | byte-identical output, sha256 `8b3068a5ffdeb1f8c9885a5e04674a1cd1fe7b5528bfa892418a158e93a42d70` |
+| `scripts/export_frontend_simulated.py` as it was at `d8d0855d` (run with only its own script directory importable, so it used the old hold) and the same script at this change, into two disposable site copies with the published 27 stamps and 4 models | byte-identical `data/simulated_scenarios.json`, sha256 `d949b5c6bb2dd9b522fde6a64c27b6b16dea1e888e9eaa9bf668ae35624caaa4`; identical render set (218 files) |
 | Parts the default membership `study-interim/1` admits | 951 of 1,235, the same 951 the hold admitted |
 | Parts it does not read, by reason | 93 logits parts outside the pin; 39 + 39 parts of `gemma-4-e2b` and `qwen3.5-2b-base`; 113 parts of hand-authored sets. The same 284 the hold skipped |
 | Recomputed rows against the engine's committed `urgency_shift.json` | 18,208 against 18,205. The 3 extra rows are `gemma-2-2b` rows of `drift_sentinel_20261106`, a hosted part that landed after the committed file was written |
 
-The last row is not caused by this change, and it shows a gap the hold never covered:
+A fresh export differs from the site's committed payload (sha256 `5bcd3eac…`) for both
+versions of the exporter alike: the committed file was last fully exported on 2026-08-29
+and carries the joins that later steps embed. That difference predates this change.
+
+After the export, the rest of the publish chain was run on the disposable copy, with the
+catalogue step added: `urgency_shift.py --publish`, `embed_scenario_joins.py` (4,745
+urgency joins, 421 depth classes), `export_traces_site.py --stamp-only` (1,509 stamped),
+`export_results_catalogue.py`, then the gates. `validate_frontend_contract.py --strict`:
+0 errors, 0 warnings. `claim_check.py`: all claims verified. `seal_check.py`: CLEAN, 183
+sealed phrases, 1,207 files scanned. `check_pages.py`: 22 pages, 0 failing. This is a
+regeneration from landed summaries on a copy; it is not a publish and not a new
+measurement.
+
+The last table row is not caused by this change, and it shows a gap the hold never covered:
 hosted parts are read without a pin, so a statistics file moves when one lands. The
 snapshots record hosted hashes for that reason.
 
