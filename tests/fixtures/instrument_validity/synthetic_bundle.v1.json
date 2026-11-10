@@ -1,0 +1,286 @@
+{
+  "schema_version": "patientwords.instrument-validity/1",
+  "synthetic": true,
+  "execution_status": "synthetic",
+  "seed": 7,
+  "notes": "Synthetic software fixture. Every fact, wording, description, identity and number is an abstract placeholder written by hand to exercise the scorer. It is not a measurement and supports no claim about any model or instrument.",
+  "analysis_plan": {"bootstrap_resamples": 2000, "confidence_level": 0.95, "partial_credit": 0.5, "minimum_families_for_verdict": 3, "primary_analysis_set": "held_out", "prespecified_subsets": ["comparable_behaviour"]},
+  "equivalence_margins": {"prespecified": true, "fixed_before_data": "synthetic fixture; margins written before the placeholder rows", "endpoints": {"fact_recovery_rate_difference": 0.2, "held_artifact_score_difference": 0.125}},
+  "development": {"label_development_split": "discovery", "scorer_calibration_split": "discovery"},
+  "thresholds": {"behaviour_change": {"value": 0.125, "selected_on_split": "discovery"}, "representation_change": {"activation": {"value": 0.25, "selected_on_split": "discovery"}, "readout": {"value": 0.25, "selected_on_split": "discovery"}}},
+  "identities": {"model_id": "synthetic-model", "model_revision": "synthetic-revision-1", "tokenizer_revision": "synthetic-revision-1", "behaviour_endpoint": "synthetic placeholder endpoint on a 0 to 1 scale"},
+  "families": [
+    {
+      "family_id": "family_1",
+      "split": "discovery",
+      "review_status": "synthetic placeholder; no clinical review applies",
+      "reference_facts": [
+        {"fact_id": "fact_a", "text": "abstract reference fact_a of case 1"},
+        {"fact_id": "fact_b", "text": "abstract reference fact_b of case 1"},
+        {"fact_id": "fact_c", "text": "abstract reference fact_c of case 1"},
+        {"fact_id": "fact_d", "text": "abstract reference fact_d of case 1"}
+      ],
+      "variants": [
+        {"variant_id": "f1_medical", "register": "medical", "text": "medical wording of case 1"},
+        {"variant_id": "f1_everyday", "register": "everyday", "text": "everyday wording of case 1"},
+        {"variant_id": "f1_paraphrase_medical", "register": "within_register_paraphrase", "text": "second medical wording of case 1", "base_register": "medical"},
+        {"variant_id": "f1_paraphrase_everyday", "register": "within_register_paraphrase", "text": "second everyday wording of case 1", "base_register": "everyday"},
+        {"variant_id": "f1_changed_medical", "register": "changed_fact", "text": "medical wording of case 1 with fact_a changed", "base_register": "medical", "changed_fact_id": "fact_a"},
+        {"variant_id": "f1_changed_everyday", "register": "changed_fact", "text": "everyday wording of case 1 with fact_b changed", "base_register": "everyday", "changed_fact_id": "fact_b"}
+      ]
+    },
+    {
+      "family_id": "family_2",
+      "split": "discovery",
+      "review_status": "synthetic placeholder; no clinical review applies",
+      "reference_facts": [
+        {"fact_id": "fact_a", "text": "abstract reference fact_a of case 2"},
+        {"fact_id": "fact_b", "text": "abstract reference fact_b of case 2"},
+        {"fact_id": "fact_c", "text": "abstract reference fact_c of case 2"},
+        {"fact_id": "fact_d", "text": "abstract reference fact_d of case 2"}
+      ],
+      "variants": [
+        {"variant_id": "f2_medical", "register": "medical", "text": "medical wording of case 2"},
+        {"variant_id": "f2_everyday", "register": "everyday", "text": "everyday wording of case 2"},
+        {"variant_id": "f2_paraphrase_medical", "register": "within_register_paraphrase", "text": "second medical wording of case 2", "base_register": "medical"},
+        {"variant_id": "f2_changed_medical", "register": "changed_fact", "text": "medical wording of case 2 with fact_a changed", "base_register": "medical", "changed_fact_id": "fact_a"},
+        {"variant_id": "f2_changed_everyday", "register": "changed_fact", "text": "everyday wording of case 2 with fact_b changed", "base_register": "everyday", "changed_fact_id": "fact_b"}
+      ]
+    },
+    {
+      "family_id": "family_3",
+      "split": "validation",
+      "review_status": "synthetic placeholder; no clinical review applies",
+      "reference_facts": [
+        {"fact_id": "fact_a", "text": "abstract reference fact_a of case 3"},
+        {"fact_id": "fact_b", "text": "abstract reference fact_b of case 3"},
+        {"fact_id": "fact_c", "text": "abstract reference fact_c of case 3"},
+        {"fact_id": "fact_d", "text": "abstract reference fact_d of case 3"}
+      ],
+      "variants": [
+        {"variant_id": "f3_medical", "register": "medical", "text": "medical wording of case 3"},
+        {"variant_id": "f3_everyday", "register": "everyday", "text": "everyday wording of case 3"},
+        {"variant_id": "f3_paraphrase_medical", "register": "within_register_paraphrase", "text": "second medical wording of case 3", "base_register": "medical"},
+        {"variant_id": "f3_changed_medical", "register": "changed_fact", "text": "medical wording of case 3 with fact_a changed", "base_register": "medical", "changed_fact_id": "fact_a"},
+        {"variant_id": "f3_changed_everyday", "register": "changed_fact", "text": "everyday wording of case 3 with fact_b changed", "base_register": "everyday", "changed_fact_id": "fact_b"}
+      ]
+    },
+    {
+      "family_id": "family_4",
+      "split": "validation",
+      "review_status": "synthetic placeholder; no clinical review applies",
+      "reference_facts": [
+        {"fact_id": "fact_a", "text": "abstract reference fact_a of case 4"},
+        {"fact_id": "fact_b", "text": "abstract reference fact_b of case 4"},
+        {"fact_id": "fact_c", "text": "abstract reference fact_c of case 4"},
+        {"fact_id": "fact_d", "text": "abstract reference fact_d of case 4"}
+      ],
+      "variants": [
+        {"variant_id": "f4_medical", "register": "medical", "text": "medical wording of case 4"},
+        {"variant_id": "f4_everyday", "register": "everyday", "text": "everyday wording of case 4"},
+        {"variant_id": "f4_paraphrase_medical", "register": "within_register_paraphrase", "text": "second medical wording of case 4", "base_register": "medical"},
+        {"variant_id": "f4_paraphrase_everyday", "register": "within_register_paraphrase", "text": "second everyday wording of case 4", "base_register": "everyday"},
+        {"variant_id": "f4_changed_medical", "register": "changed_fact", "text": "medical wording of case 4 with fact_a changed", "base_register": "medical", "changed_fact_id": "fact_a"}
+      ]
+    },
+    {
+      "family_id": "family_5",
+      "split": "fresh_test",
+      "review_status": "synthetic placeholder; no clinical review applies",
+      "reference_facts": [
+        {"fact_id": "fact_a", "text": "abstract reference fact_a of case 5"},
+        {"fact_id": "fact_b", "text": "abstract reference fact_b of case 5"},
+        {"fact_id": "fact_c", "text": "abstract reference fact_c of case 5"},
+        {"fact_id": "fact_d", "text": "abstract reference fact_d of case 5"}
+      ],
+      "variants": [
+        {"variant_id": "f5_medical", "register": "medical", "text": "medical wording of case 5"},
+        {"variant_id": "f5_everyday", "register": "everyday", "text": "everyday wording of case 5"},
+        {"variant_id": "f5_paraphrase_medical", "register": "within_register_paraphrase", "text": "second medical wording of case 5", "base_register": "medical"},
+        {"variant_id": "f5_changed_medical", "register": "changed_fact", "text": "medical wording of case 5 with fact_a changed", "base_register": "medical", "changed_fact_id": "fact_a"}
+      ]
+    },
+    {
+      "family_id": "family_6",
+      "split": "fresh_test",
+      "review_status": "synthetic placeholder; no clinical review applies",
+      "reference_facts": [
+        {"fact_id": "fact_a", "text": "abstract reference fact_a of case 6"},
+        {"fact_id": "fact_b", "text": "abstract reference fact_b of case 6"},
+        {"fact_id": "fact_c", "text": "abstract reference fact_c of case 6"},
+        {"fact_id": "fact_d", "text": "abstract reference fact_d of case 6"}
+      ],
+      "variants": [
+        {"variant_id": "f6_medical", "register": "medical", "text": "medical wording of case 6"},
+        {"variant_id": "f6_everyday", "register": "everyday", "text": "everyday wording of case 6"},
+        {"variant_id": "f6_paraphrase_medical", "register": "within_register_paraphrase", "text": "second medical wording of case 6", "base_register": "medical"},
+        {"variant_id": "f6_changed_medical", "register": "changed_fact", "text": "medical wording of case 6 with fact_a changed", "base_register": "medical", "changed_fact_id": "fact_a"}
+      ]
+    }
+  ],
+  "stages": {
+    "activation": {
+      "method_id": "synthetic_activation_method",
+      "method_revision": "synthetic-revision-1",
+      "artifact_id": "synthetic_activation_artifact",
+      "artifact_sha256": "synthetic-digest-activation",
+      "observations": [
+        {"family_id": "family_1", "variant_id": "f1_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": 1.0, "behaviour_value": 0.75},
+        {"family_id": "family_1", "variant_id": "f1_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": 1.0, "behaviour_value": 0.75},
+        {"family_id": "family_1", "variant_id": "f1_paraphrase_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_1", "variant_id": "f1_paraphrase_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_1", "variant_id": "f1_changed_medical", "fact_recovery": {"fact_a": "not_recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_1", "variant_id": "f1_changed_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "not_recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_2", "variant_id": "f2_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": 1.0, "behaviour_value": 0.75},
+        {"family_id": "family_2", "variant_id": "f2_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "not_recovered", "fact_d": "not_recovered"}, "unsupported_facts": 1, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": 0.25, "behaviour_value": 0.6875},
+        {"family_id": "family_2", "variant_id": "f2_paraphrase_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_2", "variant_id": "f2_changed_medical", "fact_recovery": {"fact_a": "not_recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_2", "variant_id": "f2_changed_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "not_recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_3", "variant_id": "f3_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "not_recovered"}, "unsupported_facts": 1, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": 0.5, "behaviour_value": 0.875},
+        {"family_id": "family_3", "variant_id": "f3_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": 0.375, "behaviour_value": 0.5},
+        {"family_id": "family_3", "variant_id": "f3_paraphrase_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_3", "variant_id": "f3_changed_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_3", "variant_id": "f3_changed_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_4", "variant_id": "f4_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": 0.875, "behaviour_value": 0.625},
+        {"family_id": "family_4", "variant_id": "f4_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": 0.25, "behaviour_value": 0.625},
+        {"family_id": "family_4", "variant_id": "f4_paraphrase_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_4", "variant_id": "f4_paraphrase_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "not_recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_4", "variant_id": "f4_changed_medical", "fact_recovery": {"fact_a": "not_recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 1, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_5", "variant_id": "f5_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": 1.25, "behaviour_value": 0.625},
+        {"family_id": "family_5", "variant_id": "f5_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "not_recovered", "fact_c": "recovered", "fact_d": "not_recovered"}, "unsupported_facts": 2, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": 0.125, "behaviour_value": 0.25},
+        {"family_id": "family_5", "variant_id": "f5_paraphrase_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_5", "variant_id": "f5_changed_medical", "fact_recovery": {"fact_a": "not_recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_6", "variant_id": "f6_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "not_recovered", "fact_d": "not_recovered"}, "unsupported_facts": 1, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": 0.5, "behaviour_value": 0.75},
+        {"family_id": "family_6", "variant_id": "f6_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": 0.5, "behaviour_value": 0.75},
+        {"family_id": "family_6", "variant_id": "f6_paraphrase_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "not_recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_6", "variant_id": "f6_changed_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "not_recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null}
+      ]
+    },
+    "readout": {
+      "method_id": "synthetic_readout_method",
+      "method_revision": "synthetic-revision-1",
+      "artifact_id": "synthetic_readout_artifact",
+      "artifact_sha256": "synthetic-digest-readout",
+      "observations": [
+        {"family_id": "family_1", "variant_id": "f1_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": 1, "filtered_rank": 1, "rank_status": "observed", "representation_value": 0.5, "behaviour_value": 0.75},
+        {"family_id": "family_1", "variant_id": "f1_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": 5, "filtered_rank": 3, "rank_status": "observed", "representation_value": 0.5, "behaviour_value": 0.75},
+        {"family_id": "family_1", "variant_id": "f1_paraphrase_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_1", "variant_id": "f1_paraphrase_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_1", "variant_id": "f1_changed_medical", "fact_recovery": {"fact_a": "not_recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_1", "variant_id": "f1_changed_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "not_recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_2", "variant_id": "f2_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": 2, "filtered_rank": 1, "rank_status": "observed", "representation_value": 0.625, "behaviour_value": 0.75},
+        {"family_id": "family_2", "variant_id": "f2_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": 2, "filtered_rank": 1, "rank_status": "observed", "representation_value": 0.5, "behaviour_value": 0.6875},
+        {"family_id": "family_2", "variant_id": "f2_paraphrase_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_2", "variant_id": "f2_changed_medical", "fact_recovery": {"fact_a": "not_recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_2", "variant_id": "f2_changed_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "not_recovered", "fact_c": "recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_3", "variant_id": "f3_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": 1, "filtered_rank": 1, "rank_status": "observed", "representation_value": 0.875, "behaviour_value": 0.875},
+        {"family_id": "family_3", "variant_id": "f3_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": 9, "filtered_rank": 6, "rank_status": "observed", "representation_value": 0.25, "behaviour_value": 0.5},
+        {"family_id": "family_3", "variant_id": "f3_paraphrase_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_3", "variant_id": "f3_changed_medical", "fact_recovery": {"fact_a": "not_recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_3", "variant_id": "f3_changed_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "not_recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_4", "variant_id": "f4_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "not_recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": 3, "filtered_rank": 2, "rank_status": "observed", "representation_value": 0.25, "behaviour_value": 0.625},
+        {"family_id": "family_4", "variant_id": "f4_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "not_recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": 3, "filtered_rank": 2, "rank_status": "observed", "representation_value": 0.25, "behaviour_value": 0.625},
+        {"family_id": "family_4", "variant_id": "f4_paraphrase_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "not_recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_4", "variant_id": "f4_paraphrase_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "not_recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_4", "variant_id": "f4_changed_medical", "fact_recovery": {"fact_a": "not_recovered", "fact_b": "recovered", "fact_c": "not_recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_5", "variant_id": "f5_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": 1, "filtered_rank": 1, "rank_status": "observed", "representation_value": 0.75, "behaviour_value": 0.625},
+        {"family_id": "family_5", "variant_id": "f5_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_observed_in_window", "representation_value": 0.125, "behaviour_value": 0.25},
+        {"family_id": "family_5", "variant_id": "f5_paraphrase_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_5", "variant_id": "f5_changed_medical", "fact_recovery": {"fact_a": "not_recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_6", "variant_id": "f6_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": 4, "filtered_rank": 3, "rank_status": "observed", "representation_value": 0.5, "behaviour_value": 0.75},
+        {"family_id": "family_6", "variant_id": "f6_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "not_recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": 4, "filtered_rank": 3, "rank_status": "observed", "representation_value": 0.5, "behaviour_value": 0.75},
+        {"family_id": "family_6", "variant_id": "f6_paraphrase_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_6", "variant_id": "f6_changed_medical", "fact_recovery": {"fact_a": "not_recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null}
+      ]
+    },
+    "label": {
+      "method_id": "synthetic_label_method",
+      "method_revision": "synthetic-revision-1",
+      "artifact_id": "synthetic_label_artifact",
+      "artifact_sha256": "synthetic-digest-label",
+      "observations": [
+        {"family_id": "family_1", "variant_id": "f1_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": 0.75},
+        {"family_id": "family_1", "variant_id": "f1_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": 0.75},
+        {"family_id": "family_1", "variant_id": "f1_paraphrase_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_1", "variant_id": "f1_paraphrase_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_1", "variant_id": "f1_changed_medical", "fact_recovery": {"fact_a": "not_recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_1", "variant_id": "f1_changed_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "not_recovered", "fact_c": "recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_2", "variant_id": "f2_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "partially"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": 0.75},
+        {"family_id": "family_2", "variant_id": "f2_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "contradicted"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": 0.6875},
+        {"family_id": "family_2", "variant_id": "f2_paraphrase_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "partially"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_2", "variant_id": "f2_changed_medical", "fact_recovery": {"fact_a": "not_recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "partially"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_2", "variant_id": "f2_changed_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "not_recovered", "fact_c": "recovered", "fact_d": "contradicted"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_3", "variant_id": "f3_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": 0.875},
+        {"family_id": "family_3", "variant_id": "f3_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": 0.5},
+        {"family_id": "family_3", "variant_id": "f3_paraphrase_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_3", "variant_id": "f3_changed_medical", "fact_recovery": {"fact_a": "not_recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_3", "variant_id": "f3_changed_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "not_recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_4", "variant_id": "f4_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": 0.625},
+        {"family_id": "family_4", "variant_id": "f4_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": 0.625},
+        {"family_id": "family_4", "variant_id": "f4_paraphrase_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_4", "variant_id": "f4_paraphrase_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_4", "variant_id": "f4_changed_medical", "fact_recovery": {"fact_a": "not_recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_5", "variant_id": "f5_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "not_recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": 0.625},
+        {"family_id": "family_5", "variant_id": "f5_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "not_recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": 0.25},
+        {"family_id": "family_5", "variant_id": "f5_paraphrase_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "not_recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_5", "variant_id": "f5_changed_medical", "fact_recovery": {"fact_a": "not_recovered", "fact_b": "recovered", "fact_c": "not_recovered", "fact_d": "not_recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_6", "variant_id": "f6_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": 0.75},
+        {"family_id": "family_6", "variant_id": "f6_paraphrase_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_6", "variant_id": "f6_changed_medical", "fact_recovery": {"fact_a": "not_recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null}
+      ]
+    },
+    "score": {
+      "method_id": "synthetic_score_method",
+      "method_revision": "synthetic-revision-1",
+      "artifact_id": "synthetic_score_artifact",
+      "artifact_sha256": "synthetic-digest-score",
+      "observations": [
+        {"family_id": "family_1", "variant_id": "f1_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": 0.75},
+        {"family_id": "family_1", "variant_id": "f1_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": 0.75},
+        {"family_id": "family_1", "variant_id": "f1_paraphrase_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_1", "variant_id": "f1_paraphrase_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_1", "variant_id": "f1_changed_medical", "fact_recovery": {"fact_a": "not_recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_1", "variant_id": "f1_changed_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "not_recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_2", "variant_id": "f2_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": 0.75},
+        {"family_id": "family_2", "variant_id": "f2_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": 0.6875},
+        {"family_id": "family_2", "variant_id": "f2_paraphrase_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_2", "variant_id": "f2_changed_medical", "fact_recovery": {"fact_a": "not_recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_2", "variant_id": "f2_changed_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "not_recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_3", "variant_id": "f3_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": 0.875},
+        {"family_id": "family_3", "variant_id": "f3_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": 0.5},
+        {"family_id": "family_3", "variant_id": "f3_paraphrase_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_3", "variant_id": "f3_changed_medical", "fact_recovery": {"fact_a": "not_recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_3", "variant_id": "f3_changed_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "not_recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_4", "variant_id": "f4_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": 0.625},
+        {"family_id": "family_4", "variant_id": "f4_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": 0.625},
+        {"family_id": "family_4", "variant_id": "f4_paraphrase_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_4", "variant_id": "f4_paraphrase_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_4", "variant_id": "f4_changed_medical", "fact_recovery": {"fact_a": "not_recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_5", "variant_id": "f5_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": 0.625},
+        {"family_id": "family_5", "variant_id": "f5_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": 0.25},
+        {"family_id": "family_5", "variant_id": "f5_paraphrase_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_5", "variant_id": "f5_changed_medical", "fact_recovery": {"fact_a": "not_recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_6", "variant_id": "f6_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": 0.75},
+        {"family_id": "family_6", "variant_id": "f6_everyday", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": 0.75},
+        {"family_id": "family_6", "variant_id": "f6_paraphrase_medical", "fact_recovery": {"fact_a": "recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null},
+        {"family_id": "family_6", "variant_id": "f6_changed_medical", "fact_recovery": {"fact_a": "not_recovered", "fact_b": "recovered", "fact_c": "recovered", "fact_d": "recovered"}, "unsupported_facts": 0, "raw_rank": null, "filtered_rank": null, "rank_status": "not_recorded", "representation_value": null, "behaviour_value": null}
+      ]
+    }
+  },
+  "held_artifact": [
+    {"artifact_id": "artifact_1", "artifact_sha256": "synthetic-digest-artifact_1", "family_id": "family_1", "stage": "score", "description_register": "medical", "description_text": "medical description of artifact_1", "score": 0.75},
+    {"artifact_id": "artifact_1", "artifact_sha256": "synthetic-digest-artifact_1", "family_id": "family_1", "stage": "score", "description_register": "everyday", "description_text": "everyday description of artifact_1", "score": 0.5},
+    {"artifact_id": "artifact_2", "artifact_sha256": "synthetic-digest-artifact_2", "family_id": "family_2", "stage": "score", "description_register": "medical", "description_text": "medical description of artifact_2", "score": 0.5},
+    {"artifact_id": "artifact_2", "artifact_sha256": "synthetic-digest-artifact_2", "family_id": "family_2", "stage": "score", "description_register": "everyday", "description_text": "everyday description of artifact_2", "score": 0.25},
+    {"artifact_id": "artifact_3", "artifact_sha256": "synthetic-digest-artifact_3", "family_id": "family_3", "stage": "score", "description_register": "medical", "description_text": "medical description of artifact_3", "score": 1.0},
+    {"artifact_id": "artifact_3", "artifact_sha256": "synthetic-digest-artifact_3", "family_id": "family_3", "stage": "score", "description_register": "everyday", "description_text": "everyday description of artifact_3", "score": 0.75},
+    {"artifact_id": "artifact_4", "artifact_sha256": "synthetic-digest-artifact_4", "family_id": "family_4", "stage": "score", "description_register": "medical", "description_text": "medical description of artifact_4", "score": 0.875},
+    {"artifact_id": "artifact_4", "artifact_sha256": "synthetic-digest-artifact_4", "family_id": "family_4", "stage": "score", "description_register": "everyday", "description_text": "everyday description of artifact_4", "score": 0.625},
+    {"artifact_id": "artifact_5a", "artifact_sha256": "synthetic-digest-artifact_5a", "family_id": "family_5", "stage": "score", "description_register": "medical", "description_text": "medical description of artifact_5a", "score": 0.875},
+    {"artifact_id": "artifact_5a", "artifact_sha256": "synthetic-digest-artifact_5a", "family_id": "family_5", "stage": "score", "description_register": "everyday", "description_text": "everyday description of artifact_5a", "score": 0.5},
+    {"artifact_id": "artifact_5b", "artifact_sha256": "synthetic-digest-artifact_5b", "family_id": "family_5", "stage": "score", "description_register": "medical", "description_text": "medical description of artifact_5b", "score": 0.625},
+    {"artifact_id": "artifact_5b", "artifact_sha256": "synthetic-digest-artifact_5b", "family_id": "family_5", "stage": "score", "description_register": "everyday", "description_text": "everyday description of artifact_5b", "score": 0.5},
+    {"artifact_id": "artifact_6", "artifact_sha256": "synthetic-digest-artifact_6", "family_id": "family_6", "stage": "score", "description_register": "medical", "description_text": "medical description of artifact_6", "score": 0.75},
+    {"artifact_id": "artifact_6", "artifact_sha256": "synthetic-digest-artifact_6", "family_id": "family_6", "stage": "score", "description_register": "everyday", "description_text": "everyday description of artifact_6", "score": 0.5}
+  ]
+}
