@@ -82,8 +82,8 @@ def test_main_counts_held_parts_separately(tmp_path, monkeypatch, capsys):
     assert t["trace_summary_parts"] == 1
     assert t["held_trace_summary_parts"] == 1
     out = capsys.readouterr().out
-    assert "publication hold (scripts/publication_hold.py), parts not read:" in out
-    assert "held model gemma-4-e2b 1" in out
+    assert "membership study-interim/1 (scripts/results_policy.py), parts not read:" in out
+    assert "model gemma-4-e2b (cohort post_registration_20261009, outside this membership) 1" in out
 
 
 def test_main_refuses_malformed_summary(tmp_path, monkeypatch):

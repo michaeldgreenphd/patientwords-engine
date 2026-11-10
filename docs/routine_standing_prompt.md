@@ -180,10 +180,13 @@ add `--keep-dashboard` to the fire too, and `--ignore-settle` to both only
 when §2 resolved a `logits-eval` entry this cycle after confirming it
 terminal. The park queues behind the leg (one running + one pending, never
 a third) and runs after it, so the file at rest is always the park. The next
-cycle's §2 harvests both entries. A landed leg changes no published file:
-the collectors read no logits part the owner has not released
-(`scripts/publication_hold.py`, `data/publication_release/logits_parts.json`),
-so it is no reason to run §5. Never run `scripts/publication_release.py`.
+cycle's §2 harvests both entries. A landed leg changes no statistics file:
+the collectors read a logits part only when the study pin lists it
+(`scripts/results_policy.py`, `data/publication_release/logits_parts.json`).
+It does add to the results catalogue, so it is a reason to run §5's
+catalogue-only chain (publish-site-data skill, *Catalogue-only publish*) and
+no other step of §5. Never run `scripts/publication_release.py --release`
+while the policy file's `analysis_pin.auto_advance` is false; it refuses.
 
 3f. **Lens sentinel (restored 2026-10-31; $0; owner decision).** The
 internals counterpart of §3: the hosted Jacobian lens can change under us

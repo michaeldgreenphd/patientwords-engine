@@ -103,14 +103,14 @@ def load_rows(path):
     """
     data = json.loads(Path(path).read_text(encoding="utf-8"))
     rows = data["rows"]
-    # Models held from publication (scripts/publication_hold.py) never enter these statistics, so they cannot
-    # change a published family, Bonferroni m or model count. urgency_shift.py already skips them; this guards a
-    # rows file written by anything else.
+    # Models outside the default analysis membership (scripts/results_policy.py) never enter these statistics,
+    # so they cannot change a published family, Bonferroni m or model count. urgency_shift.py already skips
+    # them; this guards a rows file written by anything else. Their results stay public in the catalogue.
     held = [r for r in rows if is_held(r.get("model"))]
     if held:
         rows = [r for r in rows if not is_held(r.get("model"))]
-        print(f"publication hold: excluded {len(held)} rows of "
-              f"{sorted({r['model'] for r in held})} (scripts/publication_hold.py)")
+        print(f"analysis membership: excluded {len(held)} rows of "
+              f"{sorted({r['model'] for r in held})} (scripts/results_policy.py)")
     # Phrase-keyed exclusion (2026-07-14): a phrase flagged holdout anywhere is
     # excluded everywhere, so re-runs of a holdout phrase in split-less batches
     # cannot leak into interim numbers (found by the independent replication).

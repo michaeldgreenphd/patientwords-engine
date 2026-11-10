@@ -2,8 +2,9 @@
 """Run the 2026-10 logits backfill campaign unattended: plan, fire, wait, verify, resolve, repeat, then park.
 
 Owner decisions, 2026-10-09: fill the exploratory sweep (gemma-4-e2b + qwen3.5-2b-base) and the six original
-models' gaps in one chain, with medgemma-1.5-4b-it's priority selection and rest only when asked; republish only
-when the owner says so (scripts/publication_hold.py holds every new part); and keep the chain runnable by any
+models' gaps in one chain, with medgemma-1.5-4b-it's priority selection and rest only when asked; keep the
+published statistics unchanged as parts land (the study membership pins its logits inputs, scripts/results_policy.py;
+since 2026-11-10 landed parts are public in the results catalogue); and keep the chain runnable by any
 agent, or by hand, with a single command and no Claude session. Every rule that keeps it safe is therefore
 enforced here, in scripts/fire_trigger.py, or in the git hooks fire_trigger.py installs - never by a Claude hook.
 
@@ -35,8 +36,8 @@ logged in; and a planned fire that is not a $0 logits-eval fire.
 
 It never passes --force-evict, --override-budget or --keep-dashboard, never commits ops/dashboard.json, and
 passes --ignore-settle only after GitHub Actions shows the previous run terminal and nothing of the workflow
-queued on main (the fire-trigger-safe skill, section 4). It never releases anything for publication
-(scripts/publication_release.py is the owner's command). Every action is logged to --log (default: a file in
+queued on main (the fire-trigger-safe skill, section 4). It never advances the study pin
+(that is a separate, versioned step; see docs/open_results_policy.md). Every action is logged to --log (default: a file in
 the system temp directory, never committed).
 """
 from __future__ import annotations

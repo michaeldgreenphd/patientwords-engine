@@ -112,7 +112,7 @@ for code changes and add the checks below according to the affected behavior.
 | Instructions / documentation only | Quick path; exact sections parsed by tests must remain compatible | Verify links, command help/source and cross-repo shared rules; no model job |
 | Graph client / targets / batch logic | `python -m pytest -q -ra tests/test_graph_client.py tests/test_targets_and_batch.py tests/test_target_exact_read.py tests/test_target_keep_node_metrics.py` | Full suite + lint; hosted behavior still needs approved CI evidence |
 | Generation / phrase handling | `python -m pytest -q -ra tests/test_scenario_gen.py tests/test_patient_lexicon.py tests/test_translate_and_keywords.py` | Full suite + lint; preserve stimuli and append-only archives |
-| Exported schemas, collectors or model metadata | `python -m pytest -q -ra tests/test_export_frontend_defaults.py tests/test_validate_frontend_contract.py tests/test_simulated_schema.py tests/test_embed_scenario_joins.py tests/test_payload_summary.py tests/test_publication_hold.py tests/test_render_prune.py` | Full suite + paired contract/claim/seal gates; temporary export and consumer rendering when output changes |
+| Exported schemas, collectors or model metadata | `python -m pytest -q -ra tests/test_export_frontend_defaults.py tests/test_validate_frontend_contract.py tests/test_simulated_schema.py tests/test_embed_scenario_joins.py tests/test_payload_summary.py tests/test_publication_hold.py tests/test_results_policy.py tests/test_results_catalogue.py tests/test_render_prune.py` | Full suite + paired contract/claim/seal gates; temporary export and consumer rendering when output changes |
 | Frontend behavior or the engine checks used by site CI | `python -m pytest -q -ra tests/test_check_pages.py tests/test_check_pages_browser.py tests/test_validate_frontend_contract.py` | Companion's `verify.md`, paired structural gate, actual browser checks and relevant manual interaction |
 | Workflow/configuration/dependencies | `python -m pytest -q -ra tests/test_trigger_docs.py tests/test_workflow_created_guard.py tests/test_model_pins.py tests/test_agents_secrets.py` plus affected lane tests | Full suite + lint; read push-path parameter handling; local tests do not dispatch or reproduce hosted jobs |
 | Pilot scripts / recorded pilot artifacts | `python -m pytest -q -ra tests/test_pilot_recorded_runs.py tests/test_pilot_selftest.py` plus affected pilot tests | Recompute/re-finalize every recorded run under the compatible interpreter, compare summaries, and seal-check as `docs/pilot_runs.md` requires |
@@ -181,8 +181,11 @@ render links; external trace availability is separate from local frontend loadin
    compatibility. `models_meta` controls available model choices.
 3. Preserve the complete ordered stamp list, steering disclosure, source model/source
    set, report provenance, holdout counts, release hashes and archive link. The exporter
-   withholds sealed rows and held/unreleased results; clinical mass is published only
-   for calibrated model/source-set combinations. Missing measurements remain explicit.
+   withholds sealed rows and reads only parts inside the default analysis membership
+   ([docs/open_results_policy.md](docs/open_results_policy.md)); parts outside it are
+   public in the results catalogue (`scripts/export_results_catalogue.py`), not hidden.
+   Clinical mass is published only for calibrated model/source-set combinations.
+   Missing measurements remain explicit.
 4. The scenario-index flow uses exported global `scenario.index` for display and public
    `scenario.html?sim=N` links. Stable data joins use `(batch, batch_index, model)`;
    `batch_index` is the source summary's 1-based `index`. Reordering/removing batches

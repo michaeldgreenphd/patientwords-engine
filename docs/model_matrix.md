@@ -73,15 +73,19 @@ when you say so"). `python scripts/backfill_planner.py --campaign` plans it in t
 4. **`medgemma-1.5-4b-it` on the rest**, only when asked (`--include-medgemma15`): only pairs it has not
    measured, so nothing is measured twice and no part is overwritten.
 
-**Nothing the campaign lands is published until the owner releases it.** The collectors skip the three
-exploratory models by name, and read a CPU-logits part only when the release manifest
-(`data/publication_release/logits_parts.json`) lists it with the sha256 of its bytes
-(`scripts/publication_hold.py`). The manifest on this branch lists the 409 logits parts committed on
-2026-10-09, so today's published numbers are unchanged; each skip is counted on the collector's output.
-To publish what has landed: `python scripts/publication_release.py` (shows what is unreleased), then
-`python scripts/publication_release.py --release` and commit the manifest; the next publish includes it.
-Releasing an exploratory model is first removing it from `HELD_MODELS`. Neither the Routine nor the
-chain ever releases.
+**What the campaign lands is public at the next publish; the statistics do not move with it** (open-results
+policy, 2026-11-10: `docs/open_results_policy.md`). The results catalogue lists every landed part with its
+evidence class. The collectors behind the published statistics read under the default membership
+`study-interim/1` (`scripts/results_policy.py`): the three 2026-10-09 models' cohort is outside it, and a
+CPU-logits part is read only when the pin (`data/publication_release/logits_parts.json`) lists it with the
+sha256 of its bytes. The pin lists the 409 logits parts committed on 2026-10-09, so today's published numbers
+are unchanged; each skip is counted on the collector's output. To bring landed parts into the study
+statistics: `python scripts/publication_release.py` (shows what is not pinned), then `--release` (with
+`--models` to add some models only), a new snapshot (`scripts/results_snapshot.py create`), and commit both;
+the next publish includes them. Bringing in a 2026-10-09 model is a membership change in
+`data/results_policy/policy.v1.json`. The chain never advances the pin, and the Routine does not while the
+policy's `analysis_pin.auto_advance` is false. *Until 2026-11-10 the same rule was a publication hold: parts
+outside it were kept out of everything the publish chain wrote.*
 
 **Fires and runner time.** Counted from the planner's own output (`--campaign --next` large enough to
 list everything). Runner time uses each model's median rate (the 2026-10-09 probe for the new models,

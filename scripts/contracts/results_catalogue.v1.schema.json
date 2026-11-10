@@ -1,0 +1,171 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/michaeldgreenphd/patientwords-engine/scripts/contracts/results_catalogue.v1.schema.json",
+  "title": "PatientWords results catalogue, version 1",
+  "description": "Structural contract for the files scripts/export_results_catalogue.py writes under data/results_catalogue/ on the site: index.json (definition 'index'), rows/<run_dir>.json ('rows') and stimuli/<stem>.json ('stimuli'). Written in the keyword subset scripts/frontend_contract_schema.py supports, so value vocabularies (execution states, integrity states, evidence classes) are enforced by scripts/results_policy.py and its tests, not here. Additional properties are allowed everywhere: a reader must ignore keys it does not know.",
+  "definitions": {
+    "index": {
+      "type": "object",
+      "required": ["schema", "policy", "memberships", "restrictions", "totals", "legend", "notes", "runs"],
+      "properties": {
+        "schema": {"type": "string"},
+        "policy": {
+          "type": "object",
+          "required": ["version", "sha256", "default_membership"],
+          "properties": {
+            "version": {"type": "string"},
+            "sha256": {"type": "string"},
+            "default_membership": {"type": "string"},
+            "analysis_pin": {"type": ["object", "null"]}
+          }
+        },
+        "memberships": {"type": "object", "additionalProperties": {"$ref": "#/definitions/membership"}},
+        "restrictions": {"type": "object", "additionalProperties": {"$ref": "#/definitions/restriction"}},
+        "totals": {"type": "object", "required": ["runs", "parts", "rows_public", "rows_withheld_sealed"]},
+        "legend": {"type": "object"},
+        "notes": {"type": "array", "items": {"type": "string"}},
+        "runs": {"type": "array", "items": {"$ref": "#/definitions/run"}},
+        "_provenance": {"type": "object"}
+      }
+    },
+    "membership": {
+      "type": "object",
+      "required": ["label", "purpose", "parts", "rows"],
+      "properties": {
+        "label": {"type": "string"},
+        "purpose": {"type": "string"},
+        "parts": {"type": "integer"},
+        "rows": {"type": "integer"}
+      }
+    },
+    "restriction": {
+      "type": "object",
+      "required": ["scope", "decided_by", "responsible_role", "release_condition", "count"],
+      "properties": {
+        "scope": {"type": "string"},
+        "decided_by": {"type": "string"},
+        "responsible_role": {"type": "string"},
+        "release_condition": {"type": "string"},
+        "count": {"type": "integer"}
+      }
+    },
+    "run": {
+      "type": "object",
+      "required": ["run_dir", "stem", "model", "instrument", "backends", "stimulus_class", "model_cohort",
+                   "evidence_class", "clinical_review", "sampling", "visibility", "restriction_reasons",
+                   "execution_states", "n_parts", "analysis_parts", "other_artifacts", "rows_file",
+                   "stimuli_file", "rows_reason", "counts", "parts", "source"],
+      "properties": {
+        "run_dir": {"type": "string"},
+        "stem": {"type": "string"},
+        "model": {"type": ["string", "null"]},
+        "instrument": {"type": ["string", "null"]},
+        "backends": {"type": "array", "items": {"type": "string"}},
+        "stimulus_class": {"type": "string"},
+        "model_cohort": {"type": ["string", "null"]},
+        "evidence_class": {"type": "string"},
+        "clinical_review": {"type": "string"},
+        "sampling": {"type": "string"},
+        "visibility": {"type": "string"},
+        "restriction_reasons": {"type": "array", "items": {"type": "string"}},
+        "execution_states": {"type": "object", "additionalProperties": {"type": "integer"}},
+        "n_parts": {"type": "integer"},
+        "analysis_parts": {"type": "object", "additionalProperties": {"type": "integer"}},
+        "other_artifacts": {"type": "object", "additionalProperties": {"type": "integer"}},
+        "rows_file": {"type": ["string", "null"]},
+        "stimuli_file": {"type": ["string", "null"]},
+        "rows_reason": {"type": ["string", "null"]},
+        "counts": {"type": "object", "additionalProperties": {"type": "integer"}},
+        "parts": {"type": "array", "items": {"$ref": "#/definitions/part"}},
+        "source": {"type": "string"}
+      }
+    },
+    "part": {
+      "type": "object",
+      "required": ["name", "sha256", "backend", "execution_state", "n_results", "pairs_requested",
+                   "artifact_integrity", "in", "outside"],
+      "properties": {
+        "name": {"type": "string"},
+        "sha256": {"type": ["string", "null"]},
+        "backend": {"type": ["string", "null"]},
+        "execution_state": {"type": "string"},
+        "n_results": {"type": ["integer", "null"]},
+        "pairs_requested": {"type": ["integer", "null"]},
+        "artifact_integrity": {"type": "string"},
+        "integrity_detail": {"type": "string"},
+        "in": {"type": "array", "items": {"type": "string"}},
+        "outside": {"type": "object", "additionalProperties": {"type": "string"}}
+      }
+    },
+    "rows": {
+      "type": "object",
+      "required": ["schema", "run_dir", "stem", "model", "evidence_class", "clinical_review", "sampling",
+                   "rows_withheld_sealed", "endpoint", "stimuli_file", "parts"],
+      "properties": {
+        "schema": {"type": "string"},
+        "run_dir": {"type": "string"},
+        "stem": {"type": "string"},
+        "model": {"type": ["string", "null"]},
+        "evidence_class": {"type": "string"},
+        "clinical_review": {"type": "string"},
+        "sampling": {"type": "string"},
+        "rows_withheld_sealed": {"type": "integer"},
+        "endpoint": {"type": "string"},
+        "stimuli_file": {"type": "string"},
+        "parts": {"type": "array", "items": {"$ref": "#/definitions/rowPart"}}
+      }
+    },
+    "rowPart": {
+      "type": "object",
+      "required": ["name", "execution_state", "analysis_memberships", "clinical_mass", "rows"],
+      "properties": {
+        "name": {"type": "string"},
+        "execution_state": {"type": "string"},
+        "analysis_memberships": {"type": "array", "items": {"type": "string"}},
+        "clinical_mass": {"type": "string"},
+        "rows": {"type": "array", "items": {"$ref": "#/definitions/row"}}
+      }
+    },
+    "row": {
+      "type": "object",
+      "required": ["index", "prob_clinical", "prob_patient", "language_penalty", "target_token",
+                   "spread_clinical", "spread_patient", "flipped"],
+      "properties": {
+        "index": {"type": "integer"},
+        "prob_clinical": {"type": ["number", "null"]},
+        "prob_patient": {"type": ["number", "null"]},
+        "language_penalty": {"type": ["number", "null"]},
+        "target_token": {"type": ["string", "null"]},
+        "spread_clinical": {"type": "array", "items": {"type": "array"}},
+        "spread_patient": {"type": "array", "items": {"type": "array"}},
+        "flipped": {"type": ["boolean", "null"]},
+        "screening": {"type": "object"},
+        "sampling": {"type": "string"},
+        "prompts": {"$ref": "#/definitions/pair"},
+        "clinical_mass": {"type": ["number", "null"]}
+      }
+    },
+    "stimuli": {
+      "type": "object",
+      "required": ["schema", "stem", "stimulus_class", "clinical_review", "sampling", "source", "note", "pairs"],
+      "properties": {
+        "schema": {"type": "string"},
+        "stem": {"type": "string"},
+        "stimulus_class": {"type": "string"},
+        "clinical_review": {"type": "string"},
+        "sampling": {"type": "string"},
+        "source": {"type": "string"},
+        "note": {"type": "string"},
+        "pairs": {"type": "object", "additionalProperties": {"$ref": "#/definitions/pair"}}
+      }
+    },
+    "pair": {
+      "type": "object",
+      "required": ["clinical_prompt", "patient_prompt"],
+      "properties": {
+        "clinical_prompt": {"type": ["string", "null"]},
+        "patient_prompt": {"type": ["string", "null"]}
+      }
+    }
+  }
+}

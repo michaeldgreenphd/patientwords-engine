@@ -40,7 +40,7 @@ def collect_rows(trace_root: Path) -> list[dict]:
     """One row per (model, batch, clinical_prompt, part-index) from logits summaries."""
     start = tierb_start_stamp(str(ENGINE / "ops/dashboard.json"))
     rows = []
-    # held models and unreleased logits parts are not read (scripts/publication_hold.py)
+    # parts outside the default analysis membership are not read (scripts/results_policy.py)
     gate = Gate(trace_root.parent)
     for summary in sorted(trace_root.glob("*/batch_summary*.json")):
         stem = summary.parent.name

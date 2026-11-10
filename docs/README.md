@@ -11,6 +11,8 @@ add a document.
 | `AGENTS.md` (repository root) | The rules every agent and reviewer works from. |
 | `verify.md` (repository root) | Canonical developer setup, change-specific verification and evidence requirements. |
 | `docs/agent_reference.md` | Detailed architecture, operational rules, research limitations and review decisions linked from AGENTS.md. |
+| `docs/open_results_policy.md` | Current rule for what is shared and what an analysis reads: six independent facts per part, the three memberships, the restrictions that remain, the catalogue and the snapshots. Replaces the 2026-10-09 publication hold. |
+| `docs/open_results_migration_20261110.md` | Dated record of the move to the open-results policy: counts of what became visible and what stays restricted, the byte-identity check of the collector, and what the statistics would become under the exploratory membership. |
 | `docs/exploratory/frontend_boundary.md` | Existing synthetic exporter-to-HTTP-to-browser slice, schema/client authority and evidence limits. |
 | `docs/exploratory/action_transport.md` | Single-attempt transport, raw receipt contract and remaining CI admission requirements; no active execution route. |
 | `docs/exploratory/action_annotations.md` | Offline evidence-linked action annotation contract, synthetic rehearsal and separately gated API pilot plan. |

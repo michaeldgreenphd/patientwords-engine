@@ -154,17 +154,26 @@ every `trace_out/*/batch_summary.part_*`, scores urgency tiers and flip classes 
 docstring defines them and the translated panel as `urgency_recovery`; `--publish` writes
 the site's `../patientwords/data/urgency_shift.json`);
 `scripts/paired_stats.py` consumes its row file. `scripts/export_archive.py` writes the
-flat per-(pair × model) collaborator CSV. `scripts/publication_hold.py`'s `HELD_MODELS`, and
-logits parts missing from `data/publication_release/logits_parts.json`, stay out of every published
-number: each collector that pools `trace_out/*` skips them with a count (its docstring lists them; a new
-one must too). Only the owner releases (`scripts/publication_release.py --release`). Exploratory stimulus sets
-(`EXPLORATORY_STEM_PREFIXES` in `scripts/publication_hold.py`, today `agscen_`: the owner-read hand-authored
-pairs in `data/simulated/agscen_20261108.json`, `data/simulated/agscen_scale_20261108.json`,
-`data/simulated/agscen_r5_20261108.json`, `data/simulated/agscen_r6_20261109.json`, `data/simulated/agscen_r7_20261109.json`, `data/simulated/agscen_r7b_20261109.json` and the comma test
-`data/simulated/agscen_commas_20261109.json`) are refused by stem in every model and backend, released or
-not; collectors that pool `trace_out/*` without the gate (`scripts/export_tag_mass.py`,
-`scripts/retrace_consistency.py`) skip them too. Lens consumers read only `__jlens_`/`__loglens_` dirs and
-do not yet skip them: add the skip before any lens fire on such a set.
+flat per-(pair × model) collaborator CSV.
+
+**Sharing and analysis membership (`scripts/results_policy.py`).** The open-results policy
+([open_results_policy.md](open_results_policy.md), in force 2026-11-10) replaced the 2026-10-09 publication
+hold. Sharing a result, admitting it to an analysis, trusting its bytes and restricting it are separate
+decisions, taken from the metadata declared in `data/results_policy/policy.v1.json`. A part is shared when it
+is intact and no named restriction applies (the Tier B seal per row, redistribution-limited text, an integrity
+failure, uncalibrated clinical mass); `scripts/export_results_catalogue.py` lists every run with its evidence
+class, review status and execution state, null and partial results included. A part enters a statistic only
+through a named membership. Every collector that pools `trace_out/*` into a published number reads through
+`Gate` under the default membership `study-interim/1`, which reproduces the rule applied since 2026-10-09
+(study batches; the 2026-10-09 model cohort excluded; CPU-logits parts only when
+`data/publication_release/logits_parts.json` pins their sha256), and prints what it skipped (a new collector
+must too). Hand-authored sets (`agscen_`) are examples: no analysis membership includes them, and the
+collectors that pool without `Gate` (`scripts/export_tag_mass.py`, `scripts/retrace_consistency.py`) skip
+them with `is_exploratory_run_dir`. Lens consumers read only `__jlens_`/`__loglens_` dirs and do not yet skip
+them: add the skip before any lens fire on such a set. A published statistic changes only through a versioned
+snapshot (`scripts/results_snapshot.py`); advancing the study pin is `scripts/publication_release.py
+--release`, refused in the Routine while the policy file's `analysis_pin.auto_advance` is false.
+`scripts/publication_hold.py` is the import path older callers use and holds no rule.
 
 **Publishing (`scripts/export_frontend_simulated.py`).** Merges every model's trace dir per
 batch stamp into `scenario.models[<id>]`, mirrors the gemma base to the top level for

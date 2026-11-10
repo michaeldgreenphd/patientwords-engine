@@ -167,8 +167,10 @@ for bf in glob.glob("data/simulated/pairs_*.json"):
 from publication_hold import Gate, ReleaseError  # noqa: E402  (script-style module)
 
 seen = set()
-# held models and unreleased logits parts are not read (scripts/publication_hold.py); counted on stdout
+# Parts outside the analysis membership in force (scripts/results_policy.py; default study-interim/1) are not
+# read here and are counted on stdout. They are not hidden: the results catalogue lists them.
 gate = Gate(".")
+print(gate.describe())
 # all 2panel-schema runs: generated batches AND curated subsets (mitigation etc.);
 # non-2panel dirs are skipped harmlessly because add() requires clinical+patient spreads
 for part in sorted(glob.glob("trace_out/*/batch_summary.part_*.json")):
@@ -181,15 +183,15 @@ for part in sorted(glob.glob("trace_out/*/batch_summary.part_*.json")):
         # translated sentences masquerade as patient measurements in the
         # all-rows sensitivity and the urgency aggregates (2026-07-14).
         continue
-    # Exploratory stimulus sets (agscen_: hand-authored pairs, owner-read 2026-11-08, never through the
-    # generator's validators or the Tier B split) are traced for inspection only. gate.admit below refuses
-    # them by stem and counts them on stdout (scripts/publication_hold.py, rule 3), so none of their rows
-    # reaches the aggregates, the headline pick or the row file that paired_stats_rigor.py reads.
+    # Hand-authored exploratory sets (agscen_: owner-read 2026-11-08, never through the generator's
+    # validators or the Tier B split) are shown as examples in the results catalogue. No study membership
+    # includes them: gate.admit below skips them by stimulus class and counts them on stdout, so none of their
+    # rows reaches the aggregates, the headline pick or the row file that paired_stats_rigor.py reads.
     summary = json.loads(Path(part).read_text(encoding="utf-8"))
     model = summary.get("graph_model") or model_suffix or "gemma-2-2b"
     try:
-        # a held model's or an unreleased logits part's rows would otherwise pool into every aggregate below,
-        # the headline pick, and the rows the stats read (scripts/publication_hold.py)
+        # rows of a part outside the membership would otherwise pool into every aggregate below, the headline
+        # pick, and the rows the stats read (scripts/results_policy.py)
         if not gate.admit(part, summary, model):
             continue
     except ReleaseError as exc:
@@ -228,8 +230,15 @@ if args.publish:
 elif site.is_file():
     payload = json.loads(site.read_text(encoding="utf-8"))
 if payload is not None:
+    # The payload is not gated part by part, so the membership's model rule is applied to it here: a model the
+    # membership excludes must not re-enter the aggregates through a payload that displays it (found 2026-11-10;
+    # tests/test_results_policy.py::test_a_payload_model_outside_the_membership_never_reaches_the_rows).
+    _outside = gate.policy.excluded_models(gate.membership)
     for s in payload.get("scenarios", []):
         for mid, m in (s.get("models") or {}).items():
+            if mid in _outside:
+                gate.held[f"site payload row of model {mid} (outside this membership)"] += 1
+                continue
             if (mid, s.get("batch"), s.get("batch_index")) in seen:
                 continue
             add(mid, s.get("batch"), s.get("batch_index"),

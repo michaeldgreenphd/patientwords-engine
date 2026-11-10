@@ -56,7 +56,7 @@ def three_way(c, e):
 def collect(trace_root, skipped=None):
     """{'clinical': [(clin,off,struct),...], 'patient': [...]} over every calibrated
     feature model's (clinical_mass_publishable), non-holdout pair with both scalars for
-    that phrasing. Parts of an exploratory stimulus set (publication_hold.py rule 3,
+    that phrasing. Parts of a stimulus class outside the default membership (results_policy.py,
     e.g. agscen_) are not read; their paths are appended to `skipped` when it is a list.
 
     The holdout seal is tierb_split.sealed_pair (stamp_rows' rule, Amendments 1
@@ -136,7 +136,7 @@ def main(argv=None):
     except SealError as exc:
         return seal_config_error(exc)  # exit 2: the publish chain stops
     if skipped:
-        print(f"tag_mass: {len(skipped)} exploratory-set part(s) not read (scripts/publication_hold.py, rule 3)")
+        print(f"tag_mass: {len(skipped)} exploratory-set part(s) not read (scripts/results_policy.py)")
     payload = build_payload(acc)
     if payload is None:
         print("note: no measured featured pairs; leaving the empirical:false placeholder untouched")

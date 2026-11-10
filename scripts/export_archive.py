@@ -43,7 +43,8 @@ parser.add_argument("--out", default="archive_export", help="output path prefix"
 args = parser.parse_args()
 
 ENGINE = Path(args.engine)
-# held models and unreleased logits parts are not read (scripts/publication_hold.py); counted on stdout
+# parts outside the default analysis membership are not read (scripts/results_policy.py); counted on stdout.
+# The results catalogue (scripts/export_results_catalogue.py) carries the rows this archive leaves out.
 GATE = Gate(ENGINE)
 
 # The circuit-tracer models. gemma-2-2b keeps the bare trace_out stem; the

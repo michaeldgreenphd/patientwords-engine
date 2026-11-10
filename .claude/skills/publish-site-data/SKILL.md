@@ -30,6 +30,10 @@ with theirs.
    on disk in the engine checkout ...`) rather than prune the site's copies.
 4. Only run if new results actually landed (new `trace_out/*/batch_summary.part_*.json`,
    new lens parts, new txcorpus runs). No new results → no republish this cycle.
+   When the only new results are parts outside the default analysis membership (a
+   backfill leg, a 2026-10-09 model, a hand-authored set: `docs/open_results_policy.md`),
+   run the *Catalogue-only publish* below instead of the whole chain: steps 1 to 6
+   would rewrite their files unchanged.
 
 ## The chain (run in this exact order)
 
@@ -137,6 +141,21 @@ digest and `decisions_pending`, and wait for owner approval. Never deploy it you
 Its `steer_topics` block feeds the `topics` param of the next generation fire — corpus
 balance is a sampling decision, not an afterthought.
 
+**6b. Results catalogue (added 2026-11-10; open-results policy).**
+`python scripts/export_results_catalogue.py --site ../patientwords --record`
+Rewrites the site's `data/results_catalogue/` (index, per-run row files, per-set
+stimulus files, two CSVs) from every run under `trace_out/`, and appends the sha256 of
+each part it reads for the first time to the engine's
+`data/results_policy/part_ledger.v1.json`. This is how a newly landed part becomes
+public: nobody approves it individually. It lists every run whatever its effect,
+including partial runs and parts no analysis includes, and it never writes a row the
+Tier B seal covers. Exit 2 is a config error (the seal could not be evaluated, a sparse
+engine checkout, an unreadable policy): stop the publish, as for `seal_check.py` exit
+2. Report its totals line. A nonzero `differ from their recorded hash` count means a
+committed part changed after it was recorded: put it in `blockers`; the part is
+listed as `changed_since_recorded` and its rows are withheld until it is restored.
+It runs before the gates so that steps 7 and 8b check what it wrote.
+
 **7. Contract gate.** `python scripts/validate_frontend_contract.py --site ../patientwords`
 Exit 0 = holds; 1 = violations; 2 = payload missing/unreadable. Report mode (no
 `--strict`) only until the next urgency publish writes `unjoinable_rows` into the site's
@@ -160,14 +179,38 @@ sealed set (wrong branch), a malformed `data/seal_allowlist.json` (fix the entry
 never delete the file to get past it), or a sparse site checkout (precondition 3).
 
 **9. Commit and push.**
-- Site: `git -C ../patientwords status` first. Only `data/*.json` and exporter-written
-  `modes/simulated/` render files may have changed (added, modified, or deleted by the
-  prune). Anything else changed → abort, revert, investigate. Stage render deletions
+- Site: `git -C ../patientwords status` first. Only `data/*.json`, the catalogue's files
+  under `data/results_catalogue/`, and exporter-written `modes/simulated/` render files
+  may have changed (added, modified, or deleted by the prune or the catalogue export). Anything else changed → abort, revert, investigate. Stage render deletions
   too (`git add -A data modes/simulated`), or the pruned files stay published. Commit
   and push `main`; GitHub Pages serves it, so this push is the publish — the contract,
   claim and seal gates above are the last check.
-- Engine: commit the chain's engine-side outputs (`ops/*.json`, `data/jlens_*.json`)
-  to `main`; `git pull --rebase` before pushing.
+- Engine: commit the chain's engine-side outputs (`ops/*.json`, `data/jlens_*.json`,
+  and `data/results_policy/part_ledger.v1.json` when step 6b recorded new hashes) to
+  `main`; `git pull --rebase` before pushing.
+
+## Catalogue-only publish
+
+For a cycle whose only new results are parts outside the default analysis membership
+(precondition 4). Run, in order: step 6b, step 7, step 8, step 8b, step 9. Nothing else.
+The statistics files do not change in such a cycle, because the collectors behind them
+read under `study-interim/1`; if step 9's `git status` shows a change outside
+`data/results_catalogue/`, abort and investigate.
+
+## Snapshots
+
+When step 2 changed the site's `data/urgency_shift.json` (new hosted parts landed, or
+the study pin was advanced in a reviewed change), record what the statistics were
+computed from before step 9's engine commit:
+```
+python scripts/results_snapshot.py create --id study-interim-<UTC date> \
+    --supersedes <the id `results_snapshot.py list` marks current> --site ../patientwords \
+    --change "<one sentence: what landed since the previous snapshot>"
+```
+It writes a new immutable file under `data/analysis_snapshots/` and changes no
+published number; commit it with the engine-side outputs. It refuses an existing id:
+never edit or delete a snapshot. `results_snapshot.py verify` (exit 1) means a recorded
+input changed or went missing: put it in `blockers`.
 
 ## Never
 
@@ -178,3 +221,6 @@ never delete the file to get past it), or a sparse site checkout (precondition 3
 - Never hand-edit an exported payload, invent a number, or patch past an exporter refusal.
 - Never change depth-exporter pins or render-cap/PNG defaults without owner instruction.
 - Never let holdout phrase text reach any output or committed file.
+- Never run `scripts/publication_release.py --release` from this chain while
+  `analysis_pin.auto_advance` is false in `data/results_policy/policy.v1.json`, never
+  set `PW_RESULTS_POLICY`, and never edit the policy file, the ledger or a snapshot by hand.
