@@ -401,9 +401,9 @@ file makes no novelty claim.
   On eight test sets with a covariate shift, logistic regression on activations often generalizes better
   than a probe on sparse-autoencoder latents. In one case a latent that detects "living room" has a test
   AUC of 0.99 on English prompts and 0.64 on prompts translated to French, and does not fire on the
-  French phrase. Inference: this is a measured case of what the benchmark's hypothesis describes, an
-  instrument component that reads a concept in one surface form and not in another. The shift is
-  language, not register.
+  French phrase. Inference: this is a measured case of an instrument component that reads a concept in
+  one surface form and not in another, which is the kind of failure the benchmark tests for. The shift is
+  language, not register, so it is not an instance of the benchmark's hypothesis.
 - Sadanandan and Behzadan 2026, "PSF-Med: Measuring and Explaining Paraphrase Sensitivity in Medical
   Vision Language Models" (arXiv:2602.21428v2, <https://arxiv.org/abs/2602.21428v2>; read 2026-11-10).
   Across nine models, 3% to 37% of yes/no answers to chest X-ray questions flip under meaning-preserving
@@ -412,8 +412,12 @@ file makes no novelty claim.
   margin on average over 158 flip cases. Of the twelve papers this is the closest to the benchmark's
   subject. It reports a property of the model, read through the autoencoder; it does not test whether the
   autoencoder reads the two registers equally well. Its register comparison is a small grid of phrasings,
-  and its paraphrases were validated by a model judge without human adjudication. Inference: its flip
-  cases belong in the "behaviour changed, representation changed" cell of the four-cell report.
+  and its paraphrases were validated by a model judge without human adjudication. The 158 flip cases are
+  pairs of a question and its paraphrase, selected by answer flip, embedding similarity and unambiguous
+  answer parsing. They are not medical and everyday pairs, and the paper applies no threshold to a
+  representation difference. Inference: the paper does not place any case in a cell of the four-cell
+  report. A flip case would fall in the "behaviour changed, representation changed" cell only if its two
+  questions differed in register and the feature difference exceeded a threshold declared for that stage.
 - Liu, Han, Wiegreffe and Huang 2026, "Non-Gaussianity Reveals Interpretable Directions in Language
   Models" (arXiv:2606.11722v2, <https://arxiv.org/abs/2606.11722v2>; read 2026-11-10; version 1 was
   titled "ICA Lens: Interpreting Language Models Without Training Another Dictionary"). The paper fits
