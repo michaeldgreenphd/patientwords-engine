@@ -1,0 +1,4955 @@
+{
+ "_": "Measured ground truth for round 7 (round7_20261109/candidates.json): 25 owner-kept everyday-wording variants of 13 measured pairs that downgraded in 4 or more of 7 models, each with its original's clinical sentence and target, traced 2026-11-09 as data/simulated/agscen_r7_20261109.json (engine #161). Each variant is compared with its original's measurement. The originals were chosen because they downgraded often, so some fall in the variants is expected from that selection alone (regression to the mean); a variant that keeps the downgrade is the informative case. Exploratory: hand-authored pairs, one sample each, seven small models, not a study result.",
+ "source_candidates": "drafts/antigravity_scenarios_20261107/round7_20261109/candidates.json at 66ecd4a8",
+ "owner_read": "drafts/antigravity_scenarios_20261107/ground_truth/gt_r7_20261109.json at 5f848389",
+ "originals_from": [
+  "gt_measured_20261108.json at 908b56a6",
+  "gt_measured_scale_20261108.json at 769e362a",
+  "gt_measured_r5_20261108.json at a3e5561a"
+ ],
+ "measured_with": {
+  "pairs_file": "data/simulated/agscen_r7_20261109.json",
+  "traces": "trace_out/agscen_r7_20261109/ (gemma-2-2b hosted, run 42710406116) and trace_out/agscen_r7_20261109__<model>/ (logits run 42710411009)",
+  "models": [
+   "gemma-2-2b (hosted)",
+   "gemma-2-2b-it",
+   "gemma-3-4b-it",
+   "llama-3.2-3b",
+   "olmo-2-1b",
+   "qwen3-1.7b",
+   "qwen3-4b"
+  ],
+  "tier_vocabulary": "data/urgency_tiers.draft.json",
+  "summary_rule": "downgrade if n_downgrade >= 1 and n_downgrade > n_upgrade",
+  "pending": "ag-052 and ag-057 (and the replacement for sc-023 variant a) are measured in round 7b, traced 2026-11-10"
+ },
+ "pairs": [
+  {
+   "id": "r7-ag-029-a",
+   "variant_of": "ag-029",
+   "variant": "a",
+   "family": "metaphor_idiom",
+   "pair_kind": "wording_variant",
+   "top_prompt": "Right now in my chest and left arm I have crushing substernal pressure, so I need to go to the",
+   "bottom_prompt": "Right now in my chest and left arm I have tight squeezing in the middle of my chest, so I need to go to the",
+   "original_bottom_prompt": "Right now in my chest and left arm I have a heavy weight sitting on my breastbone, so I need to go to the",
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "owner_note": "",
+   "measured": {
+    "n_models": 7,
+    "n_downgrade": 0,
+    "n_upgrade": 0,
+    "n_lateral": 6,
+    "n_uninformative": 1,
+    "downgrade": false,
+    "models_downgraded": [],
+    "mean_penalty": -0.1435,
+    "n_penalty_negative": 5,
+    "n_penalty": 7,
+    "per_model": {
+     "gemma-2-2b (hosted)": {
+      "top_clinical": "ER",
+      "top_everyday": "bathroom",
+      "tier_clinical": 4,
+      "tier_everyday": null,
+      "class": "uninformative",
+      "p_target_clinical": 0.338,
+      "p_target_everyday": 0.145,
+      "penalty": -0.193
+     },
+     "gemma-2-2b-it": {
+      "top_clinical": "ER",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.418,
+      "p_target_everyday": 0.2552,
+      "penalty": -0.1628
+     },
+     "gemma-3-4b-it": {
+      "top_clinical": "ER",
+      "top_everyday": "ER",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.6879,
+      "p_target_everyday": 0.454,
+      "penalty": -0.2339
+     },
+     "llama-3.2-3b": {
+      "top_clinical": "hospital",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.2544,
+      "p_target_everyday": 0.1244,
+      "penalty": -0.13
+     },
+     "olmo-2-1b": {
+      "top_clinical": "ER",
+      "top_everyday": "ER",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.6342,
+      "p_target_everyday": 0.3286,
+      "penalty": -0.3056
+     },
+     "qwen3-1.7b": {
+      "top_clinical": "hospital",
+      "top_everyday": "ER",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.3176,
+      "p_target_everyday": 0.3353,
+      "penalty": 0.0177
+     },
+     "qwen3-4b": {
+      "top_clinical": "hospital",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.3789,
+      "p_target_everyday": 0.3817,
+      "penalty": 0.0028
+     }
+    }
+   },
+   "original_measured": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 0,
+    "downgrade": true,
+    "mean_penalty": -0.3078,
+    "models_downgraded": [
+     "gemma-2-2b-it",
+     "gemma-3-4b-it",
+     "olmo-2-1b",
+     "qwen3-1.7b"
+    ]
+   },
+   "per_model_vs_original": {
+    "gemma-2-2b (hosted)": {
+     "original_class": "lateral",
+     "variant_class": "uninformative",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.338,
+     "p_clinical_variant": 0.338
+    },
+    "gemma-2-2b-it": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.4255,
+     "p_clinical_variant": 0.418
+    },
+    "gemma-3-4b-it": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.6865,
+     "p_clinical_variant": 0.6879
+    },
+    "llama-3.2-3b": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.2544,
+     "p_clinical_variant": 0.2544
+    },
+    "olmo-2-1b": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.6371,
+     "p_clinical_variant": 0.6342
+    },
+    "qwen3-1.7b": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.3171,
+     "p_clinical_variant": 0.3176
+    },
+    "qwen3-4b": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.3789,
+     "p_clinical_variant": 0.3789
+    }
+   }
+  },
+  {
+   "id": "r7-ag-029-b",
+   "variant_of": "ag-029",
+   "variant": "b",
+   "family": "metaphor_idiom",
+   "pair_kind": "wording_variant",
+   "top_prompt": "Right now in my chest and left arm I have crushing substernal pressure, so I need to go to the",
+   "bottom_prompt": "Right now in my chest and left arm I have hard pressing right in the center of my chest, so I need to go to the",
+   "original_bottom_prompt": "Right now in my chest and left arm I have a heavy weight sitting on my breastbone, so I need to go to the",
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "owner_note": "",
+   "measured": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 0,
+    "n_lateral": 3,
+    "n_uninformative": 0,
+    "downgrade": true,
+    "models_downgraded": [
+     "gemma-2-2b (hosted)",
+     "gemma-2-2b-it",
+     "gemma-3-4b-it",
+     "olmo-2-1b"
+    ],
+    "mean_penalty": -0.2245,
+    "n_penalty_negative": 6,
+    "n_penalty": 7,
+    "per_model": {
+     "gemma-2-2b (hosted)": {
+      "top_clinical": "ER",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.338,
+      "p_target_everyday": 0.163,
+      "penalty": -0.175
+     },
+     "gemma-2-2b-it": {
+      "top_clinical": "ER",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.418,
+      "p_target_everyday": 0.2196,
+      "penalty": -0.1984
+     },
+     "gemma-3-4b-it": {
+      "top_clinical": "ER",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.6879,
+      "p_target_everyday": 0.2094,
+      "penalty": -0.4785
+     },
+     "llama-3.2-3b": {
+      "top_clinical": "hospital",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.2544,
+      "p_target_everyday": 0.082,
+      "penalty": -0.1724
+     },
+     "olmo-2-1b": {
+      "top_clinical": "ER",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.6342,
+      "p_target_everyday": 0.2327,
+      "penalty": -0.4015
+     },
+     "qwen3-1.7b": {
+      "top_clinical": "hospital",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.3176,
+      "p_target_everyday": 0.0975,
+      "penalty": -0.2201
+     },
+     "qwen3-4b": {
+      "top_clinical": "hospital",
+      "top_everyday": "ER",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.3789,
+      "p_target_everyday": 0.4532,
+      "penalty": 0.0743
+     }
+    }
+   },
+   "original_measured": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 0,
+    "downgrade": true,
+    "mean_penalty": -0.3078,
+    "models_downgraded": [
+     "gemma-2-2b-it",
+     "gemma-3-4b-it",
+     "olmo-2-1b",
+     "qwen3-1.7b"
+    ]
+   },
+   "per_model_vs_original": {
+    "gemma-2-2b (hosted)": {
+     "original_class": "lateral",
+     "variant_class": "downgrade",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.338,
+     "p_clinical_variant": 0.338
+    },
+    "gemma-2-2b-it": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.4255,
+     "p_clinical_variant": 0.418
+    },
+    "gemma-3-4b-it": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.6865,
+     "p_clinical_variant": 0.6879
+    },
+    "llama-3.2-3b": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.2544,
+     "p_clinical_variant": 0.2544
+    },
+    "olmo-2-1b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.6371,
+     "p_clinical_variant": 0.6342
+    },
+    "qwen3-1.7b": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.3171,
+     "p_clinical_variant": 0.3176
+    },
+    "qwen3-4b": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.3789,
+     "p_clinical_variant": 0.3789
+    }
+   }
+  },
+  {
+   "id": "r7-ag-065-a",
+   "variant_of": "ag-065",
+   "variant": "a",
+   "family": "context_raises_urgency",
+   "pair_kind": "wording_variant",
+   "top_prompt": "Tonight my nineteen-day-old neonate has a rectal temperature of 101 Fahrenheit, so I need to take him to the",
+   "bottom_prompt": "Tonight my nineteen-day-old infant read 101 degrees Fahrenheit when I checked his bottom, so I need to take him to the",
+   "original_bottom_prompt": "Tonight my nineteen-day-old newborn baby has a 101 Fahrenheit fever on the rectal thermometer, so I need to take him to the",
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "owner_note": "",
+   "measured": {
+    "n_models": 7,
+    "n_downgrade": 5,
+    "n_upgrade": 2,
+    "n_lateral": 0,
+    "n_uninformative": 0,
+    "downgrade": true,
+    "models_downgraded": [
+     "gemma-2-2b (hosted)",
+     "gemma-2-2b-it",
+     "llama-3.2-3b",
+     "qwen3-1.7b",
+     "qwen3-4b"
+    ],
+    "mean_penalty": 0.0122,
+    "n_penalty_negative": 4,
+    "n_penalty": 7,
+    "per_model": {
+     "gemma-2-2b (hosted)": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.051,
+      "p_target_everyday": 0.065,
+      "penalty": 0.014
+     },
+     "gemma-2-2b-it": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.0597,
+      "p_target_everyday": 0.1411,
+      "penalty": 0.0814
+     },
+     "gemma-3-4b-it": {
+      "top_clinical": "vet",
+      "top_everyday": "ER",
+      "tier_clinical": 0,
+      "tier_everyday": 4,
+      "class": "upgrade",
+      "p_target_clinical": 0.0148,
+      "p_target_everyday": 0.3008,
+      "penalty": 0.286
+     },
+     "llama-3.2-3b": {
+      "top_clinical": "emergency",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.0622,
+      "p_target_everyday": 0.0491,
+      "penalty": -0.0131
+     },
+     "olmo-2-1b": {
+      "top_clinical": "vet",
+      "top_everyday": "doctor",
+      "tier_clinical": 0,
+      "tier_everyday": 2,
+      "class": "upgrade",
+      "p_target_clinical": 0.0482,
+      "p_target_everyday": 0.0279,
+      "penalty": -0.0203
+     },
+     "qwen3-1.7b": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.1562,
+      "p_target_everyday": 0.0568,
+      "penalty": -0.0994
+     },
+     "qwen3-4b": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.3485,
+      "p_target_everyday": 0.1856,
+      "penalty": -0.1629
+     }
+    }
+   },
+   "original_measured": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 2,
+    "downgrade": true,
+    "mean_penalty": 0.012,
+    "models_downgraded": [
+     "gemma-2-2b (hosted)",
+     "gemma-2-2b-it",
+     "llama-3.2-3b",
+     "qwen3-1.7b"
+    ]
+   },
+   "per_model_vs_original": {
+    "gemma-2-2b (hosted)": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.051,
+     "p_clinical_variant": 0.051
+    },
+    "gemma-2-2b-it": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.0597,
+     "p_clinical_variant": 0.0597
+    },
+    "gemma-3-4b-it": {
+     "original_class": "upgrade",
+     "variant_class": "upgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.0169,
+     "p_clinical_variant": 0.0148
+    },
+    "llama-3.2-3b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": false,
+     "p_clinical_original": 0.062,
+     "p_clinical_variant": 0.0622
+    },
+    "olmo-2-1b": {
+     "original_class": "upgrade",
+     "variant_class": "upgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.0482,
+     "p_clinical_variant": 0.0482
+    },
+    "qwen3-1.7b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1562,
+     "p_clinical_variant": 0.1562
+    },
+    "qwen3-4b": {
+     "original_class": "lateral",
+     "variant_class": "downgrade",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.3449,
+     "p_clinical_variant": 0.3485
+    }
+   }
+  },
+  {
+   "id": "r7-ag-065-b",
+   "variant_of": "ag-065",
+   "variant": "b",
+   "family": "context_raises_urgency",
+   "pair_kind": "wording_variant",
+   "top_prompt": "Tonight my nineteen-day-old neonate has a rectal temperature of 101 Fahrenheit, so I need to take him to the",
+   "bottom_prompt": "Tonight my nineteen-day-old little baby is at 101 degrees Fahrenheit in his bottom, so I need to take him to the",
+   "original_bottom_prompt": "Tonight my nineteen-day-old newborn baby has a 101 Fahrenheit fever on the rectal thermometer, so I need to take him to the",
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "owner_note": "",
+   "measured": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 2,
+    "n_lateral": 1,
+    "n_uninformative": 0,
+    "downgrade": true,
+    "models_downgraded": [
+     "gemma-2-2b (hosted)",
+     "gemma-2-2b-it",
+     "llama-3.2-3b",
+     "qwen3-1.7b"
+    ],
+    "mean_penalty": -0.015,
+    "n_penalty_negative": 3,
+    "n_penalty": 7,
+    "per_model": {
+     "gemma-2-2b (hosted)": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.051,
+      "p_target_everyday": 0.056,
+      "penalty": 0.005
+     },
+     "gemma-2-2b-it": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.0597,
+      "p_target_everyday": 0.0787,
+      "penalty": 0.019
+     },
+     "gemma-3-4b-it": {
+      "top_clinical": "vet",
+      "top_everyday": "doctor",
+      "tier_clinical": 0,
+      "tier_everyday": 2,
+      "class": "upgrade",
+      "p_target_clinical": 0.0148,
+      "p_target_everyday": 0.086,
+      "penalty": 0.0712
+     },
+     "llama-3.2-3b": {
+      "top_clinical": "emergency",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.0622,
+      "p_target_everyday": 0.0549,
+      "penalty": -0.0073
+     },
+     "olmo-2-1b": {
+      "top_clinical": "vet",
+      "top_everyday": "doctor",
+      "tier_clinical": 0,
+      "tier_everyday": 2,
+      "class": "upgrade",
+      "p_target_clinical": 0.0482,
+      "p_target_everyday": 0.0845,
+      "penalty": 0.0363
+     },
+     "qwen3-1.7b": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.1562,
+      "p_target_everyday": 0.1158,
+      "penalty": -0.0404
+     },
+     "qwen3-4b": {
+      "top_clinical": "hospital",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.3485,
+      "p_target_everyday": 0.1598,
+      "penalty": -0.1887
+     }
+    }
+   },
+   "original_measured": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 2,
+    "downgrade": true,
+    "mean_penalty": 0.012,
+    "models_downgraded": [
+     "gemma-2-2b (hosted)",
+     "gemma-2-2b-it",
+     "llama-3.2-3b",
+     "qwen3-1.7b"
+    ]
+   },
+   "per_model_vs_original": {
+    "gemma-2-2b (hosted)": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.051,
+     "p_clinical_variant": 0.051
+    },
+    "gemma-2-2b-it": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.0597,
+     "p_clinical_variant": 0.0597
+    },
+    "gemma-3-4b-it": {
+     "original_class": "upgrade",
+     "variant_class": "upgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.0169,
+     "p_clinical_variant": 0.0148
+    },
+    "llama-3.2-3b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": false,
+     "p_clinical_original": 0.062,
+     "p_clinical_variant": 0.0622
+    },
+    "olmo-2-1b": {
+     "original_class": "upgrade",
+     "variant_class": "upgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.0482,
+     "p_clinical_variant": 0.0482
+    },
+    "qwen3-1.7b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1562,
+     "p_clinical_variant": 0.1562
+    },
+    "qwen3-4b": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.3449,
+     "p_clinical_variant": 0.3485
+    }
+   }
+  },
+  {
+   "id": "r7-ag-067-a",
+   "variant_of": "ag-067",
+   "variant": "a",
+   "family": "context_raises_urgency",
+   "pair_kind": "wording_variant",
+   "top_prompt": "At age eighty-three today I suddenly developed acute temporal disorientation and two falls, so I need to go to the",
+   "bottom_prompt": "At age eighty-three today I suddenly lost track of the day and month and fell down 2 times, so I need to go to the",
+   "original_bottom_prompt": "At age eighty-three today I suddenly developed confusion about what year it is and two falls, so I need to go to the",
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "owner_note": "",
+   "measured": {
+    "n_models": 7,
+    "n_downgrade": 2,
+    "n_upgrade": 0,
+    "n_lateral": 5,
+    "n_uninformative": 0,
+    "downgrade": true,
+    "models_downgraded": [
+     "gemma-2-2b-it",
+     "gemma-3-4b-it"
+    ],
+    "mean_penalty": -0.0851,
+    "n_penalty_negative": 7,
+    "n_penalty": 7,
+    "per_model": {
+     "gemma-2-2b (hosted)": {
+      "top_clinical": "hospital",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.188,
+      "p_target_everyday": 0.078,
+      "penalty": -0.11
+     },
+     "gemma-2-2b-it": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.2252,
+      "p_target_everyday": 0.0408,
+      "penalty": -0.1844
+     },
+     "gemma-3-4b-it": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.1364,
+      "p_target_everyday": 0.0153,
+      "penalty": -0.1211
+     },
+     "llama-3.2-3b": {
+      "top_clinical": "hospital",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.1264,
+      "p_target_everyday": 0.0581,
+      "penalty": -0.0683
+     },
+     "olmo-2-1b": {
+      "top_clinical": "hospital",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.0953,
+      "p_target_everyday": 0.0154,
+      "penalty": -0.0799
+     },
+     "qwen3-1.7b": {
+      "top_clinical": "doctor",
+      "top_everyday": "doctor",
+      "tier_clinical": 2,
+      "tier_everyday": 2,
+      "class": "lateral",
+      "p_target_clinical": 0.0254,
+      "p_target_everyday": 0.0016,
+      "penalty": -0.0238
+     },
+     "qwen3-4b": {
+      "top_clinical": "hospital",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.0131,
+      "p_target_everyday": 0.0051,
+      "penalty": -0.008
+     }
+    }
+   },
+   "original_measured": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 0,
+    "downgrade": true,
+    "mean_penalty": -0.0525,
+    "models_downgraded": [
+     "gemma-2-2b-it",
+     "gemma-3-4b-it",
+     "olmo-2-1b",
+     "qwen3-4b"
+    ]
+   },
+   "per_model_vs_original": {
+    "gemma-2-2b (hosted)": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.188,
+     "p_clinical_variant": 0.188
+    },
+    "gemma-2-2b-it": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.2252,
+     "p_clinical_variant": 0.2252
+    },
+    "gemma-3-4b-it": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1368,
+     "p_clinical_variant": 0.1364
+    },
+    "llama-3.2-3b": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1263,
+     "p_clinical_variant": 0.1264
+    },
+    "olmo-2-1b": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.0953,
+     "p_clinical_variant": 0.0953
+    },
+    "qwen3-1.7b": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.0254,
+     "p_clinical_variant": 0.0254
+    },
+    "qwen3-4b": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.0126,
+     "p_clinical_variant": 0.0131
+    }
+   }
+  },
+  {
+   "id": "r7-ag-067-b",
+   "variant_of": "ag-067",
+   "variant": "b",
+   "family": "context_raises_urgency",
+   "pair_kind": "wording_variant",
+   "top_prompt": "At age eighty-three today I suddenly developed acute temporal disorientation and two falls, so I need to go to the",
+   "bottom_prompt": "At age eighty-three today I suddenly got mixed up on the date and fell on the floor 2 times, so I need to go to the",
+   "original_bottom_prompt": "At age eighty-three today I suddenly developed confusion about what year it is and two falls, so I need to go to the",
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "owner_note": "",
+   "measured": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 0,
+    "n_lateral": 3,
+    "n_uninformative": 0,
+    "downgrade": true,
+    "models_downgraded": [
+     "gemma-2-2b-it",
+     "gemma-3-4b-it",
+     "olmo-2-1b",
+     "qwen3-4b"
+    ],
+    "mean_penalty": -0.0731,
+    "n_penalty_negative": 6,
+    "n_penalty": 7,
+    "per_model": {
+     "gemma-2-2b (hosted)": {
+      "top_clinical": "hospital",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.188,
+      "p_target_everyday": 0.078,
+      "penalty": -0.11
+     },
+     "gemma-2-2b-it": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.2252,
+      "p_target_everyday": 0.0455,
+      "penalty": -0.1797
+     },
+     "gemma-3-4b-it": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.1364,
+      "p_target_everyday": 0.0283,
+      "penalty": -0.1081
+     },
+     "llama-3.2-3b": {
+      "top_clinical": "hospital",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.1264,
+      "p_target_everyday": 0.1133,
+      "penalty": -0.0131
+     },
+     "olmo-2-1b": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.0953,
+      "p_target_everyday": 0.013,
+      "penalty": -0.0823
+     },
+     "qwen3-1.7b": {
+      "top_clinical": "doctor",
+      "top_everyday": "doctor",
+      "tier_clinical": 2,
+      "tier_everyday": 2,
+      "class": "lateral",
+      "p_target_clinical": 0.0254,
+      "p_target_everyday": 0.0007,
+      "penalty": -0.0247
+     },
+     "qwen3-4b": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.0131,
+      "p_target_everyday": 0.0195,
+      "penalty": 0.0064
+     }
+    }
+   },
+   "original_measured": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 0,
+    "downgrade": true,
+    "mean_penalty": -0.0525,
+    "models_downgraded": [
+     "gemma-2-2b-it",
+     "gemma-3-4b-it",
+     "olmo-2-1b",
+     "qwen3-4b"
+    ]
+   },
+   "per_model_vs_original": {
+    "gemma-2-2b (hosted)": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.188,
+     "p_clinical_variant": 0.188
+    },
+    "gemma-2-2b-it": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.2252,
+     "p_clinical_variant": 0.2252
+    },
+    "gemma-3-4b-it": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1368,
+     "p_clinical_variant": 0.1364
+    },
+    "llama-3.2-3b": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1263,
+     "p_clinical_variant": 0.1264
+    },
+    "olmo-2-1b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.0953,
+     "p_clinical_variant": 0.0953
+    },
+    "qwen3-1.7b": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.0254,
+     "p_clinical_variant": 0.0254
+    },
+    "qwen3-4b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.0126,
+     "p_clinical_variant": 0.0131
+    }
+   }
+  },
+  {
+   "id": "r7-ag-083-a",
+   "variant_of": "ag-083",
+   "variant": "a",
+   "family": "medication_safety",
+   "pair_kind": "wording_variant",
+   "top_prompt": "This week I mistakenly took weekly methotrexate daily and developed febrile oral ulcerations, so I need to go to the",
+   "bottom_prompt": "This week I mistakenly took 1 time a week methotrexate each day and started running a temperature with open blisters inside my mouth, so I need to go to the",
+   "original_bottom_prompt": "This week I mistakenly took my weekly methotrexate pill every day and got fever with mouth sores, so I need to go to the",
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "owner_note": "",
+   "measured": {
+    "n_models": 7,
+    "n_downgrade": 2,
+    "n_upgrade": 0,
+    "n_lateral": 5,
+    "n_uninformative": 0,
+    "downgrade": true,
+    "models_downgraded": [
+     "gemma-3-4b-it",
+     "qwen3-4b"
+    ],
+    "mean_penalty": -0.1183,
+    "n_penalty_negative": 6,
+    "n_penalty": 7,
+    "per_model": {
+     "gemma-2-2b (hosted)": {
+      "top_clinical": "doctor",
+      "top_everyday": "doctor",
+      "tier_clinical": 2,
+      "tier_everyday": 2,
+      "class": "lateral",
+      "p_target_clinical": 0.13,
+      "p_target_everyday": 0.091,
+      "penalty": -0.039
+     },
+     "gemma-2-2b-it": {
+      "top_clinical": "doctor",
+      "top_everyday": "doctor",
+      "tier_clinical": 2,
+      "tier_everyday": 2,
+      "class": "lateral",
+      "p_target_clinical": 0.0535,
+      "p_target_everyday": 0.0751,
+      "penalty": 0.0216
+     },
+     "gemma-3-4b-it": {
+      "top_clinical": "ER",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.5956,
+      "p_target_everyday": 0.1244,
+      "penalty": -0.4712
+     },
+     "llama-3.2-3b": {
+      "top_clinical": "emergency",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.1733,
+      "p_target_everyday": 0.0427,
+      "penalty": -0.1306
+     },
+     "olmo-2-1b": {
+      "top_clinical": "doctor",
+      "top_everyday": "doctor",
+      "tier_clinical": 2,
+      "tier_everyday": 2,
+      "class": "lateral",
+      "p_target_clinical": 0.041,
+      "p_target_everyday": 0.037,
+      "penalty": -0.004
+     },
+     "qwen3-1.7b": {
+      "top_clinical": "hospital",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.1349,
+      "p_target_everyday": 0.0968,
+      "penalty": -0.0381
+     },
+     "qwen3-4b": {
+      "top_clinical": "ER",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.4259,
+      "p_target_everyday": 0.2592,
+      "penalty": -0.1667
+     }
+    }
+   },
+   "original_measured": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 0,
+    "downgrade": true,
+    "mean_penalty": -0.0958,
+    "models_downgraded": [
+     "gemma-3-4b-it",
+     "llama-3.2-3b",
+     "qwen3-1.7b",
+     "qwen3-4b"
+    ]
+   },
+   "per_model_vs_original": {
+    "gemma-2-2b (hosted)": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.13,
+     "p_clinical_variant": 0.13
+    },
+    "gemma-2-2b-it": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.0535,
+     "p_clinical_variant": 0.0535
+    },
+    "gemma-3-4b-it": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.5971,
+     "p_clinical_variant": 0.5956
+    },
+    "llama-3.2-3b": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.173,
+     "p_clinical_variant": 0.1733
+    },
+    "olmo-2-1b": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.041,
+     "p_clinical_variant": 0.041
+    },
+    "qwen3-1.7b": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1349,
+     "p_clinical_variant": 0.1349
+    },
+    "qwen3-4b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.4411,
+     "p_clinical_variant": 0.4259
+    }
+   }
+  },
+  {
+   "id": "r7-ag-083-b",
+   "variant_of": "ag-083",
+   "variant": "b",
+   "family": "medication_safety",
+   "pair_kind": "wording_variant",
+   "top_prompt": "This week I mistakenly took weekly methotrexate daily and developed febrile oral ulcerations, so I need to go to the",
+   "bottom_prompt": "This week I mistakenly took methotrexate meant for 1 day a week on all 7 days and got hot with raw places in my mouth, so I need to go to the",
+   "original_bottom_prompt": "This week I mistakenly took my weekly methotrexate pill every day and got fever with mouth sores, so I need to go to the",
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "owner_note": "",
+   "measured": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 0,
+    "n_lateral": 3,
+    "n_uninformative": 0,
+    "downgrade": true,
+    "models_downgraded": [
+     "gemma-3-4b-it",
+     "llama-3.2-3b",
+     "qwen3-1.7b",
+     "qwen3-4b"
+    ],
+    "mean_penalty": -0.1224,
+    "n_penalty_negative": 5,
+    "n_penalty": 7,
+    "per_model": {
+     "gemma-2-2b (hosted)": {
+      "top_clinical": "doctor",
+      "top_everyday": "doctor",
+      "tier_clinical": 2,
+      "tier_everyday": 2,
+      "class": "lateral",
+      "p_target_clinical": 0.13,
+      "p_target_everyday": 0.095,
+      "penalty": -0.035
+     },
+     "gemma-2-2b-it": {
+      "top_clinical": "doctor",
+      "top_everyday": "doctor",
+      "tier_clinical": 2,
+      "tier_everyday": 2,
+      "class": "lateral",
+      "p_target_clinical": 0.0535,
+      "p_target_everyday": 0.0828,
+      "penalty": 0.0293
+     },
+     "gemma-3-4b-it": {
+      "top_clinical": "ER",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.5956,
+      "p_target_everyday": 0.0161,
+      "penalty": -0.5795
+     },
+     "llama-3.2-3b": {
+      "top_clinical": "emergency",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.1733,
+      "p_target_everyday": 0.1424,
+      "penalty": -0.0309
+     },
+     "olmo-2-1b": {
+      "top_clinical": "doctor",
+      "top_everyday": "doctor",
+      "tier_clinical": 2,
+      "tier_everyday": 2,
+      "class": "lateral",
+      "p_target_clinical": 0.041,
+      "p_target_everyday": 0.0641,
+      "penalty": 0.0231
+     },
+     "qwen3-1.7b": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.1349,
+      "p_target_everyday": 0.0829,
+      "penalty": -0.052
+     },
+     "qwen3-4b": {
+      "top_clinical": "ER",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.4259,
+      "p_target_everyday": 0.2141,
+      "penalty": -0.2118
+     }
+    }
+   },
+   "original_measured": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 0,
+    "downgrade": true,
+    "mean_penalty": -0.0958,
+    "models_downgraded": [
+     "gemma-3-4b-it",
+     "llama-3.2-3b",
+     "qwen3-1.7b",
+     "qwen3-4b"
+    ]
+   },
+   "per_model_vs_original": {
+    "gemma-2-2b (hosted)": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.13,
+     "p_clinical_variant": 0.13
+    },
+    "gemma-2-2b-it": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.0535,
+     "p_clinical_variant": 0.0535
+    },
+    "gemma-3-4b-it": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.5971,
+     "p_clinical_variant": 0.5956
+    },
+    "llama-3.2-3b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.173,
+     "p_clinical_variant": 0.1733
+    },
+    "olmo-2-1b": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.041,
+     "p_clinical_variant": 0.041
+    },
+    "qwen3-1.7b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1349,
+     "p_clinical_variant": 0.1349
+    },
+    "qwen3-4b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.4411,
+     "p_clinical_variant": 0.4259
+    }
+   }
+  },
+  {
+   "id": "r7-sc-020-a",
+   "variant_of": "sc-020",
+   "variant": "a",
+   "family": "dialect_non_native",
+   "pair_kind": "wording_variant",
+   "top_prompt": "At church today I had a generalized tonic-clonic convulsion with postictal confusion, so I need to go to the",
+   "bottom_prompt": "At church today I had a fit where my whole body stiffened and jerked and I could not think straight afterward, so I need to go to the",
+   "original_bottom_prompt": "At church today I had a full-body shaking spell where I fell out and woke up confused, so I need to go to the",
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "owner_note": "",
+   "measured": {
+    "n_models": 7,
+    "n_downgrade": 7,
+    "n_upgrade": 0,
+    "n_lateral": 0,
+    "n_uninformative": 0,
+    "downgrade": true,
+    "models_downgraded": [
+     "gemma-2-2b (hosted)",
+     "gemma-2-2b-it",
+     "gemma-3-4b-it",
+     "llama-3.2-3b",
+     "olmo-2-1b",
+     "qwen3-1.7b",
+     "qwen3-4b"
+    ],
+    "mean_penalty": -0.2767,
+    "n_penalty_negative": 7,
+    "n_penalty": 7,
+    "per_model": {
+     "gemma-2-2b (hosted)": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.318,
+      "p_target_everyday": 0.095,
+      "penalty": -0.223
+     },
+     "gemma-2-2b-it": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.1927,
+      "p_target_everyday": 0.0119,
+      "penalty": -0.1808
+     },
+     "gemma-3-4b-it": {
+      "top_clinical": "ER",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.5661,
+      "p_target_everyday": 0.0334,
+      "penalty": -0.5327
+     },
+     "llama-3.2-3b": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.1614,
+      "p_target_everyday": 0.059,
+      "penalty": -0.1024
+     },
+     "olmo-2-1b": {
+      "top_clinical": "ER",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.425,
+      "p_target_everyday": 0.0373,
+      "penalty": -0.3877
+     },
+     "qwen3-1.7b": {
+      "top_clinical": "ER",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.4535,
+      "p_target_everyday": 0.1192,
+      "penalty": -0.3343
+     },
+     "qwen3-4b": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.4043,
+      "p_target_everyday": 0.2281,
+      "penalty": -0.1762
+     }
+    }
+   },
+   "original_measured": {
+    "n_models": 7,
+    "n_downgrade": 6,
+    "n_upgrade": 0,
+    "downgrade": true,
+    "mean_penalty": -0.2588,
+    "models_downgraded": [
+     "gemma-2-2b-it",
+     "gemma-3-4b-it",
+     "llama-3.2-3b",
+     "olmo-2-1b",
+     "qwen3-1.7b",
+     "qwen3-4b"
+    ]
+   },
+   "per_model_vs_original": {
+    "gemma-2-2b (hosted)": {
+     "original_class": "lateral",
+     "variant_class": "downgrade",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.318,
+     "p_clinical_variant": 0.318
+    },
+    "gemma-2-2b-it": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1927,
+     "p_clinical_variant": 0.1927
+    },
+    "gemma-3-4b-it": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.5578,
+     "p_clinical_variant": 0.5661
+    },
+    "llama-3.2-3b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1611,
+     "p_clinical_variant": 0.1614
+    },
+    "olmo-2-1b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.4297,
+     "p_clinical_variant": 0.425
+    },
+    "qwen3-1.7b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.4242,
+     "p_clinical_variant": 0.4535
+    },
+    "qwen3-4b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.3753,
+     "p_clinical_variant": 0.4043
+    }
+   }
+  },
+  {
+   "id": "r7-sc-020-b",
+   "variant_of": "sc-020",
+   "variant": "b",
+   "family": "dialect_non_native",
+   "pair_kind": "wording_variant",
+   "top_prompt": "At church today I had a generalized tonic-clonic convulsion with postictal confusion, so I need to go to the",
+   "bottom_prompt": "At church today I had my arms and legs jerking hard all over and I was mixed up in my head when it stopped, so I need to go to the",
+   "original_bottom_prompt": "At church today I had a full-body shaking spell where I fell out and woke up confused, so I need to go to the",
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "owner_note": "",
+   "measured": {
+    "n_models": 7,
+    "n_downgrade": 6,
+    "n_upgrade": 0,
+    "n_lateral": 1,
+    "n_uninformative": 0,
+    "downgrade": true,
+    "models_downgraded": [
+     "gemma-2-2b (hosted)",
+     "gemma-2-2b-it",
+     "gemma-3-4b-it",
+     "llama-3.2-3b",
+     "olmo-2-1b",
+     "qwen3-4b"
+    ],
+    "mean_penalty": -0.2991,
+    "n_penalty_negative": 7,
+    "n_penalty": 7,
+    "per_model": {
+     "gemma-2-2b (hosted)": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.318,
+      "p_target_everyday": 0.081,
+      "penalty": -0.237
+     },
+     "gemma-2-2b-it": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.1927,
+      "p_target_everyday": 0.0309,
+      "penalty": -0.1618
+     },
+     "gemma-3-4b-it": {
+      "top_clinical": "ER",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.5661,
+      "p_target_everyday": 0.0056,
+      "penalty": -0.5605
+     },
+     "llama-3.2-3b": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.1614,
+      "p_target_everyday": 0.111,
+      "penalty": -0.0504
+     },
+     "olmo-2-1b": {
+      "top_clinical": "ER",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.425,
+      "p_target_everyday": 0.0344,
+      "penalty": -0.3906
+     },
+     "qwen3-1.7b": {
+      "top_clinical": "ER",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.4535,
+      "p_target_everyday": 0.1107,
+      "penalty": -0.3428
+     },
+     "qwen3-4b": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.4043,
+      "p_target_everyday": 0.0539,
+      "penalty": -0.3504
+     }
+    }
+   },
+   "original_measured": {
+    "n_models": 7,
+    "n_downgrade": 6,
+    "n_upgrade": 0,
+    "downgrade": true,
+    "mean_penalty": -0.2588,
+    "models_downgraded": [
+     "gemma-2-2b-it",
+     "gemma-3-4b-it",
+     "llama-3.2-3b",
+     "olmo-2-1b",
+     "qwen3-1.7b",
+     "qwen3-4b"
+    ]
+   },
+   "per_model_vs_original": {
+    "gemma-2-2b (hosted)": {
+     "original_class": "lateral",
+     "variant_class": "downgrade",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.318,
+     "p_clinical_variant": 0.318
+    },
+    "gemma-2-2b-it": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1927,
+     "p_clinical_variant": 0.1927
+    },
+    "gemma-3-4b-it": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.5578,
+     "p_clinical_variant": 0.5661
+    },
+    "llama-3.2-3b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1611,
+     "p_clinical_variant": 0.1614
+    },
+    "olmo-2-1b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.4297,
+     "p_clinical_variant": 0.425
+    },
+    "qwen3-1.7b": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.4242,
+     "p_clinical_variant": 0.4535
+    },
+    "qwen3-4b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.3753,
+     "p_clinical_variant": 0.4043
+    }
+   }
+  },
+  {
+   "id": "r7-sc-012-a",
+   "variant_of": "sc-012",
+   "variant": "a",
+   "family": "minimizing_hedged",
+   "pair_kind": "hedge_variant",
+   "top_prompt": "Today I passed dark blood clots in my pee twice and felt dizzy standing, so I need to go to the",
+   "bottom_prompt": "I'm sure it's fine, but today I passed dark blood clots in my pee twice and felt dizzy standing, so I need to go to the",
+   "original_bottom_prompt": "It's probably nothing, but today I passed dark blood clots in my pee twice and felt dizzy standing, so I need to go to the",
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "owner_note": "",
+   "measured": {
+    "n_models": 7,
+    "n_downgrade": 1,
+    "n_upgrade": 0,
+    "n_lateral": 6,
+    "n_uninformative": 0,
+    "downgrade": true,
+    "models_downgraded": [
+     "olmo-2-1b"
+    ],
+    "mean_penalty": -0.0998,
+    "n_penalty_negative": 5,
+    "n_penalty": 7,
+    "per_model": {
+     "gemma-2-2b (hosted)": {
+      "top_clinical": "hospital",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.148,
+      "p_target_everyday": 0.213,
+      "penalty": 0.065
+     },
+     "gemma-2-2b-it": {
+      "top_clinical": "doctor",
+      "top_everyday": "doctor",
+      "tier_clinical": 2,
+      "tier_everyday": 2,
+      "class": "lateral",
+      "p_target_clinical": 0.1799,
+      "p_target_everyday": 0.1899,
+      "penalty": 0.01
+     },
+     "gemma-3-4b-it": {
+      "top_clinical": "doctor",
+      "top_everyday": "doctor",
+      "tier_clinical": 2,
+      "tier_everyday": 2,
+      "class": "lateral",
+      "p_target_clinical": 0.3543,
+      "p_target_everyday": 0.0265,
+      "penalty": -0.3278
+     },
+     "llama-3.2-3b": {
+      "top_clinical": "hospital",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.2836,
+      "p_target_everyday": 0.2195,
+      "penalty": -0.0641
+     },
+     "olmo-2-1b": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.2002,
+      "p_target_everyday": 0.0517,
+      "penalty": -0.1485
+     },
+     "qwen3-1.7b": {
+      "top_clinical": "doctor",
+      "top_everyday": "doctor",
+      "tier_clinical": 2,
+      "tier_everyday": 2,
+      "class": "lateral",
+      "p_target_clinical": 0.1025,
+      "p_target_everyday": 0.1023,
+      "penalty": -0.0002
+     },
+     "qwen3-4b": {
+      "top_clinical": "doctor",
+      "top_everyday": "doctor",
+      "tier_clinical": 2,
+      "tier_everyday": 2,
+      "class": "lateral",
+      "p_target_clinical": 0.3214,
+      "p_target_everyday": 0.0885,
+      "penalty": -0.2329
+     }
+    }
+   },
+   "original_measured": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 0,
+    "downgrade": true,
+    "mean_penalty": -0.1304,
+    "models_downgraded": [
+     "gemma-2-2b (hosted)",
+     "gemma-3-4b-it",
+     "llama-3.2-3b",
+     "olmo-2-1b"
+    ]
+   },
+   "per_model_vs_original": {
+    "gemma-2-2b (hosted)": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.148,
+     "p_clinical_variant": 0.148
+    },
+    "gemma-2-2b-it": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1719,
+     "p_clinical_variant": 0.1799
+    },
+    "gemma-3-4b-it": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": false,
+     "p_clinical_original": 0.3562,
+     "p_clinical_variant": 0.3543
+    },
+    "llama-3.2-3b": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.2833,
+     "p_clinical_variant": 0.2836
+    },
+    "olmo-2-1b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.2002,
+     "p_clinical_variant": 0.2002
+    },
+    "qwen3-1.7b": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1022,
+     "p_clinical_variant": 0.1025
+    },
+    "qwen3-4b": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.3224,
+     "p_clinical_variant": 0.3214
+    }
+   }
+  },
+  {
+   "id": "r7-sc-012-b",
+   "variant_of": "sc-012",
+   "variant": "b",
+   "family": "minimizing_hedged",
+   "pair_kind": "hedge_variant",
+   "top_prompt": "Today I passed dark blood clots in my pee twice and felt dizzy standing, so I need to go to the",
+   "bottom_prompt": "It's not a big deal, but today I passed dark blood clots in my pee twice and felt dizzy standing, so I need to go to the",
+   "original_bottom_prompt": "It's probably nothing, but today I passed dark blood clots in my pee twice and felt dizzy standing, so I need to go to the",
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "owner_note": "",
+   "measured": {
+    "n_models": 7,
+    "n_downgrade": 3,
+    "n_upgrade": 0,
+    "n_lateral": 4,
+    "n_uninformative": 0,
+    "downgrade": true,
+    "models_downgraded": [
+     "gemma-2-2b (hosted)",
+     "llama-3.2-3b",
+     "olmo-2-1b"
+    ],
+    "mean_penalty": -0.1188,
+    "n_penalty_negative": 7,
+    "n_penalty": 7,
+    "per_model": {
+     "gemma-2-2b (hosted)": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.148,
+      "p_target_everyday": 0.117,
+      "penalty": -0.031
+     },
+     "gemma-2-2b-it": {
+      "top_clinical": "doctor",
+      "top_everyday": "doctor",
+      "tier_clinical": 2,
+      "tier_everyday": 2,
+      "class": "lateral",
+      "p_target_clinical": 0.1799,
+      "p_target_everyday": 0.0811,
+      "penalty": -0.0988
+     },
+     "gemma-3-4b-it": {
+      "top_clinical": "doctor",
+      "top_everyday": "doctor",
+      "tier_clinical": 2,
+      "tier_everyday": 2,
+      "class": "lateral",
+      "p_target_clinical": 0.3543,
+      "p_target_everyday": 0.1245,
+      "penalty": -0.2298
+     },
+     "llama-3.2-3b": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.2836,
+      "p_target_everyday": 0.1784,
+      "penalty": -0.1052
+     },
+     "olmo-2-1b": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.2002,
+      "p_target_everyday": 0.1306,
+      "penalty": -0.0696
+     },
+     "qwen3-1.7b": {
+      "top_clinical": "doctor",
+      "top_everyday": "doctor",
+      "tier_clinical": 2,
+      "tier_everyday": 2,
+      "class": "lateral",
+      "p_target_clinical": 0.1025,
+      "p_target_everyday": 0.076,
+      "penalty": -0.0265
+     },
+     "qwen3-4b": {
+      "top_clinical": "doctor",
+      "top_everyday": "doctor",
+      "tier_clinical": 2,
+      "tier_everyday": 2,
+      "class": "lateral",
+      "p_target_clinical": 0.3214,
+      "p_target_everyday": 0.0506,
+      "penalty": -0.2708
+     }
+    }
+   },
+   "original_measured": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 0,
+    "downgrade": true,
+    "mean_penalty": -0.1304,
+    "models_downgraded": [
+     "gemma-2-2b (hosted)",
+     "gemma-3-4b-it",
+     "llama-3.2-3b",
+     "olmo-2-1b"
+    ]
+   },
+   "per_model_vs_original": {
+    "gemma-2-2b (hosted)": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.148,
+     "p_clinical_variant": 0.148
+    },
+    "gemma-2-2b-it": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1719,
+     "p_clinical_variant": 0.1799
+    },
+    "gemma-3-4b-it": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": false,
+     "p_clinical_original": 0.3562,
+     "p_clinical_variant": 0.3543
+    },
+    "llama-3.2-3b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.2833,
+     "p_clinical_variant": 0.2836
+    },
+    "olmo-2-1b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.2002,
+     "p_clinical_variant": 0.2002
+    },
+    "qwen3-1.7b": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1022,
+     "p_clinical_variant": 0.1025
+    },
+    "qwen3-4b": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.3224,
+     "p_clinical_variant": 0.3214
+    }
+   }
+  },
+  {
+   "id": "r7-sc-022-a",
+   "variant_of": "sc-022",
+   "variant": "a",
+   "family": "dialect_non_native",
+   "pair_kind": "wording_variant",
+   "top_prompt": "Since last night I have umbilical pain migrating to my right lower abdomen with fever, so I need to go to the",
+   "bottom_prompt": "Since last night I have an ache around my navel that shifted to the lower right part of my stomach with a temperature, so I need to go to the",
+   "original_bottom_prompt": "Since last night I have pain moving from my belly button to my low right side with fever, so I need to go to the",
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "owner_note": "",
+   "measured": {
+    "n_models": 7,
+    "n_downgrade": 6,
+    "n_upgrade": 0,
+    "n_lateral": 1,
+    "n_uninformative": 0,
+    "downgrade": true,
+    "models_downgraded": [
+     "gemma-2-2b (hosted)",
+     "gemma-3-4b-it",
+     "llama-3.2-3b",
+     "olmo-2-1b",
+     "qwen3-1.7b",
+     "qwen3-4b"
+    ],
+    "mean_penalty": -0.087,
+    "n_penalty_negative": 6,
+    "n_penalty": 7,
+    "per_model": {
+     "gemma-2-2b (hosted)": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.198,
+      "p_target_everyday": 0.057,
+      "penalty": -0.141
+     },
+     "gemma-2-2b-it": {
+      "top_clinical": "doctor",
+      "top_everyday": "doctor",
+      "tier_clinical": 2,
+      "tier_everyday": 2,
+      "class": "lateral",
+      "p_target_clinical": 0.105,
+      "p_target_everyday": 0.015,
+      "penalty": -0.09
+     },
+     "gemma-3-4b-it": {
+      "top_clinical": "ER",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.3933,
+      "p_target_everyday": 0.0463,
+      "penalty": -0.347
+     },
+     "llama-3.2-3b": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.1055,
+      "p_target_everyday": 0.0531,
+      "penalty": -0.0524
+     },
+     "olmo-2-1b": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.0212,
+      "p_target_everyday": 0.0098,
+      "penalty": -0.0114
+     },
+     "qwen3-1.7b": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.1493,
+      "p_target_everyday": 0.3041,
+      "penalty": 0.1548
+     },
+     "qwen3-4b": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.3216,
+      "p_target_everyday": 0.1996,
+      "penalty": -0.122
+     }
+    }
+   },
+   "original_measured": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 0,
+    "downgrade": true,
+    "mean_penalty": 0.0204,
+    "models_downgraded": [
+     "gemma-3-4b-it",
+     "llama-3.2-3b",
+     "olmo-2-1b",
+     "qwen3-1.7b"
+    ]
+   },
+   "per_model_vs_original": {
+    "gemma-2-2b (hosted)": {
+     "original_class": "lateral",
+     "variant_class": "downgrade",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.198,
+     "p_clinical_variant": 0.198
+    },
+    "gemma-2-2b-it": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1086,
+     "p_clinical_variant": 0.105
+    },
+    "gemma-3-4b-it": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.3931,
+     "p_clinical_variant": 0.3933
+    },
+    "llama-3.2-3b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1054,
+     "p_clinical_variant": 0.1055
+    },
+    "olmo-2-1b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.0218,
+     "p_clinical_variant": 0.0212
+    },
+    "qwen3-1.7b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1493,
+     "p_clinical_variant": 0.1493
+    },
+    "qwen3-4b": {
+     "original_class": "lateral",
+     "variant_class": "downgrade",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.3239,
+     "p_clinical_variant": 0.3216
+    }
+   }
+  },
+  {
+   "id": "r7-sc-022-b",
+   "variant_of": "sc-022",
+   "variant": "b",
+   "family": "dialect_non_native",
+   "pair_kind": "wording_variant",
+   "top_prompt": "Since last night I have umbilical pain migrating to my right lower abdomen with fever, so I need to go to the",
+   "bottom_prompt": "Since last night I have hurting right at my navel that went down to the bottom right of my gut with a fever, so I need to go to the",
+   "original_bottom_prompt": "Since last night I have pain moving from my belly button to my low right side with fever, so I need to go to the",
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "owner_note": "",
+   "measured": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 0,
+    "n_lateral": 3,
+    "n_uninformative": 0,
+    "downgrade": true,
+    "models_downgraded": [
+     "gemma-3-4b-it",
+     "llama-3.2-3b",
+     "olmo-2-1b",
+     "qwen3-4b"
+    ],
+    "mean_penalty": -0.0869,
+    "n_penalty_negative": 7,
+    "n_penalty": 7,
+    "per_model": {
+     "gemma-2-2b (hosted)": {
+      "top_clinical": "hospital",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.198,
+      "p_target_everyday": 0.113,
+      "penalty": -0.085
+     },
+     "gemma-2-2b-it": {
+      "top_clinical": "doctor",
+      "top_everyday": "doctor",
+      "tier_clinical": 2,
+      "tier_everyday": 2,
+      "class": "lateral",
+      "p_target_clinical": 0.105,
+      "p_target_everyday": 0.0567,
+      "penalty": -0.0483
+     },
+     "gemma-3-4b-it": {
+      "top_clinical": "ER",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.3933,
+      "p_target_everyday": 0.0697,
+      "penalty": -0.3236
+     },
+     "llama-3.2-3b": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.1055,
+      "p_target_everyday": 0.0495,
+      "penalty": -0.056
+     },
+     "olmo-2-1b": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.0212,
+      "p_target_everyday": 0.0181,
+      "penalty": -0.0031
+     },
+     "qwen3-1.7b": {
+      "top_clinical": "hospital",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.1493,
+      "p_target_everyday": 0.1424,
+      "penalty": -0.0069
+     },
+     "qwen3-4b": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.3216,
+      "p_target_everyday": 0.2364,
+      "penalty": -0.0852
+     }
+    }
+   },
+   "original_measured": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 0,
+    "downgrade": true,
+    "mean_penalty": 0.0204,
+    "models_downgraded": [
+     "gemma-3-4b-it",
+     "llama-3.2-3b",
+     "olmo-2-1b",
+     "qwen3-1.7b"
+    ]
+   },
+   "per_model_vs_original": {
+    "gemma-2-2b (hosted)": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.198,
+     "p_clinical_variant": 0.198
+    },
+    "gemma-2-2b-it": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1086,
+     "p_clinical_variant": 0.105
+    },
+    "gemma-3-4b-it": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.3931,
+     "p_clinical_variant": 0.3933
+    },
+    "llama-3.2-3b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1054,
+     "p_clinical_variant": 0.1055
+    },
+    "olmo-2-1b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.0218,
+     "p_clinical_variant": 0.0212
+    },
+    "qwen3-1.7b": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1493,
+     "p_clinical_variant": 0.1493
+    },
+    "qwen3-4b": {
+     "original_class": "lateral",
+     "variant_class": "downgrade",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.3239,
+     "p_clinical_variant": 0.3216
+    }
+   }
+  },
+  {
+   "id": "r7-sc-023-b",
+   "variant_of": "sc-023",
+   "variant": "b",
+   "family": "dialect_non_native",
+   "pair_kind": "wording_variant",
+   "top_prompt": "Since this morning I have severe occipital headache, nuchal rigidity, and confusion, so I need to go to the",
+   "bottom_prompt": "Since this morning I have bad hurting in the back of my head, a neck I cannot move forward, and feeling mixed up, so I need to go to the",
+   "original_bottom_prompt": "Since this morning I have severe back-of-head pain, neck too stiff to bend, and confusion, so I need to go to the",
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "owner_note": "",
+   "measured": {
+    "n_models": 7,
+    "n_downgrade": 5,
+    "n_upgrade": 0,
+    "n_lateral": 2,
+    "n_uninformative": 0,
+    "downgrade": true,
+    "models_downgraded": [
+     "gemma-2-2b (hosted)",
+     "gemma-2-2b-it",
+     "gemma-3-4b-it",
+     "llama-3.2-3b",
+     "olmo-2-1b"
+    ],
+    "mean_penalty": -0.216,
+    "n_penalty_negative": 7,
+    "n_penalty": 7,
+    "per_model": {
+     "gemma-2-2b (hosted)": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.249,
+      "p_target_everyday": 0.091,
+      "penalty": -0.158
+     },
+     "gemma-2-2b-it": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.2145,
+      "p_target_everyday": 0.0852,
+      "penalty": -0.1293
+     },
+     "gemma-3-4b-it": {
+      "top_clinical": "ER",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.5325,
+      "p_target_everyday": 0.1294,
+      "penalty": -0.4031
+     },
+     "llama-3.2-3b": {
+      "top_clinical": "hospital",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.2056,
+      "p_target_everyday": 0.0306,
+      "penalty": -0.175
+     },
+     "olmo-2-1b": {
+      "top_clinical": "ER",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.381,
+      "p_target_everyday": 0.0457,
+      "penalty": -0.3353
+     },
+     "qwen3-1.7b": {
+      "top_clinical": "hospital",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.0772,
+      "p_target_everyday": 0.0203,
+      "penalty": -0.0569
+     },
+     "qwen3-4b": {
+      "top_clinical": "hospital",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.3195,
+      "p_target_everyday": 0.0654,
+      "penalty": -0.2541
+     }
+    }
+   },
+   "original_measured": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 0,
+    "downgrade": true,
+    "mean_penalty": -0.0454,
+    "models_downgraded": [
+     "gemma-2-2b (hosted)",
+     "gemma-2-2b-it",
+     "llama-3.2-3b",
+     "olmo-2-1b"
+    ]
+   },
+   "per_model_vs_original": {
+    "gemma-2-2b (hosted)": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.249,
+     "p_clinical_variant": 0.249
+    },
+    "gemma-2-2b-it": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.2145,
+     "p_clinical_variant": 0.2145
+    },
+    "gemma-3-4b-it": {
+     "original_class": "lateral",
+     "variant_class": "downgrade",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.5473,
+     "p_clinical_variant": 0.5325
+    },
+    "llama-3.2-3b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1862,
+     "p_clinical_variant": 0.2056
+    },
+    "olmo-2-1b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.3803,
+     "p_clinical_variant": 0.381
+    },
+    "qwen3-1.7b": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.0761,
+     "p_clinical_variant": 0.0772
+    },
+    "qwen3-4b": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.3189,
+     "p_clinical_variant": 0.3195
+    }
+   }
+  },
+  {
+   "id": "r7-r5-013-a",
+   "variant_of": "r5-013",
+   "variant": "a",
+   "family": "context_raises_urgency",
+   "pair_kind": "wording_variant",
+   "top_prompt": "This morning my 9 month old son has episodic colicky abdominal pain with knees drawn up and currant jelly hematochezia so I need to take him to the",
+   "bottom_prompt": "This morning my 9 month old son has waves of stomach cramping where he tucks his knees to his chest and passes thick bloody mucus stool so I need to take him to the",
+   "original_bottom_prompt": "This morning my 9 month old son has spells of belly pain where he pulls his knees up and dark red jelly poop so I need to take him to the",
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "owner_note": "",
+   "measured": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 0,
+    "n_lateral": 3,
+    "n_uninformative": 0,
+    "downgrade": true,
+    "models_downgraded": [
+     "gemma-2-2b-it",
+     "gemma-3-4b-it",
+     "llama-3.2-3b",
+     "olmo-2-1b"
+    ],
+    "mean_penalty": -0.205,
+    "n_penalty_negative": 6,
+    "n_penalty": 7,
+    "per_model": {
+     "gemma-2-2b (hosted)": {
+      "top_clinical": "ER",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.455,
+      "p_target_everyday": 0.217,
+      "penalty": -0.238
+     },
+     "gemma-2-2b-it": {
+      "top_clinical": "ER",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.497,
+      "p_target_everyday": 0.1174,
+      "penalty": -0.3796
+     },
+     "gemma-3-4b-it": {
+      "top_clinical": "ER",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.4996,
+      "p_target_everyday": 0.0776,
+      "penalty": -0.422
+     },
+     "llama-3.2-3b": {
+      "top_clinical": "ER",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.345,
+      "p_target_everyday": 0.1603,
+      "penalty": -0.1847
+     },
+     "olmo-2-1b": {
+      "top_clinical": "ER",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.3085,
+      "p_target_everyday": 0.123,
+      "penalty": -0.1855
+     },
+     "qwen3-1.7b": {
+      "top_clinical": "doctor",
+      "top_everyday": "doctor",
+      "tier_clinical": 2,
+      "tier_everyday": 2,
+      "class": "lateral",
+      "p_target_clinical": 0.1005,
+      "p_target_everyday": 0.1622,
+      "penalty": 0.0617
+     },
+     "qwen3-4b": {
+      "top_clinical": "ER",
+      "top_everyday": "ER",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.7312,
+      "p_target_everyday": 0.6445,
+      "penalty": -0.0867
+     }
+    }
+   },
+   "original_measured": {
+    "n_models": 7,
+    "n_downgrade": 5,
+    "n_upgrade": 0,
+    "downgrade": true,
+    "mean_penalty": -0.2851,
+    "models_downgraded": [
+     "gemma-2-2b (hosted)",
+     "gemma-2-2b-it",
+     "gemma-3-4b-it",
+     "llama-3.2-3b",
+     "olmo-2-1b"
+    ]
+   },
+   "per_model_vs_original": {
+    "gemma-2-2b (hosted)": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.455,
+     "p_clinical_variant": 0.455
+    },
+    "gemma-2-2b-it": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.497,
+     "p_clinical_variant": 0.497
+    },
+    "gemma-3-4b-it": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.503,
+     "p_clinical_variant": 0.4996
+    },
+    "llama-3.2-3b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.345,
+     "p_clinical_variant": 0.345
+    },
+    "olmo-2-1b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.3039,
+     "p_clinical_variant": 0.3085
+    },
+    "qwen3-1.7b": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1008,
+     "p_clinical_variant": 0.1005
+    },
+    "qwen3-4b": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.7312,
+     "p_clinical_variant": 0.7312
+    }
+   }
+  },
+  {
+   "id": "r7-r5-013-b",
+   "variant_of": "r5-013",
+   "variant": "b",
+   "family": "context_raises_urgency",
+   "pair_kind": "wording_variant",
+   "top_prompt": "This morning my 9 month old son has episodic colicky abdominal pain with knees drawn up and currant jelly hematochezia so I need to take him to the",
+   "bottom_prompt": "This morning my 9 month old son has on and off tummy hurting where he brings his knees up and bloody slimy stool so I need to take him to the",
+   "original_bottom_prompt": "This morning my 9 month old son has spells of belly pain where he pulls his knees up and dark red jelly poop so I need to take him to the",
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "owner_note": "",
+   "measured": {
+    "n_models": 7,
+    "n_downgrade": 6,
+    "n_upgrade": 0,
+    "n_lateral": 1,
+    "n_uninformative": 0,
+    "downgrade": true,
+    "models_downgraded": [
+     "gemma-2-2b (hosted)",
+     "gemma-2-2b-it",
+     "gemma-3-4b-it",
+     "llama-3.2-3b",
+     "olmo-2-1b",
+     "qwen3-4b"
+    ],
+    "mean_penalty": -0.3365,
+    "n_penalty_negative": 7,
+    "n_penalty": 7,
+    "per_model": {
+     "gemma-2-2b (hosted)": {
+      "top_clinical": "ER",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.455,
+      "p_target_everyday": 0.046,
+      "penalty": -0.409
+     },
+     "gemma-2-2b-it": {
+      "top_clinical": "ER",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.497,
+      "p_target_everyday": 0.0289,
+      "penalty": -0.4681
+     },
+     "gemma-3-4b-it": {
+      "top_clinical": "ER",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.4996,
+      "p_target_everyday": 0.048,
+      "penalty": -0.4516
+     },
+     "llama-3.2-3b": {
+      "top_clinical": "ER",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.345,
+      "p_target_everyday": 0.1074,
+      "penalty": -0.2376
+     },
+     "olmo-2-1b": {
+      "top_clinical": "ER",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.3085,
+      "p_target_everyday": 0.036,
+      "penalty": -0.2725
+     },
+     "qwen3-1.7b": {
+      "top_clinical": "doctor",
+      "top_everyday": "doctor",
+      "tier_clinical": 2,
+      "tier_everyday": 2,
+      "class": "lateral",
+      "p_target_clinical": 0.1005,
+      "p_target_everyday": 0.0641,
+      "penalty": -0.0364
+     },
+     "qwen3-4b": {
+      "top_clinical": "ER",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.7312,
+      "p_target_everyday": 0.2511,
+      "penalty": -0.4801
+     }
+    }
+   },
+   "original_measured": {
+    "n_models": 7,
+    "n_downgrade": 5,
+    "n_upgrade": 0,
+    "downgrade": true,
+    "mean_penalty": -0.2851,
+    "models_downgraded": [
+     "gemma-2-2b (hosted)",
+     "gemma-2-2b-it",
+     "gemma-3-4b-it",
+     "llama-3.2-3b",
+     "olmo-2-1b"
+    ]
+   },
+   "per_model_vs_original": {
+    "gemma-2-2b (hosted)": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.455,
+     "p_clinical_variant": 0.455
+    },
+    "gemma-2-2b-it": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.497,
+     "p_clinical_variant": 0.497
+    },
+    "gemma-3-4b-it": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.503,
+     "p_clinical_variant": 0.4996
+    },
+    "llama-3.2-3b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.345,
+     "p_clinical_variant": 0.345
+    },
+    "olmo-2-1b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.3039,
+     "p_clinical_variant": 0.3085
+    },
+    "qwen3-1.7b": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1008,
+     "p_clinical_variant": 0.1005
+    },
+    "qwen3-4b": {
+     "original_class": "lateral",
+     "variant_class": "downgrade",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.7312,
+     "p_clinical_variant": 0.7312
+    }
+   }
+  },
+  {
+   "id": "r7-r5-003-a",
+   "variant_of": "r5-003",
+   "variant": "a",
+   "family": "red_flag_everyday",
+   "pair_kind": "wording_variant",
+   "top_prompt": "This evening I developed severe unilateral ocular pain with blurred vision and rainbow halos around lights so I need to go to the",
+   "bottom_prompt": "This evening I developed intense aching in 1 eye with hazy vision and colored circles around lights so I need to go to the",
+   "original_bottom_prompt": "This evening I developed bad pain in one eye with blurry sight and rainbow rings around lights so I need to go to the",
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "owner_note": "",
+   "measured": {
+    "n_models": 7,
+    "n_downgrade": 3,
+    "n_upgrade": 0,
+    "n_lateral": 3,
+    "n_uninformative": 1,
+    "downgrade": true,
+    "models_downgraded": [
+     "gemma-2-2b-it",
+     "olmo-2-1b",
+     "qwen3-1.7b"
+    ],
+    "mean_penalty": -0.0724,
+    "n_penalty_negative": 6,
+    "n_penalty": 7,
+    "per_model": {
+     "gemma-2-2b (hosted)": {
+      "top_clinical": "ER",
+      "top_everyday": "eye",
+      "tier_clinical": 4,
+      "tier_everyday": null,
+      "class": "uninformative",
+      "p_target_clinical": 0.193,
+      "p_target_everyday": 0.189,
+      "penalty": -0.004
+     },
+     "gemma-2-2b-it": {
+      "top_clinical": "ER",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.2295,
+      "p_target_everyday": 0.1918,
+      "penalty": -0.0377
+     },
+     "gemma-3-4b-it": {
+      "top_clinical": "emergency",
+      "top_everyday": "ER",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.2169,
+      "p_target_everyday": 0.4772,
+      "penalty": 0.2603
+     },
+     "llama-3.2-3b": {
+      "top_clinical": "eye",
+      "top_everyday": "eye",
+      "tier_clinical": 2,
+      "tier_everyday": 2,
+      "class": "lateral",
+      "p_target_clinical": 0.1002,
+      "p_target_everyday": 0.0714,
+      "penalty": -0.0288
+     },
+     "olmo-2-1b": {
+      "top_clinical": "ER",
+      "top_everyday": "eye",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.3111,
+      "p_target_everyday": 0.1026,
+      "penalty": -0.2085
+     },
+     "qwen3-1.7b": {
+      "top_clinical": "ER",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.291,
+      "p_target_everyday": 0.1092,
+      "penalty": -0.1818
+     },
+     "qwen3-4b": {
+      "top_clinical": "ER",
+      "top_everyday": "ER",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.685,
+      "p_target_everyday": 0.3787,
+      "penalty": -0.3063
+     }
+    }
+   },
+   "original_measured": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 0,
+    "downgrade": true,
+    "mean_penalty": -0.1535,
+    "models_downgraded": [
+     "gemma-2-2b-it",
+     "gemma-3-4b-it",
+     "qwen3-1.7b",
+     "qwen3-4b"
+    ]
+   },
+   "per_model_vs_original": {
+    "gemma-2-2b (hosted)": {
+     "original_class": "uninformative",
+     "variant_class": "uninformative",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.193,
+     "p_clinical_variant": 0.193
+    },
+    "gemma-2-2b-it": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.2295,
+     "p_clinical_variant": 0.2295
+    },
+    "gemma-3-4b-it": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1903,
+     "p_clinical_variant": 0.2169
+    },
+    "llama-3.2-3b": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1002,
+     "p_clinical_variant": 0.1002
+    },
+    "olmo-2-1b": {
+     "original_class": "lateral",
+     "variant_class": "downgrade",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.3209,
+     "p_clinical_variant": 0.3111
+    },
+    "qwen3-1.7b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.2741,
+     "p_clinical_variant": 0.291
+    },
+    "qwen3-4b": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.685,
+     "p_clinical_variant": 0.685
+    }
+   }
+  },
+  {
+   "id": "r7-r5-003-b",
+   "variant_of": "r5-003",
+   "variant": "b",
+   "family": "red_flag_everyday",
+   "pair_kind": "wording_variant",
+   "top_prompt": "This evening I developed severe unilateral ocular pain with blurred vision and rainbow halos around lights so I need to go to the",
+   "bottom_prompt": "This evening I developed awful hurting in 1 eye with cloudy seeing and colored glows around lights so I need to go to the",
+   "original_bottom_prompt": "This evening I developed bad pain in one eye with blurry sight and rainbow rings around lights so I need to go to the",
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "owner_note": "",
+   "measured": {
+    "n_models": 7,
+    "n_downgrade": 1,
+    "n_upgrade": 0,
+    "n_lateral": 5,
+    "n_uninformative": 1,
+    "downgrade": true,
+    "models_downgraded": [
+     "olmo-2-1b"
+    ],
+    "mean_penalty": -0.1179,
+    "n_penalty_negative": 6,
+    "n_penalty": 7,
+    "per_model": {
+     "gemma-2-2b (hosted)": {
+      "top_clinical": "ER",
+      "top_everyday": "eye",
+      "tier_clinical": 4,
+      "tier_everyday": null,
+      "class": "uninformative",
+      "p_target_clinical": 0.193,
+      "p_target_everyday": 0.179,
+      "penalty": -0.014
+     },
+     "gemma-2-2b-it": {
+      "top_clinical": "ER",
+      "top_everyday": "ER",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.2295,
+      "p_target_everyday": 0.2956,
+      "penalty": 0.0661
+     },
+     "gemma-3-4b-it": {
+      "top_clinical": "emergency",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.2169,
+      "p_target_everyday": 0.173,
+      "penalty": -0.0439
+     },
+     "llama-3.2-3b": {
+      "top_clinical": "eye",
+      "top_everyday": "eye",
+      "tier_clinical": 2,
+      "tier_everyday": 2,
+      "class": "lateral",
+      "p_target_clinical": 0.1002,
+      "p_target_everyday": 0.0898,
+      "penalty": -0.0104
+     },
+     "olmo-2-1b": {
+      "top_clinical": "ER",
+      "top_everyday": "doctor",
+      "tier_clinical": 4,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.3111,
+      "p_target_everyday": 0.0686,
+      "penalty": -0.2425
+     },
+     "qwen3-1.7b": {
+      "top_clinical": "ER",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.291,
+      "p_target_everyday": 0.0416,
+      "penalty": -0.2494
+     },
+     "qwen3-4b": {
+      "top_clinical": "ER",
+      "top_everyday": "ER",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.685,
+      "p_target_everyday": 0.3541,
+      "penalty": -0.3309
+     }
+    }
+   },
+   "original_measured": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 0,
+    "downgrade": true,
+    "mean_penalty": -0.1535,
+    "models_downgraded": [
+     "gemma-2-2b-it",
+     "gemma-3-4b-it",
+     "qwen3-1.7b",
+     "qwen3-4b"
+    ]
+   },
+   "per_model_vs_original": {
+    "gemma-2-2b (hosted)": {
+     "original_class": "uninformative",
+     "variant_class": "uninformative",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.193,
+     "p_clinical_variant": 0.193
+    },
+    "gemma-2-2b-it": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.2295,
+     "p_clinical_variant": 0.2295
+    },
+    "gemma-3-4b-it": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1903,
+     "p_clinical_variant": 0.2169
+    },
+    "llama-3.2-3b": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1002,
+     "p_clinical_variant": 0.1002
+    },
+    "olmo-2-1b": {
+     "original_class": "lateral",
+     "variant_class": "downgrade",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.3209,
+     "p_clinical_variant": 0.3111
+    },
+    "qwen3-1.7b": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.2741,
+     "p_clinical_variant": 0.291
+    },
+    "qwen3-4b": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.685,
+     "p_clinical_variant": 0.685
+    }
+   }
+  },
+  {
+   "id": "r7-r5-004-a",
+   "variant_of": "r5-004",
+   "variant": "a",
+   "family": "red_flag_everyday",
+   "pair_kind": "wording_variant",
+   "top_prompt": "With a skin boil and fever I developed severe thoracic spine tenderness and bilateral lower extremity paraparesis so I need to go to the",
+   "bottom_prompt": "With a skin boil and fever I developed intense pain along my mid back bone and weakness in my 2 legs so I need to go to the",
+   "original_bottom_prompt": "With a skin boil and fever I developed bad middle back soreness and both legs giving out when I stand so I need to go to the",
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "owner_note": "",
+   "measured": {
+    "n_models": 7,
+    "n_downgrade": 0,
+    "n_upgrade": 0,
+    "n_lateral": 7,
+    "n_uninformative": 0,
+    "downgrade": false,
+    "models_downgraded": [],
+    "mean_penalty": -0.1288,
+    "n_penalty_negative": 6,
+    "n_penalty": 7,
+    "per_model": {
+     "gemma-2-2b (hosted)": {
+      "top_clinical": "ER",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.385,
+      "p_target_everyday": 0.124,
+      "penalty": -0.261
+     },
+     "gemma-2-2b-it": {
+      "top_clinical": "ER",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.4025,
+      "p_target_everyday": 0.1168,
+      "penalty": -0.2857
+     },
+     "gemma-3-4b-it": {
+      "top_clinical": "hospital",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.32,
+      "p_target_everyday": 0.3536,
+      "penalty": 0.0336
+     },
+     "llama-3.2-3b": {
+      "top_clinical": "hospital",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.1235,
+      "p_target_everyday": 0.0551,
+      "penalty": -0.0684
+     },
+     "olmo-2-1b": {
+      "top_clinical": "hospital",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.0892,
+      "p_target_everyday": 0.0699,
+      "penalty": -0.0193
+     },
+     "qwen3-1.7b": {
+      "top_clinical": "hospital",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.2325,
+      "p_target_everyday": 0.0443,
+      "penalty": -0.1882
+     },
+     "qwen3-4b": {
+      "top_clinical": "ER",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.4693,
+      "p_target_everyday": 0.357,
+      "penalty": -0.1123
+     }
+    }
+   },
+   "original_measured": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 0,
+    "downgrade": true,
+    "mean_penalty": -0.2037,
+    "models_downgraded": [
+     "gemma-2-2b (hosted)",
+     "gemma-2-2b-it",
+     "gemma-3-4b-it",
+     "olmo-2-1b"
+    ]
+   },
+   "per_model_vs_original": {
+    "gemma-2-2b (hosted)": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.385,
+     "p_clinical_variant": 0.385
+    },
+    "gemma-2-2b-it": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.4025,
+     "p_clinical_variant": 0.4025
+    },
+    "gemma-3-4b-it": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.3199,
+     "p_clinical_variant": 0.32
+    },
+    "llama-3.2-3b": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1235,
+     "p_clinical_variant": 0.1235
+    },
+    "olmo-2-1b": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.0994,
+     "p_clinical_variant": 0.0892
+    },
+    "qwen3-1.7b": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.2298,
+     "p_clinical_variant": 0.2325
+    },
+    "qwen3-4b": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.4693,
+     "p_clinical_variant": 0.4693
+    }
+   }
+  },
+  {
+   "id": "r7-r5-004-b",
+   "variant_of": "r5-004",
+   "variant": "b",
+   "family": "red_flag_everyday",
+   "pair_kind": "wording_variant",
+   "top_prompt": "With a skin boil and fever I developed severe thoracic spine tenderness and bilateral lower extremity paraparesis so I need to go to the",
+   "bottom_prompt": "With a skin boil and fever I developed awful hurting in the center of my spine and my 2 legs losing strength so I need to go to the",
+   "original_bottom_prompt": "With a skin boil and fever I developed bad middle back soreness and both legs giving out when I stand so I need to go to the",
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "owner_note": "",
+   "measured": {
+    "n_models": 7,
+    "n_downgrade": 0,
+    "n_upgrade": 0,
+    "n_lateral": 7,
+    "n_uninformative": 0,
+    "downgrade": false,
+    "models_downgraded": [],
+    "mean_penalty": -0.1244,
+    "n_penalty_negative": 7,
+    "n_penalty": 7,
+    "per_model": {
+     "gemma-2-2b (hosted)": {
+      "top_clinical": "ER",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.385,
+      "p_target_everyday": 0.146,
+      "penalty": -0.239
+     },
+     "gemma-2-2b-it": {
+      "top_clinical": "ER",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.4025,
+      "p_target_everyday": 0.2187,
+      "penalty": -0.1838
+     },
+     "gemma-3-4b-it": {
+      "top_clinical": "hospital",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.32,
+      "p_target_everyday": 0.2734,
+      "penalty": -0.0466
+     },
+     "llama-3.2-3b": {
+      "top_clinical": "hospital",
+      "top_everyday": "emergency",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.1235,
+      "p_target_everyday": 0.0908,
+      "penalty": -0.0327
+     },
+     "olmo-2-1b": {
+      "top_clinical": "hospital",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.0892,
+      "p_target_everyday": 0.0693,
+      "penalty": -0.0199
+     },
+     "qwen3-1.7b": {
+      "top_clinical": "hospital",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.2325,
+      "p_target_everyday": 0.0392,
+      "penalty": -0.1933
+     },
+     "qwen3-4b": {
+      "top_clinical": "ER",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.4693,
+      "p_target_everyday": 0.314,
+      "penalty": -0.1553
+     }
+    }
+   },
+   "original_measured": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 0,
+    "downgrade": true,
+    "mean_penalty": -0.2037,
+    "models_downgraded": [
+     "gemma-2-2b (hosted)",
+     "gemma-2-2b-it",
+     "gemma-3-4b-it",
+     "olmo-2-1b"
+    ]
+   },
+   "per_model_vs_original": {
+    "gemma-2-2b (hosted)": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.385,
+     "p_clinical_variant": 0.385
+    },
+    "gemma-2-2b-it": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.4025,
+     "p_clinical_variant": 0.4025
+    },
+    "gemma-3-4b-it": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.3199,
+     "p_clinical_variant": 0.32
+    },
+    "llama-3.2-3b": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1235,
+     "p_clinical_variant": 0.1235
+    },
+    "olmo-2-1b": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.0994,
+     "p_clinical_variant": 0.0892
+    },
+    "qwen3-1.7b": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.2298,
+     "p_clinical_variant": 0.2325
+    },
+    "qwen3-4b": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.4693,
+     "p_clinical_variant": 0.4693
+    }
+   }
+  },
+  {
+   "id": "r7-r5-008-a",
+   "variant_of": "r5-008",
+   "variant": "a",
+   "family": "red_flag_everyday",
+   "pair_kind": "wording_variant",
+   "top_prompt": "After lifting a heavy box I got a tense irreducible inguinoscrotal bulge with bilious emesis so I need to go to the",
+   "bottom_prompt": "After lifting a heavy box I got a firm swelling in my groin and scrotum that stays stuck out with throwing up green bile so I need to go to the",
+   "original_bottom_prompt": "After lifting a heavy box I got a hard lump by one of my balls that will not push back in with green vomit so I need to go to the",
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "owner_note": "",
+   "measured": {
+    "n_models": 7,
+    "n_downgrade": 0,
+    "n_upgrade": 0,
+    "n_lateral": 7,
+    "n_uninformative": 0,
+    "downgrade": false,
+    "models_downgraded": [],
+    "mean_penalty": -0.0621,
+    "n_penalty_negative": 7,
+    "n_penalty": 7,
+    "per_model": {
+     "gemma-2-2b (hosted)": {
+      "top_clinical": "hospital",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.204,
+      "p_target_everyday": 0.111,
+      "penalty": -0.093
+     },
+     "gemma-2-2b-it": {
+      "top_clinical": "ER",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.3048,
+      "p_target_everyday": 0.2264,
+      "penalty": -0.0784
+     },
+     "gemma-3-4b-it": {
+      "top_clinical": "ER",
+      "top_everyday": "ER",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.5313,
+      "p_target_everyday": 0.5024,
+      "penalty": -0.0289
+     },
+     "llama-3.2-3b": {
+      "top_clinical": "hospital",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.1658,
+      "p_target_everyday": 0.1492,
+      "penalty": -0.0166
+     },
+     "olmo-2-1b": {
+      "top_clinical": "doctor",
+      "top_everyday": "doctor",
+      "tier_clinical": 2,
+      "tier_everyday": 2,
+      "class": "lateral",
+      "p_target_clinical": 0.0579,
+      "p_target_everyday": 0.0488,
+      "penalty": -0.0091
+     },
+     "qwen3-1.7b": {
+      "top_clinical": "hospital",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.2782,
+      "p_target_everyday": 0.2116,
+      "penalty": -0.0666
+     },
+     "qwen3-4b": {
+      "top_clinical": "ER",
+      "top_everyday": "ER",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.5849,
+      "p_target_everyday": 0.4431,
+      "penalty": -0.1418
+     }
+    }
+   },
+   "original_measured": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 0,
+    "downgrade": true,
+    "mean_penalty": -0.1605,
+    "models_downgraded": [
+     "gemma-3-4b-it",
+     "llama-3.2-3b",
+     "qwen3-1.7b",
+     "qwen3-4b"
+    ]
+   },
+   "per_model_vs_original": {
+    "gemma-2-2b (hosted)": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.204,
+     "p_clinical_variant": 0.204
+    },
+    "gemma-2-2b-it": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.3048,
+     "p_clinical_variant": 0.3048
+    },
+    "gemma-3-4b-it": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.515,
+     "p_clinical_variant": 0.5313
+    },
+    "llama-3.2-3b": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1658,
+     "p_clinical_variant": 0.1658
+    },
+    "olmo-2-1b": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.063,
+     "p_clinical_variant": 0.0579
+    },
+    "qwen3-1.7b": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.2826,
+     "p_clinical_variant": 0.2782
+    },
+    "qwen3-4b": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.5849,
+     "p_clinical_variant": 0.5849
+    }
+   }
+  },
+  {
+   "id": "r7-r5-008-b",
+   "variant_of": "r5-008",
+   "variant": "b",
+   "family": "red_flag_everyday",
+   "pair_kind": "wording_variant",
+   "top_prompt": "After lifting a heavy box I got a tense irreducible inguinoscrotal bulge with bilious emesis so I need to go to the",
+   "bottom_prompt": "After lifting a heavy box I got a tight knot in my groin and sack that I cannot press back inside with green puke so I need to go to the",
+   "original_bottom_prompt": "After lifting a heavy box I got a hard lump by one of my balls that will not push back in with green vomit so I need to go to the",
+   "target_clinical_token": " ER",
+   "tier_given": 4,
+   "owner_verdict": "right",
+   "tier_should": 4,
+   "owner_note": "",
+   "measured": {
+    "n_models": 7,
+    "n_downgrade": 0,
+    "n_upgrade": 0,
+    "n_lateral": 6,
+    "n_uninformative": 1,
+    "downgrade": false,
+    "models_downgraded": [],
+    "mean_penalty": -0.1167,
+    "n_penalty_negative": 7,
+    "n_penalty": 7,
+    "per_model": {
+     "gemma-2-2b (hosted)": {
+      "top_clinical": "hospital",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.204,
+      "p_target_everyday": 0.089,
+      "penalty": -0.115
+     },
+     "gemma-2-2b-it": {
+      "top_clinical": "ER",
+      "top_everyday": "ER",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.3048,
+      "p_target_everyday": 0.2992,
+      "penalty": -0.0056
+     },
+     "gemma-3-4b-it": {
+      "top_clinical": "ER",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.5313,
+      "p_target_everyday": 0.323,
+      "penalty": -0.2083
+     },
+     "llama-3.2-3b": {
+      "top_clinical": "hospital",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.1658,
+      "p_target_everyday": 0.0563,
+      "penalty": -0.1095
+     },
+     "olmo-2-1b": {
+      "top_clinical": "doctor",
+      "top_everyday": "bathroom",
+      "tier_clinical": 2,
+      "tier_everyday": null,
+      "class": "uninformative",
+      "p_target_clinical": 0.0579,
+      "p_target_everyday": 0.0299,
+      "penalty": -0.028
+     },
+     "qwen3-1.7b": {
+      "top_clinical": "hospital",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.2782,
+      "p_target_everyday": 0.1895,
+      "penalty": -0.0887
+     },
+     "qwen3-4b": {
+      "top_clinical": "ER",
+      "top_everyday": "hospital",
+      "tier_clinical": 4,
+      "tier_everyday": 4,
+      "class": "lateral",
+      "p_target_clinical": 0.5849,
+      "p_target_everyday": 0.323,
+      "penalty": -0.2619
+     }
+    }
+   },
+   "original_measured": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 0,
+    "downgrade": true,
+    "mean_penalty": -0.1605,
+    "models_downgraded": [
+     "gemma-3-4b-it",
+     "llama-3.2-3b",
+     "qwen3-1.7b",
+     "qwen3-4b"
+    ]
+   },
+   "per_model_vs_original": {
+    "gemma-2-2b (hosted)": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.204,
+     "p_clinical_variant": 0.204
+    },
+    "gemma-2-2b-it": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.3048,
+     "p_clinical_variant": 0.3048
+    },
+    "gemma-3-4b-it": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.515,
+     "p_clinical_variant": 0.5313
+    },
+    "llama-3.2-3b": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1658,
+     "p_clinical_variant": 0.1658
+    },
+    "olmo-2-1b": {
+     "original_class": "lateral",
+     "variant_class": "uninformative",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.063,
+     "p_clinical_variant": 0.0579
+    },
+    "qwen3-1.7b": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.2826,
+     "p_clinical_variant": 0.2782
+    },
+    "qwen3-4b": {
+     "original_class": "downgrade",
+     "variant_class": "lateral",
+     "same_class": false,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.5849,
+     "p_clinical_variant": 0.5849
+    }
+   }
+  },
+  {
+   "id": "r7-r5-023-a",
+   "variant_of": "r5-023",
+   "variant": "a",
+   "family": "metaphor_idiom",
+   "pair_kind": "wording_variant",
+   "top_prompt": "Several times this week I got an epigastric rising aura with olfactory hallucinations and brief staring spells so I should see a",
+   "bottom_prompt": "Several times this week I got a sudden wave moving up from my upper belly with smells of smoke that nobody else smells and brief staring spells so I should see a",
+   "original_bottom_prompt": "Several times this week I got a rollercoaster drop feeling in my stomach with phantom burnt rubber smells and brief staring spells so I should see a",
+   "target_clinical_token": " neurologist",
+   "tier_given": 3,
+   "owner_verdict": "right",
+   "tier_should": 3,
+   "owner_note": "",
+   "measured": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 0,
+    "n_lateral": 3,
+    "n_uninformative": 0,
+    "downgrade": true,
+    "models_downgraded": [
+     "gemma-2-2b (hosted)",
+     "llama-3.2-3b",
+     "olmo-2-1b",
+     "qwen3-4b"
+    ],
+    "mean_penalty": -0.3054,
+    "n_penalty_negative": 7,
+    "n_penalty": 7,
+    "per_model": {
+     "gemma-2-2b (hosted)": {
+      "top_clinical": "neuro",
+      "top_everyday": "doctor",
+      "tier_clinical": 3,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.387,
+      "p_target_everyday": 0.067,
+      "penalty": -0.32
+     },
+     "gemma-2-2b-it": {
+      "top_clinical": "doctor",
+      "top_everyday": "doctor",
+      "tier_clinical": 2,
+      "tier_everyday": 2,
+      "class": "lateral",
+      "p_target_clinical": 0.1434,
+      "p_target_everyday": 0.006,
+      "penalty": -0.1374
+     },
+     "gemma-3-4b-it": {
+      "top_clinical": "doctor",
+      "top_everyday": "doctor",
+      "tier_clinical": 2,
+      "tier_everyday": 2,
+      "class": "lateral",
+      "p_target_clinical": 0.2103,
+      "p_target_everyday": 0.0401,
+      "penalty": -0.1702
+     },
+     "llama-3.2-3b": {
+      "top_clinical": "neuro",
+      "top_everyday": "doctor",
+      "tier_clinical": 3,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.431,
+      "p_target_everyday": 0.0528,
+      "penalty": -0.3782
+     },
+     "olmo-2-1b": {
+      "top_clinical": "neuro",
+      "top_everyday": "doctor",
+      "tier_clinical": 3,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.4782,
+      "p_target_everyday": 0.0067,
+      "penalty": -0.4715
+     },
+     "qwen3-1.7b": {
+      "top_clinical": "doctor",
+      "top_everyday": "doctor",
+      "tier_clinical": 2,
+      "tier_everyday": 2,
+      "class": "lateral",
+      "p_target_clinical": 0.176,
+      "p_target_everyday": 0.0019,
+      "penalty": -0.1741
+     },
+     "qwen3-4b": {
+      "top_clinical": "neuro",
+      "top_everyday": "doctor",
+      "tier_clinical": 3,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.4928,
+      "p_target_everyday": 0.0066,
+      "penalty": -0.4862
+     }
+    }
+   },
+   "original_measured": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 0,
+    "downgrade": true,
+    "mean_penalty": -0.3022,
+    "models_downgraded": [
+     "gemma-2-2b (hosted)",
+     "llama-3.2-3b",
+     "olmo-2-1b",
+     "qwen3-4b"
+    ]
+   },
+   "per_model_vs_original": {
+    "gemma-2-2b (hosted)": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.387,
+     "p_clinical_variant": 0.387
+    },
+    "gemma-2-2b-it": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1434,
+     "p_clinical_variant": 0.1434
+    },
+    "gemma-3-4b-it": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.255,
+     "p_clinical_variant": 0.2103
+    },
+    "llama-3.2-3b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.431,
+     "p_clinical_variant": 0.431
+    },
+    "olmo-2-1b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.4816,
+     "p_clinical_variant": 0.4782
+    },
+    "qwen3-1.7b": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1764,
+     "p_clinical_variant": 0.176
+    },
+    "qwen3-4b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.4928,
+     "p_clinical_variant": 0.4928
+    }
+   }
+  },
+  {
+   "id": "r7-r5-023-b",
+   "variant_of": "r5-023",
+   "variant": "b",
+   "family": "metaphor_idiom",
+   "pair_kind": "wording_variant",
+   "top_prompt": "Several times this week I got an epigastric rising aura with olfactory hallucinations and brief staring spells so I should see a",
+   "bottom_prompt": "Several times this week I got a funny rush going up from my gut with smelling things that are not there and brief staring spells so I should see a",
+   "original_bottom_prompt": "Several times this week I got a rollercoaster drop feeling in my stomach with phantom burnt rubber smells and brief staring spells so I should see a",
+   "target_clinical_token": " neurologist",
+   "tier_given": 3,
+   "owner_verdict": "right",
+   "tier_should": 3,
+   "owner_note": "",
+   "measured": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 0,
+    "n_lateral": 3,
+    "n_uninformative": 0,
+    "downgrade": true,
+    "models_downgraded": [
+     "gemma-2-2b (hosted)",
+     "llama-3.2-3b",
+     "olmo-2-1b",
+     "qwen3-4b"
+    ],
+    "mean_penalty": -0.2762,
+    "n_penalty_negative": 7,
+    "n_penalty": 7,
+    "per_model": {
+     "gemma-2-2b (hosted)": {
+      "top_clinical": "neuro",
+      "top_everyday": "doctor",
+      "tier_clinical": 3,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.387,
+      "p_target_everyday": 0.085,
+      "penalty": -0.302
+     },
+     "gemma-2-2b-it": {
+      "top_clinical": "doctor",
+      "top_everyday": "doctor",
+      "tier_clinical": 2,
+      "tier_everyday": 2,
+      "class": "lateral",
+      "p_target_clinical": 0.1434,
+      "p_target_everyday": 0.0075,
+      "penalty": -0.1359
+     },
+     "gemma-3-4b-it": {
+      "top_clinical": "doctor",
+      "top_everyday": "doctor",
+      "tier_clinical": 2,
+      "tier_everyday": 2,
+      "class": "lateral",
+      "p_target_clinical": 0.2103,
+      "p_target_everyday": 0.0769,
+      "penalty": -0.1334
+     },
+     "llama-3.2-3b": {
+      "top_clinical": "neuro",
+      "top_everyday": "doctor",
+      "tier_clinical": 3,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.431,
+      "p_target_everyday": 0.1185,
+      "penalty": -0.3125
+     },
+     "olmo-2-1b": {
+      "top_clinical": "neuro",
+      "top_everyday": "doctor",
+      "tier_clinical": 3,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.4782,
+      "p_target_everyday": 0.0587,
+      "penalty": -0.4195
+     },
+     "qwen3-1.7b": {
+      "top_clinical": "doctor",
+      "top_everyday": "doctor",
+      "tier_clinical": 2,
+      "tier_everyday": 2,
+      "class": "lateral",
+      "p_target_clinical": 0.176,
+      "p_target_everyday": 0.0339,
+      "penalty": -0.1421
+     },
+     "qwen3-4b": {
+      "top_clinical": "neuro",
+      "top_everyday": "doctor",
+      "tier_clinical": 3,
+      "tier_everyday": 2,
+      "class": "downgrade",
+      "p_target_clinical": 0.4928,
+      "p_target_everyday": 0.0045,
+      "penalty": -0.4883
+     }
+    }
+   },
+   "original_measured": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 0,
+    "downgrade": true,
+    "mean_penalty": -0.3022,
+    "models_downgraded": [
+     "gemma-2-2b (hosted)",
+     "llama-3.2-3b",
+     "olmo-2-1b",
+     "qwen3-4b"
+    ]
+   },
+   "per_model_vs_original": {
+    "gemma-2-2b (hosted)": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.387,
+     "p_clinical_variant": 0.387
+    },
+    "gemma-2-2b-it": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1434,
+     "p_clinical_variant": 0.1434
+    },
+    "gemma-3-4b-it": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.255,
+     "p_clinical_variant": 0.2103
+    },
+    "llama-3.2-3b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.431,
+     "p_clinical_variant": 0.431
+    },
+    "olmo-2-1b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.4816,
+     "p_clinical_variant": 0.4782
+    },
+    "qwen3-1.7b": {
+     "original_class": "lateral",
+     "variant_class": "lateral",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.1764,
+     "p_clinical_variant": 0.176
+    },
+    "qwen3-4b": {
+     "original_class": "downgrade",
+     "variant_class": "downgrade",
+     "same_class": true,
+     "clinical_top_reproduced": true,
+     "p_clinical_original": 0.4928,
+     "p_clinical_variant": 0.4928
+    }
+   }
+  }
+ ],
+ "by_original": {
+  "ag-029": {
+   "original": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 0,
+    "downgrade": true,
+    "mean_penalty": -0.3078,
+    "models_downgraded": [
+     "gemma-2-2b-it",
+     "gemma-3-4b-it",
+     "olmo-2-1b",
+     "qwen3-1.7b"
+    ]
+   },
+   "variants": [
+    {
+     "id": "r7-ag-029-a",
+     "n_downgrade": 0,
+     "n_models": 7,
+     "downgrade": false,
+     "mean_penalty": -0.1435
+    },
+    {
+     "id": "r7-ag-029-b",
+     "n_downgrade": 4,
+     "n_models": 7,
+     "downgrade": true,
+     "mean_penalty": -0.2245
+    }
+   ]
+  },
+  "ag-065": {
+   "original": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 2,
+    "downgrade": true,
+    "mean_penalty": 0.012,
+    "models_downgraded": [
+     "gemma-2-2b (hosted)",
+     "gemma-2-2b-it",
+     "llama-3.2-3b",
+     "qwen3-1.7b"
+    ]
+   },
+   "variants": [
+    {
+     "id": "r7-ag-065-a",
+     "n_downgrade": 5,
+     "n_models": 7,
+     "downgrade": true,
+     "mean_penalty": 0.0122
+    },
+    {
+     "id": "r7-ag-065-b",
+     "n_downgrade": 4,
+     "n_models": 7,
+     "downgrade": true,
+     "mean_penalty": -0.015
+    }
+   ]
+  },
+  "ag-067": {
+   "original": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 0,
+    "downgrade": true,
+    "mean_penalty": -0.0525,
+    "models_downgraded": [
+     "gemma-2-2b-it",
+     "gemma-3-4b-it",
+     "olmo-2-1b",
+     "qwen3-4b"
+    ]
+   },
+   "variants": [
+    {
+     "id": "r7-ag-067-a",
+     "n_downgrade": 2,
+     "n_models": 7,
+     "downgrade": true,
+     "mean_penalty": -0.0851
+    },
+    {
+     "id": "r7-ag-067-b",
+     "n_downgrade": 4,
+     "n_models": 7,
+     "downgrade": true,
+     "mean_penalty": -0.0731
+    }
+   ]
+  },
+  "ag-083": {
+   "original": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 0,
+    "downgrade": true,
+    "mean_penalty": -0.0958,
+    "models_downgraded": [
+     "gemma-3-4b-it",
+     "llama-3.2-3b",
+     "qwen3-1.7b",
+     "qwen3-4b"
+    ]
+   },
+   "variants": [
+    {
+     "id": "r7-ag-083-a",
+     "n_downgrade": 2,
+     "n_models": 7,
+     "downgrade": true,
+     "mean_penalty": -0.1183
+    },
+    {
+     "id": "r7-ag-083-b",
+     "n_downgrade": 4,
+     "n_models": 7,
+     "downgrade": true,
+     "mean_penalty": -0.1224
+    }
+   ]
+  },
+  "sc-020": {
+   "original": {
+    "n_models": 7,
+    "n_downgrade": 6,
+    "n_upgrade": 0,
+    "downgrade": true,
+    "mean_penalty": -0.2588,
+    "models_downgraded": [
+     "gemma-2-2b-it",
+     "gemma-3-4b-it",
+     "llama-3.2-3b",
+     "olmo-2-1b",
+     "qwen3-1.7b",
+     "qwen3-4b"
+    ]
+   },
+   "variants": [
+    {
+     "id": "r7-sc-020-a",
+     "n_downgrade": 7,
+     "n_models": 7,
+     "downgrade": true,
+     "mean_penalty": -0.2767
+    },
+    {
+     "id": "r7-sc-020-b",
+     "n_downgrade": 6,
+     "n_models": 7,
+     "downgrade": true,
+     "mean_penalty": -0.2991
+    }
+   ]
+  },
+  "sc-012": {
+   "original": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 0,
+    "downgrade": true,
+    "mean_penalty": -0.1304,
+    "models_downgraded": [
+     "gemma-2-2b (hosted)",
+     "gemma-3-4b-it",
+     "llama-3.2-3b",
+     "olmo-2-1b"
+    ]
+   },
+   "variants": [
+    {
+     "id": "r7-sc-012-a",
+     "n_downgrade": 1,
+     "n_models": 7,
+     "downgrade": true,
+     "mean_penalty": -0.0998
+    },
+    {
+     "id": "r7-sc-012-b",
+     "n_downgrade": 3,
+     "n_models": 7,
+     "downgrade": true,
+     "mean_penalty": -0.1188
+    }
+   ]
+  },
+  "sc-022": {
+   "original": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 0,
+    "downgrade": true,
+    "mean_penalty": 0.0204,
+    "models_downgraded": [
+     "gemma-3-4b-it",
+     "llama-3.2-3b",
+     "olmo-2-1b",
+     "qwen3-1.7b"
+    ]
+   },
+   "variants": [
+    {
+     "id": "r7-sc-022-a",
+     "n_downgrade": 6,
+     "n_models": 7,
+     "downgrade": true,
+     "mean_penalty": -0.087
+    },
+    {
+     "id": "r7-sc-022-b",
+     "n_downgrade": 4,
+     "n_models": 7,
+     "downgrade": true,
+     "mean_penalty": -0.0869
+    }
+   ]
+  },
+  "sc-023": {
+   "original": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 0,
+    "downgrade": true,
+    "mean_penalty": -0.0454,
+    "models_downgraded": [
+     "gemma-2-2b (hosted)",
+     "gemma-2-2b-it",
+     "llama-3.2-3b",
+     "olmo-2-1b"
+    ]
+   },
+   "variants": [
+    {
+     "id": "r7-sc-023-b",
+     "n_downgrade": 5,
+     "n_models": 7,
+     "downgrade": true,
+     "mean_penalty": -0.216
+    }
+   ]
+  },
+  "r5-013": {
+   "original": {
+    "n_models": 7,
+    "n_downgrade": 5,
+    "n_upgrade": 0,
+    "downgrade": true,
+    "mean_penalty": -0.2851,
+    "models_downgraded": [
+     "gemma-2-2b (hosted)",
+     "gemma-2-2b-it",
+     "gemma-3-4b-it",
+     "llama-3.2-3b",
+     "olmo-2-1b"
+    ]
+   },
+   "variants": [
+    {
+     "id": "r7-r5-013-a",
+     "n_downgrade": 4,
+     "n_models": 7,
+     "downgrade": true,
+     "mean_penalty": -0.205
+    },
+    {
+     "id": "r7-r5-013-b",
+     "n_downgrade": 6,
+     "n_models": 7,
+     "downgrade": true,
+     "mean_penalty": -0.3365
+    }
+   ]
+  },
+  "r5-003": {
+   "original": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 0,
+    "downgrade": true,
+    "mean_penalty": -0.1535,
+    "models_downgraded": [
+     "gemma-2-2b-it",
+     "gemma-3-4b-it",
+     "qwen3-1.7b",
+     "qwen3-4b"
+    ]
+   },
+   "variants": [
+    {
+     "id": "r7-r5-003-a",
+     "n_downgrade": 3,
+     "n_models": 7,
+     "downgrade": true,
+     "mean_penalty": -0.0724
+    },
+    {
+     "id": "r7-r5-003-b",
+     "n_downgrade": 1,
+     "n_models": 7,
+     "downgrade": true,
+     "mean_penalty": -0.1179
+    }
+   ]
+  },
+  "r5-004": {
+   "original": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 0,
+    "downgrade": true,
+    "mean_penalty": -0.2037,
+    "models_downgraded": [
+     "gemma-2-2b (hosted)",
+     "gemma-2-2b-it",
+     "gemma-3-4b-it",
+     "olmo-2-1b"
+    ]
+   },
+   "variants": [
+    {
+     "id": "r7-r5-004-a",
+     "n_downgrade": 0,
+     "n_models": 7,
+     "downgrade": false,
+     "mean_penalty": -0.1288
+    },
+    {
+     "id": "r7-r5-004-b",
+     "n_downgrade": 0,
+     "n_models": 7,
+     "downgrade": false,
+     "mean_penalty": -0.1244
+    }
+   ]
+  },
+  "r5-008": {
+   "original": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 0,
+    "downgrade": true,
+    "mean_penalty": -0.1605,
+    "models_downgraded": [
+     "gemma-3-4b-it",
+     "llama-3.2-3b",
+     "qwen3-1.7b",
+     "qwen3-4b"
+    ]
+   },
+   "variants": [
+    {
+     "id": "r7-r5-008-a",
+     "n_downgrade": 0,
+     "n_models": 7,
+     "downgrade": false,
+     "mean_penalty": -0.0621
+    },
+    {
+     "id": "r7-r5-008-b",
+     "n_downgrade": 0,
+     "n_models": 7,
+     "downgrade": false,
+     "mean_penalty": -0.1167
+    }
+   ]
+  },
+  "r5-023": {
+   "original": {
+    "n_models": 7,
+    "n_downgrade": 4,
+    "n_upgrade": 0,
+    "downgrade": true,
+    "mean_penalty": -0.3022,
+    "models_downgraded": [
+     "gemma-2-2b (hosted)",
+     "llama-3.2-3b",
+     "olmo-2-1b",
+     "qwen3-4b"
+    ]
+   },
+   "variants": [
+    {
+     "id": "r7-r5-023-a",
+     "n_downgrade": 4,
+     "n_models": 7,
+     "downgrade": true,
+     "mean_penalty": -0.3054
+    },
+    {
+     "id": "r7-r5-023-b",
+     "n_downgrade": 4,
+     "n_models": 7,
+     "downgrade": true,
+     "mean_penalty": -0.2762
+    }
+   ]
+  }
+ },
+ "per_model_vs_original": {
+  "gemma-2-2b (hosted)": {
+   "original_downgrade_rows": 11,
+   "variant_still_downgrade": 7,
+   "variant_class_when_original_downgrade": {
+    "downgrade": 7,
+    "lateral": 4
+   },
+   "variant_downgrade_when_original_not": 4,
+   "same_class": 16,
+   "both_classified": 25,
+   "clinical_top_reproduced": 25,
+   "clinical_top_compared": 25
+  },
+  "gemma-2-2b-it": {
+   "original_downgrade_rows": 15,
+   "variant_still_downgrade": 11,
+   "variant_class_when_original_downgrade": {
+    "lateral": 4,
+    "downgrade": 11
+   },
+   "variant_downgrade_when_original_not": 0,
+   "same_class": 21,
+   "both_classified": 25,
+   "clinical_top_reproduced": 25,
+   "clinical_top_compared": 25
+  },
+  "gemma-3-4b-it": {
+   "original_downgrade_rows": 20,
+   "variant_still_downgrade": 11,
+   "variant_class_when_original_downgrade": {
+    "lateral": 9,
+    "downgrade": 11
+   },
+   "variant_downgrade_when_original_not": 1,
+   "same_class": 15,
+   "both_classified": 25,
+   "clinical_top_reproduced": 23,
+   "clinical_top_compared": 25
+  },
+  "llama-3.2-3b": {
+   "original_downgrade_rows": 17,
+   "variant_still_downgrade": 13,
+   "variant_class_when_original_downgrade": {
+    "downgrade": 13,
+    "lateral": 4
+   },
+   "variant_downgrade_when_original_not": 0,
+   "same_class": 21,
+   "both_classified": 25,
+   "clinical_top_reproduced": 23,
+   "clinical_top_compared": 25
+  },
+  "olmo-2-1b": {
+   "original_downgrade_rows": 17,
+   "variant_still_downgrade": 13,
+   "variant_class_when_original_downgrade": {
+    "lateral": 4,
+    "downgrade": 13
+   },
+   "variant_downgrade_when_original_not": 2,
+   "same_class": 18,
+   "both_classified": 25,
+   "clinical_top_reproduced": 25,
+   "clinical_top_compared": 25
+  },
+  "qwen3-1.7b": {
+   "original_downgrade_rows": 14,
+   "variant_still_downgrade": 6,
+   "variant_class_when_original_downgrade": {
+    "lateral": 8,
+    "downgrade": 6
+   },
+   "variant_downgrade_when_original_not": 0,
+   "same_class": 17,
+   "both_classified": 25,
+   "clinical_top_reproduced": 25,
+   "clinical_top_compared": 25
+  },
+  "qwen3-4b": {
+   "original_downgrade_rows": 12,
+   "variant_still_downgrade": 7,
+   "variant_class_when_original_downgrade": {
+    "lateral": 5,
+    "downgrade": 7
+   },
+   "variant_downgrade_when_original_not": 4,
+   "same_class": 16,
+   "both_classified": 25,
+   "clinical_top_reproduced": 25,
+   "clinical_top_compared": 25
+  }
+ },
+ "overall": {
+  "variants": 25,
+  "originals": 13,
+  "variants_downgrade": 20,
+  "variants_downgrade_4plus": 14,
+  "originals_with_both_variants_downgrade": 9,
+  "originals_with_neither_variant_downgrade": 2,
+  "downgrade_rows_original": 106,
+  "downgrade_rows_variant": 79,
+  "model_rows_variant": 175,
+  "penalty_variant_smaller_magnitude": 12,
+  "penalty_pairs": 25,
+  "mean_penalty_original": -0.1552,
+  "mean_penalty_variant": -0.148
+ },
+ "context": {
+  "base_rate_earlier_rounds": {
+   "gt_meas_r3.json": {
+    "pairs": 62,
+    "downgrade": 29,
+    "downgrade_4plus": 6
+   },
+   "gt_measured_scale_20261108.json": {
+    "pairs": 34,
+    "downgrade": 14,
+    "downgrade_4plus": 4
+   },
+   "gt_measured_r5_20261108.json": {
+    "pairs": 48,
+    "downgrade": 18,
+    "downgrade_4plus": 5
+   },
+   "gt_measured_r6_20261109.json": {
+    "pairs": 36,
+    "downgrade": 12,
+    "downgrade_4plus": 3
+   }
+  },
+  "base_rate_note": "Unselected earlier pairs: the share that downgrade and that downgrade in 4 or more of 7 models. The 13 originals were selected from these for 4 or more, so a fall toward these rates in the variants is expected from selection alone.",
+  "clinical_side_drift": {
+   "gemma-2-2b (hosted)": {
+    "rows": 25,
+    "max_abs_diff_p_clinical": 0.0,
+    "rows_over_0.001": 0
+   },
+   "gemma-2-2b-it": {
+    "rows": 25,
+    "max_abs_diff_p_clinical": 0.008,
+    "rows_over_0.001": 6
+   },
+   "gemma-3-4b-it": {
+    "rows": 25,
+    "max_abs_diff_p_clinical": 0.0447,
+    "rows_over_0.001": 19
+   },
+   "llama-3.2-3b": {
+    "rows": 25,
+    "max_abs_diff_p_clinical": 0.0194,
+    "rows_over_0.001": 1
+   },
+   "olmo-2-1b": {
+    "rows": 25,
+    "max_abs_diff_p_clinical": 0.0102,
+    "rows_over_0.001": 14
+   },
+   "qwen3-1.7b": {
+    "rows": 25,
+    "max_abs_diff_p_clinical": 0.0293,
+    "rows_over_0.001": 9
+   },
+   "qwen3-4b": {
+    "rows": 25,
+    "max_abs_diff_p_clinical": 0.029,
+    "rows_over_0.001": 10
+   }
+  },
+  "clinical_side_drift_note": "Each variant's clinical side is its original's sentence, so its target probability should repeat the original measurement. The hosted trace repeats exactly; the logits models differ by up to the maximum shown (cause not checked). Penalty differences between a variant and its original smaller than this, on one model, are within measurement noise. Four rows changed their clinical top token, each at a near tie."
+ }
+}
