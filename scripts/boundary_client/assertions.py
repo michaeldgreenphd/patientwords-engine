@@ -70,8 +70,27 @@ def assert_semantics(payload: dict[str, Any], expected: dict[str, Any], legacy: 
     summary = expected["summary"]
     for field in ("accepted", "measured", "screened_out", "flipped_base"):
         _equal(payload["summary"]["totals"][field], summary[field], f"summary denominator {field}")
-    for field in ("n_scored_rows", "n_phrases", "mean_rows_raw", "mean_phrase_deduped", "ci95"):
+    assert_summary_penalty(payload, expected)
+
+
+SUMMARY_PENALTY_FIELDS = ("n_scored_rows", "n_phrases", "mean_rows_raw", "mean_phrase_deduped", "ci95")
+
+
+def assert_summary_penalty(payload: dict[str, Any], expected: dict[str, Any]) -> None:
+    """Check summary.penalty against the fixture's hand-calculated literals, and the repeated phrase behind them.
+
+    The literals are typed in the fixture (expected.summary, arithmetic in its `derivation`). Nothing here
+    recomputes a mean: a recomputation would repeat whatever rule it copied. The repeated-phrase rows are
+    checked so the literals cannot pass on a payload that no longer contains the repetition they describe.
+    """
+    summary = expected["summary"]
+    for field in SUMMARY_PENALTY_FIELDS:
         _equal(payload["summary"]["penalty"][field], summary[field], f"summary penalty {field}")
+    repeated = expected["repeated_phrase"]
+    carriers = [[s["batch"], s["batch_index"]] for s in payload["scenarios"]
+                if s["clinical_prompt"] == repeated["clinical_prompt"]]
+    _equal(carriers, repeated["rows"], "rows carrying the repeated clinical prompt")
+    assert len({batch for batch, _ in carriers}) > 1, "the repeated clinical prompt must span different batches"
 
 
 def _assert_indices(page: Page, indices: list[int]) -> None:
@@ -127,11 +146,13 @@ def assert_browser(page: Page, expected: dict[str, Any], legacy: bool = False) -
     else:
         expect(page.get_by_role("combobox", name="Select model", exact=True).locator("option:checked")).to_have_text(
             expected["models"][base]["selector_text"])
-    _assert_indices(page, expected["models"][base]["default_visible_indices"])
-    _assert_rows(page, expected, base, [1, 2])
-    page.get_by_role("button", name="hide screened-out · 1", exact=True).click()
-    _assert_indices(page, [1, 2, 3])
-    _assert_rows(page, expected, base, [3])
+    every = list(range(1, len(expected["scenario_keys"]) + 1))
+    shown = expected["models"][base]["default_visible_indices"]
+    _assert_indices(page, shown)
+    _assert_rows(page, expected, base, shown)
+    page.get_by_role("button", name=f'hide screened-out · {expected["summary"]["screened_out"]}', exact=True).click()
+    _assert_indices(page, every)
+    _assert_rows(page, expected, base, [index for index in every if index not in shown])
     page.get_by_role("button", name="reset view", exact=True).click()
     for option, key in (("clin", "gemma_clinical_stronger"), ("pat", "gemma_patient_stronger"),
                         ("screened", "gemma_screened")):
@@ -149,12 +170,28 @@ def assert_browser(page: Page, expected: dict[str, Any], legacy: bool = False) -
         expected["models"][other]["selector_text"])
     expect(page.locator("#sim-traced-model")).to_have_text(expected["models"][other]["provenance_text"])
     _assert_indices(page, expected["models"][other]["default_visible_indices"])
-    _assert_rows(page, expected, other, [1, 2, 3])
+    _assert_rows(page, expected, other, expected["models"][other]["default_visible_indices"])
     for option, key in (("clin", "qwen_clinical_stronger"), ("pat", "qwen_patient_stronger")):
         page.get_by_role("combobox", name="Filter by outcome", exact=True).select_option(option)
         _assert_indices(page, expected["filters"][key])
     page.get_by_role("button", name="reset view", exact=True).click()
     page.get_by_role("combobox", name="Select model", exact=True).select_option(base)
     expect(page.locator("#sim-traced-model")).to_have_text(expected["models"][base]["provenance_text"])
-    _assert_indices(page, expected["models"][base]["default_visible_indices"])
-    _assert_rows(page, expected, base, [1, 2])
+    _assert_indices(page, shown)
+    _assert_rows(page, expected, base, shown)
+
+
+def assert_summary_sentence(page: Page, wanted: dict[str, str], timeout: float | None = None) -> None:
+    """Check one rendered sentence that prints summary.penalty on a loaded page.
+
+    `wanted` names the element and its exact text, typed in the fixture from the page's sentence template
+    and the hand-calculated summary. The page must already be at `wanted["page"]`. `timeout` (milliseconds)
+    shortens the wait for a negative control on a page that has already rendered; the default is Playwright's.
+    """
+    from playwright.sync_api import expect
+
+    options = {} if timeout is None else {"timeout": timeout}
+    target = page.locator(wanted["selector"])
+    expect(target).to_have_count(1, **options)
+    expect(target).to_be_visible(**options)
+    expect(target).to_have_text(wanted["text"], **options)
