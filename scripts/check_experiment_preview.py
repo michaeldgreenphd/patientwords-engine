@@ -30,6 +30,10 @@ What runs, in order:
 6. Deliberate defects are served, each followed by a restored pass. One of them is a copy of the bundle
    without the 2026-11-10 additions, as a bundle written before them: the page must render it and say
    "not in this bundle" in each place.
+7. Link records are written into copies of the bundle and served: exact links and reference links built by
+   ``scripts/experiments/neuronpedia.py`` from its fixture registry, one reference link built from the
+   committed registry, and forged reference records. No link is followed; a request to any origin but the
+   test server is blocked and counted.
 
 This is a software check of a viewer on hand-written numbers. It loads no model and says nothing about one.
 
@@ -129,6 +133,37 @@ EXECUTED_ABSENT = MISS + "executed count is " + NOT_IN_BUNDLE
 REUSED_ABSENT = MISS + "reuse count is " + NOT_IN_BUNDLE
 SHARE_LABEL = "squared-coordinate share, not a probability"
 SHARE_UNDEFINED = "\u2014 not computed: zero or non-finite energy"
+# Reference links: what the page prints beside one, and the reasons it gives for not showing one. The fixed
+# label sentence is not copied here; the checks read it from scripts/experiments/neuronpedia.py.
+REFERENCE_TAG = "Reference only \u00b7 external service \u00b7 not a link to the study's model, feature or representation"
+REFERENCE_LINK_TEXT = "Reference page on Neuronpedia (external service)"
+REFERENCE_HOST = "www.neuronpedia.org"
+REFERENCE_PAGE_WORDS = {"model_page": "model page", "source_page": "source page of one layer", "lens_page": "lens page"}
+NO_LINK_PREFIX = "No link. Reason: "
+REFUSED_KIND = 'the record kind is not "reference"'
+REFUSED_RESULT_KIND = 'the record does not say its kind is "reference"'
+REFUSED_NO_LABEL = "the record has no label"
+REFUSED_LABEL = "the label is not the fixed reference sentence"
+REFUSED_ADDRESS = "the address is not an https address without a query string or a fragment"
+REFUSED_HOST = "the host is not " + REFERENCE_HOST
+REFUSED_PAGE = "the page form is not a model, source or lens page"
+REFUSED_PATH = "the address does not have the path of a "
+REFUSED_REASON = "the record does not say the link was built from a recorded page form"
+REFUSED_DATE = "the record has no date read"
+REFUSED_STATUS = "the record has no identity status"
+REFUSED_BOTH = "a record holds a verified link or a reference, never both"
+REFUSED_BARE = "the reference record is not shown as a link: "
+REFERENCE_REFUSALS = (REFUSED_KIND, REFUSED_RESULT_KIND, REFUSED_NO_LABEL, REFUSED_LABEL, REFUSED_ADDRESS,
+                      REFUSED_HOST, REFUSED_PAGE, REFUSED_PATH, REFUSED_REASON, REFUSED_DATE, REFUSED_STATUS,
+                      REFUSED_BOTH, REFUSED_BARE)
+# Words the visible text of a reference link must not use: it is never presented as a verified link or as a
+# link to something of the study.
+NOT_IN_REFERENCE_LINK_TEXT = ("verified", "study", "feature", "representation", "exact")
+# How the page has rendered a verified link and a record with no link since before reference links existed:
+# the element children of the record's box, and the link's attributes. Literals, so that a change is seen.
+RECORD_BOX_CHILDREN = ["P.plain", "P.plain", "DL.kv"]
+EXACT_LINK_PREFIX = "Verified link: "
+EXACT_LINK_REL = "noopener noreferrer external"
 MINUS = "\u2212"
 DISPLAY_STEP = 0.00005  # half a unit of the fourth printed decimal
 BELOW_DISPLAY = ", below the 4 decimals shown"
@@ -1935,6 +1970,380 @@ def check_link_records(s: Session) -> dict[str, Any]:
         s.restore()
 
 
+# -- reference links
+
+RECORD_STATE = """() => Array.from(document.querySelectorAll('#exp-links [data-kind="link-record"]')).map((box) => {
+    const shown = (node) => !!node && node.getClientRects().length > 0;
+    const read = (selector) => { const node = box.querySelector(selector); return node ? node.textContent : null; };
+    return {
+        verified: box.dataset.verified,
+        kind: box.dataset.linkKind || null,
+        cls: box.className,
+        border: getComputedStyle(box).borderTopStyle,
+        children: Array.from(box.children).map((n) => n.tagName + (n.className ? '.' + n.className.split(' ').join('.') : '')),
+        paragraphs: Array.from(box.querySelectorAll('p')).map((n) => n.textContent),
+        anchors: Array.from(box.querySelectorAll('a')).map((a) => ({
+            href: a.getAttribute('href'), text: a.textContent, rel: a.getAttribute('rel'), cls: a.className,
+            kind: a.dataset.kind || null, title: a.getAttribute('title'), target: a.getAttribute('target'),
+            decoration: getComputedStyle(a).textDecorationStyle, shown: shown(a)})),
+        tag: read('[data-col="reference-tag"]'),
+        tag_shown: shown(box.querySelector('[data-col="reference-tag"]')),
+        label: read('[data-col="reference-label"]'),
+        label_shown: shown(box.querySelector('[data-col="reference-label"]')),
+        read: read('[data-col="reference-read"]'),
+        identity: read('[data-col="reference-identity"]'),
+        no_exact: read('[data-col="reference-no-exact"]'),
+        no_link: read('[data-col="no-link"]'),
+        text: box.textContent,
+        lists: box.querySelectorAll('dl').length,
+    };
+})"""
+
+
+def _neuronpedia() -> Any:
+    """The engine's link module, imported from the engine root."""
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
+    from scripts.experiments import neuronpedia
+    return neuronpedia
+
+
+def fixture_link_results() -> dict[str, Any]:
+    """Link results built by ``scripts.experiments.neuronpedia.link_or_fallback`` from the fixture registry:
+    one exact link, one result with no link, and a reference link of each page form. Nothing is hand-written.
+    Raises ``ValueError`` when the fixture registry no longer gives one of them."""
+    neuronpedia = _neuronpedia()
+    registry = neuronpedia.validate_registry(json.loads(REGISTRY_FIXTURE.read_text(encoding="utf-8")))
+    ica = {entry["verification"]["status"]: entry for entry in registry["entries"]
+           if entry["representation_type"] == "ica_component"}
+    readout = next(entry for entry in registry["entries"] if entry["representation_type"] == "workspace_readout")
+    alias = ica["alias_unverified_checkpoint"]
+    results = {
+        "exact": neuronpedia.link_or_fallback(ica["verified_exact"], 1, layer=1, record={"component": 1}),
+        "none": neuronpedia.link_or_fallback(alias, 1, layer=2),
+        "model_page": neuronpedia.link_or_fallback(alias, 1, layer=2, reference_page="model_page"),
+        "source_page": neuronpedia.link_or_fallback(alias, 1, layer=2, reference_page="source_page"),
+        "lens_page": neuronpedia.link_or_fallback(readout, 1, layer=1, reference_page="lens_page"),
+    }
+    wanted = {"exact": "exact", "none": "none", "model_page": "reference", "source_page": "reference",
+              "lens_page": "reference"}
+    kinds = {name: result["kind"] for name, result in results.items()}
+    if kinds != wanted:
+        raise ValueError(f"the registry fixture gives the link kinds {kinds}, expected {wanted}")
+    for name in REFERENCE_PAGE_WORDS:
+        if results[name]["link"] is not None or results[name]["reference"]["page"] != name:
+            raise ValueError(f"the {name} result is not a reference link of that page form")
+        neuronpedia.validate_reference_link(results[name]["reference"], registry)
+    return {"registry": registry, "results": results, "label": neuronpedia.REFERENCE_LABEL}
+
+
+def committed_reference_result() -> dict[str, Any]:
+    """A reference link to a model page, built by ``link_or_fallback`` from the committed registry and its
+    saved evidence files. It is the one kind of external link a real bundle can carry today. Local files are
+    read; no request is made. Raises ``ValueError`` when the committed registry builds none."""
+    neuronpedia = _neuronpedia()
+    registry = neuronpedia.load_registry()
+    for entry in registry["entries"]:
+        if not neuronpedia.permissions(entry)["reference_link"]:
+            continue
+        if not any(page["kind"] == "model_page" for page in entry["reference"]["pages"]):
+            continue
+        result = neuronpedia.link_or_fallback(entry, 0, reference_page="model_page")
+        if result["kind"] == "reference":
+            neuronpedia.validate_reference_link(result["reference"], registry)
+            return result
+    raise ValueError("the committed registry builds no reference link to a model page")
+
+
+def forged_reference_cases(reference: Mapping[str, Any], exact: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """Records that must not become a link, each made from a valid reference result by one change.
+
+    ``reference`` is a ``link_or_fallback`` result of kind ``reference``; ``exact`` is one of kind ``exact``.
+    Each case is ``{"name", "record", "reason", "level"}``: the record to serve, the reason the page must
+    print, and what was changed: ``record`` (the reference record inside the result), ``result`` (the result
+    around a valid reference record) or ``bare`` (a reference record served on its own, without a result).
+    """
+    def changed(**fields: Any) -> dict[str, Any]:
+        result = copy.deepcopy(dict(reference))
+        result["reference"].update(fields)
+        return result
+
+    def without(key: str) -> dict[str, Any]:
+        result = copy.deepcopy(dict(reference))
+        del result["reference"][key]
+        return result
+
+    url = reference["reference"]["url"]
+    path = url[len("https://"):].split("/", 1)[1]
+    host = url[len("https://"):].split("/", 1)[0]
+    cases = [
+        ("another_host", changed(url=f"https://{REFERENCE_HOST}.registry-fixture.example/{path}"), REFUSED_HOST),
+        ("service_host_without_www", changed(url=f"https://neuronpedia.org/{path}"), REFUSED_HOST),
+        ("query_string", changed(url=url + "?prompt=placeholder"), REFUSED_ADDRESS),
+        ("fragment", changed(url=url + "#activations"), REFUSED_ADDRESS),
+        ("not_https", changed(url="http" + url[len("https"):]), REFUSED_ADDRESS),
+        ("script_scheme", changed(url="javascript:alert(1)"), REFUSED_ADDRESS),
+        ("exact_looking_label", changed(label="Verified link"), REFUSED_LABEL),
+        ("label_is_the_address", changed(label=url), REFUSED_LABEL),
+        ("label_with_a_changed_word", changed(label=reference["reference"]["label"].replace("not evidence", "evidence")),
+         REFUSED_LABEL),
+        ("missing_label", without("label"), REFUSED_NO_LABEL),
+        ("empty_label", changed(label=""), REFUSED_NO_LABEL),
+        ("record_kind_exact", changed(kind="exact"), REFUSED_KIND),
+        ("feature_page_form", changed(page="feature_page"), REFUSED_PAGE),
+        ("path_of_a_feature_page", changed(url=f"https://{host}/{path}/2-placeholder-set/7"), REFUSED_PATH),
+        ("reason_of_an_exact_link", changed(reason=exact["reason"]), REFUSED_REASON),
+        ("no_date_read", changed(read_utc_date=None), REFUSED_DATE),
+        ("unknown_identity_status", changed(identity_status="verified"), REFUSED_STATUS),
+    ]
+    out = [{"name": name, "record": record, "reason": reason, "level": "record"} for name, record, reason in cases]
+    out.append({"name": "result_kind_exact", "record": dict(copy.deepcopy(dict(reference)), kind="exact"),
+                "reason": REFUSED_RESULT_KIND, "level": "result"})
+    out.append({"name": "result_with_a_link_string_as_well",
+                "record": dict(copy.deepcopy(dict(reference)), link=exact["link"]), "reason": REFUSED_BOTH,
+                "level": "result"})
+    bare = copy.deepcopy(dict(reference["reference"]))
+    bare["url"] = f"https://{REFERENCE_HOST}.registry-fixture.example/{path}"
+    out.append({"name": "bare_record_with_another_host", "record": bare, "reason": REFUSED_BARE + REFUSED_HOST,
+                "level": "bare"})
+    return out
+
+
+def with_link_records(bundle: Mapping[str, Any], records: Sequence[Mapping[str, Any]],
+                      component_record: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    """A copy of ``bundle`` with ``records`` under the first comparison's ``references.registry.neuronpedia``
+    and, when given, ``component_record`` beside the second ICA component of its first layer. These are the
+    two places the page reads a link record from; the bundle contract names neither."""
+    doc = copy.deepcopy(dict(bundle))
+    entry = doc["comparisons"][0]["comparisons"][0]
+    entry["references"]["registry"] = {"status": "reference_only", "neuronpedia": [dict(r) for r in records]}
+    if component_record is not None:
+        entry["ica"]["layers"][0]["components"][1]["neuronpedia"] = dict(component_record)
+    return doc
+
+
+def assert_reference_box(box: Mapping[str, Any], result: Mapping[str, Any], label: str) -> None:
+    """One rendered record is a reference link: marked as one, with the fixed label in full beside it, the date
+    read and the identity status, and never marked or worded as a verified link."""
+    record = result["reference"]
+    name = record["page"]
+    assert (box["kind"], box["verified"]) == ("reference", "false"), f"{name}: marked {box['kind']!r}, {box['verified']!r}"
+    assert "lnk-ref" in box["cls"].split() and box["border"] == "dashed", f"{name}: box {box['cls']!r} {box['border']!r}"
+    assert len(box["anchors"]) == 1, f"{name}: {len(box['anchors'])} links in the record"
+    link = box["anchors"][0]
+    assert link["href"] == record["url"] and link["shown"], f"{name}: the link goes to {link['href']!r}"
+    assert link["text"] == f"{REFERENCE_LINK_TEXT}: {REFERENCE_PAGE_WORDS[name]}, {record['url']}", (
+        f"{name}: the link text is {link['text']!r}")
+    assert (link["kind"], link["rel"], link["target"], link["title"]) == ("reference-link", EXACT_LINK_REL, None, None), (
+        f"{name}: link attributes {link}")
+    assert link["decoration"] == "dashed", f"{name}: the link is underlined {link['decoration']!r}, as a verified link is"
+    words = link["text"][:link["text"].index(record["url"])].lower()
+    used = [word for word in NOT_IN_REFERENCE_LINK_TEXT if word in words]
+    assert not used, f"{name}: the link text uses {used}"
+    assert box["tag"] == REFERENCE_TAG and box["tag_shown"], f"{name}: the tag reads {box['tag']!r}"
+    assert box["label"] == label == record["label"] and box["label_shown"], f"{name}: the fixed label is not shown in full"
+    assert box["read"] == record["read_utc_date"], f"{name}: date read {box['read']!r}"
+    assert box["identity"] == record["identity_status"], f"{name}: identity status {box['identity']!r}"
+    assert box["no_exact"] is not None and result["reason"] in box["no_exact"], (
+        f"{name}: the reason there is no verified link is not shown")
+    assert box["no_link"] is None and EXACT_LINK_PREFIX not in box["text"], f"{name}: shown as another kind of record"
+
+
+def assert_refused_box(box: Mapping[str, Any], reason: str, name: str) -> None:
+    """One rendered record shows no link, with the reason."""
+    assert (box["kind"], box["verified"]) == ("none", "false"), f"{name}: marked {box['kind']!r}, {box['verified']!r}"
+    assert box["anchors"] == [], f"{name}: a link is shown: {box['anchors']}"
+    assert box["no_link"] is not None and box["no_link"].startswith(NO_LINK_PREFIX), f"{name}: no no-link line"
+    assert reason in box["no_link"], f"{name}: the no-link line lacks its reason: {box['no_link'][-160:]!r}"
+    assert "lnk-ref" not in box["cls"].split() and box["label"] is None and box["tag"] is None, (
+        f"{name}: a refused record carries reference marks")
+
+
+def check_reference_records(s: Session, recorder: Recorder) -> None:
+    """Reference links beside an exact link and a record with no link, all built by the engine's link builder
+    from its fixture registry. Three checks read one render at 1280 px and one at 390 px."""
+    names = ("a_reference_record_renders_as_a_reference_with_the_fixed_label",
+             "a_reference_record_is_never_rendered_as_a_verified_link",
+             "an_exact_record_and_a_record_with_no_link_render_as_before")
+    collected: dict[str, Any] = {}
+
+    def collect() -> None:
+        built = fixture_link_results()
+        results = built["results"]
+        s.write(with_link_records(s.bundle, [results[name] for name in ("model_page", "source_page", "lens_page",
+                                                                         "none")], results["exact"]))
+        try:
+            page, log = s.open()
+            try:
+                assert_ready(page, log, s.base)
+                collected.update(built, boxes=page.evaluate(RECORD_STATE), note=page.evaluate(
+                    "() => document.querySelector('#exp-links p.note').textContent"),
+                    page_label=page.evaluate("() => window.pwExperimentViewer.referenceLabel"),
+                    anchors=page.evaluate(LINK_STATE)["anchors"])
+                collected["focus"] = None
+                if page.evaluate("() => { const a = document.querySelector('#exp-links a.ref-a'); if (a) a.focus(); "
+                                 "return !!a; }"):
+                    page.keyboard.press("Shift+Tab")
+                    page.keyboard.press("Tab")
+                    collected["focus"] = page.evaluate("""() => ({
+                        on_reference_link: document.activeElement === document.querySelector('#exp-links a.ref-a'),
+                        outline: getComputedStyle(document.activeElement).outlineStyle})""")
+            finally:
+                page.close()
+            page, log = s.open(phone=True)
+            try:
+                assert_ready(page, log, s.base)
+                collected["phone"] = dict(assert_no_overflow(page), boxes=page.evaluate(RECORD_STATE))
+            finally:
+                page.close()
+        finally:
+            s.restore()
+
+    try:
+        collect()
+    except SetupProblem:
+        raise
+    except Exception as exc:
+        failure = exc
+
+        def not_collected() -> None:
+            raise failure
+        for name in names:
+            recorder.run(name, not_collected)
+        return
+    results, boxes, label = collected["results"], collected["boxes"], collected["label"]
+    order = ("model_page", "source_page", "lens_page", "none", "exact")
+
+    def renders() -> dict[str, Any]:
+        assert len(boxes) == len(order), f"{len(boxes)} records rendered, {len(order)} served"
+        assert collected["page_label"] == label, "the page's label sentence is not the engine's REFERENCE_LABEL"
+        for name, box in zip(order[:3], boxes[:3]):
+            assert_reference_box(box, results[name], label)
+        assert "reference page" in collected["note"].lower() and "not a link to the study" in collected["note"], (
+            "the note above the records does not say what a reference page is")
+        assert collected["focus"] == {"on_reference_link": True, "outline": "solid"}, (
+            f"Tab did not put a visible focus outline on a reference link: {collected['focus']}")
+        phone = collected["phone"]
+        for name, box in zip(order[:3], phone["boxes"][:3]):
+            assert_reference_box(box, results[name], label)
+        return {"reference_links_shown": 3, "page_forms": list(order[:3]), "fixed_label_shown_in_full": 3,
+                "identity_statuses": sorted({results[name]["reference"]["identity_status"] for name in order[:3]}),
+                "width_at_390": phone["scroll_width"],
+                "source": "scripts.experiments.neuronpedia.link_or_fallback(reference_page=...) on the fixture "
+                          "registry; each record passed validate_reference_link"}
+
+    def never_exact() -> dict[str, Any]:
+        exact_href = results["exact"]["link"]
+        for name, box in zip(order[:3], boxes[:3]):
+            link = box["anchors"][0]
+            assert box["verified"] == "false" and box["kind"] != "exact", f"{name}: marked as a verified link"
+            assert EXACT_LINK_PREFIX not in box["text"], f"{name}: the record says {EXACT_LINK_PREFIX!r}"
+            assert link["text"] != link["href"] and link["href"] != exact_href, f"{name}: rendered as an exact link is"
+            assert link["cls"] == "ref-a" and box["children"] != RECORD_BOX_CHILDREN, f"{name}: the exact markup"
+        verified = [box for box in boxes if box["verified"] == "true"]
+        assert len(verified) == 1 and verified[0] is boxes[4], f"{len(verified)} records are marked verified"
+        assert sum(1 for box in boxes if EXACT_LINK_PREFIX in box["text"]) == 1, "more than one verified link line"
+        return {"records_marked_verified": 1, "reference_records_marked_verified": 0}
+
+    def as_before() -> dict[str, Any]:
+        exact, none = boxes[4], boxes[3]
+        link = results["exact"]["link"]
+        assert (exact["kind"], exact["verified"], exact["cls"], exact["border"]) == ("exact", "true", "lnk", "solid"), exact
+        assert exact["children"] == RECORD_BOX_CHILDREN and exact["lists"] == 1, f"exact record: {exact['children']}"
+        assert exact["paragraphs"][1] == EXACT_LINK_PREFIX + link, f"exact record: {exact['paragraphs'][1]!r}"
+        assert [(a["href"], a["text"], a["rel"], a["cls"], a["kind"], a["title"], a["target"]) for a in exact["anchors"]] == [
+            (link, link, EXACT_LINK_REL, "", None, None, None)], f"exact link: {exact['anchors']}"
+        assert exact["anchors"][0]["decoration"] == "solid" and exact["tag"] is None and exact["label"] is None
+        assert_refused_box(none, results["none"]["reason"], "record with no link")
+        assert none["children"] == RECORD_BOX_CHILDREN and none["cls"] == "lnk" and none["border"] == "solid", none
+        assert none["no_link"] == f"{NO_LINK_PREFIX}{results['none']['reason']} \u00b7 {results['none']['detail']}", (
+            f"record with no link: {none['no_link']!r}")
+        assert collected["anchors"][-1] == [link, link], "the verified link is not the last link under External links"
+        return {"exact_record": "unchanged markup and text", "record_with_no_link": "unchanged markup and text"}
+
+    for name, action in zip(names, (renders, never_exact, as_before)):
+        recorder.run(name, action)
+
+
+def check_forged_reference_records(s: Session) -> dict[str, Any]:
+    """Each forged record is served in the synthetic bundle and must show no link with its reason. The page's
+    own rule is also asked directly, and the engine's validator must refuse every record-level forgery."""
+    neuronpedia = _neuronpedia()
+    built = fixture_link_results()
+    valid, exact = built["results"]["model_page"], built["results"]["exact"]
+    cases = forged_reference_cases(valid, exact)
+    s.write(with_link_records(s.bundle, [case["record"] for case in cases]))
+    try:
+        page, log = s.open()
+        try:
+            assert_ready(page, log, s.base)
+            boxes = page.evaluate(RECORD_STATE)
+            assert len(boxes) == len(cases), f"{len(boxes)} records rendered, {len(cases)} served"
+            assert page.evaluate(LINK_STATE)["anchors"] == [], "a forged record is shown as a link"
+            rule = "([record, synthetic]) => window.pwExperimentViewer.referenceRefusal(record, synthetic)"
+            assert page.evaluate(rule, [valid["reference"], True]) is None, "the page's rule refuses the valid record"
+            assert page.evaluate(rule, [valid["reference"], False]) == REFUSED_HOST, (
+                "the page's rule accepts a fixture host outside a synthetic bundle")
+            engine_refused = 0
+            for case, box in zip(cases, boxes):
+                assert_refused_box(box, case["reason"], case["name"])
+                if case["level"] == "result":
+                    continue
+                record = case["record"] if case["level"] == "bare" else case["record"]["reference"]
+                direct = page.evaluate(rule, [record, True])
+                assert direct is not None and direct.startswith(case["reason"].removeprefix(REFUSED_BARE)), (
+                    f"{case['name']}: the page's rule says {direct!r}")
+                try:
+                    neuronpedia.validate_reference_link(record, built["registry"])
+                except neuronpedia.Refusal:
+                    engine_refused += 1
+                else:
+                    raise AssertionError(f"{case['name']}: the engine's validate_reference_link accepts this record")
+            return {"forged_records": len(cases), "links_shown": 0,
+                    "cases": [case["name"] for case in cases],
+                    "also_refused_by_validate_reference_link": engine_refused}
+        finally:
+            page.close()
+    finally:
+        s.restore()
+
+
+def check_reference_host_by_bundle_label(s: Session) -> dict[str, Any]:
+    """In a bundle that is not labelled synthetic the only accepted host is ``www.neuronpedia.org``.
+
+    A relabelled copy of the fixture bundle, which exists only in the temporary site, carries two reference
+    results: the fixture registry's (a ``.invalid`` host) and one built from the committed registry. The first
+    must show no link; the second must render as a reference. The link is not followed."""
+    built = fixture_link_results()
+    fixture, committed = built["results"]["model_page"], committed_reference_result()
+    url = committed["reference"]["url"]
+    assert url.startswith(f"https://{REFERENCE_HOST}/"), "the committed registry's reference link is on another host"
+    extra = s.site / "data" / RELABELLED_PARAM
+    extra.write_text(json.dumps(relabelled_as_publishable(with_link_records(s.bundle, [fixture, committed]))),
+                     encoding="utf-8")
+    try:
+        page, log = s.open(page_url(s.base, RELABELLED_PARAM))
+        try:
+            state = page_state(page)
+            assert state["state"] == "ready", f"page state is {state['state']!r}: {state['messages']}"
+            assert not log.console_errors and not log.page_errors and not log.http_errors, "browser errors"
+            assert page.evaluate("() => document.querySelectorAll('[data-kind=\"synthetic-banner\"]').length") == 0, (
+                "the relabelled copy is shown as synthetic")
+            boxes = page.evaluate(RECORD_STATE)
+            assert len(boxes) == 2, f"{len(boxes)} records rendered, 2 served"
+            assert_refused_box(boxes[0], REFUSED_HOST, "fixture host outside a synthetic bundle")
+            assert_reference_box(boxes[1], committed, built["label"])
+            assert page.evaluate(LINK_STATE)["anchors"] == [[url, boxes[1]["anchors"][0]["text"]]], "links shown"
+            return {"fixture_host_outside_a_synthetic_bundle": "no link, with the reason",
+                    "committed_registry_reference": "rendered as a reference", "host": REFERENCE_HOST,
+                    "registry_id": committed["reference"]["registry_id"], "link_followed": False,
+                    "input": "a relabelled copy of the fixture bundle, in the temporary tree only; not a study bundle"}
+        finally:
+            page.close()
+    finally:
+        extra.unlink()
+
+
 def check_parameter_cases(s: Session) -> dict[str, Any]:
     """The page's rule and ``bundle_param_refusal`` give the same answer, with the same words, on every case."""
     refused = 0
@@ -2002,6 +2411,10 @@ def run_browser_checks(s: Session, recorder: Recorder) -> None:
                lambda: s.write(disagreeing), lambda: detect_disagreeing_blocks(s, changed))
 
     recorder.run("a_link_is_shown_only_for_a_verified_built_record", lambda: check_link_records(s))
+    check_reference_records(s, recorder)
+    recorder.run("forged_reference_records_show_no_link_with_a_reason", lambda: check_forged_reference_records(s))
+    recorder.run("reference_host_is_the_service_host_outside_a_synthetic_bundle",
+                 lambda: check_reference_host_by_bundle_label(s))
     recorder.run("parameter_rule_matches_its_python_mirror", lambda: check_parameter_cases(s))
     recorder.run("loading_missing_error_refused_ready_and_idle_differ", lambda: check_distinct_states(s))
 

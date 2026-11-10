@@ -2,9 +2,10 @@
 
 Written 2026-11-10. The site has a page that lists experiment comparisons and displays one
 (`experiments/index.html`, titled "Compare methods"), and one command checks that the page
-renders a synthetic bundle faithfully. The check passed locally on 2026-11-10: 37 checks,
+renders a synthetic bundle faithfully. The check passed locally on 2026-11-10: 42 checks,
 0 failed. It had 28 checks before the page was reorganised the same day; each of the 28
-has an equivalent and 9 were added. It is a software check on hand-written numbers. It
+has an equivalent, 9 were added with the reorganisation and 5 with reference links
+(*External links*). It is a software check on hand-written numbers. It
 loads no model, measures nothing and publishes nothing. No study bundle exists yet, so the
 published index lists nothing.
 
@@ -104,6 +105,48 @@ review label keep their own columns and units; the page adds and averages nothin
 
 Where a bundle does not carry a value the page prints a dash and "not in this bundle" in
 that place. It fills nothing in.
+
+### External links
+
+A bundle without a link record shows one sentence and no link. No exported bundle carries
+a link record today, so this is what every bundle shows. When a bundle carries records of
+the shape `link_or_fallback` returns ([neuronpedia.md](neuronpedia.md)), the page shows
+one box per record, in one of three states:
+
+| State | When | What is shown |
+|---|---|---|
+| Verified link | the record's `link` is an `https` address, its `reason` is "link built from the recorded pattern" and its local record says `verified_exact` | "Verified link:" and the address as the link text; a solid box. Unchanged since before reference links existed |
+| Reference | the record's `kind` is `reference`, its `link` is null and its `reference` record passes the rule below | a dashed box; the line "Reference only · external service · not a link to the study's model, feature or representation"; a link with a dashed underline whose text is "Reference page on Neuronpedia (external service): model page, " and the address (or "source page of one layer", "lens page"); under it the record's fixed label sentence in full, as text; then the date read, the identity status, the page form, the registry entry, the saved service record with its SHA-256, and the reason there is no verified link |
+| No link | anything else | "No link. Reason: " with the recorded reason and detail. When the record holds a reference the page did not accept, the line ends with the reason from the rule below |
+
+The page shows a reference record as a link only when all of this holds; the first test
+that fails gives the reason it prints:
+
+1. `kind` is `reference`.
+2. `label` is the engine's `REFERENCE_LABEL`, character for character. The page holds
+   the sentence as a constant; a test compares the two offline. A missing label and any
+   other label are refused, so a record cannot carry wording of its own.
+3. `url` passes the test the page applies to a verified link (`LINK_URL`): `https`, a
+   host, and path characters from `A-Z a-z 0-9 . _ ~ / -`. A query string and a fragment
+   therefore fail.
+4. The host is `www.neuronpedia.org`. One exception: inside a bundle whose labels say it
+   is synthetic, a host under `.invalid` is also accepted. The engine's fixture registry
+   links only to `registry-fixture.invalid`, `.invalid` is a reserved top-level domain that
+   reaches no site, and a synthetic bundle is never listed (*The index*). In every other
+   bundle a `.invalid` host is refused like any other host.
+5. `page` is `model_page`, `source_page` or `lens_page`, and the path has that form: one
+   segment; two segments with the second starting with a layer number and a hyphen; two
+   segments with the second `jlens`. A path with a third segment, the form of a feature
+   page, is refused.
+6. `reason` is "reference link built from the recorded page form", `read_utc_date` is a
+   date and `identity_status` is one of the four verification statuses.
+
+A result that holds both a link string and a reference shows no reference, and so does a
+result whose own `kind` is not `reference`. The rule is `referenceRefusal` in the page.
+`validate_reference_link` in the engine applies the same tests and more (the closed key
+set, the evidence fields, the registry entry); the page does not check those, because it
+has no registry to compare with. The page never follows a link and requests nothing from
+the external service.
 
 ### Labels and the schema terms they stand for
 
@@ -286,6 +329,23 @@ record becomes a link; an unverified alias shows its reason and local record; an
 alias record with a link string pasted in, and a verified record whose link is not an
 `https` URL, show no link.
 
+Reference links have five checks. The records are built by
+`link_or_fallback(..., reference_page=...)`; none is written by hand except the forged
+ones, which are a built record with one change each.
+
+| Check | What is served | Required result |
+|---|---|---|
+| `a_reference_record_renders_as_a_reference_with_the_fixed_label` | the fixture registry's three reference results (model page, source page, lens page) beside a record with no link and an exact record; each reference record first passes `validate_reference_link` | each renders in the Reference state at 1280 px and 390 px: the link goes to the record's address with the text above, the label under it equals `REFERENCE_LABEL` and is visible text (the link has no `title`), the date read and the identity status equal the record's, Tab puts the page's focus outline on the link, and the page is no wider than 390 px |
+| `a_reference_record_is_never_rendered_as_a_verified_link` | the same render | no reference box is marked verified, says "Verified link:", uses the address as its link text or has the markup of a verified link; the words before the address do not include "verified", "exact", "study", "feature" or "representation"; exactly one record of the five is marked verified |
+| `an_exact_record_and_a_record_with_no_link_render_as_before` | the same render | the exact record and the record with no link have the element structure, text, link attributes and solid box they had before reference links were added, compared with literals in the script |
+| `forged_reference_records_show_no_link_with_a_reason` | 20 forged records in the synthetic bundle: another host, the service's host without `www`, a query string, a fragment, `http`, a `javascript:` address, the label "Verified link", the address as the label, the label with one word changed, no label, an empty label, record kind `exact`, page form `feature_page`, the path of a feature page, the reason of an exact link, no date, an unknown identity status, a result of kind `exact`, a result that also holds a link string, and a reference record served on its own with another host | no link anywhere under External links; each record shows "No link. Reason: " with the reason of the test it fails; the page's rule, asked directly, gives the same reason; `validate_reference_link` refuses the 18 forgeries that change the reference record |
+| `reference_host_is_the_service_host_outside_a_synthetic_bundle` | a copy of the fixture bundle relabelled as not synthetic, in the temporary tree only, with the fixture registry's reference result and one built from the committed registry (`data/experiments/representation_registry.v1.json`) and its saved evidence files | the fixture result shows no link, "the host is not www.neuronpedia.org"; the committed result renders in the Reference state with its address on `www.neuronpedia.org`. The link is not followed, and the check that no request left the test server covers this render too |
+
+Mutations run by hand on 2026-11-10, each on a copy of the page: with the host test
+removed, the fourth and fifth checks fail; with a reference rendered as "Verified link:"
+and its address, the first, second and fifth fail; on the page as it was before reference
+links, all five fail and the other 37 pass.
+
 ## What it does not verify
 
 - No model was loaded. The "original model output" in this bundle is the softmax of
@@ -296,6 +356,10 @@ alias record with a link string pasted in, and a verified record whose link is n
   rendering path is exercised only by a relabelled copy of the fixture.
 - No real seal check. The prompt-text export of a non-synthetic protocol and the index
   writer's seal check are tested with stub seal functions. No sealed text was read.
+- No page of the external service was requested. That a reference address resolves is
+  recorded for 2026-11-10 in [neuronpedia.md](neuronpedia.md), not checked here.
+- No exported bundle carries a link record, so the Reference state has been rendered
+  only from records this check writes into a temporary copy.
 - One browser: Chromium 153. No other browser and no assistive technology was run.
   The ARIA roles and the keyboard path were checked by script, not with a screen reader.
 - Readout values have no independent oracle here (see the table).
@@ -336,7 +400,13 @@ alias record with a link string pasted in, and a verified record whose link is n
 4. **The bundle contract does not say where a link record sits.** The page reads a
    record of the `link_or_fallback` shape from a comparison's `references.<key>.neuronpedia`
    and from an ICA component's `neuronpedia`. That placement is this page's reading,
-   not a contract.
+   not a contract. It also reads a reference record placed there on its own (kind
+   `reference` with its own `url`), without the result around it.
+5. **The fixture registry's reference links are on a `.invalid` host.** A rule that
+   accepts `www.neuronpedia.org` and nothing else refuses every record the fixture
+   registry can build. The page therefore accepts a `.invalid` host inside a synthetic
+   bundle only (*External links*, test 4), and the check renders a record of the
+   committed registry in a relabelled copy to exercise the service host.
 
 ## Fields added to bundle version 1
 
@@ -384,6 +454,14 @@ other limitations.
   missing from the page source.
 - The prompt-text marker is a literal in `scripts/experiments/bundle.py` and in the check.
   A unit test fails when they differ.
+- The fixed label of a reference link exists twice: `REFERENCE_LABEL` in
+  `scripts/experiments/neuronpedia.py` and `REFERENCE_LABEL` in the page. A unit test
+  compares the page's literal with the engine's constant, and the browser run compares
+  what the page exposes. A change to the sentence needs both. The page's reasons for
+  refusing a reference record are literals in the check as well.
+- The reference checks read the committed registry and its evidence files. If the
+  registry stops building a reference link to a model page, the fifth check fails and
+  says so; it does not skip.
 - The expected method states and the ICA table are specific to the fixture protocol.
   A change to the fixture needs a change here.
 - `exp-methods-body` is in `JS_TABLE_BODIES` of `scripts/check_pages.py`. The page with no

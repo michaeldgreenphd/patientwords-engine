@@ -298,6 +298,89 @@ def test_an_accepted_parameter_can_never_leave_the_data_directory() -> None:
         assert cep.bundle_param_refusal(value) is not None, value
 
 
+# ------------------------------------------------------------------------------------------ link records
+
+def _engine_links():
+    sys.path.insert(0, str(ROOT))
+    try:
+        from scripts.experiments import neuronpedia
+    finally:
+        sys.path.remove(str(ROOT))
+    return neuronpedia
+
+
+def test_fixture_link_results_are_built_by_the_engine_and_hold_one_of_each_kind() -> None:
+    neuronpedia = _engine_links()
+    built = cep.fixture_link_results()
+    results = built["results"]
+    assert {name: result["kind"] for name, result in results.items()} == {
+        "exact": "exact", "none": "none", "model_page": "reference", "source_page": "reference",
+        "lens_page": "reference"}
+    assert built["label"] == neuronpedia.REFERENCE_LABEL
+    for name in cep.REFERENCE_PAGE_WORDS:
+        result = results[name]
+        record = result["reference"]
+        assert result["link"] is None                                       # a reference is never an exact link
+        assert set(record) == set(neuronpedia.REFERENCE_LINK_KEYS) and record["label"] == neuronpedia.REFERENCE_LABEL
+        assert record["url"].startswith("https://registry-fixture.invalid/")   # a fixture link reaches no site
+        assert neuronpedia.validate_reference_link(record, built["registry"]) == record
+    assert results["exact"]["reference"] is None and results["none"]["reference"] is None
+    assert set(cep.REFERENCE_PAGE_WORDS) == set(neuronpedia.REFERENCE_PAGE_KINDS)
+    assert cep.REFERENCE_HOST == neuronpedia.REFERENCE_HOST
+
+
+def test_the_committed_registry_gives_a_reference_link_on_the_service_host() -> None:
+    neuronpedia = _engine_links()
+    result = cep.committed_reference_result()
+    record = result["reference"]
+    assert (result["kind"], result["link"], record["page"]) == ("reference", None, "model_page")
+    assert record["url"].startswith(f"https://{cep.REFERENCE_HOST}/") and "?" not in record["url"]
+    assert record["label"] == neuronpedia.REFERENCE_LABEL
+    assert record["identity_status"] != neuronpedia.VERIFIED               # no real entry is verified_exact
+
+
+def test_forged_reference_cases_change_one_thing_each_and_the_engine_refuses_them() -> None:
+    neuronpedia = _engine_links()
+    built = cep.fixture_link_results()
+    valid, exact = built["results"]["model_page"], built["results"]["exact"]
+    cases = cep.forged_reference_cases(valid, exact)
+    names = [case["name"] for case in cases]
+    assert len(names) == len(set(names)) == 20
+    # The four forgeries the page must refuse by name: another host, a query string, an exact-looking label on a
+    # record of kind "reference", and a missing label.
+    by_name = {case["name"]: case for case in cases}
+    assert by_name["another_host"]["reason"] == cep.REFUSED_HOST
+    assert "?" in by_name["query_string"]["record"]["reference"]["url"]
+    assert by_name["exact_looking_label"]["record"]["reference"]["kind"] == "reference"
+    assert by_name["exact_looking_label"]["record"]["reference"]["label"] == "Verified link"
+    assert "label" not in by_name["missing_label"]["record"]["reference"]
+    assert {case["level"] for case in cases} == {"record", "result", "bare"}
+    for case in cases:
+        assert case["record"] != valid and case["reason"].startswith(cep.REFERENCE_REFUSALS), case["name"]
+        if case["level"] == "result":                                      # the record inside is still valid
+            assert neuronpedia.validate_reference_link(case["record"]["reference"], built["registry"])
+            continue
+        record = case["record"] if case["level"] == "bare" else case["record"]["reference"]
+        with pytest.raises(neuronpedia.Refusal):
+            neuronpedia.validate_reference_link(record, built["registry"])
+    assert cep.forged_reference_cases(valid, exact) == cases               # the same table on every call
+    assert valid == cep.fixture_link_results()["results"]["model_page"]    # the input is not changed
+
+
+def test_with_link_records_writes_the_two_places_the_page_reads() -> None:
+    bundle = {"comparisons": [{"family_id": "fam-1", "comparisons": [
+        {"comparison_id": "c", "references": {},
+         "ica": {"layers": [{"layer": 1, "components": [{"component": 0}, {"component": 1}]}]}}]}]}
+    doc = cep.with_link_records(bundle, [{"kind": "none"}], {"kind": "exact"})
+    entry = doc["comparisons"][0]["comparisons"][0]
+    assert entry["references"]["registry"]["neuronpedia"] == [{"kind": "none"}]
+    assert entry["ica"]["layers"][0]["components"][1]["neuronpedia"] == {"kind": "exact"}
+    assert "neuronpedia" not in entry["ica"]["layers"][0]["components"][0]
+    assert bundle["comparisons"][0]["comparisons"][0]["references"] == {}   # the input is not changed
+    plain = cep.with_link_records(bundle, [])
+    assert "neuronpedia" not in plain["comparisons"][0]["comparisons"][0]["ica"]["layers"][0]["components"][1]
+
+
 # ------------------------------------------------------------------------------------------ receipt and exits
 
 def _toy_site(tmp_path: Path) -> Path:
@@ -405,6 +488,29 @@ def test_the_page_carries_the_strings_the_checker_reads() -> None:
                  "'data-col':'ica_preprocessing_source'", "['token_sha256',"):
         assert name in source, name
     assert "fetch(" in source and source.count("fetch(") == 1               # one request site, for both files
+    # Reference links. The page holds the engine's fixed label sentence, unchanged, and every string the
+    # checker compares; it accepts the service host by name and marks the three kinds of record.
+    neuronpedia = _engine_links()
+    label_line = next(line for line in source.splitlines() if line.strip().startswith("var REFERENCE_LABEL="))
+    literal = label_line.strip()[len("var REFERENCE_LABEL='"):-len("';")]
+    assert literal.replace("\\'", "'") == neuronpedia.REFERENCE_LABEL
+    assert f"var REFERENCE_BUILT='{neuronpedia.REFERENCE_BUILT}'" in source
+    assert f"var LINK_BUILT='{neuronpedia.LINK_BUILT}'" in source
+    assert f"var REFERENCE_HOST='{cep.REFERENCE_HOST}'" in source
+    for status in neuronpedia.VERIFICATION_STATUSES:
+        assert f"'{status}'" in source, status
+    for kind, words in cep.REFERENCE_PAGE_WORDS.items():
+        assert f"{kind}:'{words}'" in source, kind
+    assert cep.REFERENCE_TAG.replace("'", "\\'") in source and f"'{cep.REFERENCE_LINK_TEXT}'" in source
+    for reason in cep.REFERENCE_REFUSALS:
+        if reason != cep.REFUSED_HOST:                                      # that one is built from the host name
+            assert f"'{reason.removesuffix(': ')}" in source, reason
+    assert cep.REFUSED_HOST == "the host is not " + cep.REFERENCE_HOST and "'the host is not '+REFERENCE_HOST" in source
+    assert f"'{cep.NO_LINK_PREFIX}'+" in source and f"'{cep.EXACT_LINK_PREFIX}'" in source
+    for mark in ("'data-link-kind'", "'data-col':'reference-label'", "'data-col':'reference-read'",
+                 "'data-col':'reference-identity'", "'data-col':'reference-tag'", "'data-kind':'reference-link'",
+                 "referenceRefusal:referenceRefusal", ".lnk-ref{", "LINK_URL.test(ref.url)"):
+        assert mark in source, mark
     for forbidden in ("http://", "<script src", "<link rel=\"stylesheet\"", "@import"):
         assert forbidden not in source.replace("http://www.w3.org/2000/svg", ""), forbidden
 
@@ -448,7 +554,7 @@ def test_the_preview_check_passes_in_chromium(tmp_path: Path) -> None:
     for wanted in ("wrong_schema", "missing_bundle_file", "without_a_state", "traversal",
                    "older_bundle_without_the_added_fields", "two_blocks_that_disagree"):
         assert any(wanted in name for name in defects), wanted
-    assert len(receipt["checks"]) == 37                                     # 28 before 2026-11-10; none removed
+    assert len(receipt["checks"]) == 42                # 28 before 2026-11-10, then 37; 5 for reference links
     added = next(check for check in receipt["checks"]
                  if check["name"] == "prompt_hashes_token_counts_preprocessing_and_run_counts_equal_the_fixture")
     assert (added["result"], added["variant_rows"], added["executed_attempts"], added["reused_events"]) == (
@@ -468,8 +574,20 @@ def test_the_preview_check_passes_in_chromium(tmp_path: Path) -> None:
     assert (text["wording_rows_with_exported_text"], text["wording_rows_that_say_text_is_absent"]) == (6, 3)
     for name in ("reader_labels_shown_schema_terms_kept_and_endpoint_explained_once",
                  "section_ids_section_links_and_download_link_are_stable",
-                 "old_section_link_opens_the_fold_it_now_sits_in", "forged_or_unreadable_index_links_nothing"):
+                 "old_section_link_opens_the_fold_it_now_sits_in", "forged_or_unreadable_index_links_nothing",
+                 "a_link_is_shown_only_for_a_verified_built_record",
+                 "a_reference_record_is_never_rendered_as_a_verified_link",
+                 "an_exact_record_and_a_record_with_no_link_render_as_before"):
         assert results[name] == "passed", name
+    shown = checks["a_reference_record_renders_as_a_reference_with_the_fixed_label"]
+    assert (shown["result"], shown["reference_links_shown"], shown["fixed_label_shown_in_full"]) == ("passed", 3, 3)
+    assert shown["page_forms"] == ["model_page", "source_page", "lens_page"] and shown["width_at_390"] <= 390
+    forged = checks["forged_reference_records_show_no_link_with_a_reason"]
+    assert (forged["result"], forged["forged_records"], forged["links_shown"]) == ("passed", 20, 0)
+    assert {"another_host", "query_string", "exact_looking_label", "missing_label"} <= set(forged["cases"])
+    assert forged["also_refused_by_validate_reference_link"] == 18          # all but the two result-level cases
+    host = checks["reference_host_is_the_service_host_outside_a_synthetic_bundle"]
+    assert (host["result"], host["host"], host["link_followed"]) == ("passed", "www.neuronpedia.org", False)
     assert receipt["cli_steps"][-1]["prompt_text_families"] == ["fam-1", "fam-2"]
     assert receipt["browser_external_requests"] == [] and receipt["versions"]["chromium"]
     assert receipt["bundle"]["schema_version"] == "patientwords.experiment-bundle/1"
