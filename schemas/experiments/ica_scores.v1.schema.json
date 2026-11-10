@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "patientwords.ica-scores/1",
   "title": "ICA scores payload (kind ica_scores/1)",
-  "description": "Signed scores, squared-coordinate shares and reconstruction error of one family variant under one fixed ICA basis. Structure only, in the keyword subset scripts/frontend_contract_schema.py executes. The payload kind, the fixed labels, row alignment with the protocol's token ids, completeness of the component list, finiteness and the rule that an undefined share is null (never zero) are enforced by scripts/experiments/adapters/ica.py. An energy share is a squared-coordinate share. It is not a probability and not an importance. Scores are signed as saved and are not comparable across fits, layers or models.",
+  "description": "Signed scores, squared-coordinate shares and reconstruction error of one family variant under one fixed ICA basis. Structure only, in the keyword subset scripts/frontend_contract_schema.py executes. The payload kind, equality of every fixed statement with the adapter's constants, the limitations list, the capture site, the dataset file hashes, recomputation of every share from the row's scores, row alignment with the protocol's token ids, completeness of the component list, finiteness and the rule that an undefined share is null (never zero) are enforced by scripts/experiments/adapters/ica.py. An energy share is a squared-coordinate share. It is not a probability and not an importance. Scores are signed as saved and are not comparable across fits, layers or models.",
   "type": "object",
   "required": [
     "kind",
@@ -201,6 +201,8 @@
         "layer_index_base",
         "layers",
         "positions",
+        "activation_site",
+        "layer_indexing",
         "activation_dataset",
         "precision"
       ],
@@ -220,12 +222,21 @@
         "positions": {
           "type": "string"
         },
+        "activation_site": {
+          "type": "string"
+        },
+        "layer_indexing": {
+          "type": "string"
+        },
         "activation_dataset": {
           "type": "object",
           "required": [
             "manifest_sha256",
             "dtype",
-            "sample_count"
+            "sample_count",
+            "file_pins",
+            "samples_sha256",
+            "layer_sha256"
           ],
           "properties": {
             "manifest_sha256": {
@@ -236,6 +247,18 @@
             },
             "sample_count": {
               "type": "integer"
+            },
+            "file_pins": {
+              "type": "string"
+            },
+            "samples_sha256": {
+              "type": "string"
+            },
+            "layer_sha256": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
             }
           },
           "additionalProperties": false

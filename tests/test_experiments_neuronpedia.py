@@ -22,7 +22,7 @@ from typing import Any, Callable
 import pytest
 
 from medlang_circuits import graph_client, neuronpedia_features
-from scripts import feature_models, logits_eval
+from scripts import feature_models, jlens_readout, logits_eval
 from scripts.experiments import capabilities, common
 from scripts.experiments import neuronpedia as nps
 from scripts.experiments.common import Refusal
@@ -160,6 +160,41 @@ def test_alias_entry_records_the_pin_and_that_the_page_was_not_read(real: dict) 
     assert "scripts/logits_eval.py" in sources and "Not read" in sources
 
 
+def test_the_registry_states_only_what_is_sourced_about_hosted_identity_and_the_alias_id(real: dict) -> None:
+    """Two wording rules, checked on the committed files.
+
+    Hosted identity: the cited evidence shows what the engine records, so the sentence is about the engine.
+    The alias id qwen3.5-2b-pt: one origin, the owner's task brief of 2026-11-10, stated as having no
+    retrievable record, in the registry, in the capability matrix and in the doc; no wording that points at a
+    repository text, a design note or a recorded search result."""
+    sourced = ("The engine records no model, dictionary or instrument revision for these responses; whether the "
+               "service reports one was not read")
+    doc = " ".join((ENGINE / "docs" / "experiment_interface" / "neuronpedia.md").read_text(encoding="utf-8").split())
+    fixture = nps.load_registry(FX / "representation_registry.fixture.json")
+    for registry in (real, fixture):
+        assert sourced in registry["verification_meaning"]["hosted_identity_unknown"]
+        assert "service reports no" not in json.dumps(registry)
+    assert sourced in doc and "service reports no" not in doc
+
+    origin, unsupported = "owner's task brief of 2026-11-10", ("design note", "repository text", "web-search",
+                                                               "search result", "are reported to name")
+    alias = entry(real, ALIAS)
+    assert origin in alias["neuronpedia"]["id_source"] and "no retrievable record" in alias["neuronpedia"]["id_source"]
+    assert "blocked by this environment's network policy on 2026-11-10" in alias["neuronpedia"]["id_source"]
+    assert origin in alias["notes"] and all(phrase not in json.dumps(alias) for phrase in unsupported)
+    assert [e["source"] for e in alias["verification"]["evidence"] if origin in e["source"]]
+    matrix_lines = [line for line in (ENGINE / "data" / "experiments" / "capability_matrix.v1.json").read_text(
+        encoding="utf-8").splitlines() if "qwen3.5-2b-pt" in line and '"id"' not in line]
+    assert len(matrix_lines) == 2
+    for line in matrix_lines:
+        assert origin in line and "no retrievable record" in line and "unverified" in line
+        assert all(phrase not in line for phrase in unsupported), line
+    paragraph = doc[doc.index("**`qwen3.5-2b-base` and `qwen3.5-2b-pt`.**"):doc.index(
+        "**`sida/icalens-gemma-2-2b-pile10k`.**")]
+    assert origin in paragraph and "no retrievable record" in paragraph
+    assert all(phrase not in paragraph for phrase in unsupported)
+
+
 @pytest.mark.parametrize("change,code", [
     (lambda e: e.update(links_enabled=True), "links_without_verification"),
     (lambda e: e["verification"].update(status="verified_exact"), "verification_status"),
@@ -226,6 +261,17 @@ def test_alias_never_resolves_as_verified(real: dict) -> None:
     assert "alias_unverified_checkpoint" in strict.reason and strict.candidates == (ALIAS,)
     # The Neuronpedia id is a field of the entry, not a second key.
     assert nps.resolve("qwen3.5-2b-pt", "ica_component", registry=real).status == "no_mapping"
+
+
+@pytest.mark.parametrize("study_id", [None, "", 0, False, ["gemma-2-2b"], b"gemma-2-2b"])
+def test_resolve_refuses_a_study_id_that_is_not_a_non_empty_string(real: dict, study_id: Any) -> None:
+    """Three real entries have study_id null because the engine does not run those models. ``None`` used to
+    match them: resolve(None, "ica_component", artifact_id=...) returned status "mapped"."""
+    no_study_id = [e for e in real["entries"] if e["model"]["study_id"] is None]
+    assert len(no_study_id) == 3 and all(e["representation_type"] == "ica_component" for e in no_study_id)
+    assert code_of(lambda: nps.resolve(study_id, "ica_component", registry=real)) == "invalid_input"
+    assert code_of(lambda: nps.resolve(study_id, "ica_component", artifact_id=no_study_id[0]["artifact"]["id"],
+                                       registry=real)) == "invalid_input"
 
 
 def test_resolve_layers_and_ambiguity(fixture_registry: dict) -> None:
@@ -387,7 +433,17 @@ def test_module_imports_no_network_or_process_library() -> None:
     assert "NO NETWORK REQUEST" in (ast.get_docstring(tree) or "")
 
 
+def public_functions(module: Any) -> set[str]:
+    """Names of the functions a module defines itself whose names do not start with an underscore."""
+    return {name for name, value in vars(module).items()
+            if inspect.isfunction(value) and value.__module__ == module.__name__ and not name.startswith("_")}
+
+
 def test_importing_and_using_the_module_opens_no_socket(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Every public function of the module is called here, with the three socket entry points replaced.
+
+    The last assertion compares the functions called with the functions the module defines, so the sentence in
+    the module docstring ("calls every public function") cannot go stale when a function is added."""
     def refuse(*_args: Any, **_kwargs: Any) -> Any:
         raise AssertionError("the Neuronpedia boundary module tried to open a socket")
     monkeypatch.setattr(socket, "socket", refuse)
@@ -399,19 +455,36 @@ def test_importing_and_using_the_module_opens_no_socket(monkeypatch: pytest.Monk
     fresh = importlib.util.module_from_spec(spec)
     monkeypatch.setitem(sys.modules, name, fresh)
     spec.loader.exec_module(fresh)
+    called: set[str] = set()
 
-    real = fresh.load_registry()
-    toy = fresh.load_registry(FX / "representation_registry.fixture.json")
-    assert fresh.resolve("gemma-2-2b", "transcoder_feature", registry=real).mapped
-    assert fresh.build_link(fresh.entry_by_id(toy, FX_VERIFIED), 3, layer=1).url == EXPECTED_FIXTURE_URL
-    assert fresh.link_or_fallback(fresh.entry_by_id(real, ALIAS), 3, layer=1)["link"] is None
+    def use(function: str) -> Callable[..., Any]:
+        called.add(function)
+        return getattr(fresh, function)
+
+    real = use("load_registry")()
+    toy = use("load_registry")(FX / "representation_registry.fixture.json")
+    assert use("validate_registry")(copy.deepcopy(toy)) == toy
+    verified, alias = use("entry_by_id")(toy, FX_VERIFIED), use("entry_by_id")(real, ALIAS)
+    assert use("resolve")("gemma-2-2b", "transcoder_feature", registry=real).mapped
+    assert use("build_link")(verified, 3, layer=1).url == EXPECTED_FIXTURE_URL
+    assert use("link_or_fallback")(alias, 3, layer=1)["link"] is None
+    assert use("local_record")(alias, 3, 1, {"signed_score": 1.5})["inspectable_offline"] is True
     export = tmp_path / "export.jsonl"
     export.write_bytes(b"alpha\n")
-    snapshot = fresh.record_snapshot(export, "https://exports.invalid/v1/toy.jsonl", "2026-11-10T00:00:00Z")
-    assert fresh.verify_snapshot(export, snapshot)["status"] == "verified"
-    assert fresh.validate_feature_explanations(read("feature_explanations.fixture.json"))
-    assert fresh.validate_graph_reference(read("graph_reference.fixture.json"), toy)["status"] == "validated"
-    assert fresh.validate_request_record(request_document())
+    snapshot = use("record_snapshot")(export, "https://exports.invalid/v1/toy.jsonl", "2026-11-10T00:00:00Z")
+    assert use("verify_snapshot")(export, snapshot)["status"] == "verified"
+    explanations = use("validate_feature_explanations")(read("feature_explanations.fixture.json"))
+    label = use("token_list_label")("label-t", ["alpha", "beta"], source=explanations["labels"][0]["source"],
+                                    scorer=None)
+    assert len(use("add_label")(explanations, label, ["/labels/3/scorer"])["labels"]) == 4
+    assert use("collect_quantity")("lens_token_rank", explanations["quantities"]["lens_token_rank"])
+    assert use("validate_graph_reference")(read("graph_reference.fixture.json"), toy)["status"] == "validated"
+    document = request_document()
+    assert use("validate_request_record")(document)
+    assert use("request_record")(**{key: document[key] for key in (
+        "endpoint", "effective_request_settings", "service_identity", "response_sha256", "retrieved_utc",
+        "not_recorded")}) == document
+    assert called == public_functions(fresh) and len(called) == 16
 
 
 # ------------------------------------------------------------------------------------------------ snapshots
@@ -473,7 +546,7 @@ def request_document() -> dict:
         "endpoint": {"method": "POST", "host": "service.invalid", "path": "/api/toy/readout"},
         "effective_request_settings": {"model_id": "toy-model-hosted", "top_n": 8, "prompt_sha256": "6" * 64,
                                        "bounds": {"top_n": [1, 16]}},
-        "service_identity": {"service": "fixture service", "model_id": "toy-model-hosted",
+        "service_identity": {"service": "fixture-service", "model_id": "toy-model-hosted",
                              "instrument_revision": None},
         "response_sha256": "9" * 64,
         "retrieved_utc": "2026-11-10T00:00:00Z",
@@ -510,6 +583,114 @@ def test_request_record_refusals(change: Callable[[dict], None], code: str) -> N
     doc = request_document()
     change(doc)
     assert code_of(lambda: nps.validate_request_record(doc)) == code
+
+
+REPOSITORY_SECRET_NAMES = ("ANTHROPIC_API_KEY", "OPENROUTER_API_KEY", "GEMINI_API_KEY", "NEURONPEDIA_API_KEY",
+                           "HF_TOKEN")
+OTHER_CREDENTIAL_KEYS = ("x-api-key", "X_API_KEY", "api-key", "apiKey", "access_token", "refreshToken", "bearer",
+                         "cookie", "Set-Cookie", "auth", "Authorization", "credentials", "key", "keys", "secret",
+                         "client_secret", "password", "session_id", "signature", "headers", "jwt")
+TEXT_KEY_NAMES = ("prompt", "prompts", "prompt_text", "promptText", "user_prompt", "system_prompt", "text",
+                  "input", "inputs", "input_text", "content", "contents", "message", "messages", "query", "body",
+                  "slug", "completion", "transcript")
+
+
+@pytest.mark.parametrize("block", ["effective_request_settings", "service_identity"])
+@pytest.mark.parametrize("key", REPOSITORY_SECRET_NAMES + OTHER_CREDENTIAL_KEYS)
+def test_a_credential_key_name_is_refused_under_any_spelling_and_at_any_depth(block: str, key: str) -> None:
+    """Key names only. Every value here is the dummy "x" or a number; no credential appears in this file."""
+    for value in ("x", 1, None, {"nested": 1}):
+        top = request_document()
+        top[block][key] = value
+        assert code_of(lambda: nps.validate_request_record(top)) == "secret_in_record", (key, value)
+    nested = request_document()
+    nested[block]["options"] = {"more": [{key: "x"}]}
+    assert code_of(lambda: nps.validate_request_record(nested)) == "secret_in_record"
+    with pytest.raises(Refusal) as caught:
+        nps.request_record(**{**{k: v for k, v in request_document().items() if k != "schema_version"},
+                              block: {**request_document()[block], key: "x"}})
+    assert caught.value.code == "secret_in_record" and "'x'" not in str(caught.value)   # the value is not echoed
+
+
+@pytest.mark.parametrize("key", TEXT_KEY_NAMES)
+def test_prompt_text_is_refused_under_alternative_key_names(key: str) -> None:
+    """Abstract placeholders only: no prompt and no holdout text appears in this file."""
+    for value in ("alpha beta tail", "alpha", ["alpha", "beta"], {"role": "user"}, 0):
+        doc = request_document()
+        doc["effective_request_settings"][key] = value
+        assert code_of(lambda: nps.validate_request_record(doc)) == "prompt_text_in_record", (key, value)
+    nested = request_document()
+    nested["effective_request_settings"]["options"] = [{"deeper": {key: "alpha beta tail"}}]
+    assert code_of(lambda: nps.validate_request_record(nested)) == "prompt_text_in_record"
+
+
+@pytest.mark.parametrize("change", [
+    lambda s: s.update(notes="alpha beta tail"),                    # a sentence under a key no rule names
+    lambda s: s.update(model_id="alpha beta tail"),                 # a sentence under an id key
+    lambda s: s.update(modelId="alpha beta tail"),
+    lambda s: s.update(label="alpha"),                              # one id-shaped word under an unknown key
+    lambda s: s.update(extra=["alpha beta", "tail"]),               # strings inside a list
+    lambda s: s.update(extra=[[1, "alpha"]]),
+    lambda s: s.update(options={"deeper": {"note": "alpha"}}),
+    lambda s: s.update(type=["JACOBIAN_LENS", "alpha beta"]),       # one list item is not an id
+    lambda s: s.update(type=[]),
+    lambda s: s.update(prompt_sha256="alpha beta tail"),            # a hash key must hold a hash
+    lambda s: s.update(prompt_sha256="6" * 63),
+    lambda s: s.update(numCompletionTokens="alpha"),                # a counted setting must hold a count
+    lambda s: s.update(top_n=float("inf")),
+    lambda s: s.update({"alpha beta tail": 1}),                     # the key itself is the text
+    lambda s: s.update({"a" * 49: 1}),
+    lambda s: s.update({7: 1}),
+])
+def test_a_string_value_is_accepted_only_as_an_id_under_a_known_key(change: Callable[[dict], None]) -> None:
+    for block in ("effective_request_settings", "service_identity"):
+        doc = request_document()
+        change(doc[block])
+        with pytest.raises(Refusal) as caught:
+            nps.validate_request_record(doc)
+        assert caught.value.code == "free_text_in_record"
+        assert "alpha beta tail" not in str(caught.value)            # neither a value nor a text key is echoed
+
+
+@pytest.mark.parametrize("value", ["sk-placeholder", "hf_placeholder", "AIzaPlaceholder", "ghp_placeholder"])
+def test_an_id_shaped_string_with_a_credential_prefix_is_refused_under_an_id_key(value: str) -> None:
+    """Placeholders: the issuer prefix followed by the word "placeholder". None is a credential."""
+    doc = request_document()
+    doc["effective_request_settings"]["model_id"] = value
+    assert code_of(lambda: nps.validate_request_record(doc)) == "secret_in_record"
+    listed = request_document()
+    listed["service_identity"]["type"] = ["toy-lens", value]
+    assert code_of(lambda: nps.validate_request_record(listed)) == "secret_in_record"
+
+
+def test_the_engines_own_request_settings_validate_once_the_prompt_is_named_by_hash() -> None:
+    """The lens request body the engine sends (scripts/jlens_readout.py) and the graph request's field names
+    (medlang_circuits/graph_client.py:304-321), with the prompt and the slug replaced by hashes."""
+    body = jlens_readout.lens_request_body("toy-model-hosted", "alpha", 8)
+    assert set(body) == {"modelId", "prompt", "type", "topN", "temperature", "numCompletionTokens",
+                         "filterNonWordTokens", "stream"}
+    sent = request_document()
+    sent["effective_request_settings"] = body
+    assert code_of(lambda: nps.validate_request_record(sent)) == "prompt_text_in_record"    # as sent: refused
+    body.pop("prompt")
+    lens = request_document()
+    lens["effective_request_settings"] = {**body, "prompt_sha256": "6" * 64}
+    assert nps.validate_request_record(lens)["effective_request_settings"]["type"] == ["JACOBIAN_LENS"]
+    graph = request_document()
+    graph["effective_request_settings"] = {
+        "modelId": "toy-model-hosted", "sourceSetName": "toy-transcoder-set", "prompt_sha256": "6" * 64,
+        "slug_sha256": "5" * 64, "token_sha256": None, "maxNLogits": 10, "desiredLogitProb": 0.95,
+        "nodeThreshold": 0.8, "edgeThreshold": 0.85, "maxFeatureNodes": 5000, "qkTopFraction": 0.5, "qkTopk": 4,
+        "bounds": {"maxNLogits": [5, 15]}}
+    graph["not_recorded"] = sorted(graph["not_recorded"] + ["/effective_request_settings/token_sha256"])
+    assert nps.validate_request_record(graph)
+    with_slug = copy.deepcopy(graph)
+    with_slug["effective_request_settings"]["slug"] = "alpha-beta-tail-1"
+    assert code_of(lambda: nps.validate_request_record(with_slug)) == "prompt_text_in_record"
+    # The path is an id-only character class with a length cap per segment; the doc states what that leaves open.
+    long_path = request_document()
+    long_path["endpoint"]["path"] = "/api/toy/" + "a" * 65
+    assert code_of(lambda: nps.validate_request_record(long_path)) == "request_record"
 
 
 # ------------------------------------------------------------------------------------------------ explanations
@@ -602,6 +783,47 @@ def test_the_four_quantities_cannot_be_merged(explanations: dict) -> None:
     assert code_of(lambda: nps.validate_feature_explanations(scored_outcome)) == "quantity_fields"
 
 
+@pytest.mark.parametrize("change,code", [
+    # A number, a rank or a selection marker inside a label.
+    (lambda d: d["labels"][0].update(confidence=0.9), "explanation_record"),
+    (lambda d: d["labels"][0].update(interpretability=0.93), "explanation_record"),
+    (lambda d: d["labels"][0].update(clinical_outcome=0.4), "explanation_record"),
+    (lambda d: d["labels"][0].update(rank=1, primary=True), "explanation_record"),
+    (lambda d: d["labels"][0].update(selected=True), "explanation_record"),
+    (lambda d: d["labels"][0].update(best=True), "explanation_record"),
+    (lambda d: d["labels"][0].update(is_best_label=True), "explanation_record"),
+    (lambda d: d["labels"][0].update(total_score=1.4), "merged_score"),
+    (lambda d: d["labels"][0].update(feature_interpretability_score=0.5), "merged_score"),
+    (lambda d: d["labels"][0].pop("flags"), "explanation_record"),
+    # The same inside a label's source or scorer, and inside the scorer of a quantity record.
+    (lambda d: d["labels"][0]["scorer"].update(score=0.91), "merged_score"),
+    (lambda d: d["labels"][0]["scorer"].update(combined_score=0.91), "merged_score"),
+    (lambda d: d["labels"][0]["scorer"].update(weight=0.91), "explanation_record"),
+    (lambda d: d["labels"][0]["scorer"].update(version=0.91), "explanation_record"),
+    (lambda d: d["labels"][0]["source"].update(overall_score=0.91), "merged_score"),
+    (lambda d: d["labels"][0]["source"].update(rank=1), "explanation_record"),
+    (lambda d: d["labels"][0]["source"].update(version=0.91), "explanation_record"),
+    (lambda d: d["labels"][0]["source"].pop("explanation_type"), "explanation_record"),
+    (lambda d: d["quantities"]["feature_interpretability_score"][0]["scorer"].update(score=0.5), "merged_score"),
+    (lambda d: d["quantities"]["feature_interpretability_score"][0]["scorer"].update(combined=0.9),
+     "quantity_fields"),
+    (lambda d: d["quantities"]["label_prediction_score"][0]["scorer"].update(version=0.9), "quantity_fields"),
+    # A flag is one of the known flags: a flag cannot promote a label or select it.
+    (lambda d: d["labels"][0].update(flags=["verified_clinical_concept"]), "explanation_record"),
+    (lambda d: d["labels"][0].update(flags=["selected"]), "explanation_record"),
+    # A label that carries its token list needs the flag, whatever basis it declares.
+    (lambda d: d["labels"][2].update(basis="human_written", flags=[]), "token_list_label"),
+    (lambda d: d["labels"][2].update(basis="activation_examples", flags=[]), "token_list_label"),
+    (lambda d: d["labels"][2].update(tokens=[]), "token_list_label"),
+    (lambda d: d["labels"][2].update(tokens=["alpha", 0.9]), "token_list_label"),
+])
+def test_label_source_and_scorer_key_sets_are_closed(explanations: dict, change: Callable[[dict], None],
+                                                     code: str) -> None:
+    assert nps.validate_feature_explanations(copy.deepcopy(explanations))
+    change(explanations)
+    assert code_of(lambda: nps.validate_feature_explanations(explanations)) == code
+
+
 def test_quantity_values_keep_missing_apart_from_zero(explanations: dict) -> None:
     missing = explanations["quantities"]["label_prediction_score"][1]
     assert missing["value"] is None and missing["missing_reason"]
@@ -637,8 +859,9 @@ def graph_ref() -> dict:
 
 def test_graph_reference_validates_alone_and_against_the_registry(graph_ref: dict, fixture_registry: dict) -> None:
     assert nps.validate_graph_reference(graph_ref) == {"status": "validated", "native_retained": True,
-                                                      "registry_checked": False}
-    assert nps.validate_graph_reference(graph_ref, fixture_registry)["registry_checked"] is True
+                                                      "registry_checked": False, "model_revision_compared": False}
+    assert nps.validate_graph_reference(graph_ref, fixture_registry) == {
+        "status": "validated", "native_retained": True, "registry_checked": True, "model_revision_compared": True}
     assert entry(fixture_registry, FX_TRANSCODER)["representation_type"] == "transcoder_feature"
 
 
@@ -692,8 +915,27 @@ def test_graph_reference_refusals(graph_ref: dict, change: Callable[[dict], None
     (lambda r: r["neuronpedia"].update(source_set="toy-ica-set"), "source_set_identity"),
     (lambda r: r["neuronpedia"].update(model_id="toy-model-other-name"), "source_set_identity"),
     (lambda r: r["model"].update(study_id="toy-model-2"), "graph_ref_identity"),
+    # The entry pins revision 1111...1. A graph traced on another commit of the same model is another graph.
+    (lambda r: r["model"].update(revision="9" * 40), "graph_ref_identity"),
 ])
 def test_graph_reference_is_checked_against_the_registry_entry(graph_ref: dict, fixture_registry: dict,
                                                                change: Callable[[dict], None], code: str) -> None:
     change(graph_ref)
     assert code_of(lambda: nps.validate_graph_reference(graph_ref, fixture_registry)) == code
+
+
+def test_a_graph_reference_without_a_revision_says_the_revision_was_not_compared(graph_ref: dict,
+                                                                                fixture_registry: dict) -> None:
+    assert entry(fixture_registry, FX_TRANSCODER)["model"]["revision"] == "1" * 40 == graph_ref["model"]["revision"]
+    graph_ref["model"]["revision"] = None
+    # A null revision must be listed; unlisted, it is refused before the registry is consulted.
+    assert code_of(lambda: nps.validate_graph_reference(graph_ref, fixture_registry)) == "silent_missing_provenance"
+    graph_ref["not_recorded"] = ["/model/revision"]
+    assert nps.validate_graph_reference(graph_ref, fixture_registry) == {
+        "status": "validated", "native_retained": True, "registry_checked": True, "model_revision_compared": False}
+    # A revision the entry does not pin cannot be confirmed by it either.
+    unpinned = mutated(fixture_registry, FX_TRANSCODER, lambda e: (
+        e["model"].update(revision=None), e["verification"].update(status="unverified"),
+        e.update(links_enabled=False), e["not_recorded"].append("/model/revision")))
+    graph_ref["model"]["revision"], graph_ref["not_recorded"] = "1" * 40, []
+    assert code_of(lambda: nps.validate_graph_reference(graph_ref, unpinned)) == "graph_ref_identity"

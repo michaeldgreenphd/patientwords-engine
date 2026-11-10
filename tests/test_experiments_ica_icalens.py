@@ -6,16 +6,19 @@ section "Running the reference checks")::
 
     /home/user/.venvs/ica/bin/python -m pytest -q -p no:cacheprovider tests/test_experiments_ica_icalens.py
 
-What a pass shows: the reference reader reads the ActivationDataset bytes this repository writes; this
-repository's safetensors bytes equal the ``safetensors`` writer's; this repository's reader reads what the
-reference writer produces (bfloat16 included); and, for a small lens fitted by ``icalens`` on 48 synthetic rows,
-the numpy path and ``icalens`` give the same scores and reconstructions within the stated tolerances.
+What a pass shows: the reference reader reads the ActivationDataset bytes this repository writes, including a
+manifest that carries this repository's file pins under ``provenance.patientwords_files``; this repository's
+safetensors bytes equal the ``safetensors`` writer's; this repository's reader reads what the reference writer
+produces (bfloat16 included) and reports its missing file pins as not recorded; and, for a small lens fitted by
+``icalens`` on 48 synthetic rows, the numpy path and ``icalens`` give the same scores and reconstructions within
+the stated tolerances.
 
 What a pass does not show: anything about a real model, a real corpus, a released basis, convergence of a fit,
 or speed. The fit here has 48 rows of width 8.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import resource
 import shutil
@@ -118,6 +121,12 @@ def test_the_reference_reader_reads_the_dataset_this_writer_produced(root: Path)
     # A lens fitted through icalens records this hash, so the two readers must agree on it.
     assert theirs.provenance["activation_dataset"]["manifest_sha256"] == mine.manifest_sha256
     assert theirs.model == mine.manifest["model"]
+    # The manifest carries this repository's file pins. icalens 0.4.0 reads the dataset all the same, hands the
+    # block back unchanged inside its provenance, and the bytes it decoded hash to the pinned values.
+    pins = mine.file_pins
+    assert pins is not None and theirs.provenance["patientwords_files"] == pins
+    assert hashlib.sha256(layer.numpy().astype("<f4").tobytes()).hexdigest() == pins["layers"]["1"]["sha256"]
+    assert ad.validate_activation_dataset(mine)["file_pins"] == "verified"
 
 
 @pytest.mark.parametrize("dtype", ["float16", "float64"])
@@ -131,6 +140,10 @@ def test_the_reference_reader_reads_the_other_dtypes_this_writer_emits(tmp_path:
     theirs = icalens.ActivationDataset(tmp_path / dtype)
     assert str(theirs.dtype) == f"torch.{dtype}"
     assert np.array_equal(theirs.layer(1).numpy(), written.layer(1))
+    # The source provenance held the float32 pins; the writer replaced them with pins of the bytes it wrote.
+    pin = written.file_pins["layers"]["1"]
+    assert pin["sha256"] == sha256_file(tmp_path / dtype / pin["file"]) != source.file_pins["layers"]["1"]["sha256"]
+    assert theirs.provenance["patientwords_files"] == written.file_pins
 
 
 def test_this_reader_reads_what_the_reference_writer_produces_including_bfloat16(tmp_path: Path) -> None:
@@ -154,6 +167,15 @@ def test_this_reader_reads_what_the_reference_writer_produces_including_bfloat16
     assert {k: v.tolist() for k, v in mine.samples().items()} == {k: v.tolist() for k, v in samples.items()}
     # No tokenizer is recorded by the reference writer, so identity is unknown here, not guessed.
     assert mine.identity["status"] == "unknown" and mine.row_map is None
+    # The reference writer records no file hashes. The dataset is accepted, the absence is reported, and the
+    # manifest is not touched.
+    before = (tmp_path / "theirs" / "activations.json").read_bytes()
+    assert mine.file_pins is None and "patientwords_files" not in mine.manifest["provenance"]
+    report = ad.validate_activation_dataset(mine)
+    assert report["file_pins"] == "not_recorded"
+    assert report["layer_sha256"] == {"0": sha256_file(tmp_path / "theirs" / mine.manifest["layers"]["0"]["file"])}
+    assert (tmp_path / "theirs" / "activations.json").read_bytes() == before
+    assert (mine.activation_site, mine.layer_indexing) == ("resid_post", "transformer_blocks_zero_based")
 
 
 def test_safetensors_bytes_equal_the_reference_writer_and_both_readers_agree(tmp_path: Path) -> None:
@@ -312,4 +334,9 @@ def test_a_fitted_lens_runs_through_the_adapter_and_the_payload_names_the_icalen
             FLOAT64_TOLERANCE * path["cross_check_by_layer"]["1"]["tolerance_scale"])
         assert payload["basis"]["seed"] == 7 and payload["basis"]["preprocessing_mode"] == "none"
         assert payload["split_leakage_checks"]["fit_dataset_row_map"] == "checked"
+        assert payload["split_leakage_checks"]["fit_stage_ids"] == "checked"
+        assert payload["capture"]["activation_dataset"]["file_pins"] == "verified"
+        # The lens icalens saved records the site it was constructed with; the dataset records the same one.
+        assert (payload["capture"]["activation_site"], payload["capture"]["layer_indexing"]) == (
+            "resid_post", "transformer_blocks_zero_based")
         assert "no real model was run" in payload["identity"]["parity"]

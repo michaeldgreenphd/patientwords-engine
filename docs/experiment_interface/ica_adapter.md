@@ -65,14 +65,15 @@ identity, no content hash of its tensor files and no model-load precision (read 
 | `fit.corpus_id`, `fit.split`, `fit.family_ids`, `fit.corpus_ids`, `fit.document_token_sha256`, `fit.activation_manifest_sha256` | supplied; the last equals the hash `icalens` stores in a lens fitted from an ActivationDataset |
 | `profile`, `selection` | supplied: which families or corpora those stages used |
 | `capture.site`, `capture.layer_index_base` | supplied: the protocol's name for the site, and 0 |
-| `capture.artifact_activation_site`, `capture.artifact_layer_indexing` | copied; the second is a free-text label in the artifact and is not relied on |
+| `capture.artifact_activation_site`, `capture.artifact_layer_indexing` | copied from `icalens.json`. The activation dataset's own `activation_site` and `layer_indexing` must equal them (see *Capture site*). The second is a free-text label in the artifact; it is compared as a string and not interpreted |
 | `capture.precision` | the dtype of the activations given to the fit (`fitting.input_dtype`) |
 | `capture.model_load_precision` | supplied, or null and listed in `not_recorded` |
 | `seed` and per-layer `fit_settings` (algorithm, contrast function, `max_iter`, `n_iter`, `n_components`, `n_samples`, stopping criterion, device, torch version) | copied from each layer's `fitting` block |
 | `preprocessing.mode`, `row_normalization`, `norm_eps` | read from `icalens.json#/input_preprocessing` |
 | `artifact.files[*].sha256` | SHA-256 of every file in the saved directory, computed when the manifest is built |
 | `layers.<k>.fit_diagnostics` (objective history, component strengths and objectives) | copied |
-| `sign_convention`, `fit_diagnostics_statement` | fixed sentences; a manifest that alters them is refused |
+| `sign_convention`, `fit_diagnostics_statement`, `annotation_statement` | fixed sentences; a manifest that alters them is refused |
+| `limitations` | must include the adapter's fixed list, and `synthetic_not_measurement` for a synthetic basis; a manifest may add entries |
 
 A value the artifact lacks stays null and its JSON pointer is listed in `not_recorded`. An unlisted
 null is refused (`silent_missing_provenance`). The manifest's own SHA-256 is the basis hash that a
@@ -86,6 +87,38 @@ tokenizer field). Anything else is `unknown`. The string `"unknown"`, which
 counts as unknown. With an unknown identity the adapter produces no score: through the run store
 the task ends `unavailable` with a reason that starts `unknown_identity`, not `failed`. Parity with
 a real model is reported as not established in every payload, whatever the identity status.
+
+The manifest's model block is compared with the saved artifact's own `icalens.json` when the basis
+is loaded (`ica.check_manifest_against_artifact`). `icalens.json` is one of the pinned files, so a
+difference means the manifest was edited after it was built.
+
+- A model id, model type or revision in the manifest that differs from a value the artifact
+  records is refused (`identity_mismatch`). The capture site and the layer-indexing label are
+  compared in the same place (`layer_metadata`).
+- When the artifact's revision is absent, null or the placeholder `"unknown"`, the basis identity
+  is `unknown` whatever revision the manifest states, and `artifact_revision` is listed among the
+  unknown fields. The manifest cannot know more about the fit than the artifact the fit wrote.
+  Through the run store such a task ends `unavailable` with a reason that starts
+  `unknown_identity`, as for any other unknown identity.
+- A manifest value that is null claims nothing and is not a contradiction; the identity is then
+  unknown for the usual reason.
+
+The reference makes the corresponding comparison between a cached dataset and a lens, on model id
+and, when the lens has one, revision (`src/icalens/cli/profile.py:618-626`).
+
+## Capture site
+
+The activation dataset records where its rows were captured: `activation_site` and
+`layer_indexing` in `activations.json`. Both must be recorded and must equal the basis artifact's
+values, or the task is refused (`layer_metadata`). The same layer number, width and model at
+another site are different activations, and a score computed from them would carry the basis's
+site name without having been captured there. The reference refuses the same case in its profile
+command (`src/icalens/cli/profile.py:627-630`, "activation site differs", "layer indexing
+differs"). The payload records the dataset's two values under `capture.activation_site` and
+`capture.layer_indexing`, beside `capture.site`, which is the protocol's own name for the site.
+
+This is a comparison of two recorded strings. It does not establish that the capture code read the
+site those strings name.
 
 ## The fixed-basis rule
 
@@ -105,15 +138,29 @@ The manifest lists the family ids and corpus ids that fitting, profiling and sel
 adapter checks them against the protocol and refuses `split_leakage` when:
 
 - `fit.split` is not `discovery`;
-- any stage names a family whose split is `validation` or `fresh_test`;
+- any stage names a family whose split is `validation` or `fresh_test`, in `family_ids`, in
+  `corpus_ids` or, for the fit stage, in the singular `fit.corpus_id`;
 - a listed fit-document token hash equals the token hash of a held-out variant;
-- the fit dataset (when it is supplied) has a row-map document outside `discovery`;
+- the fit dataset (when it is supplied) has a row-map document outside `discovery`, a document
+  whose `family_id` or `corpus_id` is a held-out family id, a document whose token hash is a
+  held-out variant's, or a dataset-level `corpus_id` that is a held-out family id;
 - the basis was fit on the dataset that is being scored while that dataset holds held-out families.
 
-Each payload records which of these checks ran (`split_leakage_checks`). A check that could not run
-says so: for example `document_token_hashes: "not_listed_in_manifest"`. These checks compare ids
-and hashes that the manifest declares. They cannot detect a corpus that overlaps the held-out
-families under other ids; that is a limit of declared provenance, and it is not tested.
+Each payload records which of these checks ran (`split_leakage_checks`), one word per check. A
+check that had nothing to compare says so and is never reported as `checked`:
+
+| Key | Words |
+|---|---|
+| `fit_stage_ids`, `profile_stage_ids`, `selection_stage_ids` | `checked`, or `no_ids_listed` when the stage names no family and no corpus |
+| `document_token_hashes` | `checked`, or `not_listed_in_manifest` |
+| `fit_dataset_row_map` | `checked`; `checked_without_token_hashes` when a document of the fit dataset carries no token hash; `fit_dataset_has_no_row_map`; `fit_dataset_not_supplied` |
+| `fit_dataset_file_pins` | `verified`, `not_recorded`, or `fit_dataset_not_supplied` (see *ActivationDataset v1*) |
+| `scoring_dataset_is_fit_dataset` | `checked`, or `not_checked` when the manifest names no fit dataset hash |
+
+These checks compare ids and hashes that the manifest and the fit dataset declare. They cannot
+detect a corpus that overlaps the held-out families under other ids and without token hashes: the
+test shows that such a fit dataset passes with `checked_without_token_hashes`. That is a limit of
+declared provenance.
 
 The fixtures keep the fit corpus and the scored rows in two separate datasets
 (`discovery_activations/` and `pair_activations/`). Reason: `icalens fit activations` fits on every
@@ -195,7 +242,9 @@ activations. It is not evidence about a model.
 a minimal safetensors reader and writer, because the engine environment has neither `torch` nor
 `safetensors`.
 
-The validator refuses more than the reference reader checks:
+The validator refuses more than the reference reader checks. (The reference's profile command
+makes further checks on a cached dataset, `src/icalens/cli/profile.py:618-637`; the adapter makes
+the corresponding ones in `ica.py`, see *Identity fields* and *Capture site*.)
 
 | Refusal | Condition |
 |---|---|
@@ -203,18 +252,85 @@ The validator refuses more than the reference reader checks:
 | `dimension_mismatch` | a layer file is not `sample_count * hidden_size * itemsize` bytes; a declared shape or a sample tensor's length is wrong |
 | `non_finite` | NaN or infinity in a layer |
 | `row_alignment` | a duplicate `(document_index, position)`; a row whose document is not in the row map; a required position with no row; a row whose token id differs from the protocol's token id at that position |
-| `dataset_format` | wrong format name, version or dtype; a damaged safetensors container |
+| `dataset_format` | wrong format name, version or dtype; a damaged safetensors container; any other malformed input, for example a dtype that is not a string, a layer key that is not an ASCII decimal number, a declared tensor shape whose element count does not match its bytes (counted with Python integers, so a shape such as `[2**32, 2**32]` cannot overflow to zero), or a file-pin block that is present and malformed |
+| `artifact_hash` | a layer file or the samples file differs from the SHA-256 or byte count the manifest records for it |
 
 Row identity: the format carries no text and no prompt hash. A PatientWords writer adds
 `provenance.patientwords` (`patientwords.activation-rows/1`): the tokenizer, the position policy
 and one entry per document with its role (`fit_corpus` or `protocol_variant`), split, token count
 and token hash, plus the family and variant for a protocol row. One misaligned row refuses the
-whole dataset, not only the affected task.
+whole dataset, not only the affected task. A dataset whose position policy is `last` cannot answer
+a method block that asks for `positions: "all"`: the task is refused (`row_alignment`), not scored
+at the one position the dataset holds.
+
+File pins. The format records no hash of a layer file or of the samples file, so two datasets
+with the same manifest and different activation values were indistinguishable. The writer in this
+repository records the SHA-256 and byte count of every layer file and of the samples file under
+the provenance key `patientwords_files` (`patientwords.activation-files/1`). The manifest is
+written last, so the manifest's own SHA-256 then covers the values, and that hash is what a basis
+manifest names in `fit.activation_manifest_sha256`. The reader verifies a pinned file every time
+it reads one. `icalens` 0.4.0 reads a manifest that carries this key (the reference tests below
+read both fixture datasets, which carry it).
+
+A dataset without the key, which is what the reference writer produces, is accepted. Its
+validation report and the payload say `file_pins: "not_recorded"`, and nothing fills the pins in:
+the manifest is not rewritten. Such a dataset is identified by its manifest alone, so a changed
+layer file cannot be refused. The payload still records the SHA-256 of the sample bytes and of
+each layer file the task read (`capture.activation_dataset.samples_sha256`, `layer_sha256`), in
+both cases. With `file_pins: "verified"` those hashes equal the manifest's record. With
+`not_recorded` they describe what this run read and are not a statement by the dataset's writer.
+
+Writing. Every check on the arguments runs before a file is created; finiteness is checked on the
+values after the cast, so a float64 value that overflows float32 is refused (`non_finite`). The
+files are written to a staging directory inside the target, validated there in full, and moved
+into place with the manifest last. A refused write removes the staging directory and leaves the
+target as it was: no new directory, and an existing dataset unchanged byte for byte.
 
 Limits of this module: it writes float16, float32 and float64 and reads bfloat16 without writing
 it; it assumes little-endian bytes, which the format does not declare (the reference writer emits
 native order, `src/icalens/_activation_dataset.py:240`); it reads a layer file whole into memory,
 which is right for fixtures and wrong for a 1M-row capture.
+
+## What a filed payload must satisfy
+
+`IcaAdapter.validate_payload` checks a payload against its task before the run store files it. It
+reads no file. Beyond structure, family, variant, model, tokenizer, basis hash, layers, positions
+and token ids, it requires:
+
+- every fixed statement to equal the adapter's constant: `identity.parity`, the sign convention,
+  the energy-share label and definition, the score definition, the reconstruction space, definition
+  and `restore_norm` note, the fit-diagnostics statement and the annotation statement
+  (`payload_labels`);
+- `limitations` to include the adapter's fixed list, and `synthetic_not_measurement` for a
+  synthetic payload (`payload_labels`); a longer list is accepted;
+- the basis's synthetic flag to equal the payload's (`synthetic_label`), the fit split to be the
+  protocol's discovery split (`split_leakage`), and the capture site and layer index base to be the
+  task's (`layer_metadata`);
+- the dataset's manifest hash, sample hash and one layer hash per scored layer, with `file_pins`
+  one of its two words (`artifact_hash`);
+- every squared-coordinate share to equal `score**2 / sum(score**2)` recomputed from the scores of
+  the same row within `1e-9`, the recorded total to equal the sum of squares, and the status to
+  follow from that sum (`energy_share_mismatch`). A payload whose shares sum to 1 and were not
+  computed from its scores is refused;
+- `relative_l2_error` to equal `l2_error / preprocessed_l2_norm` (`reconstruction_mismatch`);
+- every component annotation to be a hypothesis with a source, to name a scored layer and one of its
+  components, and to hold only `layer`, `component`, `status`, `label`, `source` and
+  `vocabulary_readout` (`annotation_status`).
+
+Scores and reconstruction errors themselves cannot be recomputed from a payload: that needs the
+activations. A payload with edited scores and consistently edited shares passes this check. What
+ties scores to inputs is the run store's hash of the payload file and the input identity below.
+
+## Input identity for reuse
+
+`IcaAdapter.input_identity(task, context)` is the run store's optional reuse hook. It returns one
+SHA-256: the canonical digest of `IcaAdapter.input_identity_record(task, context)`, a JSON object
+that holds the SHA-256 of the basis manifest and of every artifact file it lists, of the pair
+dataset's manifest, samples file and the layer files the task reads, of the fit dataset's files
+when the fixtures hold one, of the adapter's two source files, and the installed versions of
+numpy, `icalens` and torch with the requested execution path. Files are hashed and never decoded;
+nothing is written. A file that cannot be read gives a null in the record and `None` from the
+hook, which the store treats as "cannot be identified now".
 
 ## Verified and not verified
 
@@ -346,6 +462,12 @@ python tests/fixtures/experiments/ica/build_ica_fixtures.py
 Every fixture is synthetic and says so: `synthetic: true` in each JSON file, hand-written matrices
 in the basis, hand-chosen integers in the activations. `tests/test_experiments_ica.py` rebuilds the
 fixtures in a temporary directory and compares them byte for byte with the committed files.
+
+The hashes chain: each dataset manifest records the SHA-256 of its layer file and samples file, the
+basis manifest names the discovery dataset by its manifest hash, and the method block names the
+basis by the basis manifest's hash. A change to a dataset therefore changes the basis hash.
+`tests/fixtures/experiments/protocol_synthetic_ica.json` repeats the method block and has to be
+updated in the same change; `tests/test_experiments_slice.py` compares the two.
 
 ## Citation, licence and attribution
 

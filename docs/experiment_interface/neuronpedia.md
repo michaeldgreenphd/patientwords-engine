@@ -11,8 +11,11 @@ Code: `scripts/experiments/neuronpedia.py`. Data: `data/experiments/representati
 `schemas/experiments/representation_registry.v1.schema.json`). Fixtures:
 `tests/fixtures/experiments/neuronpedia/` (synthetic). Tests: `tests/test_experiments_neuronpedia.py`.
 
-The module makes no network request. It imports no HTTP client. The tests run it with
-`socket.socket` replaced by a function that raises.
+The module makes no network request. It imports no HTTP client. One test,
+`test_importing_and_using_the_module_opens_no_socket`, loads the module from its file and calls
+each of its sixteen public functions with `socket.socket`, `socket.create_connection` and
+`socket.getaddrinfo` replaced by a function that raises. The same test compares the functions it
+called with the functions the module defines, and fails when the two sets differ.
 
 ## The boundary
 
@@ -29,7 +32,9 @@ Three consequences follow, and the code enforces each.
 - An external label is a hypothesis with a source. It is never a study outcome. The four
   quantities in *Explanation provenance* stay in four fields.
 - An external id is a field of a registry entry. It is never a key. `resolve` matches on the
-  engine's study id only.
+  engine's study id only. A study id that is not a non-empty string is refused (`invalid_input`),
+  so the three entries whose model the engine does not run (their `model.study_id` is null) are
+  never returned by `resolve`.
 
 ## What was read on 2026-11-10
 
@@ -97,8 +102,8 @@ apply holds the string `not_applicable`.
 | Status | Meaning | Link |
 |---|---|---|
 | `verified_exact` | The ids were read in a primary source, and the hosted checkpoint revision is recorded and equals the study revision. The validator refuses this status without both revisions equal | permitted |
-| `alias_unverified_checkpoint` | Another id is reported for the same checkpoint. No record of the commit behind that id was read | none |
-| `hosted_identity_unknown` | The engine uses these hosted ids and responses have landed. The service reports no model, dictionary or instrument revision | none |
+| `alias_unverified_checkpoint` | Another id is given for the same checkpoint by the source that the entry's `id_source` names. No record of the commit behind that id was read | none |
+| `hosted_identity_unknown` | The engine uses these hosted ids and responses have landed. The engine records no model, dictionary or instrument revision for these responses; whether the service reports one was not read | none |
 | `unverified` | The representation is named in a source that was read. Its own manifest or page was not | none |
 
 An alias alone does not verify a checkpoint. Two ids can name the same model family and different
@@ -114,7 +119,7 @@ status is refused (`links_without_verification`).
 | `qwen3-4b` | `transcoder_feature` | `qwen3-4b` / `transcoder-hp` | `mwhanna/qwen3-4b-transcoders`, commit not recorded | `hosted_identity_unknown` | `medlang_circuits/neuronpedia_features.py:55`; `docs/cross-model.md:33-63` (2026-10-09). Labelled, not calibrated: exploration only |
 | `gemma-2-2b` | `workspace_readout` (hosted J-lens) | `gemma-2-2b` / not applicable | `neuronpedia-hosted:JACOBIAN_LENS`; no instrument revision | `hosted_identity_unknown` | `scripts/jlens_readout.py:44,52,60,310-324`; `scripts/export_jlens_depth.py:409-417` |
 | `gemma-2-2b-it` | `workspace_readout` (hosted J-lens) | `gemma-2-2b-it` / not applicable | same | `hosted_identity_unknown` | same |
-| `qwen3.5-2b-base` | `ica_component` | `qwen3.5-2b-pt` (unverified) / not recorded | not recorded | `alias_unverified_checkpoint` | engine pin `scripts/logits_eval.py:109,147`; page not read |
+| `qwen3.5-2b-base` | `ica_component` | `qwen3.5-2b-pt` (unverified) / not recorded | not recorded | `alias_unverified_checkpoint` | engine pin `scripts/logits_eval.py:109,147`; the id comes from the owner's task brief of 2026-11-10 and has no retrievable record; page not read |
 | `gemma-2-2b` | `ica_component` | none | `sida/icalens-gemma-2-2b-pile10k` | `unverified` | `patientwords-ica-lens-paper/docs/fit-and-publish.md:289-292`; `patientwords-ica-lens-paper/experiments/reconstruction/official/results/gemma2/run.json:181-183` |
 | none | `ica_component` | none | `sida/icalens-gpt2-small-pile10k` (`openai-community/gpt2`) | `unverified` | `patientwords-ica-lens-paper/README.md:23` |
 | none | `ica_component` | none | `sida/icalens-qwen3.5-9b-base-pile10k` (`Qwen/Qwen3.5-9B-Base`) | `unverified` | `patientwords-ica-lens-paper/docs/fit-and-publish.md:289-292` |
@@ -127,12 +132,21 @@ Notes on single rows.
 
 - **`qwen3.5-2b-base` and `qwen3.5-2b-pt`.** The engine pins `Qwen/Qwen3.5-2B-Base` at
   `b1485b2fa6dfa1287294f269f5fb618e03d52d7c` (`scripts/logits_eval.py:147`; chosen as the head of
-  `main` on 2026-10-09, `docs/model_matrix.md:285-293`). The id `qwen3.5-2b-pt` comes from the task
-  brief for this change and from a web-search result title recorded the same day. No Neuronpedia page was
-  read, so the id itself is unverified, and so are the ICA source-set id, the layers and the
-  commit the components were fitted on. The ICA fork records no revision of this model and no
-  Neuronpedia id. To reach `verified_exact`: read the Neuronpedia model record and the release
-  manifest, record the commit, and confirm it equals the pin.
+  `main` on 2026-10-09, `docs/model_matrix.md:285-293`). The id `qwen3.5-2b-pt` has one origin: the
+  owner's task brief of 2026-11-10 for this session supplied it. The brief is not a file in the
+  repository and no retrievable record of it exists here. The id is unverified against the
+  service: `www.neuronpedia.org` was blocked by this environment's network policy on 2026-11-10,
+  so no Neuronpedia page was read. Unverified for the same reason: the ICA source-set id, the
+  layers and the commit the components were fitted on. The registry and
+  `data/experiments/capability_matrix.v1.json` state the same origin. The ICA fork records no
+  revision of this model, no Neuronpedia id and no released ICA basis for it. It names the model in
+  places that are not a released basis: `patientwords-ica-lens-paper/notes/naming.md:24` lists
+  `sida/icalens-qwen-3.5-2b` as a repository id in its naming scheme, without saying base or
+  instruct and without saying that the repository exists;
+  `patientwords-ica-lens-paper/integrations/r_lens/fit_qwen35.py:21-24` holds an R-lens fitting
+  preset for `Qwen/Qwen3.5-2B-Base`, which is not an ICA basis. To reach `verified_exact`: read
+  the Neuronpedia model record and the release manifest, record the commit, and confirm it equals
+  the pin.
 - **`sida/icalens-gemma-2-2b-pile10k`.** The paper's reconstruction run record names this basis
   with model revision `c5ebcd40d208330abc697524c919956e692655cf`, which is the engine's pin of
   `google/gemma-2-2b` (`scripts/logits_eval.py:132`). That is one evaluation run. The record pins no
@@ -216,9 +230,43 @@ A request record (`patientwords.api-request-record/1`) describes one bounded API
 other code made: `endpoint` `{method, host, path}`, `effective_request_settings` (what the
 service applied, defaults included, with the input named by hash), `service_identity`
 (`service`, `model_id`, `instrument_revision`), `response_sha256`, `retrieved_utc`,
-`not_recorded`. A key that would hold prompt text (`prompt`, `messages`, `text`) or a credential
-(`x-api-key`, `authorization`, `token`) is refused at any depth. This is a structure with
-validation. No code in this package sends a request.
+`not_recorded`. This is a structure with validation. No code in this package sends a request.
+
+Neither `effective_request_settings` nor `service_identity` may hold prompt text or a credential,
+at any depth. Both repositories are public and a validated record is a file that gets committed,
+so the check has three parts.
+
+- **By key name.** A key is lowercased and stripped of everything except letters and digits. It is
+  refused when the result contains a credential fragment (`key`, `token`, `secret`, `auth`,
+  `password`, `passwd`, `pwd`, `cookie`, `bearer`, `credential`, `session`, `signature`, `header`,
+  `jwt`; code `secret_in_record`) or a text fragment (`prompt`, `text`, `message`, `content`,
+  `input`, `query`, `body`, `slug`, `completion`, `utterance`, `transcript`; code
+  `prompt_text_in_record`), whatever the value is. The repository's own secret names
+  (`ANTHROPIC_API_KEY`, `OPENROUTER_API_KEY`, `GEMINI_API_KEY`, `NEURONPEDIA_API_KEY`, `HF_TOKEN`)
+  and spellings such as `x-api-key`, `apiKey`, `access_token`, `promptText` and `user_prompt` are
+  all refused by this rule. There are two exceptions, each with its own value rule. A key that ends
+  in `sha256` (`prompt_sha256`, `token_sha256`) must hold 64 hex digits or null. Four counted
+  settings, matched by exact name (`numCompletionTokens`, `filterNonWordTokens`, `max_tokens`,
+  `max_new_tokens`), must hold a boolean or an integer; the first two are fields of the engine's
+  own lens request (`scripts/jlens_readout.py`, `lens_request_body`).
+- **By value type.** A value is null, a boolean, a finite number, an object, or a list of those. A
+  string is accepted only under an id key (`model_id`, `modelId`, `source_set`, `sourceSetName`,
+  `source_id`, `service`, `instrument_revision`, `model_revision`, `dictionary_revision`, `type`,
+  `lens`, `lens_type`, `dtype`), where it must have the form of an id (at most 64 characters, no
+  whitespace, optionally `owner/name`) or be a list of ids. Any other string, and any string
+  inside another list, is refused (`free_text_in_record`). A key must itself be a short
+  identifier.
+- **By prefix.** An id-shaped string that starts like a credential of a known issuer (`sk-`,
+  `hf_`, `AIza`, `ghp_`, `gho_`, `github_pat_`, `xox`) is refused under an id key
+  (`secret_in_record`).
+
+A refusal message names the key and never repeats a value.
+
+What the check cannot see: a credential or a short text that has the form of an id and is stored
+under one of the id keys; words spelled as a key name or as an endpoint path segment (the path is
+limited to id characters and 64 characters per segment); a number that encodes something. The
+check reads key names, value types and character classes. It does not read meaning. A request
+record still needs a person's review before it is committed.
 
 Why the record asks for effective settings and service identity. The hosted graph API ignores an
 unknown key without an error (`graph_client.py:319-320`), so the request that was sent is weaker
@@ -235,9 +283,18 @@ registry entry.
   (`name`, `version`, `explanation_type`, `explanation_model`, `retrieved_utc`) and `scorer`
   (`{name, version}` or null and listed). No key stores a chosen label; `add_label` appends and
   refuses a duplicate id. Every label has `status: "hypothesis"`.
+- **Closed key sets.** A label holds exactly `label_id`, `text`, `basis`, `flags`, `status`,
+  `source` and `scorer`, plus `tokens` for a token-list label. A source holds exactly its five
+  keys and a scorer exactly `name` and `version`, in a label and in a quantity record; their values
+  are strings or null. A flag is one of the known flags. A confidence, a rank, a "best" or
+  "selected" marker, or a number under any other name is therefore refused inside a label, its
+  source or its scorer (`explanation_record`; `merged_score` when the key is a generic score key or
+  ends in `score`; `quantity_fields` inside a quantity record's scorer).
 - **Token-list labels.** A label built from a token list alone has `basis: "token_list_only"` and
   the flag `not_a_clinical_concept_name` (display text: "not a clinical concept name"). The
-  validator refuses that basis without the flag.
+  validator refuses that basis without the flag, and it refuses any label that carries `tokens`
+  without the flag, whatever basis the label declares. A token-list text stored without its
+  `tokens` and under another basis cannot be told from a written label; that limit is not tested.
 - **Four quantities, four fields.**
 
 | Field | What it is | Never |
@@ -282,7 +339,11 @@ identity:
 
 The key set is closed. There is no prompt, no slug (only its hash), no label and no node list.
 Every string is checked against an id-only character set. With a registry, the Neuronpedia ids
-and the model identity are compared with the entry (`source_set_identity`). A graph that was not
+are compared with the entry (`source_set_identity`), and so is the model: study id, Hugging Face
+id and revision (`graph_ref_identity`). A reference whose `model.revision` differs from the
+entry's pin is refused, because the same ids can name another commit. A reference whose revision
+is null must list `/model/revision` in `not_recorded`; the revision is then not compared, and the
+result says `model_revision_compared: false`. It says the same when no registry is given. A graph that was not
 retained has `native_retained: false` and no native hash; the hash of a pruned or annotated copy
 is refused in its place (`graph_native_artifact`).
 
@@ -387,8 +448,9 @@ Conditions attached to the later rows.
   calibrating a reader. A normalized activation similarity is a geometric quantity. It is not a
   probability of clinical error, and it would be stored as its own quantity, never as a
   `clinical_outcome`.
-- **Interp Explorer.** The task brief for this change says the Interp Explorer post reports that
-  development paused in July. The post was not read today, so this page does not confirm it.
+- **Interp Explorer.** The owner's task brief of 2026-11-10 says the Interp Explorer post reports
+  that development paused in July. The brief has no retrievable record in the repository and the
+  post was not read today, so this page does not confirm it.
 
 ## What was verified, and what was not
 
@@ -396,7 +458,8 @@ Conditions attached to the later rows.
 |---|---|
 | The registry rules, link rules, snapshot checks, record validators and graph-reference rules behave as written | `tests/test_experiments_neuronpedia.py`, offline, on a synthetic registry and the real registry file |
 | Real entries agree with the engine's tables | the same tests compare study ids, Hugging Face ids and pins with `scripts/logits_eval.py`, source sets with `neuronpedia_features.MODEL_SOURCE_SETS`, the calibrated pair with `scripts/feature_models.py`, and artifact ids with the capability matrix |
-| The module opens no socket | a test replaces `socket.socket`, loads the module from its file and runs every public function; another test lists its imports |
+| The module opens no socket | `test_importing_and_using_the_module_opens_no_socket` replaces `socket.socket`, `socket.create_connection` and `socket.getaddrinfo`, loads the module from its file, calls each of its sixteen public functions and asserts that the set it called equals the set the module defines; `test_module_imports_no_network_or_process_library` lists the imports |
+| A request record holds no credential and no prompt text | checked by key name, value type and character class, on abstract placeholders. Not verified: a credential that has the form of an id under an id key, which the check cannot tell from an id |
 | Any Neuronpedia id resolves on the site | not verified. No page was read and no request was made |
 | Any hosted checkpoint equals a study pin | not verified. No hosted revision is recorded anywhere |
 | Any page URL pattern | not verified. None is recorded |

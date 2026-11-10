@@ -9,6 +9,7 @@ basis or parity with one; ``tests/test_experiments_ica_icalens.py`` compares aga
 from __future__ import annotations
 
 import copy
+import hashlib
 import importlib.util
 import json
 import shutil
@@ -219,6 +220,25 @@ def test_a_damaged_safetensors_container_refuses(damage: Callable[[bytes], bytes
     assert code_of(lambda: ad.parse_safetensors(damage(good))) == "dataset_format"
 
 
+def crafted(header: dict, body: bytes = b"") -> bytes:
+    raw = json.dumps(header, separators=(",", ":")).encode("utf-8")
+    raw += b" " * (-len(raw) % 8)
+    return struct.pack("<Q", len(raw)) + raw + body
+
+
+@pytest.mark.parametrize("header,body", [
+    # 2**32 * 2**32 is 2**64: zero in int64 arithmetic, so the byte-count check used to pass and reshape raised.
+    ({"a": {"dtype": "I64", "shape": [2 ** 32, 2 ** 32], "data_offsets": [0, 0]}}, b""),
+    ({"a": {"dtype": ["I64"], "shape": [1], "data_offsets": [0, 8]}}, b"\x00" * 8),      # unhashable dtype
+    ({"a": {"dtype": "I64", "shape": [2 ** 70, 0], "data_offsets": [0, 0]}}, b""),       # a dimension no array holds
+    ({"a": {"dtype": "I64", "shape": [1.0], "data_offsets": [0, 8]}}, b"\x00" * 8),
+    ({"a": ["I64"]}, b""),
+    ([], b""),
+])
+def test_a_malformed_safetensors_header_is_a_refusal_never_a_numpy_error(header: Any, body: bytes) -> None:
+    assert code_of(lambda: ad.parse_safetensors(crafted(header, body))) == "dataset_format"
+
+
 # ------------------------------------------------------------------------------------- activation dataset
 
 def toy_write(root: Path, **changes: Any) -> ad.ActivationDataset:
@@ -291,11 +311,28 @@ def test_missing_identity_is_recorded_as_unknown_and_never_filled_in(tmp_path: P
     assert identity["status"] == "unknown" and identity["unknown_fields"] == ["tokenizer_id", "tokenizer_revision"]
 
 
-def samples_with(edit: Callable[[dict], None]) -> Callable[[Path], None]:
+def repin(root: Path) -> None:
+    """Record the file hashes again after a deliberate edit, as a writer that produced these bytes would have.
+
+    The damage cases below aim at the checks that sit behind the pin check (finiteness, row alignment). Without
+    this step every one of them is refused earlier, as ``artifact_hash``: see
+    ``test_file_pins_detect_changed_layer_and_sample_bytes``. The hashes are computed with hashlib here, not
+    with the module under test."""
+    def edit(doc: dict) -> None:
+        pins = doc["provenance"].get("patientwords_files")
+        for entry in [pins["samples"], *pins["layers"].values()] if pins else []:
+            data = (root / entry["file"]).read_bytes()
+            entry.update(sha256=hashlib.sha256(data).hexdigest(), bytes=len(data))
+    rewrite_json(root / "activations.json", edit)
+
+
+def samples_with(edit: Callable[[dict], None], pinned: bool = True) -> Callable[[Path], None]:
     def apply(root: Path) -> None:
         tensors = ad.read_safetensors(root / "samples.safetensors")
         edit(tensors)
         (root / "samples.safetensors").write_bytes(ad.safetensors_bytes(tensors))
+        if pinned:
+            repin(root)
     return apply
 
 
@@ -315,6 +352,13 @@ def poison_layer(root: Path) -> None:
     values = np.frombuffer(path.read_bytes(), dtype="<f4").copy()
     values[5] = np.nan
     path.write_bytes(values.tobytes())
+    repin(root)
+
+
+def reverse_layer_rows(root: Path) -> None:
+    """Reverse the row order of the layer file: the same size, finite values, the manifest untouched."""
+    path = root / "layers" / "layer_01.float32.bin"
+    path.write_bytes(np.frombuffer(path.read_bytes(), dtype="<f4").reshape(24, 8)[::-1].tobytes())
 
 
 def manifest_with(edit: Callable[[dict], None]) -> Callable[[Path], None]:
@@ -340,6 +384,21 @@ DATASET_REFUSALS = [
     (manifest_with(lambda d: d.update(format_version=2)), "dataset_format", "version"),
     (manifest_with(lambda d: d.update(dtype="int8")), "dataset_format", "dtype"),
     (lambda root: (root / "samples.safetensors").unlink(), "dataset_format", "not a file"),
+    # Malformed inputs that used to raise TypeError or ValueError.
+    (manifest_with(lambda d: d.update(dtype=["float32"])), "dataset_format", "dtype"),
+    (manifest_with(lambda d: d["layers"].update({"\u00b2": d["layers"].pop("1")})), "dataset_format",
+     "ASCII decimal layer number"),
+    (manifest_with(lambda d: d.update(layers=[1])), "dataset_format", "names no layers"),
+    (manifest_with(lambda d: d.update(sample_count=2 ** 70)), "dimension_mismatch", "shape"),
+    # File pins: a changed file, and a pin block that is present but leaves a file out.
+    (reverse_layer_rows, "artifact_hash", "layer 1"),
+    (samples_with(set_value("token_id", 0, 3), pinned=False), "artifact_hash", "samples"),
+    (manifest_with(lambda d: d["provenance"]["patientwords_files"]["layers"].clear()), "dataset_format",
+     "every layer file"),
+    (manifest_with(lambda d: d["provenance"].update(patientwords_files=None)), "dataset_format",
+     "patientwords_files"),
+    (manifest_with(lambda d: d["provenance"]["patientwords_files"]["samples"].update(sha256="abc")),
+     "dataset_format", "samples"),
 ]
 
 
@@ -373,6 +432,122 @@ def test_writer_refuses_protected_roots_and_git_checkouts(tmp_path: Path) -> Non
     inside = Path(__file__).resolve().parent / "fixtures" / "experiments" / "ica" / "never_written"
     assert code_of(lambda: toy_write(inside)) == "git_checkout" and not inside.exists()
     assert code_of(lambda: toy_write(tmp_path / "bad", layers={1: np.zeros((24, 8), dtype=np.int64)})) == "non_finite"
+
+
+def test_the_writer_records_file_pins_and_a_dataset_without_them_is_reported_as_not_recorded(
+        tmp_path: Path, matrix: dict) -> None:
+    written = toy_write(tmp_path / "copy")
+    pins = written.manifest["provenance"]["patientwords_files"]
+    assert pins == {"schema_version": "patientwords.activation-files/1",
+                    "samples": {"file": "samples.safetensors", "bytes": 784,
+                                "sha256": hashlib.sha256((PAIRS / "samples.safetensors").read_bytes()).hexdigest()},
+                    "layers": {"1": {"file": "layers/layer_01.float32.bin", "bytes": 768, "sha256": hashlib.sha256(
+                        (PAIRS / "layers" / "layer_01.float32.bin").read_bytes()).hexdigest()}}}
+    report = ad.validate_activation_dataset(written)
+    assert report["file_pins"] == "verified" and report["layer_sha256"] == {"1": pins["layers"]["1"]["sha256"]}
+    # A pin block handed in with the provenance is replaced by the writer's own, never copied.
+    stale = copy.deepcopy(written.manifest["provenance"])
+    stale["patientwords_files"]["layers"]["1"]["sha256"] = "0" * 64
+    assert toy_write(tmp_path / "again", provenance=stale).manifest["provenance"]["patientwords_files"] == pins
+
+    # A dataset whose manifest has no pins (what the reference writer produces) is accepted. The absence is
+    # reported; nothing is written back into the manifest.
+    shutil.copytree(PAIRS, tmp_path / "unpinned")
+    rewrite_json(tmp_path / "unpinned" / "activations.json", lambda d: d["provenance"].pop("patientwords_files"))
+    before = (tmp_path / "unpinned" / "activations.json").read_bytes()
+    report = ad.validate_activation_dataset(tmp_path / "unpinned", protocol=read(FX / "protocol_synthetic.json"))
+    assert report["file_pins"] == "not_recorded" and ad.open_activation_dataset(tmp_path / "unpinned").file_pins is None
+    payload = score(matrix, "fam-2", "clinical", pairs=tmp_path / "unpinned")
+    assert payload["capture"]["activation_dataset"]["file_pins"] == "not_recorded"
+    assert (tmp_path / "unpinned" / "activations.json").read_bytes() == before
+    # Without pins a changed layer file cannot be refused. The payload still differs in identity: it records
+    # the SHA-256 of the bytes it read.
+    reverse_layer_rows(tmp_path / "unpinned")
+    changed = score(matrix, "fam-2", "clinical", pairs=tmp_path / "unpinned")
+    assert values(changed) != values(payload)
+    assert changed["capture"]["activation_dataset"]["manifest_sha256"] == payload["capture"]["activation_dataset"][
+        "manifest_sha256"]
+    assert changed["capture"]["activation_dataset"]["layer_sha256"] != payload["capture"]["activation_dataset"][
+        "layer_sha256"]
+
+
+def test_file_pins_detect_changed_layer_and_sample_bytes(tmp_path: Path, matrix: dict) -> None:
+    """The reviewer's case: reverse the rows of the layer file, leave activations.json and samples untouched.
+    Byte count, finiteness, row map and token ids all still hold; before the pins this scored other numbers
+    under identical identity fields."""
+    baseline = score(matrix, "fam-2", "clinical")
+    assert values(baseline) == [2.0, 0.0, 0.0, -1.0]
+    assert baseline["capture"]["activation_dataset"] == {
+        "manifest_sha256": sha256_file(PAIRS / "activations.json"), "dtype": "float32", "sample_count": 24,
+        "file_pins": "verified",
+        "samples_sha256": hashlib.sha256((PAIRS / "samples.safetensors").read_bytes()).hexdigest(),
+        "layer_sha256": {"1": hashlib.sha256((PAIRS / "layers" / "layer_01.float32.bin").read_bytes()).hexdigest()}}
+    shutil.copytree(PAIRS, tmp_path / "reversed")
+    reverse_layer_rows(tmp_path / "reversed")
+    assert sha256_file(tmp_path / "reversed" / "activations.json") == sha256_file(PAIRS / "activations.json")
+    with pytest.raises(Refusal) as caught:
+        score(matrix, "fam-2", "clinical", pairs=tmp_path / "reversed")
+    assert caught.value.code == "artifact_hash" and "layers/layer_01.float32.bin" in str(caught.value)
+    assert code_of(lambda: ad.open_activation_dataset(tmp_path / "reversed").layer(1)) == "artifact_hash"
+    assert code_of(lambda: ad.validate_activation_dataset(tmp_path / "reversed", check_values=False)) == (
+        "artifact_hash")
+    shutil.copytree(PAIRS, tmp_path / "samples")
+    samples_with(lambda t: t.update(token_id=t["token_id"][::-1].copy()), pinned=False)(tmp_path / "samples")
+    assert code_of(lambda: ad.open_activation_dataset(tmp_path / "samples").samples()) == "artifact_hash"
+    # The fit dataset is verified too: its manifest hash is what the basis manifest names.
+    shutil.copytree(DISCOVERY, tmp_path / "fit")
+    path = tmp_path / "fit" / "layers" / "layer_01.float32.bin"
+    path.write_bytes(np.frombuffer(path.read_bytes(), dtype="<f4").reshape(48, 8)[::-1].tobytes())
+    assert code_of(lambda: score(matrix, "fam-2", "clinical", fit=tmp_path / "fit")) == "artifact_hash"
+
+
+def test_a_refused_write_leaves_no_dataset_on_disk(tmp_path: Path) -> None:
+    source = ad.open_activation_dataset(PAIRS)
+    huge = source.layer(1).astype(np.float64)
+    huge[3, 2] = 1e300                               # finite as float64, infinite once cast to float32
+    with pytest.raises(Refusal) as caught:
+        toy_write(tmp_path / "overflow", layers={1: huge})
+    assert caught.value.code == "non_finite" and "after the cast to float32" in str(caught.value)
+    assert not (tmp_path / "overflow").exists()
+    assert toy_write(tmp_path / "wide", layers={1: huge}, dtype="float64").layer(1)[3, 2] == 1e300
+
+    # A dataset that only the closing validation refuses (a duplicate row) is not left behind either.
+    samples = source.samples()
+    samples["position"][9] = 0
+    assert code_of(lambda: toy_write(tmp_path / "duplicate", samples=samples)) == "row_alignment"
+    assert not (tmp_path / "duplicate").exists()
+
+    # A refused write over an existing dataset leaves that dataset as it was, byte for byte.
+    good = toy_write(tmp_path / "kept")
+    before = {path.relative_to(good.root).as_posix(): path.read_bytes()
+              for path in sorted(good.root.rglob("*")) if path.is_file()}
+    assert code_of(lambda: toy_write(tmp_path / "kept", samples=samples)) == "row_alignment"
+    assert code_of(lambda: toy_write(tmp_path / "kept", layers={1: huge})) == "non_finite"
+    after = {path.relative_to(good.root).as_posix(): path.read_bytes()
+             for path in sorted(good.root.rglob("*")) if path.is_file()}
+    assert after == before and sorted(before) == ["activations.json", "layers/layer_01.float32.bin",
+                                                  "samples.safetensors"]
+    assert not [path for path in good.root.rglob("*") if path.name.startswith(".staging-")]
+    # An accepted write over it replaces all three files, and the result validates.
+    replaced = toy_write(tmp_path / "kept", dtype="float32", activation_site="mlp_out")
+    assert replaced.manifest["activation_site"] == "mlp_out"
+    assert ad.validate_activation_dataset(replaced)["file_pins"] == "verified"
+
+
+@pytest.mark.parametrize("changes", [
+    {"layers": {1: [[1.0, 2.0], [3.0]]}},            # ragged rows
+    {"layers": {"1": np.zeros((24, 8), dtype=np.float32)}},
+    {"layers": []},
+    {"samples": [1, 2, 3]},
+    {"model": "fixture/toy-model"},
+    {"provenance": {"when": object()}},
+    {"provenance": {"value": float("nan")}},
+    {"dtype": ["float32"]},
+    {"activation_site": None},
+])
+def test_malformed_writer_arguments_are_refusals(tmp_path: Path, changes: dict) -> None:
+    assert code_of(lambda: toy_write(tmp_path / "bad", **changes)) in ("dataset_format", "dimension_mismatch")
+    assert not (tmp_path / "bad").exists()
 
 
 # ------------------------------------------------------------------------------ hand-computed expectations
@@ -417,6 +592,23 @@ def test_all_positions_are_scored_when_the_method_asks_for_them(matrix: dict) ->
     # Earlier positions: s = [position + 1, -(document + 1), 0, 1]; fam-2 normalized is document 5.
     assert by_position == {0: [1.0, -6.0, 0.0, 1.0], 1: [2.0, -6.0, 0.0, 1.0], 2: [0.0, 1.0, 0.0, 0.0]}
     assert [row["l2_error"] for row in payload["reconstruction"]["rows"]] == [0.0, 0.0, 2.0]
+
+
+def test_a_dataset_captured_at_the_last_position_cannot_answer_a_method_that_asks_for_all(matrix: dict,
+                                                                                         tmp_path: Path) -> None:
+    source = ad.open_activation_dataset(PAIRS)
+    samples = source.samples()
+    tokens = {d["document_index"]: d["n_tokens"] for d in source.row_map["documents"]}
+    keep = [i for i in range(24) if samples["position"][i] == tokens[int(samples["document_index"][i])] - 1]
+    provenance = copy.deepcopy(source.manifest["provenance"])
+    provenance["patientwords"]["positions"] = "last"
+    ad.write_activation_dataset(tmp_path / "last", model=source.manifest["model"], layers={1: source.layer(1)[keep]},
+                                samples={name: tensor[keep] for name, tensor in samples.items()},
+                                provenance=provenance)
+    assert values(score(matrix, "fam-2", "clinical", pairs=tmp_path / "last")) == [2.0, 0.0, 0.0, -1.0]
+    with pytest.raises(Refusal) as caught:
+        score(matrix, "fam-2", "clinical", pairs=tmp_path / "last", positions="all")
+    assert caught.value.code == "row_alignment" and "positions [0, 1, 2]" in str(caught.value)
 
 
 def test_within_pair_differences_use_one_basis(matrix: dict) -> None:
@@ -524,6 +716,9 @@ def test_annotations_are_carried_as_hypotheses_with_their_source(matrix: dict, t
     assert code_of(lambda: make_basis(tmp_path / "a", annotations=verified)) == "annotation_status"
     unsourced = [{"layer": 1, "component": 0, "status": "hypothesis", "label": "placeholder", "source": ""}]
     assert code_of(lambda: make_basis(tmp_path / "b", annotations=unsourced)) == "annotation_status"
+    marked = [{"layer": 1, "component": 0, "status": "hypothesis", "label": "placeholder", "source": "a claim",
+               "verified": True}]
+    assert code_of(lambda: make_basis(tmp_path / "c", annotations=marked)) == "basis_manifest"   # closed by schema
 
 
 # ----------------------------------------------------------------------------------------------- refusals
@@ -641,11 +836,163 @@ def test_split_leakage_refusals(matrix: dict, tmp_path: Path) -> None:
     plain = make_basis(tmp_path / "plain")
     assert code_of(lambda: score(matrix, "fam-1", "clinical", manifest=plain, fit=PAIRS)) == "split_leakage"
     report = score(matrix, "fam-1", "clinical")["split_leakage_checks"]
-    assert report == {"stage_ids": "checked", "document_token_hashes": "checked",
-                      "fit_dataset_row_map": "checked", "scoring_dataset_is_fit_dataset": "checked"}
+    assert report == {"fit_stage_ids": "checked", "profile_stage_ids": "no_ids_listed",
+                      "selection_stage_ids": "no_ids_listed", "document_token_hashes": "checked",
+                      "fit_dataset_row_map": "checked", "fit_dataset_file_pins": "verified",
+                      "scoring_dataset_is_fit_dataset": "checked"}
     unlisted = score(matrix, "fam-1", "clinical", manifest=plain, fit=None)["split_leakage_checks"]
     assert unlisted["document_token_hashes"] == "not_listed_in_manifest"
     assert unlisted["fit_dataset_row_map"] == "fit_dataset_not_supplied"
+    assert unlisted["fit_dataset_file_pins"] == "fit_dataset_not_supplied"
+
+
+def test_split_leakage_covers_the_fit_corpus_id_and_says_when_nothing_was_listed(matrix: dict,
+                                                                                tmp_path: Path) -> None:
+    # 1. fit.corpus_id (singular) names a validation family; the two id lists are empty.
+    singular = make_basis(tmp_path / "singular", fit={"split": "discovery", "corpus_id": "fam-2"})
+    with pytest.raises(Refusal) as caught:
+        score(matrix, "fam-2", "clinical", manifest=singular, fit=None)
+    assert caught.value.code == "split_leakage" and "fam-2" in str(caught.value)
+
+    # 2. A manifest that names no family, no corpus and no hash: zero ids were compared, and the report says so.
+    silent = make_basis(tmp_path / "silent", fit={"split": "discovery"})
+    report = score(matrix, "fam-2", "clinical", manifest=silent, fit=None)["split_leakage_checks"]
+    assert report == {"fit_stage_ids": "no_ids_listed", "profile_stage_ids": "no_ids_listed",
+                      "selection_stage_ids": "no_ids_listed", "document_token_hashes": "not_listed_in_manifest",
+                      "fit_dataset_row_map": "fit_dataset_not_supplied",
+                      "fit_dataset_file_pins": "fit_dataset_not_supplied",
+                      "scoring_dataset_is_fit_dataset": "not_checked"}
+    assert "checked" not in report.values()
+    named = make_basis(tmp_path / "named", profile={"performed": True, "family_ids": ["fam-1"]})
+    assert score(matrix, "fam-1", "clinical", manifest=named, fit=None)["split_leakage_checks"][
+        "profile_stage_ids"] == "checked"
+
+    # 3. The held-out pair rows relabelled as a fit corpus: role fit_corpus, split discovery, the family id
+    #    moved to corpus_id, the token hash dropped.
+    def relabel(doc: dict) -> None:
+        for document in doc["provenance"]["patientwords"]["documents"]:
+            family = document.pop("family_id")
+            document.pop("variant")
+            document.pop("token_sha256")
+            document.update(role="fit_corpus", split="discovery", corpus_id=family)
+    shutil.copytree(PAIRS, tmp_path / "relabelled")
+    rewrite_json(tmp_path / "relabelled" / "activations.json", relabel)
+    ad.validate_activation_dataset(tmp_path / "relabelled")         # a well-formed dataset in its own right
+    disguised = make_basis(tmp_path / "disguised", fit={
+        "split": "discovery", "corpus_id": "c", "corpus_ids": ["c"],
+        "activation_manifest_sha256": sha256_file(tmp_path / "relabelled" / "activations.json")})
+    with pytest.raises(Refusal) as caught:
+        score(matrix, "fam-2", "clinical", manifest=disguised, fit=tmp_path / "relabelled")
+    assert caught.value.code == "split_leakage" and "held-out family" in str(caught.value)
+
+    # 4. The same rows under corpus ids that are not family ids, still without token hashes: no id is refused,
+    #    and the report does not say "checked".
+    def rename(doc: dict) -> None:
+        relabel(doc)
+        for document in doc["provenance"]["patientwords"]["documents"]:
+            document["corpus_id"] = "other-corpus"
+    shutil.copytree(PAIRS, tmp_path / "renamed")
+    rewrite_json(tmp_path / "renamed" / "activations.json", rename)
+    quiet = make_basis(tmp_path / "quiet", fit={
+        "split": "discovery", "corpus_id": "c", "corpus_ids": ["c"],
+        "activation_manifest_sha256": sha256_file(tmp_path / "renamed" / "activations.json")})
+    report = score(matrix, "fam-2", "clinical", manifest=quiet, fit=tmp_path / "renamed")["split_leakage_checks"]
+    assert report["fit_dataset_row_map"] == "checked_without_token_hashes"
+
+    # 5. A dataset-level corpus id that is a held-out family id.
+    shutil.copytree(DISCOVERY, tmp_path / "level")
+    rewrite_json(tmp_path / "level" / "activations.json",
+                 lambda d: d["provenance"]["patientwords"].update(corpus_id="fam-3"))
+    level = make_basis(tmp_path / "level_basis")
+    assert code_of(lambda: score(matrix, "fam-1", "clinical", manifest=level, fit=tmp_path / "level")) == (
+        "split_leakage")
+
+
+def test_the_dataset_capture_site_and_layer_indexing_must_equal_the_basis_artifact(matrix: dict,
+                                                                                   tmp_path: Path) -> None:
+    baseline = score(matrix, "fam-2", "clinical")
+    assert (baseline["capture"]["activation_site"], baseline["capture"]["layer_indexing"]) == (
+        "resid_post", "transformer_blocks_zero_based")
+    assert baseline["capture"]["site"] == "block_output"            # the protocol's own name for the site
+    cases = {
+        "site": lambda d: d.update(activation_site="mlp_out"),
+        "indexing": lambda d: d.update(layer_indexing="hidden_states"),
+        "both": lambda d: d.update(activation_site="mlp_out", layer_indexing="hidden_states"),
+        "site_absent": lambda d: d.pop("activation_site"),
+        "indexing_null": lambda d: d.update(layer_indexing=None),
+    }
+    for name, edit in cases.items():
+        shutil.copytree(PAIRS, tmp_path / name)
+        rewrite_json(tmp_path / name / "activations.json", edit)
+        ad.validate_activation_dataset(tmp_path / name)             # still a well-formed dataset
+        with pytest.raises(Refusal) as caught:
+            score(matrix, "fam-2", "clinical", pairs=tmp_path / name)
+        assert caught.value.code == "layer_metadata" and "basis artifact records" in str(caught.value), name
+    # A basis whose artifact records no site cannot be matched with any dataset.
+    siteless = make_basis(tmp_path / "siteless", saved=lambda saved: saved.pop("activation_site"))
+    assert read(siteless)["capture"]["artifact_activation_site"] is None
+    assert code_of(lambda: score(matrix, "fam-2", "clinical", manifest=siteless, fit=None)) == "layer_metadata"
+    # A manifest edited to disagree with the pinned icalens.json on the site is refused when the basis loads.
+    edited = make_basis(tmp_path / "edited", edit=leak(("capture", "artifact_activation_site"), "mlp_out"))
+    assert code_of(lambda: ica.load_basis(edited)) == "layer_metadata"
+
+
+def test_the_basis_manifest_identity_is_compared_with_the_saved_icalens_json(matrix: dict, tmp_path: Path) -> None:
+    def saved_model(**changes: Any) -> Callable[[dict], None]:
+        def edit(saved: dict) -> None:
+            for key, value in changes.items():
+                if value is None:
+                    saved["model"].pop(key)
+                else:
+                    saved["model"][key] = value
+        return edit
+
+    def claim(manifest: dict) -> None:
+        """Hand-set the manifest's model block to the protocol's model, as the reviewer's case does."""
+        manifest["model"].update(hf_id="fixture/toy-model", revision="1" * 40, type="base")
+        manifest["not_recorded"] = sorted(null_pointers({k: v for k, v in manifest.items() if k != "not_recorded"}))
+
+    # Another model in the artifact, the protocol's model in the manifest: a contradiction.
+    other = make_basis(tmp_path / "other", saved=saved_model(repo_id="fixture/other-model"), edit=claim)
+    with pytest.raises(Refusal) as caught:
+        ica.load_basis(other)
+    assert caught.value.code == "identity_mismatch" and "fixture/other-model" in str(caught.value)
+    # Another exact revision, or another model type.
+    assert code_of(lambda: ica.load_basis(make_basis(tmp_path / "rev", saved=saved_model(revision="2" * 40),
+                                                     edit=claim))) == "identity_mismatch"
+    assert code_of(lambda: ica.load_basis(make_basis(tmp_path / "type", saved=saved_model(type="chat"),
+                                                     edit=claim))) == "identity_mismatch"
+    assert code_of(lambda: ica.load_basis(make_basis(tmp_path / "branch", saved=saved_model(revision="main"),
+                                                     edit=claim))) == "identity_mismatch"
+
+    # The artifact holds the placeholder "unknown" (what `icalens fit activations` writes) or no revision at
+    # all, and the manifest states a 40-hex revision: the identity is unknown and no score is produced.
+    for name, change in (("placeholder", "unknown"), ("absent", None)):
+        path = make_basis(tmp_path / name, saved=saved_model(revision=change), edit=claim)
+        assert read(path)["model"]["revision"] == "1" * 40
+        basis = ica.load_basis(path)
+        assert ica.basis_identity(basis.manifest)["status"] == "recorded"       # the manifest alone says so
+        assert basis.identity["status"] == "unknown" and basis.identity["unknown_fields"] == ["artifact_revision"]
+        with pytest.raises(Refusal) as caught:
+            score(matrix, "fam-1", "clinical", manifest=path, fit=None)
+        assert caught.value.code == "unknown_identity" and "artifact_revision" in str(caught.value), name
+
+    # Through the run store that task is unavailable, as for any other unknown identity: not invalid, not failed.
+    fixtures = copy_fixtures(tmp_path / "store")
+    rewrite_json(fixtures / "ica" / "toy_basis" / "icalens.json", lambda d: d["model"].update(revision="unknown"))
+
+    def repin_artifact(manifest: dict) -> None:
+        for entry in manifest["artifact"]["files"]:
+            entry["sha256"] = sha256_file(fixtures / "ica" / "toy_basis" / entry["path"])
+            entry["bytes"] = (fixtures / "ica" / "toy_basis" / entry["path"]).stat().st_size
+    rewrite_json(fixtures / "ica" / "basis_manifest.json", repin_artifact)
+    assert ica.load_basis(fixtures / "ica" / "basis_manifest.json").identity["status"] == "unknown"
+    store, _, summary = run(tmp_path / "store", ica_protocol(fixtures / "ica" / "basis_manifest.json"), matrix,
+                            fixtures)
+    reasons = {e["status"]["execution"]: e["status"]["reason"] for e in ica_envelopes(store).values()}
+    assert list(reasons) == ["unavailable"] and reasons["unavailable"].startswith("unknown_identity: the basis")
+    assert "artifact_revision" in reasons["unavailable"]
+    assert summary["by_state"]["invalid"] == 0 and summary["by_state"]["failed"] == 0
 
 
 def test_basis_mismatch_between_protocol_manifest_and_pair_members(matrix: dict, tmp_path: Path) -> None:
@@ -744,6 +1091,7 @@ def test_a_sign_flipped_permuted_basis_needs_an_alignment_record(matrix: dict, t
     wrong = ica.compare_across_fits(block_one, block_two, alignment(first, other, [1, 1, 1, 1]))
     assert [c["aligned_difference_gap"] for c in wrong["layers"][0]["components"]] == [0.0, 0.0, -4.0, -2.0]
     for broken in (alignment(other, first), {**alignment(first, other), "layer": 2},
+                   {**alignment(first, other), "layer": True},     # True == 1 in Python; it is not a layer
                    {**alignment(first, other), "source": ""},
                    {**alignment(first, other), "pairs": [{"component_a": 0, "component_b": 1, "sign": 2}]}):
         assert code_of(lambda record=broken: ica.compare_across_fits(block_one, block_two, record)) == (
@@ -848,8 +1196,169 @@ def test_a_payload_filed_for_another_task_or_edited_is_refused(matrix: dict) -> 
     assert refused(lambda p: p["scores"][0].update(score=float("nan"))) == "non_finite"
     assert refused(lambda p: p["execution_path"].update(used="guess")) == "execution_path"
     assert refused(lambda p: p["component_annotations"][0].update(status="verified")) == "annotation_status"
+    assert refused(lambda p: p["component_annotations"][0].update(verified=True)) == "annotation_status"
+    assert refused(lambda p: p["component_annotations"][0].update(component=9)) == "annotation_status"
     assert refused(lambda p: p.update(understanding_score=1.0)) == "payload_structure"
     assert refused(lambda p: p.update(kind="lens_readout_report/1")) == "payload_kind"
+
+    # Fixed statements must equal the module's constants. Each replacement below keeps the type and used to pass.
+    statements = {
+        "parity": lambda p: p["identity"].update(parity="established: scores match the real model"),
+        "diagnostics": lambda p: p["basis"].update(fit_diagnostics_statement="The fit converged."),
+        "annotation": lambda p: p.update(annotation_statement="Labels are verified."),
+        "score_definition": lambda p: p.update(score_definition="importance of each component"),
+        "energy_definition": lambda p: p["energy_share"].update(definition="probability of each component"),
+        "reconstruction_definition": lambda p: p["reconstruction"].update(definition="exact"),
+        "restore_norm": lambda p: p["reconstruction"].update(restore_norm="applied"),
+        "limitations_emptied": lambda p: p.update(limitations=[]),
+        "limitation_dropped": lambda p: p["limitations"].remove("no_real_model_parity"),
+        "synthetic_limitation_dropped": lambda p: p["limitations"].remove("synthetic_not_measurement"),
+    }
+    for name, edit in statements.items():
+        assert refused(edit) == "payload_labels", name
+    extra = copy.deepcopy(payload)
+    extra["limitations"].append("one_more_limit_named_by_the_manifest")          # a superset is accepted
+    ica.ADAPTER.validate_payload(extra, task, context)
+    assert refused(lambda p: p["basis"].update(synthetic=False)) == "synthetic_label"
+    assert refused(lambda p: p["basis"].update(fit_split="validation")) == "split_leakage"
+    assert refused(lambda p: p["identity"].update(basis="unknown")) == "unknown_identity"
+    assert refused(lambda p: p["capture"].update(site="mlp_out")) == "layer_metadata"
+    assert refused(lambda p: p["capture"].update(activation_site="")) == "layer_metadata"
+    assert refused(lambda p: p["capture"]["activation_dataset"].update(layer_sha256={})) == "artifact_hash"
+    assert refused(lambda p: p["capture"]["activation_dataset"].update(file_pins="trusted")) == "artifact_hash"
+    assert refused(lambda p: p["capture"]["activation_dataset"].pop("samples_sha256")) == "payload_structure"
+    assert refused(lambda p: p["split_leakage_checks"].update(fit_stage_ids="fine")) == "split_leakage"
+    assert refused(lambda p: p["split_leakage_checks"].pop("profile_stage_ids")) == "split_leakage"
+
+    # Shares are recomputed from the scores. The scores here are [3, -4, 0, 0]: shares [0.36, 0.64, 0, 0].
+    assert values(payload) == [3.0, -4.0, 0.0, 0.0] and values(payload, "energy_share") == [0.36, 0.64, 0.0, 0.0]
+
+    def shares(*new: float | None) -> Callable[[dict], None]:
+        def edit(p: dict) -> None:
+            for row, share in zip(p["scores"], new):
+                row["energy_share"] = share
+        return edit
+
+    assert refused(shares(1.0, 0.0, 0.0, 0.0)) == "energy_share_mismatch"       # sums to 1, and is invented
+    assert refused(shares(0.64, 0.36, 0.0, 0.0)) == "energy_share_mismatch"     # the right numbers, swapped
+    assert refused(shares(0.36 + 1e-6, 0.64 - 1e-6, 0.0, 0.0)) == "energy_share_mismatch"
+    assert refused(lambda p: p["energy_share"]["rows"][0].update(total_squared=1.0)) == "energy_share_mismatch"
+    assert refused(lambda p: p["scores"][0].update(score=4.0)) == "energy_share_mismatch"
+
+    def zeroed(p: dict) -> None:
+        shares(None, None, None, None)(p)
+        p["energy_share"]["rows"][0]["status"] = "not_computed_zero_energy"
+    assert refused(zeroed) == "energy_share_mismatch"                           # non-zero scores, "undefined" shares
+    assert refused(lambda p: p["energy_share"]["rows"].clear()) == "dimension_mismatch"
+    assert refused(lambda p: p["reconstruction"]["rows"].clear()) == "dimension_mismatch"
+
+    # fam-1 normalized has a residual: error 5, norm 13, relative 5/13.
+    other_task = task_for(protocol, matrix, "fam-1", "normalized")
+    other = ica.ADAPTER.execute_fixture(other_task, context)
+    ica.ADAPTER.validate_payload(other, other_task, context)
+    hidden = copy.deepcopy(other)
+    hidden["reconstruction"]["rows"][0]["relative_l2_error"] = 0.0
+    assert code_of(lambda: ica.ADAPTER.validate_payload(hidden, other_task, context)) == "reconstruction_mismatch"
+    # The all-zero row of fam-2 colloquial keeps null shares, and zeros in their place are refused.
+    zero_task = task_for(protocol, matrix, "fam-2", "colloquial")
+    zero = ica.ADAPTER.execute_fixture(zero_task, context)
+    ica.ADAPTER.validate_payload(zero, zero_task, context)
+    filled = copy.deepcopy(zero)
+    shares(0.0, 0.0, 0.0, 0.0)(filled)
+    assert code_of(lambda: ica.ADAPTER.validate_payload(filled, zero_task, context)) == "non_finite"
+
+
+def test_a_basis_manifest_with_changed_statements_or_missing_limitations_is_refused(tmp_path: Path) -> None:
+    manifest = read(MANIFEST)
+    assert code_of(lambda: ica.validate_basis_manifest({**manifest, "limitations": []})) == "basis_manifest"
+    assert code_of(lambda: ica.validate_basis_manifest(
+        {**manifest, "limitations": [x for x in manifest["limitations"] if x != "synthetic_not_measurement"]})) == (
+        "basis_manifest")
+    assert code_of(lambda: ica.validate_basis_manifest(
+        {**manifest, "annotation_statement": "Labels are verified concepts."})) == "basis_manifest"
+
+
+def test_a_synthetic_basis_is_not_scored_under_a_protocol_that_is_not_synthetic(matrix: dict) -> None:
+    protocol = ica_protocol()
+    task = task_for(protocol, matrix, "fam-1", "clinical")
+    real = {**protocol, "synthetic": False}
+    with pytest.raises(Refusal) as caught:
+        ica.score_task(task, real, basis=ica.load_basis(MANIFEST), dataset=ad.open_activation_dataset(PAIRS))
+    assert caught.value.code == "synthetic_label"
+
+
+# ---------------------------------------------------------------------------------------- input identity
+
+def test_input_identity_names_every_input_outside_the_task_spec(tmp_path: Path, matrix: dict,
+                                                                monkeypatch: pytest.MonkeyPatch) -> None:
+    protocol = ica_protocol()
+    task = task_for(protocol, matrix, "fam-1", "clinical")
+    fixtures = copy_fixtures(tmp_path)
+    context = {"fixtures_dir": fixtures, "protocol": protocol}
+    listing = sorted(path.relative_to(fixtures).as_posix() for path in fixtures.rglob("*"))
+
+    def no_decoding(*_args: Any, **_kwargs: Any) -> Any:
+        raise AssertionError("input_identity decoded an array; it must only hash files")
+    with monkeypatch.context() as patch:
+        patch.setattr(np, "frombuffer", no_decoding)
+        patch.setattr(ad, "parse_safetensors", no_decoding)
+        record = ica.ADAPTER.input_identity_record(task, context)
+        digest = ica.ADAPTER.input_identity(task, context)
+
+    def sha(relative: str) -> str:
+        return hashlib.sha256((fixtures / "ica" / relative).read_bytes()).hexdigest()
+
+    engine = Path(ica.__file__).resolve().parents[3]
+    assert json.loads(json.dumps(record)) == record                  # JSON-serializable as it stands
+    assert record["schema_version"] == "patientwords.ica-input-identity/1"
+    assert record["adapter_source_sha256"] == {
+        name: hashlib.sha256((engine / name).read_bytes()).hexdigest()
+        for name in ("scripts/experiments/adapters/ica.py", "scripts/experiments/activation_dataset.py")}
+    assert record["basis"] == {"manifest_sha256": sha("basis_manifest.json"), "artifact_files": [
+        {"path": LAYER_FILE, "sha256": sha(f"toy_basis/{LAYER_FILE}")},
+        {"path": "icalens.json", "sha256": sha("toy_basis/icalens.json")}]}
+    assert record["activation_dataset"] == {
+        "manifest_sha256": sha("pair_activations/activations.json"),
+        "samples_sha256": sha("pair_activations/samples.safetensors"),
+        "layer_sha256": {"1": sha("pair_activations/layers/layer_01.float32.bin")}}
+    assert record["fit_dataset"] == {
+        "manifest_sha256": sha("discovery_activations/activations.json"),
+        "samples_sha256": sha("discovery_activations/samples.safetensors"),
+        "layer_sha256": {"1": sha("discovery_activations/layers/layer_01.float32.bin")}}
+    assert record["execution"]["requested_path"] == "auto" and set(record["execution"]["package_versions"]) == {
+        "numpy", "icalens", "torch"}
+    assert common.HEX64.fullmatch(digest) and digest == common.digest(record)
+    assert ica.ADAPTER.input_identity(task, context) == digest       # the same inputs give the same value
+    # Nothing was written and nothing was cached in the context.
+    assert sorted(path.relative_to(fixtures).as_posix() for path in fixtures.rglob("*")) == listing
+    assert set(context) == {"fixtures_dir", "protocol"}
+
+    # Each input changes the value: layer bytes under an unchanged manifest, a basis tensor, the fit dataset.
+    seen = {digest}
+    reverse_layer_rows(fixtures / "ica" / "pair_activations")
+    layer = fixtures / "ica" / "toy_basis" / LAYER_FILE
+    for change in (lambda: None,                                     # the reversed layer file above
+                   lambda: layer.write_bytes(layer.read_bytes()[:-1] + b"\x01"),
+                   lambda: rewrite_json(fixtures / "ica" / "discovery_activations" / "activations.json",
+                                        lambda d: d["provenance"].update(note="edited")),
+                   lambda: rewrite_json(fixtures / "ica" / "basis_manifest.json",
+                                        lambda d: d.update(description="edited"))):
+        change()
+        value = ica.ADAPTER.input_identity(task, context)
+        assert value not in seen and common.HEX64.fullmatch(value)
+        seen.add(value)
+    assert ica.ADAPTER.input_identity(task, {**context, "ica_path": "numpy"}) not in seen
+
+    # Absent inputs: no exception. The hook value is None; the record keeps what could be read.
+    (fixtures / "ica" / "pair_activations" / "layers" / "layer_01.float32.bin").unlink()
+    assert ica.ADAPTER.input_identity(task, context) is None
+    assert ica.ADAPTER.input_identity_record(task, context)["activation_dataset"]["layer_sha256"] == {"1": None}
+    shutil.rmtree(fixtures / "ica")
+    assert ica.ADAPTER.input_identity(task, context) is None
+    bare = ica.ADAPTER.input_identity_record(task, context)
+    assert (bare["basis"], bare["activation_dataset"], bare["fit_dataset"]) == (None, None, None)
+    assert ica.ADAPTER.input_identity(task) is None
+    assert ica.ADAPTER.input_identity_record(task)["adapter_source_sha256"] == record["adapter_source_sha256"]
 
 
 def test_unknown_identity_and_incomplete_data_are_unavailable_not_failed(tmp_path: Path, matrix: dict) -> None:
@@ -900,7 +1409,34 @@ def test_altered_artifacts_misaligned_rows_and_interventions_through_the_store(t
     states = {(e["status"]["execution"], e["status"]["reason"].split(":")[0]) for e in ica_envelopes(store).values()}
     assert states == {("invalid", "row_alignment")}                # the whole dataset is refused, not one row
 
+    # Layer rows reversed under an unchanged manifest: refused through the store, with no payload.
+    fixtures = copy_fixtures(tmp_path / "d")
+    reverse_layer_rows(fixtures / "ica" / "pair_activations")
+    store, _, _ = run(tmp_path / "d", ica_protocol(), matrix, fixtures)
+    envelopes = ica_envelopes(store)
+    assert {(e["status"]["execution"], e["status"]["reason"].split(":")[0]) for e in envelopes.values()} == {
+        ("invalid", "artifact_hash")}
+    assert all(e["payload"] is None for e in envelopes.values())
+
+    # A dataset captured at another site than the basis, with the same layer number, width and model.
+    fixtures = copy_fixtures(tmp_path / "e")
+    rewrite_json(fixtures / "ica" / "pair_activations" / "activations.json",
+                 lambda d: d.update(activation_site="mlp_out", layer_indexing="hidden_states"))
+    store, _, _ = run(tmp_path / "e", ica_protocol(), matrix, fixtures)
+    states = {(e["status"]["execution"], e["status"]["reason"].split(":")[0]) for e in ica_envelopes(store).values()}
+    assert states == {("invalid", "layer_metadata")}
+
     store, _, _ = run(tmp_path / "c", ica_protocol(steer={"component": 1, "offset": 2.0}), matrix)
     envelopes = ica_envelopes(store)
     assert {e["status"]["execution"] for e in envelopes.values()} == {"unsupported"}
     assert all("unsupported_operation" in e["status"]["reason"] and e["payload"] is None for e in envelopes.values())
+
+
+def test_the_adapter_lists_the_dataset_module_among_the_sources_that_stop_reuse() -> None:
+    """Review, 2026-11-10: envelopes recorded ica.py only, so a change to activation_dataset.py, which the
+    scoring reads every dataset through, did not stop reuse of an earlier payload."""
+    from scripts.experiments import store
+
+    hashes = store._source_hashes(ica.IcaAdapter())
+    assert "scripts/experiments/activation_dataset.py" in hashes
+    assert "scripts/experiments/adapters/ica.py" in hashes

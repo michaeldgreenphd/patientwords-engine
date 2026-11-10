@@ -11,8 +11,8 @@
   ],
   "verification_meaning": {
     "verified_exact": "The Neuronpedia ids were read in a primary source and the hosted checkpoint revision is recorded and equals the study revision. The only status that permits a link.",
-    "alias_unverified_checkpoint": "Another id is reported for the same checkpoint. No record of the checkpoint revision behind that id was read. An alias alone verifies nothing.",
-    "hosted_identity_unknown": "The engine uses these hosted ids and responses have landed. The service reports no model, dictionary or instrument revision, so what answered is not identified.",
+    "alias_unverified_checkpoint": "Another id is given for the same checkpoint by the source that the entry's id_source names. No record of the checkpoint revision behind that id was read. An alias alone verifies nothing.",
+    "hosted_identity_unknown": "The engine uses these hosted ids and responses have landed. The engine records no model, dictionary or instrument revision for these responses; whether the service reports one was not read. What answered is therefore not identified.",
     "unverified": "The representation is named in a source that was read. Its own manifest or page was not read."
   },
   "sources_not_read": [
@@ -432,7 +432,7 @@
         "model_id": "qwen3.5-2b-pt",
         "source_set": null,
         "source_id": null,
-        "id_source": "The task brief of 2026-11-10 names this id, and a web-search result title recorded the same day carries it. A search result is not a page read. No Neuronpedia page was read. Unverified."
+        "id_source": "Supplied in the owner's task brief of 2026-11-10 for this session. The brief is not a file in this repository and no retrievable record of it exists here. Unverified against the service: www.neuronpedia.org was blocked by this environment's network policy on 2026-11-10, so no Neuronpedia page was read."
       },
       "site": {
         "capture_site": null,
@@ -468,14 +468,19 @@
             "states": "The pin was the head of main on 2026-10-09, read from the Hugging Face models API; the repository was last modified on 2026-04-23."
           },
           {
-            "source": "https://www.neuronpedia.org/blog/neurons-ica",
+            "source": "owner's task brief of 2026-11-10 for this session (not a file in this repository; no retrievable record)",
             "date": "2026-11-10",
-            "states": "Not read: the host is outside this session's allowed network domains. It states nothing here about the checkpoint behind qwen3.5-2b-pt."
+            "states": "Supplies qwen3.5-2b-pt as the Neuronpedia id of the Qwen3.5 2B base checkpoint. This is the only origin of the id here. It was not checked against the service."
           },
           {
-            "source": "michaeldgreenphd/patientwords-ica-lens-paper@aa3b95c9e755e4374f8c9645a064e3f51d96066e: search for the engine pin and for 'neuronpedia'",
+            "source": "https://www.neuronpedia.org/blog/neurons-ica",
             "date": "2026-11-10",
-            "states": "The ICA fork records no revision of Qwen/Qwen3.5-2B-Base, no Neuronpedia model id and no source id. It names no released basis for this checkpoint."
+            "states": "Not read: www.neuronpedia.org was blocked by this environment's network policy. It states nothing here about qwen3.5-2b-pt or the checkpoint behind it."
+          },
+          {
+            "source": "michaeldgreenphd/patientwords-ica-lens-paper@aa3b95c9e755e4374f8c9645a064e3f51d96066e: search for the engine pin, for 'neuronpedia' and for the model id",
+            "date": "2026-11-10",
+            "states": "The ICA fork records no revision of Qwen/Qwen3.5-2B-Base, no Neuronpedia model id and no source id, and it names no released ICA basis for this checkpoint. It does name the model in places that are not a released basis: notes/naming.md:24 lists sida/icalens-qwen-3.5-2b as a repository id in its naming scheme, without saying base or instruct and without saying the repository exists; integrations/r_lens/fit_qwen35.py:21-24 holds an R-lens fitting preset for Qwen/Qwen3.5-2B-Base, which is not an ICA basis; model_framing.json:13 and src/icalens/experiments/saebench_backends.json:21-23 list the model."
           }
         ],
         "checked_utc_date": "2026-11-10"
@@ -499,7 +504,7 @@
         "/url_pattern",
         "/verification/hosted_checkpoint_revision"
       ],
-      "notes": "An alias only. The two ids are reported to name the same base checkpoint. No record read today states which Hugging Face commit Neuronpedia serves under qwen3.5-2b-pt or which commit its ICA components were fitted on, so equality with the engine pin is unverified. The ICA source-set id, source ids, layers, component-id form and label source on Neuronpedia are unknown. To move this entry to verified_exact: read the Neuronpedia model record and the ICA release's manifest, record the checkpoint commit in hosted_checkpoint_revision, and confirm it equals the engine pin."
+      "notes": "An alias only. The owner's task brief of 2026-11-10 gives qwen3.5-2b-pt as the Neuronpedia id of this base checkpoint; nothing in the repository and nothing read from the service confirms that the two ids name the same checkpoint. No record read today states which Hugging Face commit Neuronpedia serves under qwen3.5-2b-pt or which commit its ICA components were fitted on, so equality with the engine pin is unverified. The ICA source-set id, source ids, layers, component-id form and label source on Neuronpedia are unknown. To move this entry to verified_exact: read the Neuronpedia model record and the ICA release's manifest, record the checkpoint commit in hosted_checkpoint_revision, and confirm it equals the engine pin."
     },
     {
       "registry_id": "gemma-2-2b.ica-component.sida-icalens-gemma-2-2b-pile10k",

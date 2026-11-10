@@ -108,7 +108,9 @@ def run(out: Path, *, mode: str, n_components: int, max_iter: int, seed: int) ->
                      "numpy": np.__version__, "safetensors": installed("safetensors")},
         "icalens_source": str(Path(icalens.__file__).resolve().parent),
         "format": {"reference_reader_read_this_writers_dataset": format_agrees,
-                   "activation_manifest_sha256": mine.manifest_sha256},
+                   "activation_manifest_sha256": mine.manifest_sha256,
+                   # "verified" when the manifest records the SHA-256 of its files and they matched.
+                   "activation_file_pins": mine.verify_files()["file_pins"]},
         "fit": {"preprocessing_passed": mode, "preprocessing_saved": saved_mode, "n_components": n_components,
                 "max_iter": max_iter, "seed": seed, "device": "cpu", "n_samples": int(values.shape[0]),
                 "hidden_size": int(values.shape[1]), "wall_seconds": fit_seconds,

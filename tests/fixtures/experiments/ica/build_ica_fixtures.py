@@ -17,6 +17,12 @@ Files written:
   ``tests/test_experiments_ica_icalens.py`` fit a separate lens on it with the ``icalens`` package.
 * ``fixture_index.json``: the SHA-256 of every file above and the ``ica_lens`` method block that names the basis.
 
+Both datasets carry the writer's file pins (``provenance.patientwords_files``: SHA-256 and byte count of the layer
+file and of the samples file), so each ``activations.json`` hash covers the activation values, and the basis
+manifest names the discovery dataset by that hash. A change to either dataset therefore changes the basis manifest
+hash; ``../protocol_synthetic_ica.json`` repeats that hash and must be updated with it
+(``tests/test_experiments_slice.py`` compares the two).
+
 The toy basis, with ``B = [[1,1,0,0],[0,1,0,0],[0,0,1,2],[0,0,0,1]]``:
 
     center          c = [1, 2, 0, -1, 0, 0, 0, 0]

@@ -2,7 +2,9 @@
 
 THIS MODULE MAKES NO NETWORK REQUEST. It imports no HTTP client and no socket. It reads the registry file, hashes
 files a person already downloaded, and validates records a caller built. ``tests/test_experiments_neuronpedia.py``
-runs every public function with ``socket.socket`` replaced by a function that raises.
+(``test_importing_and_using_the_module_opens_no_socket``) calls every public function of this module with
+``socket.socket``, ``socket.create_connection`` and ``socket.getaddrinfo`` replaced by a function that raises,
+and fails when a public function is added that it does not call.
 
 What it holds:
 
@@ -17,7 +19,9 @@ What it holds:
   integers only. No prompt, no patient-style text and no other free text can enter one: the functions take no text
   argument, refuse a non-integer component id and check the finished URL against a closed character set.
 * Snapshot records for bulk exports and a request record for bounded API calls. Both are structures with
-  validation. Somebody else performs the download or the request.
+  validation. Somebody else performs the download or the request. A request record is checked by key name, by
+  value type and by character class, so that a credential or prompt text cannot be stored in one under another
+  key name or as a string value; ``validate_request_record`` states what that check cannot see.
 * Explanation provenance: several competing labels per feature, each with its source and scorer, and four
   quantities that stay in four differently named fields.
 * ``validate_graph_reference`` for the envelope payload kind ``attribution_graph_ref/1``: ids, hashes and
@@ -104,10 +108,40 @@ GENERIC_SCORE_KEYS = frozenset({
 })
 LABEL_SELECTION_KEYS = frozenset({"primary_label", "best_label", "selected_label", "label"})
 OUTCOME_OWNER = "patientwords"
+# Closed key sets. A label, its source and a scorer hold these keys and no other, so a number, a rank or a
+# flag that selects a label has nowhere to sit inside one.
+LABEL_KEYS = ("label_id", "text", "basis", "flags", "status", "source", "scorer")
+LABEL_OPTIONAL_KEYS = ("tokens",)
+SOURCE_KEYS = ("name", "version", "explanation_type", "explanation_model", "retrieved_utc")
+SCORER_KEYS = ("name", "version")
 
-# Keys a request record's settings may not hold at any depth: prompt text and credentials stay out of records.
-TEXT_KEYS = frozenset({"prompt", "prompts", "text", "messages", "input_text"})
-SECRET_KEYS = frozenset({"x-api-key", "api_key", "apikey", "authorization", "token", "secret", "password"})
+# Request records. Both repositories are public and a validated record is a file that gets committed, so the
+# record is checked three ways: by key name, by value type and by the character class of the few strings allowed.
+#
+# 1. Key names. A key is lowercased and stripped of everything but letters and digits, then refused when it
+#    CONTAINS one of the fragments below. "NEURONPEDIA_API_KEY", "x-api-key", "apiKey" and "keys" all contain
+#    "key"; "user_prompt", "promptText" and "prompts" all contain "prompt".
+SECRET_FRAGMENTS = ("key", "token", "secret", "auth", "password", "passwd", "pwd", "cookie", "bearer", "credential",
+                    "session", "signature", "header", "jwt")
+TEXT_FRAGMENTS = ("prompt", "text", "message", "content", "input", "query", "body", "slug", "completion",
+                  "utterance", "transcript")
+# Two exceptions, each with its own value rule. A key that ends in "sha256" names its subject by hash
+# (prompt_sha256, token_sha256) and must hold 64 hex digits or null; the text fragments and "token" do not
+# refuse it, every other secret fragment still does. The counted settings below are fields of the engine's own
+# lens request (scripts/jlens_readout.py, lens_request_body) and of common completion APIs; they are matched by
+# exact normalized name and must hold a boolean or an integer.
+HASH_KEY_SUFFIX = "sha256"
+COUNT_SETTING_KEYS = frozenset({"numcompletiontokens", "filternonwordtokens", "maxtokens", "maxnewtokens"})
+# 2. Value types. A value is null, a boolean, a finite number, an object or a list of those. A string is
+#    allowed only under one of these normalized keys, where it must be an id (optionally "owner/name"), or a
+#    list of ids; under a hash key, where it must be 64 hex digits; nowhere else.
+ID_VALUE_KEYS = frozenset({"modelid", "sourceset", "sourcesetname", "sourceid", "service", "instrumentrevision",
+                           "modelrevision", "dictionaryrevision", "type", "lens", "lenstype", "dtype"})
+ID_VALUE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}(/[A-Za-z0-9][A-Za-z0-9._-]{0,63})?\Z")
+SETTING_KEY = re.compile(r"[A-Za-z][A-Za-z0-9_.-]{0,47}\Z")
+# 3. An id-shaped string that starts like a credential of a known issuer is refused even under an id key.
+CREDENTIAL_PREFIXES = ("sk-", "hf_", "aiza", "ghp_", "gho_", "github_pat_", "xox")
+ENDPOINT_PATH = re.compile(r"(/[A-Za-z0-9._~{}-]{1,64})+\Z")
 
 
 # ------------------------------------------------------------------------------------------------ registry
@@ -319,11 +353,16 @@ def resolve(study_model_id: str, representation_type: str, layer: int | None = N
     """The registry entry for a study model and representation type, or a typed result that says why none.
 
     Matching is on the engine's study id, never on a Neuronpedia id: an alias is a field of an entry and is not a
-    second key. ``layer`` excludes an entry whose recorded layers omit it; an entry that records no layer list
-    still matches and the result says ``layer_coverage: 'not_recorded'``. Two matching entries give ``ambiguous``
+    second key. ``study_model_id`` must be a non-empty string (``invalid_input`` otherwise), so an entry whose
+    model has no study id (a basis for a model the engine does not run) is never returned. ``layer`` excludes
+    an entry whose recorded layers omit it; an entry that records no layer list still matches and the result
+    says ``layer_coverage: 'not_recorded'``. Two matching entries give ``ambiguous``
     with both ids; the caller narrows with ``method``, ``source_set`` or ``artifact_id``. Nothing is picked for
     the caller. ``require_verified`` turns a match that is not ``verified_exact`` into ``no_mapping``.
     """
+    require(text(study_model_id), "invalid_input",
+            f"study_model_id must be a non-empty string, the engine's study id; got {study_model_id!r}. An entry "
+            "whose model has no study id is not an engine model and is never matched")
     require(representation_type in REPRESENTATION_TYPES, "representation_type",
             f"representation_type must be one of {list(REPRESENTATION_TYPES)}; got {representation_type!r}")
     require(layer is None or integer(layer), "layer_metadata", "layer must be a non-negative integer or None")
@@ -521,19 +560,66 @@ def verify_snapshot(path: Path | str, record: Mapping[str, Any]) -> dict[str, An
 
 # ------------------------------------------------------------------------------------------------ request records
 
-def _forbidden_keys(value: Any, path: str = "") -> list[tuple[str, str]]:
+def _normalized(key: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", key.lower())
+
+
+def _id_string(value: Any) -> bool:
+    return isinstance(value, str) and bool(ID_VALUE.fullmatch(value))
+
+
+def _number(value: Any) -> bool:
+    return value is None or isinstance(value, bool) or (type(value) in (int, float) and math.isfinite(value))
+
+
+def _record_violations(value: Any, path: str) -> list[tuple[str, str]]:
+    """``(refusal code, JSON pointer)`` for everything in a settings or identity block that the three rules
+    above refuse. Pointers name keys only; a value is never copied into a message."""
     found: list[tuple[str, str]] = []
-    if isinstance(value, dict):
-        for key in sorted(value):
-            lowered = str(key).lower()
-            if lowered in TEXT_KEYS:
-                found.append(("prompt_text_in_record", f"{path}/{key}"))
-            if lowered in SECRET_KEYS:
-                found.append(("secret_in_record", f"{path}/{key}"))
-            found.extend(_forbidden_keys(value[key], f"{path}/{key}"))
-    elif isinstance(value, list):
+    if isinstance(value, list):
         for number, item in enumerate(value):
-            found.extend(_forbidden_keys(item, f"{path}/{number}"))
+            where = f"{path}/{number}"
+            if isinstance(item, (dict, list)):
+                found.extend(_record_violations(item, where))
+            elif not _number(item):
+                found.append(("free_text_in_record", where))
+        return found
+    for number, key in enumerate(sorted(value, key=str)):
+        item = value[key]
+        if not isinstance(key, str) or not SETTING_KEY.fullmatch(key):
+            # Not echoed: a key that is not a short identifier may itself be the text that must not be stored.
+            found.append(("free_text_in_record", f"{path}/(key number {number}: not a short identifier)"))
+            continue
+        where = f"{path}/{key}"
+        name = _normalized(key)
+        hashed = name.endswith(HASH_KEY_SUFFIX)
+        counted = name in COUNT_SETTING_KEYS
+        stem = name[:-len(HASH_KEY_SUFFIX)] if hashed else name
+        textual = not hashed and not counted and any(fragment in name for fragment in TEXT_FRAGMENTS)
+        secret = not counted and any(fragment in stem for fragment in SECRET_FRAGMENTS
+                                     if not (hashed and fragment == "token"))
+        if textual:
+            found.append(("prompt_text_in_record", where))
+        if secret:
+            found.append(("secret_in_record", where))
+        if textual or secret:
+            continue
+        if hashed:
+            if not (item is None or (isinstance(item, str) and HEX64.fullmatch(item))):
+                found.append(("free_text_in_record", where))
+        elif counted:
+            if not (isinstance(item, bool) or integer(item)):
+                found.append(("free_text_in_record", where))
+        elif isinstance(item, str) or (name in ID_VALUE_KEYS and isinstance(item, list)):
+            strings = item if isinstance(item, list) else [item]
+            if name not in ID_VALUE_KEYS or not strings or not all(_id_string(one) for one in strings):
+                found.append(("free_text_in_record", where))
+            elif any(one.lower().startswith(CREDENTIAL_PREFIXES) for one in strings):
+                found.append(("secret_in_record", where))
+        elif isinstance(item, (dict, list)):
+            found.extend(_record_violations(item, where))
+        elif not _number(item):
+            found.append(("free_text_in_record", where))
     return found
 
 
@@ -543,9 +629,28 @@ def validate_request_record(doc: Any) -> dict[str, Any]:
 
     The record has ``endpoint``, ``effective_request_settings``, ``service_identity``, ``response_sha256``,
     ``retrieved_utc`` and ``not_recorded``. ``effective_request_settings`` holds the settings the service
-    applied, defaults included, with the input named by hash; a key that would hold prompt text or a credential
-    is refused at any depth. ``service_identity`` says which host and which model or instrument answered; a
-    revision the service did not report is null and listed. This is a structure. Nothing here sends it.
+    applied, defaults included, with the input named by hash. ``service_identity`` says which host and which
+    model or instrument answered; a revision the service did not report is null and listed. This is a
+    structure. Nothing here sends it.
+
+    Neither block may hold prompt text or a credential, at any depth. The check has three parts:
+
+    * by key name: a key whose letters and digits, lowercased, contain a credential fragment (``key``,
+      ``token``, ``secret``, ``auth``, ...: ``secret_in_record``) or a text fragment (``prompt``, ``text``,
+      ``message``, ``content``, ``input``, ``query``, ``body``, ``slug``, ...: ``prompt_text_in_record``) is
+      refused, whatever its value. A key ending in ``sha256`` and four counted settings are the exceptions, each
+      with its own value rule;
+    * by value type: a string is accepted only under a known id key (``model_id``, ``source_set``, ``service``,
+      ``instrument_revision``, ``type``, ...), where it must have the form of an id, or under a hash key, where
+      it must be 64 hex digits. Every other value is null, a boolean, a finite number, an object or a list of
+      those (``free_text_in_record`` otherwise). A sentence therefore cannot be stored under any key, and
+      neither can a string inside a list;
+    * by prefix: an id-shaped string that starts like a credential of a known issuer is ``secret_in_record``.
+
+    What this cannot see: a credential or a short text that has the form of an id (64 characters at most, no
+    whitespace) and is stored under one of the id keys; words spelled as a key name or as an endpoint path
+    segment; a number that encodes something. The check is on names, types and character classes. It does not
+    read meaning, and a record still needs a person's review before it is committed.
     """
     keys = {"schema_version", "endpoint", "effective_request_settings", "service_identity", "response_sha256",
             "retrieved_utc", "not_recorded"}
@@ -555,16 +660,19 @@ def validate_request_record(doc: Any) -> dict[str, Any]:
     endpoint = doc["endpoint"]
     require(isinstance(endpoint, dict) and set(endpoint) == {"method", "host", "path"}
             and endpoint["method"] in ("GET", "POST") and bool(re.fullmatch(r"[A-Za-z0-9.-]+", str(endpoint["host"])))
-            and bool(re.fullmatch(r"(/[A-Za-z0-9._~{}-]+)+", str(endpoint["path"]))), "request_record",
-            "endpoint is {method: GET|POST, host, path}; the path has no query string and no text")
+            and bool(ENDPOINT_PATH.fullmatch(str(endpoint["path"]))), "request_record",
+            "endpoint is {method: GET|POST, host, path}; the path has no query string and no text, and each of "
+            "its segments has at most 64 characters")
     settings, identity = doc["effective_request_settings"], doc["service_identity"]
     require(isinstance(settings, dict) and isinstance(identity, dict), "request_record",
             "effective_request_settings and service_identity must be objects")
     require({"service", "model_id", "instrument_revision"} <= set(identity) and text(identity["service"]),
             "request_record", "service_identity needs service, model_id and instrument_revision")
-    forbidden = _forbidden_keys({"effective_request_settings": settings, "service_identity": identity})
-    require(not forbidden, forbidden[0][0] if forbidden else "request_record",
-            f"keys that hold prompt text or a credential are refused: {[where for _, where in forbidden]}")
+    refused = (_record_violations(settings, "/effective_request_settings")
+               + _record_violations(identity, "/service_identity"))
+    require(not refused, refused[0][0] if refused else "request_record",
+            "a request record holds no prompt text, no credential and no free string. Refused, by key: "
+            f"{[f'{where} ({code})' for code, where in refused]}")
     require(doc["response_sha256"] is None or bool(HEX64.fullmatch(str(doc["response_sha256"]))), "request_record",
             "response_sha256 must be 64 hex or null")
     _stamp(doc["retrieved_utc"], "request_record", "retrieved_utc")
@@ -598,6 +706,28 @@ def token_list_label(label_id: str, tokens: Iterable[str], *, source: Mapping[st
             "scorer": dict(scorer) if scorer is not None else None}
 
 
+def _closed(node: Any, required: Iterable[str], optional: Iterable[str], where: str, code: str) -> None:
+    """``node`` is an object with every key of ``required`` and no key outside ``required`` and ``optional``.
+    A generic score key is ``merged_score``; any other missing or extra key is ``code``."""
+    require(isinstance(node, dict), code, f"{where} must be an object")
+    generic = sorted(key for key in node if key in GENERIC_SCORE_KEYS
+                     or _normalized(str(key)).endswith(("score", "scores")))
+    require(not generic, "merged_score", f"{where}: generic score keys are refused: {generic}")
+    required, allowed = set(required), set(required) | set(optional)
+    require(required <= set(node) <= allowed, code,
+            f"{where} holds exactly {sorted(required)}"
+            + (f" and optionally {sorted(allowed - required)}" if allowed - required else "")
+            + f"; missing {sorted(required - set(node))}, not allowed {sorted(set(node) - allowed)}")
+
+
+def _check_scorer(scorer: Any, where: str, code: str) -> None:
+    """A scorer is ``{name, version}`` and nothing else: a name, and a version that is a string or null. A
+    number has no place in it; a score belongs in one of the four quantity fields."""
+    _closed(scorer, SCORER_KEYS, (), where, code)
+    require(text(scorer["name"]) and (scorer["version"] is None or isinstance(scorer["version"], str)), code,
+            f"{where}: name must be text and version a string or null")
+
+
 def _check_quantity(record: Any, field: str, where: str, label_ids: set[str]) -> None:
     require(isinstance(record, dict), "invalid_input", f"{where}: a quantity record must be an object")
     generic = sorted(GENERIC_SCORE_KEYS.intersection(record))
@@ -616,10 +746,9 @@ def _check_quantity(record: Any, field: str, where: str, label_ids: set[str]) ->
         require("missing_reason" not in record, "missing_value", f"{where}: missing_reason with a value")
         require(type(value) in (int, float) and math.isfinite(value), "quantity_fields", f"{where}: value")
     if field in ("feature_interpretability_score", "label_prediction_score"):
-        scorer = record.get("scorer")
-        require(isinstance(scorer, dict) and text(scorer.get("name")) and "version" in scorer
-                and text(record.get("scale")), "quantity_fields",
+        require(isinstance(record.get("scorer"), dict) and text(record.get("scale")), "quantity_fields",
                 f"{where}: {field} needs scorer {{name, version}} and a scale")
+        _check_scorer(record["scorer"], f"{where}.scorer", "quantity_fields")
     if field == "label_prediction_score":
         require(record.get("label_id") in label_ids, "quantity_fields",
                 f"{where}: label_id must name one of this feature's labels")
@@ -638,7 +767,12 @@ def _check_quantity(record: Any, field: str, where: str, label_ids: set[str]) ->
 def validate_feature_explanations(doc: Any) -> dict[str, Any]:
     """Validate the explanation record of one component and return it.
 
-    ``labels`` keeps every competing label, each with ``source`` and ``scorer``; no key selects a winner.
+    ``labels`` keeps every competing label, each with ``source`` and ``scorer``; no key selects a winner. The
+    key sets of a label (``label_id``, ``text``, ``basis``, ``flags``, ``status``, ``source``, ``scorer`` and,
+    for a token-list label, ``tokens``), of a source and of a scorer are closed, and a flag is one of the known
+    flags. A rank, a confidence, a "best" marker or a merged number therefore has no key to sit under inside a
+    label, its source or its scorer. A label that carries ``tokens`` needs the token-list flag whatever basis
+    it declares.
     ``quantities`` has four fields: ``feature_interpretability_score`` (how well any description accounts for
     the component, under a named scorer), ``label_prediction_score`` (how well one named label predicts the
     activations, under a named scorer), ``lens_token_rank`` (the rank of a token in a lens readout at a layer)
@@ -662,26 +796,31 @@ def validate_feature_explanations(doc: Any) -> dict[str, Any]:
     label_ids: set[str] = set()
     for number, label in enumerate(labels):
         where = f"labels[{number}]"
-        require(isinstance(label, dict) and {"label_id", "text", "basis", "flags", "status", "source", "scorer"}
-                <= set(label), "explanation_record", f"{where}: label_id, text, basis, flags, status, source, scorer")
-        generic = sorted(GENERIC_SCORE_KEYS.intersection(label))
-        require(not generic, "merged_score", f"{where}: generic score keys are refused: {generic}")
+        _closed(label, LABEL_KEYS, LABEL_OPTIONAL_KEYS, where, "explanation_record")
         require(text(label["label_id"]) and label["label_id"] not in label_ids, "duplicate_label",
                 f"{where}: label_id must be present and distinct")
         label_ids.add(label["label_id"])
-        require(text(label["text"]) and label["basis"] in LABEL_BASES and isinstance(label["flags"], list),
-                "explanation_record", f"{where}: text, basis (one of {list(LABEL_BASES)}) and flags")
+        require(text(label["text"]) and isinstance(label["basis"], str) and label["basis"] in LABEL_BASES
+                and isinstance(label["flags"], list), "explanation_record",
+                f"{where}: text, basis (one of {list(LABEL_BASES)}) and flags")
+        require(all(isinstance(flag, str) and flag in FLAG_TEXT for flag in label["flags"]), "explanation_record",
+                f"{where}: flags holds only the known flags {sorted(FLAG_TEXT)}")
         require(label["status"] == LABEL_STATUS, "annotation_status",
                 f"{where}: a label is stored with status '{LABEL_STATUS}'")
-        require(label["basis"] != TOKEN_LIST_BASIS or TOKEN_LIST_FLAG in label["flags"], "token_list_label",
-                f"{where}: a label built from a token list alone carries the flag {TOKEN_LIST_FLAG!r} "
-                f"({FLAG_TEXT[TOKEN_LIST_FLAG]})")
+        if "tokens" in label:
+            require(isinstance(label["tokens"], list) and bool(label["tokens"]) and all(
+                text(token) for token in label["tokens"]), "token_list_label",
+                f"{where}: tokens is a non-empty list of strings")
+        require((label["basis"] != TOKEN_LIST_BASIS and "tokens" not in label) or TOKEN_LIST_FLAG in label["flags"],
+                "token_list_label",
+                f"{where}: a label built from a token list, or one that carries its tokens, has the flag "
+                f"{TOKEN_LIST_FLAG!r} ({FLAG_TEXT[TOKEN_LIST_FLAG]}), whatever basis it declares")
         source, scorer = label["source"], label["scorer"]
-        require(isinstance(source, dict) and {"name", "version", "explanation_type", "explanation_model",
-                                              "retrieved_utc"} <= set(source), "explanation_record",
-                f"{where}: source needs name, version, explanation_type, explanation_model, retrieved_utc")
-        require(scorer is None or (isinstance(scorer, dict) and {"name", "version"} <= set(scorer)),
-                "explanation_record", f"{where}: scorer is {{name, version}} or null")
+        _closed(source, SOURCE_KEYS, (), f"{where}.source", "explanation_record")
+        require(all(source[key] is None or isinstance(source[key], str) for key in SOURCE_KEYS),
+                "explanation_record", f"{where}.source: every value is a string or null")
+        if scorer is not None:
+            _check_scorer(scorer, f"{where}.scorer", "explanation_record")
         _stamp(source["retrieved_utc"], "explanation_record", f"{where}.source.retrieved_utc")
 
     quantities = doc["quantities"]
@@ -753,7 +892,11 @@ def validate_graph_reference(ref: Any, registry: Mapping[str, Any] | None = None
     feature index is encoded), node and link counts, the hashes of the prompt and token ids, and the hash of the
     generation settings. It carries no prompt, no slug (the engine's slugs embed prompt characters; only the
     slug's hash is kept), no label and no node list: the key set is closed and every string is checked against an
-    id-only character set. With ``registry`` the ids are compared with the entry (``source_set_identity``).
+    id-only character set. With ``registry`` the ids are compared with the entry (``source_set_identity``), and
+    so is the model: study id, Hugging Face id and revision (``graph_ref_identity``). Two ids can name different
+    commits, so a reference whose ``model.revision`` differs from the entry's pin is refused. A reference whose
+    revision is null (and therefore listed in ``not_recorded``) cannot be compared: the result then says
+    ``model_revision_compared: false``, and it says the same when no registry is given.
     """
     require(isinstance(ref, dict) and ref.get("kind") == GRAPH_REF_KIND, "payload_kind", f"Expected {GRAPH_REF_KIND}")
     for block, keys in GRAPH_REF_KEYS.items():
@@ -789,6 +932,7 @@ def validate_graph_reference(ref: Any, registry: Mapping[str, Any] | None = None
     nulls = [p for key in GRAPH_REF_KEYS[""] if key != "not_recorded" for p in null_pointers(ref[key], f"/{key}")]
     _check_not_recorded(ref, nulls, "graph reference")
 
+    revision_compared = False
     if registry is not None:
         entry = entry_by_id(registry, ref["registry_id"])
         require(entry is not None, "unknown_registry_id", f"the registry has no entry {ref['registry_id']!r}")
@@ -802,5 +946,10 @@ def validate_graph_reference(ref: Any, registry: Mapping[str, Any] | None = None
                 f"records {recorded.get('model_id')}/{recorded.get('source_set')}")
         require(entry["model"]["study_id"] == model["study_id"] and entry["model"]["hf_id"] == model["hf_id"],
                 "graph_ref_identity", "model identity differs from the registry entry")
+        if model["revision"] is not None:
+            require(entry["model"]["revision"] == model["revision"], "graph_ref_identity",
+                    f"the reference names model revision {model['revision']}; the registry entry pins "
+                    f"{entry['model']['revision']}")
+            revision_compared = True
     return {"status": "validated", "native_retained": graph["native_retained"],
-            "registry_checked": registry is not None}
+            "registry_checked": registry is not None, "model_revision_compared": revision_compared}

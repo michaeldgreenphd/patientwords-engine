@@ -16,12 +16,22 @@ version, the dtype name, the top-level status, and a layer file's byte count whe
 not check per-layer status, sample metadata (unless ``samples()`` is called), finiteness, duplicate rows or any
 identity field. Every one of those is checked here, and a failure is a named ``Refusal``:
 
-* ``dataset_format``      the manifest, the dtype or a container file is not what the format defines
+* ``dataset_format``      the manifest, the dtype or a container file is not what the format defines; every
+  malformed input ends here, and sizes are computed with Python integers, so a declared shape cannot overflow
 * ``incomplete``          the dataset or one of its layers is not ``complete``, or a ``.partial`` file remains
 * ``dimension_mismatch``  a layer file's byte count, a declared shape or a sample tensor's length is wrong
 * ``non_finite``          a layer holds NaN or infinity
 * ``row_alignment``       duplicate ``(document_index, position)`` rows, an unmapped document, a missing row, or
   a row whose token id differs from the protocol's token id at that position
+* ``artifact_hash``       a layer file or the samples file differs from the SHA-256 or byte count that the
+  manifest records for it
+
+File pins. The format itself records no hash of a layer file or of the samples file. The writer in this module
+records the SHA-256 and byte count of every layer file and of the samples file under the provenance key
+``patientwords_files`` (``patientwords.activation-files/1``); the manifest is written last, so its own SHA-256
+then covers the values. The reader verifies those pins whenever it reads a file. A dataset without the key (one
+written by the reference writer) is accepted and reported with ``file_pins: "not_recorded"``: such a dataset is
+identified by its manifest only, and nothing here fills the missing pins in.
 
 Model and tokenizer identity are never invented. The format has no tokenizer field, so this module reads the
 tokenizer from ``provenance.patientwords.tokenizer`` when a PatientWords writer put it there. A dataset that
@@ -34,16 +44,21 @@ Nothing here loads a model or opens a socket.
 """
 from __future__ import annotations
 
+import functools
 import json
+import math
+import os
+import shutil
 import struct
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any, Callable, Iterable, Mapping, TypeVar
 
 import numpy as np
 
 from scripts.experiments.common import (
-    HEX40, Refusal, atomic_write_bytes, check_output_path, digest, integer, require, sha256_bytes, text,
+    HEX40, HEX64, Refusal, atomic_write_bytes, check_output_path, digest, integer, require, sha256_bytes, text,
 )
 
 FORMAT = "icalens.activations"
@@ -52,6 +67,10 @@ MANIFEST_NAME = "activations.json"
 SAMPLES_NAME = "samples.safetensors"
 REQUIRED_SAMPLE_TENSORS = ("document_index", "position", "token_id")
 ROWS_SCHEMA = "patientwords.activation-rows/1"
+# File pins written by this module's writer: provenance[FILES_KEY] = {schema_version, samples, layers}.
+FILES_KEY = "patientwords_files"
+FILES_SCHEMA = "patientwords.activation-files/1"
+PINS_VERIFIED, PINS_NOT_RECORDED = "verified", "not_recorded"
 DOCUMENT_ROLES = ("fit_corpus", "protocol_variant")
 POSITION_POLICIES = ("all", "last")
 
@@ -68,6 +87,26 @@ _SAFETENSORS_RANK = {"F16": 0, "I32": 1, "F32": 2, "F64": 3, "I64": 4}
 _SAFETENSORS_NAMES = {np.dtype(code).newbyteorder("=").str.lstrip("<>=|"): name
                       for name, code in SAFETENSORS_DTYPES.items()}
 MAX_SAFETENSORS_HEADER = 100_000_000
+
+_F = TypeVar("_F", bound=Callable[..., Any])
+
+
+def _format_guard(function: _F) -> _F:
+    """Turn an error raised by a malformed input into ``Refusal('dataset_format')``; pass a ``Refusal`` through.
+
+    The explicit checks below name what is wrong. This guard is the second line: an input shape nobody thought
+    of still ends in a named refusal, never in a ``ValueError`` or ``TypeError`` from numpy or the JSON module.
+    """
+    @functools.wraps(function)
+    def run(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return function(*args, **kwargs)
+        except Refusal:
+            raise
+        except (KeyError, TypeError, AttributeError, ValueError, OverflowError, IndexError, RecursionError,
+                struct.error) as exc:
+            raise Refusal("dataset_format", f"malformed input: {type(exc).__name__}: {exc}") from exc
+    return run  # type: ignore[return-value]
 
 
 # --------------------------------------------------------------------------------------------- safetensors
@@ -114,15 +153,19 @@ def write_safetensors(path: Path | str, tensors: Mapping[str, np.ndarray]) -> st
     return sha256_bytes(data)
 
 
+@_format_guard
 def parse_safetensors(data: bytes, where: str = "safetensors") -> dict[str, np.ndarray]:
-    """Decode a safetensors container. Every offset, shape and byte count is checked; nothing is trusted."""
+    """Decode a safetensors container. Every offset, shape and byte count is checked; nothing is trusted.
+
+    Element counts are products of Python integers, so a declared shape cannot overflow into a small number.
+    Every malformed container is ``dataset_format``."""
     require(len(data) >= 8, "dataset_format", f"{where}: shorter than the 8-byte header length")
     (length,) = struct.unpack("<Q", data[:8])
     require(0 < length <= MAX_SAFETENSORS_HEADER and 8 + length <= len(data), "dataset_format",
             f"{where}: header length {length} does not fit the file")
     try:
         header = json.loads(data[8:8 + length].decode("utf-8"))
-    except (UnicodeDecodeError, ValueError) as exc:
+    except (UnicodeDecodeError, ValueError, RecursionError) as exc:
         raise Refusal("dataset_format", f"{where}: header is not JSON: {exc}") from exc
     require(isinstance(header, dict), "dataset_format", f"{where}: header must be a JSON object")
     body = memoryview(data)[8 + length:]
@@ -131,7 +174,8 @@ def parse_safetensors(data: bytes, where: str = "safetensors") -> dict[str, np.n
     for name, entry in header.items():
         if name == "__metadata__":
             continue
-        require(isinstance(entry, dict) and entry.get("dtype") in SAFETENSORS_DTYPES, "dataset_format",
+        require(isinstance(entry, dict) and isinstance(entry.get("dtype"), str)
+                and entry["dtype"] in SAFETENSORS_DTYPES, "dataset_format",
                 f"{where}: tensor {name!r} has a dtype outside {sorted(SAFETENSORS_DTYPES)}")
         shape, offsets = entry.get("shape"), entry.get("data_offsets")
         require(isinstance(shape, list) and all(integer(n) for n in shape) and isinstance(offsets, list)
@@ -139,10 +183,13 @@ def parse_safetensors(data: bytes, where: str = "safetensors") -> dict[str, np.n
                 f"{where}: tensor {name!r} needs an integer shape and two integer data_offsets")
         begin, end = offsets
         dtype = np.dtype(SAFETENSORS_DTYPES[entry["dtype"]])
-        count = int(np.prod(shape, dtype=np.int64)) if shape else 1
+        count = math.prod(shape)  # Python integers: exact for any declared shape; the empty shape gives 1
         require(begin <= end <= len(body) and end - begin == count * dtype.itemsize, "dataset_format",
                 f"{where}: tensor {name!r} spans bytes {begin}..{end}, which does not match shape {shape} of "
                 f"{entry['dtype']} inside a {len(body)}-byte buffer")
+        # A zero-size tensor can still declare a dimension no array holds, e.g. [2**70, 0].
+        require(all(n < 2 ** 63 for n in shape), "dataset_format",
+                f"{where}: tensor {name!r} declares a dimension beyond 2**63 - 1 in shape {shape}")
         spans.append((begin, end, name))
         tensors[name] = np.frombuffer(body[begin:end], dtype=dtype).reshape(shape).copy()
     position = 0
@@ -231,12 +278,40 @@ class ActivationDataset:
         block = self.manifest["provenance"].get("patientwords")
         return block if isinstance(block, dict) else None
 
-    def layer(self, layer: int) -> np.ndarray:
-        """One layer as a ``[sample_count, hidden_size]`` array in its stored dtype (bfloat16 as float32).
+    @property
+    def activation_site(self) -> str | None:
+        """The manifest's ``activation_site`` when it is a non-empty string, else None. Never filled in."""
+        value = self.manifest.get("activation_site")
+        return value if text(value) else None
 
-        Refuses ``dimension_mismatch`` when the file's byte count is not
-        ``sample_count * hidden_size * itemsize`` and ``non_finite`` when a value is NaN or infinite.
-        """
+    @property
+    def layer_indexing(self) -> str | None:
+        """The manifest's ``layer_indexing`` when it is a non-empty string, else None. Never filled in."""
+        value = self.manifest.get("layer_indexing")
+        return value if text(value) else None
+
+    @property
+    def file_pins(self) -> dict[str, Any] | None:
+        """``provenance.patientwords_files`` when a PatientWords writer recorded it, else None.
+
+        ``open_activation_dataset`` has checked its shape. None means the manifest records no hash of its files;
+        it never means that a hash was checked."""
+        block = self.manifest["provenance"].get(FILES_KEY)
+        return block if isinstance(block, dict) else None
+
+    def _pinned_bytes(self, relative: str, pin: Mapping[str, Any] | None, what: str) -> tuple[bytes, str]:
+        """The bytes of one file and their SHA-256. With a pin, a wrong size or hash is ``artifact_hash``."""
+        data = (self.root / relative).read_bytes()
+        actual = sha256_bytes(data)
+        if pin is not None:
+            require(len(data) == pin["bytes"] and actual == pin["sha256"], "artifact_hash",
+                    f"{what}: {relative} has {len(data)} bytes and SHA-256 {actual}; the manifest records "
+                    f"{pin['bytes']} bytes and {pin['sha256']}")
+        return data, actual
+
+    def _layer_bytes(self, layer: int) -> tuple[bytes, str]:
+        """Raw bytes of one layer file and their SHA-256, after the size check and the pin check."""
+        require(integer(layer), "dimension_mismatch", f"a layer is a non-negative integer; got {layer!r}")
         entry = self.manifest["layers"].get(str(layer))
         require(entry is not None, "dimension_mismatch", f"layer {layer} is not in the dataset; it holds "
                 f"{list(self.layers)}")
@@ -246,7 +321,31 @@ class ActivationDataset:
         require(actual == expected, "dimension_mismatch",
                 f"layer {layer}: {entry['file']} has {actual} bytes; sample_count {self.sample_count} x "
                 f"hidden_size {self.hidden_size} x {ITEMSIZE[self.dtype]} bytes is {expected}")
-        raw = path.read_bytes()
+        pins = self.file_pins
+        return self._pinned_bytes(entry["file"], pins["layers"][str(layer)] if pins else None, f"layer {layer}")
+
+    def _samples_bytes(self) -> tuple[bytes, str]:
+        relative = self.manifest["samples_file"]
+        require((self.root / relative).is_file(), "dataset_format", f"{self.root / relative} is not a file")
+        pins = self.file_pins
+        return self._pinned_bytes(relative, pins["samples"] if pins else None, "samples")
+
+    def verify_files(self, layers: Iterable[int] | None = None) -> dict[str, Any]:
+        """Hash the named layer files (every layer by default) and the samples file without decoding them.
+
+        Returns ``{"file_pins": "verified" | "not_recorded", "samples_sha256": ..., "layer_sha256": {layer: ...}}``.
+        The hashes are of the bytes on disk now. ``verified`` means the manifest records a SHA-256 and a byte
+        count for each of these files and all of them matched; a mismatch is ``artifact_hash``.
+        ``not_recorded`` means the manifest records none, so nothing was compared.
+        """
+        wanted = self.layers if layers is None else tuple(sorted(layers))
+        layer_hashes = {str(layer): self._layer_bytes(layer)[1] for layer in wanted}
+        return {"file_pins": PINS_VERIFIED if self.file_pins else PINS_NOT_RECORDED,
+                "samples_sha256": self._samples_bytes()[1], "layer_sha256": layer_hashes}
+
+    def layer_with_hash(self, layer: int) -> tuple[np.ndarray, str]:
+        """``layer(layer)`` and the SHA-256 of the bytes that were decoded."""
+        raw, sha256 = self._layer_bytes(layer)
         if self.dtype == "bfloat16":
             values = (np.frombuffer(raw, dtype="<u2").astype("<u4") << 16).view("<f4")
         else:
@@ -254,12 +353,32 @@ class ActivationDataset:
         values = values.reshape(self.sample_count, self.hidden_size).copy()
         require(bool(np.isfinite(values).all()), "non_finite",
                 f"layer {layer}: {int((~np.isfinite(values)).sum())} values are NaN or infinite")
-        return values
+        return values, sha256
+
+    def layer(self, layer: int) -> np.ndarray:
+        """One layer as a ``[sample_count, hidden_size]`` array in its stored dtype (bfloat16 as float32).
+
+        Refuses ``dimension_mismatch`` when the file's byte count is not
+        ``sample_count * hidden_size * itemsize``, ``artifact_hash`` when the manifest pins the file and its
+        bytes differ, and ``non_finite`` when a value is NaN or infinite.
+        """
+        return self.layer_with_hash(layer)[0]
+
+    def samples_with_hash(self) -> tuple[dict[str, np.ndarray], str]:
+        """``samples()`` and the SHA-256 of the samples file that was decoded."""
+        raw, sha256 = self._samples_bytes()
+        return self._sample_tensors(raw), sha256
 
     def samples(self) -> dict[str, np.ndarray]:
-        """The three required sample tensors as int64 arrays of length ``sample_count``, plus any extras."""
+        """The three required sample tensors as int64 arrays of length ``sample_count``, plus any extras.
+
+        Refuses ``artifact_hash`` when the manifest pins the samples file and its bytes differ."""
+        return self.samples_with_hash()[0]
+
+    @_format_guard
+    def _sample_tensors(self, raw: bytes) -> dict[str, np.ndarray]:
         path = self.root / self.manifest["samples_file"]
-        tensors = read_safetensors(path)
+        tensors = parse_safetensors(raw, path.name)
         missing = sorted(set(REQUIRED_SAMPLE_TENSORS) - set(tensors))
         require(not missing, "dataset_format", f"{path.name} lacks the required tensors {missing}")
         for name in REQUIRED_SAMPLE_TENSORS:
@@ -272,20 +391,45 @@ class ActivationDataset:
         return tensors
 
 
+def _check_file_pins(manifest: Mapping[str, Any]) -> None:
+    """Shape of ``provenance.patientwords_files`` when the key is present. A present block that is malformed or
+    that leaves a file out is ``dataset_format``: it must not read as 'no pins recorded'."""
+    if FILES_KEY not in manifest["provenance"]:
+        return
+    block = manifest["provenance"][FILES_KEY]
+
+    def pin(entry: Any, file: str) -> bool:
+        return (isinstance(entry, dict) and set(entry) == {"file", "sha256", "bytes"} and entry["file"] == file
+                and isinstance(entry["sha256"], str) and bool(HEX64.fullmatch(entry["sha256"]))
+                and integer(entry["bytes"]))
+
+    require(isinstance(block, dict) and set(block) == {"schema_version", "samples", "layers"}
+            and block["schema_version"] == FILES_SCHEMA, "dataset_format",
+            f"provenance.{FILES_KEY} must be a {FILES_SCHEMA} object with samples and layers")
+    require(pin(block["samples"], manifest["samples_file"]), "dataset_format",
+            f"provenance.{FILES_KEY}.samples must record file, sha256 and bytes of {manifest['samples_file']!r}")
+    layers = manifest["layers"]
+    require(isinstance(block["layers"], dict) and set(block["layers"]) == set(layers) and all(
+        pin(block["layers"][key], layers[key]["file"]) for key in layers), "dataset_format",
+        f"provenance.{FILES_KEY}.layers must record file, sha256 and bytes of every layer file, and of no other")
+
+
 def _check_manifest(manifest: Any, root: Path) -> None:
     require(isinstance(manifest, dict), "dataset_format", f"{MANIFEST_NAME} must hold a JSON object")
     require(manifest.get("format") == FORMAT and manifest.get("format_version") == FORMAT_VERSION,
             "dataset_format", f"expected format {FORMAT!r} version {FORMAT_VERSION}; got "
             f"{manifest.get('format')!r} version {manifest.get('format_version')!r}")
-    require(manifest.get("dtype") in ITEMSIZE, "dataset_format",
+    require(isinstance(manifest.get("dtype"), str) and manifest["dtype"] in ITEMSIZE, "dataset_format",
             f"dtype must be one of {sorted(ITEMSIZE)}; got {manifest.get('dtype')!r}")
     require(integer(manifest.get("sample_count"), 1) and integer(manifest.get("hidden_size"), 1),
             "dataset_format", "sample_count and hidden_size must be positive integers")
     layers = manifest.get("layers")
     require(isinstance(layers, dict) and bool(layers), "dataset_format", "the dataset names no layers")
     for key, entry in layers.items():
-        require(key.isdigit() and str(int(key)) == key and isinstance(entry, dict) and text(entry.get("file")),
-                "dataset_format", f"layers[{key!r}] must be keyed by a decimal layer number and name a file")
+        # isascii first: str.isdigit accepts characters such as a superscript two, which int() refuses.
+        require(key.isascii() and key.isdigit() and str(int(key)) == key and isinstance(entry, dict)
+                and text(entry.get("file")), "dataset_format",
+                f"layers[{key!r}] must be keyed by an ASCII decimal layer number and name a file")
         relative = Path(entry["file"])
         require(not relative.is_absolute() and ".." not in relative.parts, "dataset_format",
                 f"layers[{key!r}].file must be a relative path inside the dataset: {entry['file']!r}")
@@ -295,6 +439,7 @@ def _check_manifest(manifest: Any, root: Path) -> None:
     require(isinstance(manifest.get("provenance"), dict), "dataset_format", "provenance must be a JSON object")
     require(manifest.get("model") is None or isinstance(manifest["model"], dict), "dataset_format",
             "model must be an object when present")
+    _check_file_pins(manifest)
     # Completion is checked after the shape of the manifest, so an unfinished capture is told apart from a
     # malformed one.
     partial = sorted(p.relative_to(root).as_posix() for p in root.rglob("*.partial"))
@@ -309,6 +454,7 @@ def _check_manifest(manifest: Any, root: Path) -> None:
                 f"[{manifest['sample_count']}, {manifest['hidden_size']}]")
 
 
+@_format_guard
 def open_activation_dataset(root: Path | str) -> ActivationDataset:
     """Open a dataset directory and check its manifest. Layer files and sample tensors are read on demand."""
     directory = Path(root).resolve()
@@ -317,12 +463,13 @@ def open_activation_dataset(root: Path | str) -> ActivationDataset:
     data = manifest_path.read_bytes()
     try:
         manifest = json.loads(data.decode("utf-8"))
-    except (UnicodeDecodeError, ValueError) as exc:
+    except (UnicodeDecodeError, ValueError, RecursionError) as exc:
         raise Refusal("dataset_format", f"{MANIFEST_NAME} is not JSON: {exc}") from exc
     _check_manifest(manifest, directory)
     return ActivationDataset(root=directory, manifest=manifest, manifest_sha256=sha256_bytes(data))
 
 
+@_format_guard
 def _documents(dataset: ActivationDataset) -> dict[int, dict[str, Any]]:
     block = dataset.row_map
     require(block is not None and block.get("schema_version") == ROWS_SCHEMA and isinstance(
@@ -409,28 +556,28 @@ def validate_activation_dataset(root: Path | str | ActivationDataset, *, protoco
     """Check a dataset end to end and return a report. Raises ``Refusal`` on the first violated rule.
 
     Always checked: manifest shape, completion markers, declared layer shapes, each layer file's byte count,
-    finiteness (unless ``check_values`` is false), the sample tensors' type and length, and duplicate
-    ``(document_index, position)`` rows. With a PatientWords row map: every row belongs to a listed document.
-    With ``protocol``: every ``protocol_variant`` document is checked row by row against the protocol's token
-    ids. Identity is reported, never refused here: the caller decides what an unknown identity means.
+    the SHA-256 and byte count of every layer file and of the samples file when the manifest pins them
+    (``artifact_hash``), finiteness (unless ``check_values`` is false), the sample tensors' type and length, and
+    duplicate ``(document_index, position)`` rows. With a PatientWords row map: every row belongs to a listed
+    document. With ``protocol``: every ``protocol_variant`` document is checked row by row against the
+    protocol's token ids. Identity is reported, never refused here: the caller decides what an unknown identity
+    means. A manifest without file pins is accepted and the report says ``file_pins: "not_recorded"``.
     """
     dataset = root if isinstance(root, ActivationDataset) else open_activation_dataset(root)
+    layer_hashes: dict[str, str] = {}
     for layer in dataset.layers:
-        if check_values:
-            dataset.layer(layer)
-        else:
-            entry = dataset.manifest["layers"][str(layer)]
-            path = dataset.root / entry["file"]
-            expected = dataset.sample_count * dataset.hidden_size * ITEMSIZE[dataset.dtype]
-            actual = path.stat().st_size if path.is_file() else -1
-            require(actual == expected, "dimension_mismatch",
-                    f"layer {layer}: {entry['file']} has {actual} bytes; expected {expected}")
-    samples = dataset.samples()
+        # Both branches check the byte count and the pin; only the first decodes the values.
+        layer_hashes[str(layer)] = (dataset.layer_with_hash(layer) if check_values
+                                    else dataset._layer_bytes(layer))[1]
+    samples, samples_sha256 = dataset.samples_with_hash()
     index = row_index(dataset, samples)
     report: dict[str, Any] = {
         "status": "validated", "format": FORMAT, "format_version": FORMAT_VERSION,
         "manifest_sha256": dataset.manifest_sha256, "sample_count": dataset.sample_count,
         "hidden_size": dataset.hidden_size, "dtype": dataset.dtype, "layers": list(dataset.layers),
+        "activation_site": dataset.activation_site, "layer_indexing": dataset.layer_indexing,
+        "file_pins": PINS_VERIFIED if dataset.file_pins else PINS_NOT_RECORDED,
+        "samples_sha256": samples_sha256, "layer_sha256": layer_hashes,
         "identity": dataset.identity, "values_checked_finite": check_values,
         "byte_order": "little-endian assumed; the format does not declare it",
         "row_map": "absent", "protocol_alignment": "not_checked_no_protocol",
@@ -501,51 +648,104 @@ def write_activation_dataset(root: Path | str, *, model: Mapping[str, Any], laye
 
     ``layers`` maps a zero-based layer number to a ``[sample_count, hidden_size]`` array; every layer must have
     the same shape. ``samples`` must hold ``document_index``, ``position`` and ``token_id``. Values are cast to
-    ``dtype`` (float16, float32 or float64; bfloat16 is read-only here) and written little-endian. Layer files
-    and the sample file are written first and the manifest last, each through a temporary file and
-    ``os.replace``, so a reader never sees a manifest that points at a half-written layer.
+    ``dtype`` (float16, float32 or float64; bfloat16 is read-only here) and written little-endian. Finiteness
+    is checked on the cast values, so a float64 value that overflows float32 is refused (``non_finite``).
+
+    The manifest records the SHA-256 and byte count of every layer file and of the samples file under
+    ``provenance.patientwords_files``. The writer computes that block; a block of that name in ``provenance`` is
+    replaced, never copied.
+
+    Nothing is put in place until the whole dataset has passed this module's own validation. Every check on the
+    arguments runs before a file is created. The files are then written to a staging directory inside the
+    target, validated there with ``read_activation_dataset``, and moved into place, the manifest last. A
+    refused write removes the staging directory and leaves the target as it was: no new directory, and no
+    manifest that describes files it was not written with. A malformed argument is a ``Refusal``.
 
     The target must pass ``common.check_output_path``: never under a protected root, and inside a Git checkout
     only under a directory named in ``allow_roots``.
     """
     directory = check_output_path(root, allow_roots)
-    require(dtype in LAYER_DTYPES, "dataset_format",
+    require(isinstance(dtype, str) and dtype in LAYER_DTYPES, "dataset_format",
             f"this writer emits {sorted(LAYER_DTYPES)}; {dtype!r} is not one of them")
-    require(bool(layers) and all(integer(layer) for layer in layers), "dataset_format",
-            "layers must map non-negative integer layer numbers to arrays")
-    arrays = {layer: np.asarray(value) for layer, value in layers.items()}
+    require(isinstance(layers, Mapping) and bool(layers) and all(integer(layer) for layer in layers),
+            "dataset_format", "layers must map non-negative integer layer numbers to arrays")
+    require(isinstance(samples, Mapping) and isinstance(model, Mapping) and isinstance(provenance, Mapping)
+            and text(activation_site) and text(layer_indexing), "dataset_format",
+            "samples, model and provenance must be mappings; activation_site and layer_indexing must be text")
+    try:
+        arrays = {layer: np.asarray(value) for layer, value in layers.items()}
+        sample_arrays = {name: np.asarray(value) for name, value in samples.items()}
+    except (TypeError, ValueError) as exc:
+        raise Refusal("dataset_format", f"a layer or a sample tensor is not an array: {exc}") from exc
     shapes = {array.shape for array in arrays.values()}
     require(len(shapes) == 1 and len(next(iter(shapes))) == 2 and min(next(iter(shapes))) >= 1,
             "dimension_mismatch", f"every layer must be one [sample_count, hidden_size] array; got {sorted(shapes)}")
-    sample_count, hidden_size = next(iter(shapes))
-    for layer, array in arrays.items():
+    sample_count, hidden_size = (int(n) for n in next(iter(shapes)))
+    layer_bytes: dict[str, bytes] = {}
+    entries: dict[str, Any] = {}
+    for layer in sorted(arrays):
+        array = arrays[layer]
         require(array.dtype.kind == "f" and bool(np.isfinite(array).all()), "non_finite",
                 f"layer {layer} must be a floating-point array of finite values")
-    missing = sorted(set(REQUIRED_SAMPLE_TENSORS) - set(samples))
+        with np.errstate(over="ignore"):
+            cast = np.ascontiguousarray(array, dtype=LAYER_DTYPES[dtype])
+        # Checked again after the cast: 1e300 is finite as float64 and infinite as float32.
+        require(bool(np.isfinite(cast).all()), "non_finite",
+                f"layer {layer}: {int((~np.isfinite(cast)).sum())} values are not finite after the cast to {dtype}")
+        relative = f"layers/layer_{layer:02d}.{dtype}.bin"
+        layer_bytes[relative] = cast.tobytes()
+        entries[str(layer)] = {"file": relative, "shape": [sample_count, hidden_size], "status": "complete"}
+    missing = sorted(set(REQUIRED_SAMPLE_TENSORS) - set(sample_arrays))
     require(not missing, "dataset_format", f"samples lacks {missing}")
     sample_tensors = {}
-    for name, value in samples.items():
-        tensor = np.asarray(value)
+    for name, tensor in sample_arrays.items():
         require(tensor.dtype.kind == "i" and tensor.ndim == 1 and tensor.shape[0] == sample_count,
                 "dimension_mismatch", f"samples[{name!r}] must be a 1-D integer array of length {sample_count}")
         sample_tensors[name] = tensor.astype("<i8")
+    samples_bytes = safetensors_bytes(sample_tensors)
     try:
-        stored_provenance = json.loads(json.dumps(provenance, allow_nan=False))
+        stored_provenance = json.loads(json.dumps(dict(provenance), allow_nan=False))
+        stored_model = json.loads(json.dumps(dict(model), allow_nan=False))
     except (TypeError, ValueError) as exc:
-        raise Refusal("dataset_format", f"provenance must be finite JSON: {exc}") from exc
-    entries = {}
-    for layer in sorted(arrays):
-        relative = f"layers/layer_{layer:02d}.{dtype}.bin"
-        atomic_write_bytes(directory / relative,
-                           np.ascontiguousarray(arrays[layer], dtype=LAYER_DTYPES[dtype]).tobytes())
-        entries[str(layer)] = {"file": relative, "shape": [int(sample_count), int(hidden_size)],
-                               "status": "complete"}
-    write_safetensors(directory / SAMPLES_NAME, sample_tensors)
+        raise Refusal("dataset_format", f"provenance and model must be finite JSON: {exc}") from exc
+    stored_provenance[FILES_KEY] = {
+        "schema_version": FILES_SCHEMA,
+        "samples": {"file": SAMPLES_NAME, "sha256": sha256_bytes(samples_bytes), "bytes": len(samples_bytes)},
+        "layers": {key: {"file": entry["file"], "sha256": sha256_bytes(layer_bytes[entry["file"]]),
+                         "bytes": len(layer_bytes[entry["file"]])} for key, entry in entries.items()},
+    }
     manifest = {
-        "format": FORMAT, "format_version": FORMAT_VERSION, "status": "complete", "model": dict(model),
+        "format": FORMAT, "format_version": FORMAT_VERSION, "status": "complete", "model": stored_model,
         "activation_site": activation_site, "layer_indexing": layer_indexing,
-        "sample_count": int(sample_count), "hidden_size": int(hidden_size), "dtype": dtype,
+        "sample_count": sample_count, "hidden_size": hidden_size, "dtype": dtype,
         "samples_file": SAMPLES_NAME, "layers": entries, "provenance": stored_provenance,
     }
-    atomic_write_bytes(directory / MANIFEST_NAME, manifest_bytes(manifest))
+    files = {**layer_bytes, SAMPLES_NAME: samples_bytes, MANIFEST_NAME: manifest_bytes(manifest)}  # manifest last
+
+    require(not directory.exists() or directory.is_dir(), "dataset_format",
+            f"{directory} exists and is not a directory")
+    existed = directory.exists()
+    if existed:
+        partial = sorted(path.relative_to(directory).as_posix() for path in directory.rglob("*.partial"))
+        require(not partial, "incomplete", f"the target holds partial capture files: {partial}")
+    directory.mkdir(parents=True, exist_ok=True)
+    staging = Path(tempfile.mkdtemp(dir=directory, prefix=".staging-"))
+    try:
+        for relative, data in files.items():
+            atomic_write_bytes(staging / relative, data)
+        read_activation_dataset(staging)
+        # From here the target is changed. Its old manifest goes first, so the directory never holds a manifest
+        # beside files that manifest was not written with.
+        (directory / MANIFEST_NAME).unlink(missing_ok=True)
+        for relative in files:
+            (directory / relative).parent.mkdir(parents=True, exist_ok=True)
+            os.replace(staging / relative, directory / relative)
+    except BaseException:
+        shutil.rmtree(staging, ignore_errors=True)
+        if not existed:
+            for leftover in (directory / "layers", directory):
+                if leftover.is_dir() and not any(leftover.iterdir()):
+                    leftover.rmdir()
+        raise
+    shutil.rmtree(staging)
     return read_activation_dataset(directory)
