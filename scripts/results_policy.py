@@ -107,13 +107,18 @@ def run_dir_model(run_dir: str) -> str | None:
 
 
 def instrument_of(suffix: str | None) -> str | None:
-    """The instrument a run-directory suffix names (``jlens``, ``patch``, ...), or None for a model suffix."""
+    """The instrument a run-directory suffix names (``jlens``, ``patch``, ...), or None for a model suffix.
+    A suffix can have several ``__`` segments (``lenspairs__jlens_gemma-2-2b``); the last segment that names
+    an instrument decides, so such a directory is never read as a model called by its whole suffix."""
     if not suffix:
         return None
-    for prefix in INSTRUMENT_PREFIXES:
-        if suffix.startswith(prefix):
-            return prefix.rstrip("_")
-    return suffix if suffix in INSTRUMENT_NAMES else None
+    for segment in reversed(suffix.split("__")):
+        for prefix in INSTRUMENT_PREFIXES:
+            if segment.startswith(prefix):
+                return prefix.rstrip("_")
+        if segment in INSTRUMENT_NAMES:
+            return segment
+    return None
 
 
 # ---------------------------------------------------------------- the policy file

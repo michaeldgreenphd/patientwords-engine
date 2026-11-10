@@ -279,6 +279,8 @@ def collect(engine: Path, *, policy: rp.Policy | None = None, seal_paths: dict[s
                 for m in row_memberships:
                     membership_rows[m] += 1
                 membership_rows[rp.PUBLIC_DISPLAY] += 1
+            if part_rows and not mass_ok:
+                restriction_counts["uncalibrated_clinical_mass"] += 1
             if part_rows:
                 row_parts.append({"name": part.name, "execution_state": d.execution_state,
                                   "analysis_memberships": row_memberships,
@@ -290,6 +292,8 @@ def collect(engine: Path, *, policy: rp.Policy | None = None, seal_paths: dict[s
         stimulus_class = first.stimulus_class if first else policy.stimulus_class(stem)
         entry = policy.stimulus_entry(stimulus_class)
         model = first.model if first else (None if instrument else suffix)
+        if instrument:
+            model = None
         visibility = ("restricted" if any(d.visibility == "restricted" for d in decisions)
                       or entry.get("restriction") else "public")
         reasons = sorted({r for d in decisions for r in d.restriction_reasons}
@@ -362,8 +366,11 @@ def collect(engine: Path, *, policy: rp.Policy | None = None, seal_paths: dict[s
                    "analysis_pin": policy.doc.get("analysis_pin")},
         "memberships": {m: {"label": policy.membership(m)["label"], "purpose": policy.membership(m)["purpose"],
                             "parts": membership_parts[m], "rows": membership_rows[m]} for m in membership_ids},
+        # count_unit says what was counted: rows for a row-scoped restriction, parts for every other scope
+        # (for the clinical-mass field: parts whose listed rows omit the field).
         "restrictions": {name: {**spec, "count": restriction_counts.get(name, 0)
-                                + sum(n for r, n in restriction_counts.items() if r.startswith(name + ":"))}
+                                + sum(n for r, n in restriction_counts.items() if r.startswith(name + ":")),
+                                "count_unit": "rows" if spec["scope"] == "row" else "parts"}
                          for name, spec in policy.doc["restrictions"].items()},
         "totals": {**{k: totals[k] for k in sorted(totals)},
                    **{axis: dict(sorted(counter.items())) for axis, counter in by_axis.items()}},

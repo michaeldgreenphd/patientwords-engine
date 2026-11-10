@@ -197,17 +197,36 @@ def test_restricted_and_instrument_runs_are_listed_without_rows(engine, tmp_path
     assert not (out / "stimuli" / "pabharvest_20200101T000000Z.json").exists()
     lens = runs[f"{BATCH}__jlens_gemma-2-2b"]
     assert lens["instrument"] == "jlens" and lens["n_parts"] == 0 and lens["rows_file"] is None
+    assert lens["model"] is None
     assert lens["other_artifacts"] == {"jlens_summary": 1} and "typed artifact" in lens["rows_reason"]
 
 
 def test_uncalibrated_clinical_mass_is_never_written(engine, tmp_path):
     out = tmp_path / "out"
     assert _export(engine, out) == 0
+    row_parts = 0
     for row_file in (out / "rows").glob("*.json"):
         doc = json.loads(row_file.read_text(encoding="utf-8"))
         for part in doc["parts"]:
+            row_parts += 1
             assert part["clinical_mass"].startswith("not published")
             assert all("clinical_mass" not in row for row in part["rows"])
+    restriction = json.loads((out / "index.json").read_text(encoding="utf-8"))["restrictions"]
+    assert restriction["uncalibrated_clinical_mass"]["count"] == row_parts > 0       # counted, with its unit
+    assert restriction["uncalibrated_clinical_mass"]["count_unit"] == "parts"
+    assert restriction["sealed_holdout"]["count_unit"] == "rows"
+
+
+def test_a_double_suffix_instrument_directory_is_not_read_as_a_model(engine, tmp_path):
+    """Found 2026-11-10: ``<stem>__lenspairs__jlens_<model>`` was listed as a model named by its whole suffix."""
+    _write(engine / "trace_out" / f"{BATCH}__lenspairs__jlens_gemma-2-2b" / "jlens_summary.part_01.json",
+           {"results": []})
+    out = tmp_path / "out"
+    assert _export(engine, out) == 0
+    run = _runs(out)[f"{BATCH}__lenspairs__jlens_gemma-2-2b"]
+    assert run["instrument"] == "jlens" and run["model"] is None and "typed artifact" in run["rows_reason"]
+    assert rp.instrument_of("lenspairs__jlens_gemma-2-2b") == "jlens" and rp.instrument_of("context") == "context"
+    assert rp.instrument_of("qwen3-4b") is None and rp.instrument_of(None) is None
 
 
 def test_an_outcome_selected_subset_is_labelled_on_its_rows(engine, tmp_path):

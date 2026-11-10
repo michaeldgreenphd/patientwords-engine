@@ -53,6 +53,7 @@ PAGES = [
     "dialect-differences/index.html",
     "translation/index.html",
     "phrase-dataset/index.html",
+    "results/index.html",
 ]
 # Pages in PAGES that a site checkout may not have yet, each with why. A missing
 # page listed here is named on stdout and left out; any other missing page still
@@ -61,6 +62,7 @@ PAGES = [
 # section 10 analysis, the exporter on engine main, the vendor pack, sign-off).
 PENDING_PAGES = {
     "multi-turn/index.html": "gated: not on site main until site PR #9 merges",
+    "results/index.html": "added 2026-11-10: not on site main until the results-catalogue pull request merges",
 }
 
 CAPTURE_TAGS = {"h1", "h2", "h3", "p", "li", "summary", "figcaption", "footer"}
