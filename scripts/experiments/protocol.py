@@ -1,10 +1,10 @@
 """Validate an experiment protocol (``patientwords.experiment-protocol/1``).
 
 A protocol names one model, a list of case families with register variants, the methods to apply, the
-comparisons to derive and the number of replicates. Validation is offline: it reads the protocol and, for a
-family that joins a real legacy row, asks ``scripts/results_policy.row_restriction`` whether that row is
-sealed. It loads no model and tokenizes nothing; token ids are supplied by the protocol and checked only
-against their own hash.
+comparisons to derive and the number of replicates. Validation is offline: it reads the protocol and, for
+every family of a non-synthetic protocol, asks ``scripts/results_policy.row_restriction`` whether the legacy
+row or any variant prompt is sealed. A family needs no ``legacy_join`` for that check. It loads no model and
+tokenizes nothing; token ids are supplied by the protocol and checked only against their own hash.
 
 Every rule that can fail has a named refusal code. ``validate_protocol`` raises
 ``scripts.exploratory_methods.Refusal``; a seal that cannot be evaluated raises ``SealError`` from
@@ -18,6 +18,7 @@ from scripts.experiments.common import (
     DTYPE_BYTES, FIXTURE_BACKEND, HEX40, HEX64, LAYERED_METHODS, METHOD_IDS, PROTOCOL_SCHEMA, SPLITS, VARIANTS,
     Refusal, digest, integer, prompt_digest, require, require_structure, text,
 )
+from scripts.experiments.envelope import check_evidence_labels
 
 RowRestriction = Callable[[str | None, int | None, str | None], str | None]
 SYNTHETIC_CLASS = "synthetic_fixture"
@@ -96,6 +97,34 @@ def _check_method(method: dict[str, Any], n_layers: int, discovery: set[str], fa
                     f"ica_lens: basis.{key} uses families outside the discovery split: {outside}")
 
 
+def _check_seal(family_id: str, variants: dict[str, Any], join: dict[str, Any] | None,
+                check: RowRestriction) -> None:
+    """Refuse ``holdout_refusal`` when the seal covers the family's legacy row or any of its variant prompts.
+
+    With a ``legacy_join`` the clinical prompt is checked as that row (batch and 1-based index), which applies
+    every rule of ``tierb_split.sealed_pair``. Every other prompt, and the clinical prompt of a family without
+    a join, is checked with batch and index None: that asks whether the text is a registered holdout phrase,
+    which is sealed wherever it occurs and needs no batch. The row rules are not applied to a non-clinical
+    variant, because holdout membership of a row is defined on its clinical prompt.
+
+    A synthetic protocol is not checked: it cannot declare a ``legacy_join`` (``synthetic_label``), its text
+    is placeholders, and it must validate without the seal's inputs.
+
+    The refusal names the family, the variant and the row. It never repeats prompt text.
+    """
+    if join is not None:
+        restriction = check(join["batch"], join["batch_index"], variants.get("clinical", {}).get("prompt"))
+        require(restriction is None, "holdout_refusal",
+                f"{family_id}: legacy row ({join['batch']}, {join['batch_index']}) is restricted: {restriction}")
+    for name in sorted(variants):
+        prompt = variants[name]["prompt"]
+        if not prompt or (join is not None and name == "clinical"):
+            continue  # an empty prompt is no phrase; the joined clinical prompt was checked as its row above
+        restriction = check(None, None, prompt)
+        require(restriction is None, "holdout_refusal",
+                f"{family_id}:{name}: the variant's prompt is restricted: {restriction}")
+
+
 def _validate(doc: dict[str, Any], row_restriction: RowRestriction | None) -> dict[str, Any]:
     require(isinstance(doc, dict), "invalid_input", "A protocol must be a JSON object")
     require(doc.get("schema_version") == PROTOCOL_SCHEMA, "schema_version",
@@ -117,6 +146,7 @@ def _validate(doc: dict[str, Any], row_restriction: RowRestriction | None) -> di
             "synthetic must be true exactly when evidence_class is 'synthetic_fixture'")
     require(model["backend"] != FIXTURE_BACKEND or synthetic, "synthetic_label",
             "The fixture backend produces no measurement, so its protocol must be synthetic")
+    check_evidence_labels(evidence, synthetic)
 
     families = doc["case_families"]
     require(bool(families), "missing_cases", "At least one case family is required")
@@ -160,12 +190,8 @@ def _validate(doc: dict[str, Any], row_restriction: RowRestriction | None) -> di
             key = (join["batch"], join["batch_index"], join["model"])
             require(join_split.setdefault(key, split) == split, "split_leakage",
                     f"{family_id}: legacy join {key} occurs in splits {join_split[key]} and {split}")
-            check = row_restriction or _default_row_restriction()
-            clinical = variants.get("clinical", {}).get("prompt")
-            restriction = check(join["batch"], join["batch_index"], clinical)
-            # The detail names the row by batch and index. It never repeats prompt text.
-            require(restriction is None, "holdout_refusal",
-                    f"{family_id}: legacy row ({join['batch']}, {join['batch_index']}) is restricted: {restriction}")
+        if not synthetic:
+            _check_seal(family_id, variants, join, row_restriction or _default_row_restriction())
 
     methods = doc["methods"]
     require(bool(methods), "method_metadata", "At least one method is required")
@@ -216,8 +242,9 @@ def _validate(doc: dict[str, Any], row_restriction: RowRestriction | None) -> di
 def validate_protocol(doc: Any, *, row_restriction: RowRestriction | None = None) -> dict[str, Any]:
     """Validate ``doc`` and return a summary that includes ``protocol_sha256``.
 
-    ``row_restriction`` is the seal check applied to each non-null ``legacy_join``; it defaults to
-    ``scripts.results_policy.row_restriction``. Tests pass a stub so that no sealed text is read.
+    ``row_restriction`` is the seal check applied to every family of a non-synthetic protocol: to the legacy
+    row when ``legacy_join`` is declared, and to each variant prompt with batch and index None otherwise. It
+    defaults to ``scripts.results_policy.row_restriction``. Tests pass a stub so that no sealed text is read.
     Malformed shapes refuse with ``invalid_input`` and never escape as ``KeyError`` or ``TypeError``.
     """
     try:

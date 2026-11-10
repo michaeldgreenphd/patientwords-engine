@@ -305,9 +305,13 @@ model run was planned, executed or stored with it.
 - **Added.** `spec_sha256` is the digest of what is computed: protocol, family, variant,
   model identity, method block, input hashes, settings. `replicate` and `attempt` are outside
   it. `scripts/experiments/store.py` reuses a result only for the same `(spec_sha256,
-  replicate)` and only when the payload file still has its recorded SHA-256. Replicate 1 is
-  never satisfied by replicate 0. A changed input changes the key, so nothing stale is
-  reused; a store built from another protocol refuses with `incompatible_resume`.
+  replicate)` and only when the payload file still has its recorded SHA-256, the adapter
+  source files have the hashes the envelope recorded, and the adapter's input identity (a
+  digest of the fixture or basis files the task reads, which are outside the spec) is
+  unchanged. Replicate 1 is never satisfied by replicate 0. A changed protocol input changes
+  the key, so nothing stale is reused; a changed fixture file or adapter under the same key
+  is executed again as a new attempt; a store built from another protocol refuses with
+  `incompatible_resume`.
 - **Remains.** The legacy lanes do not carry a spec id. The link is the protocol's
   `legacy_join` (`batch`, `batch_index`, `model`). The overwrite defect needs its own fix in
   the workflows: refuse to commit a part with fewer results than the one on the branch.
@@ -376,11 +380,14 @@ model run was planned, executed or stored with it.
   Paid lanes keep the reservation when the outcome is unknown: the advice judge checkpoints
   the pass cap before each call and keeps it when no response returns; a live Jev run books
   the whole `max_spend` when it leaves no readable report (`docs/triggers.md`).
-- **Added.** Every store file is written through a temporary file, fsync and `os.replace`.
-  The journal gets a `started` line before an attempt and an `ended` line after. The
-  collector verifies every payload hash each time and reports `duplicate_identical`,
-  refuses `duplicate_conflict`, lists planned tasks with no envelope as `missing`, and lists
-  a `started` without `ended` as `uncertain`.
+- **Added.** Every store file is written through a temporary file and fsync, then
+  `os.replace`; an attempt envelope is created with `os.link`, which never replaces an
+  existing file. The journal gets a `started` line before an attempt and an `ended` line
+  after. The collector verifies every payload hash each time and reports
+  `duplicate_identical`, refuses `duplicate_conflict`, lists planned tasks with no envelope
+  as `missing`, lists a `started` without `ended` and without an envelope as `uncertain`,
+  and lists attempts of one number that ended in different states in two shards as
+  `attempt_outcomes_differ` while keeping the completed envelope.
 - **Remains.** The store makes no exactly-once claim and must not be given one. For a paid
   call the rule is the existing one: an uncertain attempt and its reservation are kept for
   reconciliation (`cli reconcile-spend` in the Petri lane); the attempt is not retried

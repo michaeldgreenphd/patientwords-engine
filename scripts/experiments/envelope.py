@@ -17,8 +17,8 @@ from typing import Any, Iterable, Mapping
 
 from scripts.experiments.common import (
     ENVELOPE_SCHEMA, EXECUTION_STATES, FITTED_METHODS, HEX64, LAYERED_METHODS, METHOD_IDS, METHOD_PAYLOAD_KINDS,
-    METHOD_REPRESENTATION, NOT_APPLICABLE, PAYLOAD_KINDS, REPRESENTATION_TYPES, UNCERTAIN, Refusal, integer, require,
-    require_structure, sha256_file, text,
+    METHOD_REPRESENTATION, NOT_APPLICABLE, PAYLOAD_KINDS, REPRESENTATION_TYPES, UNCERTAIN, VARIANTS, VISIBILITIES,
+    Refusal, integer, require, require_structure, sha256_file, text,
 )
 
 # Blocks whose null leaves must be listed in not_recorded.
@@ -28,6 +28,8 @@ EVIDENCE_KEYS = ("evidence_class", "clinical_review", "visibility", "restriction
                  "synthetic")
 SYNTHETIC_CLASS = "synthetic_fixture"
 SYNTHETIC_VISIBILITY = "not_published"
+# States in which nothing was executed for the task: such an envelope accepts no unit and measures no resource.
+NOT_EXECUTED_STATES = ("not_run", "unsupported", "unavailable")
 
 
 def _escape(key: str) -> str:
@@ -86,6 +88,51 @@ def method_block(method: Mapping[str, Any], payload: Mapping[str, Any] | None = 
         "fitted_artifact": fitted,
         "output_head": output_head,
     }
+
+
+def declared_memberships() -> frozenset[str]:
+    """Membership names the committed results policy declares (``data/results_policy/policy.v1.json``), read
+    through ``scripts/results_policy.py``. The committed file is named explicitly, so ``$PW_RESULTS_POLICY``
+    does not change what an experiment document may state. A policy that cannot be read raises
+    ``PolicyError``: a configuration error, not a refusal."""
+    from scripts import results_policy
+
+    policy = results_policy.load_policy(results_policy.ENGINE / results_policy.POLICY_PATH)
+    return frozenset(policy.doc["memberships"])
+
+
+def check_evidence_labels(evidence: Mapping[str, Any], synthetic: bool) -> None:
+    """The open-results vocabulary rules for an evidence block (``docs/open_results_policy.md``).
+
+    Visibility is one of ``VISIBILITIES``. ``restricted`` needs at least one named reason and ``public`` needs
+    none. Every analysis membership must be a name the committed policy declares. A synthetic document is
+    ``not_published`` and joins no membership. Absent keys read as a synthetic document's defaults.
+
+    Naming a declared membership is checked as a label only: whether a membership rule would admit the result
+    is decided by ``scripts/results_policy.py`` on a landed part, never here.
+    """
+    visibility = evidence.get("visibility", SYNTHETIC_VISIBILITY if synthetic else None)
+    reasons = evidence.get("restriction_reasons", [])
+    memberships = evidence.get("analysis_memberships", [])
+    require(visibility in VISIBILITIES, "evidence_fields",
+            f"evidence.visibility must be one of {list(VISIBILITIES)}; got {visibility!r}"
+            + ("" if synthetic else " (a non-synthetic protocol must state it)"))
+    require(isinstance(reasons, list) and all(text(r) for r in reasons) and isinstance(memberships, list)
+            and all(text(m) for m in memberships), "evidence_fields",
+            "evidence.restriction_reasons and evidence.analysis_memberships must be lists of non-empty strings")
+    require(not synthetic or visibility == SYNTHETIC_VISIBILITY, "synthetic_label",
+            "A synthetic document must have visibility 'not_published'")
+    require(not synthetic or not memberships, "synthetic_label",
+            "A synthetic document joins no analysis membership")
+    require(visibility != "restricted" or bool(reasons), "evidence_fields",
+            "visibility 'restricted' needs at least one named reason in evidence.restriction_reasons")
+    require(visibility != "public" or not reasons, "evidence_fields",
+            f"visibility 'public' cannot carry restriction reasons {reasons}")
+    if memberships:
+        unknown = sorted(set(memberships) - declared_memberships())
+        require(not unknown, "evidence_fields",
+                f"evidence.analysis_memberships names {unknown}, which the committed results policy does not "
+                "declare")
 
 
 def evidence_block(protocol: Mapping[str, Any]) -> dict[str, Any]:
@@ -217,14 +264,21 @@ def _validate(doc: Any, payload_root: Path | None) -> dict[str, Any]:
             f"evidence needs {list(EVIDENCE_KEYS)}")
     require(evidence["synthetic"] == (evidence["evidence_class"] == SYNTHETIC_CLASS), "synthetic_label",
             "evidence.synthetic must be true exactly when evidence_class is 'synthetic_fixture'")
-    require(not evidence["synthetic"] or evidence["visibility"] == SYNTHETIC_VISIBILITY, "synthetic_label",
-            "A synthetic envelope must have visibility 'not_published'")
-    require(not evidence["synthetic"] or not evidence["analysis_memberships"], "synthetic_label",
-            "A synthetic envelope joins no analysis membership")
+    check_evidence_labels(evidence, evidence["synthetic"])
+
+    variant = doc["source"]["variant"]
+    require(variant is None or variant in VARIANTS, "unknown_variant",
+            f"source.variant must be one of {list(VARIANTS)}; got {variant!r}")
+    identity = doc["environment"].get("input_identity_sha256")
+    require(identity is None or bool(HEX64.fullmatch(str(identity))), "input_identity",
+            "environment.input_identity_sha256 must be 64 hex digits or null")
 
     method, model = doc["method"], doc["model"]
     require(method["id"] in METHOD_IDS, "unknown_method", f"{method['id']!r}")
     require(method["representation_type"] in REPRESENTATION_TYPES + (NOT_APPLICABLE,), "representation_type",
+            f"{method['representation_type']!r}")
+    require(method["representation_type"] == METHOD_REPRESENTATION[method["id"]], "representation_type",
+            f"method {method['id']} reads {METHOD_REPRESENTATION[method['id']]!r}, not "
             f"{method['representation_type']!r}")
     layers = method["layers"]
     require(integer(method["layer_index_base"]) and method["layer_index_base"] == 0, "layer_metadata",
@@ -245,8 +299,16 @@ def _validate(doc: Any, payload_root: Path | None) -> dict[str, Any]:
             f"accepted {counts['accepted']}, and accepted may not exceed requested {counts['requested']}")
     require(execution != "completed" or counts["completed"] >= 1, "counts_arithmetic",
             "A completed envelope must count at least one completed unit")
+    require(execution != "failed" or counts["failed"] >= 1, "counts_arithmetic",
+            "A failed envelope must count at least one failed unit")
+    require(execution not in NOT_EXECUTED_STATES or counts["accepted"] == 0, "counts_arithmetic",
+            f"An envelope in state {execution} executed nothing, so it accepts no unit")
+    require(execution == "completed" or counts["requested"] != 1 or counts["completed"] == 0, "counts_arithmetic",
+            f"A single-task envelope in state {execution} cannot count a completed unit")
 
     resources = doc["resources"]
+    require(execution not in NOT_EXECUTED_STATES or resources["measured"] is False, "resources_rule",
+            f"An envelope in state {execution} executed nothing, so it measures no resource")
     for key in NUMERIC_RESOURCES:
         value = resources[key]
         require(value is None or (type(value) in (int, float) and math.isfinite(value) and value >= 0),

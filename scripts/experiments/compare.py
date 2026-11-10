@@ -65,7 +65,10 @@ def _last_scores(payload: Mapping[str, Any]) -> dict[int, dict[str, Any]]:
 def readout_block(payload_a: Mapping[str, Any], payload_b: Mapping[str, Any]) -> dict[str, Any]:
     """Raw and filtered target ranks per layer for a and b, at each variant's last input position.
 
-    The two ranks are separate fields. No rank difference and no summary across layers is computed.
+    The two ranks are separate fields. No rank difference and no summary across layers is computed. Each
+    target row carries its ``token_id``. A target that the two payloads score on different tokens refuses
+    ``payload_mismatch``; a target present on one side only is listed in ``targets_only_in_a`` or
+    ``targets_only_in_b`` of its layer and is not dropped.
     """
     require(payload_a.get("kind") == READOUT_KIND and payload_b.get("kind") == READOUT_KIND, "payload_kind",
             f"the readout block reads {READOUT_KIND} payloads only")
@@ -77,11 +80,19 @@ def readout_block(payload_a: Mapping[str, Any], payload_b: Mapping[str, Any]) ->
     keys = ("raw_rank", "filtered_rank", "excluded_candidate", "top_k")
     layers = []
     for layer in sorted(set(scores_a) & set(scores_b)):
-        targets = [{"target_id": target, "role": scores_a[layer][target]["role"],
-                    "a": {key: scores_a[layer][target][key] for key in keys},
-                    "b": {key: scores_b[layer][target][key] for key in keys}}
-                   for target in scores_a[layer] if target in scores_b[layer]]
-        layers.append({"layer": layer, "targets": targets})
+        targets = []
+        for target in scores_a[layer]:
+            if target not in scores_b[layer]:
+                continue
+            row_a, row_b = scores_a[layer][target], scores_b[layer][target]
+            require(row_a["token_id"] == row_b["token_id"] and row_a["role"] == row_b["role"], "payload_mismatch",
+                    f"layer {layer}: target {target} names token {row_a['token_id']} ({row_a['role']}) in one "
+                    f"payload and token {row_b['token_id']} ({row_b['role']}) in the other")
+            targets.append({"target_id": target, "role": row_a["role"], "token_id": row_a["token_id"],
+                            "a": {key: row_a[key] for key in keys}, "b": {key: row_b[key] for key in keys}})
+        layers.append({"layer": layer, "targets": targets,
+                       "targets_only_in_a": sorted(set(scores_a[layer]) - set(scores_b[layer])),
+                       "targets_only_in_b": sorted(set(scores_b[layer]) - set(scores_a[layer]))})
     return {"status": "computed", "payload_kind": READOUT_KIND, "method": payload_a["method"],
             "position": "last_input_position_of_each_variant",
             "position_a": payload_a["last_position"], "position_b": payload_b["last_position"],

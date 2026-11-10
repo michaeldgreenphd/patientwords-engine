@@ -7,14 +7,13 @@ The numbers describe the fixture, not any checkpoint.
 """
 from __future__ import annotations
 
+import json
 import math
 from pathlib import Path
 from typing import Any
 
 from scripts.exploratory_methods import rank_target
-from scripts.experiments.common import (
-    FIXTURE_BACKEND, FIXTURE_MODEL, digest, integer, read_json, require, sha256_file,
-)
+from scripts.experiments.common import FIXTURE_BACKEND, FIXTURE_MODEL, digest, integer, require, sha256_bytes
 
 FIXTURE_FILE = "behavior_logits.json"
 FIXTURE_SCHEMA = "patientwords.fixture-behavior-logits/1"
@@ -41,34 +40,62 @@ class BehaviorFixtureAdapter:
             "status_note": "Fixture-supplied next-token logits scored offline. It says nothing about a real model.",
         }]
 
-    def _load(self, context: dict) -> tuple[dict[str, Any] | None, Path]:
+    def _load(self, context: dict) -> dict[str, Any]:
+        """The fixture file, read once per run: ``{"doc", "sha256", "problem"}``.
+
+        The bytes are read once and both parsed and hashed, so the recorded hash is the hash of what was
+        scored. ``doc`` is None with a ``problem`` sentence when the file is absent, is not JSON or is not a
+        JSON object; ``sha256`` is None only when the file is absent.
+        """
         path = Path(context["fixtures_dir"]) / FIXTURE_FILE
         cache = context.setdefault("_cache", {})
         key = ("behavior", str(path))
         if key not in cache:
-            cache[key] = read_json(path) if path.is_file() else None
-        return cache[key], path
+            if not path.is_file():
+                cache[key] = {"doc": None, "sha256": None,
+                              "problem": f"fixture file {FIXTURE_FILE} is not present in {path.parent}"}
+            else:
+                data = path.read_bytes()
+                entry: dict[str, Any] = {"doc": None, "sha256": sha256_bytes(data), "problem": None}
+                try:
+                    doc = json.loads(data.decode("utf-8"))
+                except ValueError:
+                    entry["problem"] = f"fixture file {FIXTURE_FILE} in {path.parent} is not JSON"
+                else:
+                    if isinstance(doc, dict):
+                        entry["doc"] = doc
+                    else:
+                        entry["problem"] = f"fixture file {FIXTURE_FILE} in {path.parent} is not a JSON object"
+                cache[key] = entry
+        return cache[key]
 
-    def _row(self, task: dict, context: dict) -> tuple[dict[str, Any] | None, dict[str, Any] | None, Path]:
-        doc, path = self._load(context)
+    def _row(self, task: dict, context: dict) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+        doc = self._load(context)["doc"]
         if doc is None:
-            return None, None, path
+            return None, None
         spec = task["spec"]
-        rows = [row for row in doc.get("rows", [])
-                if row.get("family_id") == spec["family_id"] and row.get("variant") == spec["variant"]]
-        return doc, (rows[0] if len(rows) == 1 else None), path
+        listed = doc.get("rows", [])
+        rows = [row for row in (listed if isinstance(listed, list) else [])
+                if isinstance(row, dict) and row.get("family_id") == spec["family_id"]
+                and row.get("variant") == spec["variant"]]
+        return doc, (rows[0] if len(rows) == 1 else None)
+
+    def input_identity(self, task: dict, context: dict) -> str | None:
+        """Digest of the fixture file's bytes: the one input of a behaviour task outside its spec."""
+        sha = self._load(context)["sha256"]
+        return digest({"adapter_inputs": {FIXTURE_FILE: sha}}) if sha is not None else None
 
     def preflight(self, task: dict, context: dict) -> tuple[str, str | None]:
-        doc, row, path = self._row(task, context)
+        doc, row = self._row(task, context)
         if doc is None:
-            return "unavailable", f"fixture file {FIXTURE_FILE} is not present in {path.parent}"
+            return "unavailable", self._load(context)["problem"]
         if row is None:
             spec = task["spec"]
             return "unavailable", f"no single fixture logits row for {spec['family_id']}:{spec['variant']}"
         return "ready", None
 
     def execute_fixture(self, task: dict, context: dict) -> dict:
-        doc, row, path = self._row(task, context)
+        doc, row = self._row(task, context)
         require(doc is not None and row is not None, "fixture_missing", "preflight was not ready for this task")
         require(doc.get("schema_version") == FIXTURE_SCHEMA and doc.get("synthetic") is True
                 and doc.get("extraction") == EXTRACTION, "fixture_identity",
@@ -96,7 +123,7 @@ class BehaviorFixtureAdapter:
             "rank_tie_rule": "descending_logit_then_ascending_token_id",
             "vocabulary_size": size, "logits_sha256": digest(logits),
             "targets": targets,
-            "fixture": {"file": FIXTURE_FILE, "sha256": sha256_file(path)},
+            "fixture": {"file": FIXTURE_FILE, "sha256": self._load(context)["sha256"]},
             "limitations": ["synthetic_not_measurement", "first_target_token_only_no_sequence_scoring"],
         }
 

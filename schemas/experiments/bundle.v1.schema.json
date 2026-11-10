@@ -53,16 +53,19 @@
     "execution": {
       "type": "object",
       "required": [
-        "by_state", "counts", "complete", "missing", "uncertain", "duplicate_identical",
-        "execution_guarantee", "timing_caveat"
+        "by_state", "counts", "complete", "ready_complete", "missing", "uncertain", "ended_line_missing",
+        "duplicate_identical", "attempt_outcomes_differ", "execution_guarantee", "timing_caveat"
       ],
       "properties": {
         "by_state": {"type": "object", "additionalProperties": {"type": "integer"}},
         "counts": {"type": "object", "additionalProperties": {"type": "integer"}},
         "complete": {"type": "boolean"},
+        "ready_complete": {"type": "boolean"},
         "missing": {"type": "array", "items": {"type": "object"}},
         "uncertain": {"type": "array", "items": {"type": "object"}},
+        "ended_line_missing": {"type": "array", "items": {"type": "object"}},
         "duplicate_identical": {"type": "array", "items": {"type": "object"}},
+        "attempt_outcomes_differ": {"type": "array", "items": {"type": "object"}},
         "execution_guarantee": {"type": "string"},
         "timing_caveat": {"type": "string"}
       },
@@ -121,8 +124,8 @@
       "items": {
         "type": "object",
         "required": [
-          "method", "backend", "status", "evidence", "status_note", "declared_by", "planned_state", "reason",
-          "tasks"
+          "method", "backend", "status", "evidence", "status_note", "declared_by", "revision_match",
+          "planned_state", "reason", "tasks"
         ],
         "properties": {
           "method": {"type": "string"},
@@ -131,6 +134,7 @@
           "evidence": {"type": "string"},
           "status_note": {"type": "string"},
           "declared_by": {"type": ["string", "null"]},
+          "revision_match": {"type": ["string", "null"]},
           "planned_state": {"type": "string"},
           "reason": {"type": ["string", "null"]},
           "tasks": {"type": "integer"}

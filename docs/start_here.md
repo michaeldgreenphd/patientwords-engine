@@ -125,6 +125,11 @@ working tree and is pinned by `tests/test_experiments_slice.py`: 45 planned task
 `run-fixture` executes nothing and reuses all 27. To see an interruption and a resume, add
 `--stop-after 5` to the first `run-fixture` and run it again without the flag.
 
+To see the bundle in a browser, run the preview check described in
+[experiment_interface/preview.md](experiment_interface/preview.md). It needs the site checkout
+and Chromium, builds the same synthetic bundle in a temporary copy of the site and checks the
+viewer page `../patientwords/experiments/index.html` against it.
+
 What this procedure shows: the developer install works, the documentation gates pass or
 name their failures, and the slice code handles a synthetic fixture. It shows nothing about
 a model. The fixture is synthetic, and its output is a software check, not a measurement.

@@ -19,6 +19,8 @@ from scripts.experiments.common import (
 
 MATRIX_PATH = ENGINE / "data" / "experiments" / "capability_matrix.v1.json"
 FIXTURE_CEILING = "runtime_verified_offline_fixture"
+# The strongest answer a row with no recorded model revision may give to a question about a named revision.
+UNRECORDED_REVISION_CEILING = "artifact_available"
 
 
 def status_rank(status: str) -> int:
@@ -134,7 +136,10 @@ def lookup(model_revision: Mapping[str, Any] | str, method: str, backend: str, a
     ``artifact`` is an artifact id or SHA-256. A row whose ``dtype`` is null applies to every dtype.
     Rows at exactly the asked revision are used first. If there is none, rows whose ``model.revision`` is null
     are used: such a row describes a route that records no revision (a hosted service, an audit run before
-    pinning), and the answer then carries ``revision_match: "row_revision_not_recorded"``.
+    pinning), and the answer then carries ``revision_match: "row_revision_not_recorded"``. Such an answer is
+    never stronger than ``artifact_available``: a row that records no revision cannot state that a named
+    revision passed an audit or ran. The row's own status is returned as ``row_status`` and ``status_capped``
+    says whether the answer was lowered.
 
     Selection, in order: rows naming that artifact; else rows with no artifact; else, when no artifact was
     asked for, every row of the key. Where more than one row remains, the weakest status is returned, so an
@@ -159,12 +164,20 @@ def lookup(model_revision: Mapping[str, Any] | str, method: str, backend: str, a
         chosen = generic or candidates
     if not chosen:
         what = f"{hf_id}@{revision} x {method} x {backend}" + (f" x {artifact}" if artifact else "")
-        return {"status": "unsupported", "matched": False, "evidence": [], "evidence_text": "no capability row",
+        return {"status": "unsupported", "row_status": None, "status_capped": False, "matched": False,
+                "evidence": [], "evidence_text": "no capability row",
                 "status_note": f"no capability row for {what}", "ambiguous": False, "artifact": None,
                 "declared_by": None, "revision_match": None}
     weakest = min(chosen, key=lambda row: (status_rank(row["status"]), str(row_key(row))))
-    return {"status": weakest["status"], "matched": True, "evidence": list(weakest["evidence"]),
-            "evidence_text": evidence_text(weakest), "status_note": weakest["status_note"],
+    status, note = weakest["status"], weakest["status_note"]
+    capped = (revision is not None and not exact
+              and status_rank(status) > status_rank(UNRECORDED_REVISION_CEILING))
+    if capped:
+        note = (f"Answer lowered from {status} to {UNRECORDED_REVISION_CEILING}: the row records no model "
+                f"revision, so it cannot state {status} for revision {revision}. {note}")
+        status = UNRECORDED_REVISION_CEILING
+    return {"status": status, "row_status": weakest["status"], "status_capped": capped, "matched": True,
+            "evidence": list(weakest["evidence"]), "evidence_text": evidence_text(weakest), "status_note": note,
             "ambiguous": len(chosen) > 1, "artifact": weakest.get("artifact"),
             "declared_by": weakest.get("declared_by"), "revision_match": revision_match}
 

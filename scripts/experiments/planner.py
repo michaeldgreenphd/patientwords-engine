@@ -9,10 +9,11 @@ and the attempt number are not part of it. The store keys reuse on ``(spec_sha25
 
 Estimates are sizes derived from stated formulas. They are marked ``measured: false``. No throughput, price or
 duration is invented: ``runtime_seconds_estimate`` stays null unless a rates file supplies measured rates with
-their source and sample size.
+their source and sample size, and null when no task is ready, because the sum is over ready tasks only.
 """
 from __future__ import annotations
 
+import math
 from typing import Any, Mapping
 
 from scripts.experiments import capabilities as caps
@@ -92,11 +93,19 @@ def load_rates(doc: Any) -> list[dict[str, Any]]:
     """Validate a rates document. Every rate must say where it was measured and on how many samples."""
     require(isinstance(doc, dict) and doc.get("schema_version") == RATES_SCHEMA and isinstance(doc.get("rates"), list),
             "rates_source", f"Expected a {RATES_SCHEMA} document with a 'rates' list")
+    seen: set[tuple[str, str]] = set()
     for rate in doc["rates"]:
         require(isinstance(rate, dict) and text(rate.get("method")) and text(rate.get("backend"))
-                and type(rate.get("seconds_per_task")) in (int, float) and rate["seconds_per_task"] >= 0
+                and type(rate.get("seconds_per_task")) in (int, float) and math.isfinite(rate["seconds_per_task"])
+                and rate["seconds_per_task"] >= 0
                 and text(rate.get("source")) and integer(rate.get("n_samples"), 1), "rates_source",
-                "Each rate needs method, backend, seconds_per_task, source and n_samples (at least 1)")
+                "Each rate needs method, backend, a finite non-negative seconds_per_task, source and n_samples "
+                "(at least 1)")
+        key = (rate["method"], rate["backend"])
+        require(key not in seen, "duplicate_rate",
+                f"the rates document has two rows for method {key[0]} on backend {key[1]}; one measured rate "
+                "per method and backend is needed, and neither row is preferred")
+        seen.add(key)
     return doc["rates"]
 
 
@@ -189,7 +198,11 @@ def _build(protocol: dict[str, Any], matrix: Mapping[str, Any], replicates: int 
     else:
         table = {(r["method"], r["backend"]): r for r in load_rates(rates)}
         missing = sorted({t["spec"]["method"]["id"] for t in ready} - {m for m, b in table if b == model["backend"]})
-        if missing:
+        if not ready:
+            notes.append("runtime_seconds_estimate is null: no task is ready, so no runtime is estimated. The "
+                         "estimate sums over ready tasks only and says nothing about the tasks planned as "
+                         "unsupported or unavailable.")
+        elif missing:
             notes.append(f"runtime_seconds_estimate is null: the rates file has no rate for {missing} on backend "
                          f"{model['backend']}.")
         else:

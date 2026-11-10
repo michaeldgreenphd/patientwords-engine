@@ -21,6 +21,11 @@ SYNTHETIC_LIMITATIONS = (
     "no_real_model_was_loaded_and_no_parity_with_one_was_tested",
     "fixture_timings_say_nothing_about_model_runs",
 )
+# Added when the collected run shows the condition. The counts are in ``execution.counts`` and
+# ``execution.by_state``; the rows are in ``execution.attempt_outcomes_differ``.
+READY_NOT_COMPLETED = "ready_tasks_not_completed_see_execution_counts"
+NOTHING_COMPLETED = "no_task_completed_so_no_value_was_computed"
+OUTCOMES_DIFFER = "attempt_outcomes_differ_between_workers_see_execution"
 GENERAL_LIMITATIONS = (
     "no_statistic_computed_one_value_per_family_variant_replicate",
     "first_target_token_only_no_sequence_scoring",
@@ -38,11 +43,15 @@ def build_bundle(run_dir: Any, *, allow_roots: Iterable[Any] = ()) -> dict[str, 
     capability_rows: dict[tuple[Any, ...], dict[str, Any]] = {}
     for task in plan["tasks"]:
         capability = task["capability"]
-        key = (task["spec"]["method"]["id"], capability["status"], task["planned_state"], task["reason"])
+        key = (task["spec"]["method"]["id"], capability["status"], task["planned_state"], task["reason"],
+               capability["revision_match"])
         row = capability_rows.setdefault(key, {
             "method": task["spec"]["method"]["id"], "backend": task["spec"]["settings"]["backend"],
             "status": capability["status"], "evidence": capability["evidence"],
             "status_note": capability["status_note"], "declared_by": capability["declared_by"],
+            # "exact": the row names the protocol's model revision. "row_revision_not_recorded": the row
+            # records no revision. null: no row matched.
+            "revision_match": capability["revision_match"],
             "planned_state": task["planned_state"], "reason": task["reason"], "tasks": 0})
         row["tasks"] += 1
 
@@ -57,8 +66,14 @@ def build_bundle(run_dir: Any, *, allow_roots: Iterable[Any] = ()) -> dict[str, 
         limitations = list(SYNTHETIC_LIMITATIONS) + limitations
     if not assembly["complete"]:
         limitations.append("incomplete_run_some_planned_tasks_have_no_envelope")
+    if not assembly["ready_complete"]:
+        limitations.append(READY_NOT_COMPLETED)
+    if assembly["by_state"]["completed"] == 0:
+        limitations.append(NOTHING_COMPLETED)
     if assembly["uncertain"]:
         limitations.append("uncertain_attempts_present_see_execution")
+    if assembly["attempt_outcomes_differ"]:
+        limitations.append(OUTCOMES_DIFFER)
 
     bundle = {
         "schema_version": BUNDLE_SCHEMA,
@@ -80,8 +95,11 @@ def build_bundle(run_dir: Any, *, allow_roots: Iterable[Any] = ()) -> dict[str, 
         "plan_totals": {**plan["totals"], "adapters": plan["adapters"], "estimate_notes": plan["estimate_notes"]},
         "execution": {
             "by_state": assembly["by_state"], "counts": assembly["counts"], "complete": assembly["complete"],
+            "ready_complete": assembly["ready_complete"],
             "missing": assembly["missing"], "uncertain": assembly["uncertain"],
+            "ended_line_missing": assembly["ended_line_missing"],
             "duplicate_identical": assembly["duplicate_identical"],
+            "attempt_outcomes_differ": assembly["attempt_outcomes_differ"],
             "execution_guarantee": collected["execution_guarantee"],
             "timing_caveat": TIMING_CAVEAT,
         },

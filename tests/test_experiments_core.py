@@ -53,7 +53,7 @@ def real_like(protocol: dict) -> dict:
     doc = copy.deepcopy(protocol)
     doc["synthetic"] = False
     doc["evidence"] = {"evidence_class": "exploratory_post_registration", "clinical_review": "domain_review_pending",
-                       "visibility": "restricted"}
+                       "visibility": "restricted", "restriction_reasons": ["placeholder_restriction"]}
     doc["model"]["backend"] = "cpu_transformers"
     for number, family in enumerate(doc["case_families"], start=1):
         family["legacy_join"] = {"batch": "placeholder_batch", "batch_index": number, "model": "toy-model"}
@@ -298,10 +298,69 @@ def test_sealed_legacy_row_is_refused_without_repeating_the_prompt(protocol: dic
     with pytest.raises(Refusal) as caught:
         validate_protocol(doc, row_restriction=sealed_second_row)
     assert caught.value.code == "holdout_refusal"
-    # The check receives the clinical variant's prompt; the refusal names the row by batch and index only.
-    assert seen[1] == ("placeholder_batch", 2, "alpha beta tail")
+    # The row check receives the clinical variant's prompt; the refusal names the row by batch and index only.
+    assert seen[-1] == ("placeholder_batch", 2, "alpha beta tail")
+    assert [call for call in seen if call[0] is not None] == [("placeholder_batch", 1, "alpha tail"),
+                                                              ("placeholder_batch", 2, "alpha beta tail")]
     assert "alpha beta tail" not in str(caught.value) and "placeholder_batch, 2" in str(caught.value)
     assert validate_protocol(doc, row_restriction=lambda *_: None)["synthetic"] is False
+
+
+def seal_stub(sealed_prompt: str, seen: list) -> object:
+    """A seal checker that knows one placeholder string as sealed, wherever it occurs. No sealed text is read."""
+    def check(batch: str | None, index: int | None, prompt: str | None) -> str | None:
+        seen.append((batch, index, prompt))
+        return "sealed_holdout" if prompt == sealed_prompt else None
+    return check
+
+
+def test_the_seal_is_checked_for_a_family_without_a_legacy_join(protocol: dict) -> None:
+    # Regression: the check sat inside `if legacy_join is not None`, so a join-less family was never asked.
+    doc = real_like(protocol)
+    for family in doc["case_families"]:
+        family["legacy_join"] = None
+    seen: list = []
+    assert refusal(doc, row_restriction=seal_stub("alpha tail", seen)) == "holdout_refusal"   # fam-1 clinical
+    assert seen == [(None, None, "alpha tail")]
+    seen.clear()
+    assert validate_protocol(doc, row_restriction=seal_stub("no such prompt", seen))["status"] == "validated"
+    # Every variant prompt of every family is asked once, with no batch and no index.
+    prompts = sorted(entry["prompt"] for family in doc["case_families"] for entry in family["variants"].values())
+    assert sorted(call[2] for call in seen) == prompts and len(prompts) == 9
+    assert {call[:2] for call in seen} == {(None, None)}
+
+
+@pytest.mark.parametrize("joined", [True, False])
+@pytest.mark.parametrize("variant", ["colloquial", "normalized"])
+def test_a_sealed_prompt_in_any_variant_is_refused_without_repeating_it(protocol: dict, joined: bool,
+                                                                        variant: str) -> None:
+    # Regression: only variants["clinical"] reached the checker, so a sealed phrase in another slot validated.
+    doc = real_like(protocol)
+    if not joined:
+        for family in doc["case_families"]:
+            family["legacy_join"] = None
+    sealed_prompt = doc["case_families"][1]["variants"][variant]["prompt"]
+    with pytest.raises(Refusal) as caught:
+        validate_protocol(doc, row_restriction=seal_stub(sealed_prompt, []))
+    assert caught.value.code == "holdout_refusal"
+    assert sealed_prompt not in str(caught.value) and f"fam-2:{variant}" in str(caught.value)
+    with pytest.raises(Refusal) as planned:
+        planner.build_plan(doc, capabilities.load_matrix(), row_restriction=seal_stub(sealed_prompt, []))
+    assert planned.value.code == "holdout_refusal"
+
+
+def test_a_synthetic_protocol_never_reads_the_seal(protocol: dict) -> None:
+    seen: list = []
+    assert validate_protocol(protocol, row_restriction=seal_stub("alpha tail", seen))["synthetic"] is True
+    assert seen == []
+
+
+def test_a_synthetic_protocol_cannot_declare_a_legacy_join_so_skipping_its_seal_check_hides_no_row(protocol: dict) -> None:
+    """The seal check is skipped for a synthetic protocol. That is sound only because such a protocol is
+    refused before it can name a real row."""
+    doc = copy.deepcopy(protocol)
+    doc["case_families"][0]["legacy_join"] = {"batch": "placeholder_batch", "batch_index": 1, "model": "toy-model"}
+    assert refusal(doc, row_restriction=seal_stub("no such placeholder", [])) == "synthetic_label"
 
 
 def test_default_seal_check_is_results_policy_row_restriction(protocol: dict, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -310,7 +369,10 @@ def test_default_seal_check_is_results_policy_row_restriction(protocol: dict, mo
     calls = []
     monkeypatch.setattr(results_policy, "row_restriction", lambda *args: calls.append(args))
     validate_protocol(real_like(protocol))
-    assert [call[:2] for call in calls] == [("placeholder_batch", 1), ("placeholder_batch", 2), ("placeholder_batch", 3)]
+    # One row check per joined family, then the two other variants of that family as bare phrases.
+    assert [call[:2] for call in calls if call[0] is not None] == [
+        ("placeholder_batch", 1), ("placeholder_batch", 2), ("placeholder_batch", 3)]
+    assert len([call for call in calls if call[:2] == (None, None)]) == 6 and len(calls) == 9
 
 
 def test_unevaluable_seal_is_a_configuration_error_not_a_refusal(protocol: dict) -> None:
@@ -321,6 +383,50 @@ def test_unevaluable_seal_is_a_configuration_error_not_a_refusal(protocol: dict)
 
     with pytest.raises(results_policy.SealError):
         validate_protocol(real_like(protocol), row_restriction=broken)
+
+
+def with_evidence(protocol: dict, **evidence: object) -> dict:
+    doc = real_like(protocol)
+    doc["evidence"] = {"evidence_class": "exploratory_post_registration", "clinical_review": "domain_review_pending",
+                       **evidence}
+    return doc
+
+
+def test_protocol_evidence_labels_follow_the_open_results_vocabulary(protocol: dict) -> None:
+    # Regression: any non-empty string was accepted, including "public" with a restriction reason.
+    from scripts import results_policy
+
+    no_seal = {"row_restriction": lambda *_: None}
+    declared = sorted(results_policy.load_policy(results_policy.ENGINE / results_policy.POLICY_PATH).doc["memberships"])
+    assert "study-interim/1" in declared
+    accepted = [
+        {"visibility": "public"},
+        {"visibility": "public", "restriction_reasons": [], "analysis_memberships": declared},
+        {"visibility": "restricted", "restriction_reasons": ["placeholder_restriction"]},
+        {"visibility": "not_published"},
+    ]
+    for evidence in accepted:
+        assert validate_protocol(with_evidence(protocol, **evidence), **no_seal)["status"] == "validated"
+    refused = [
+        {},                                                                           # visibility not stated
+        {"visibility": "whatever"},
+        {"visibility": "public", "restriction_reasons": ["placeholder_restriction"]},
+        {"visibility": "restricted"},
+        {"visibility": "restricted", "restriction_reasons": []},
+        {"visibility": "restricted", "restriction_reasons": [""]},
+        {"visibility": "public", "analysis_memberships": ["placeholder-membership/9"]},
+    ]
+    for evidence in refused:
+        assert refusal(with_evidence(protocol, **evidence), **no_seal) == "evidence_fields", evidence
+
+
+def test_a_synthetic_protocol_is_not_published_and_joins_no_membership(protocol: dict) -> None:
+    protocol["evidence"]["visibility"] = "public"
+    assert refusal(protocol) == "synthetic_label"
+    protocol["evidence"]["visibility"] = "not_published"
+    assert validate_protocol(protocol)["status"] == "validated"
+    protocol["evidence"]["analysis_memberships"] = ["study-interim/1"]
+    assert refusal(protocol) == "synthetic_label"
 
 
 # ---------------------------------------------------------------------------------------- capability matrix
@@ -348,16 +454,67 @@ def test_cpu_logits_rows_carry_the_registry_pins(matrix: dict) -> None:
         assert row["status"] == "artifact_available" and row["dtype"] == "bfloat16"
 
 
-def test_parity_is_claimed_once_and_cites_a_record_that_exists(matrix: dict) -> None:
-    passed = find(matrix, status="parity_passed")
-    assert [(r["model"]["study_id"], r["backend"], r["dtype"]) for r in passed] == [
-        ("gemma-2-2b", "cpu_interp_engine", "float32")]
-    record = passed[0]["parity_record"]
-    assert (ENGINE / record["source"].split(" (")[0]).is_file() and record["date"] == "2026-09-04"
-    # The audited run recorded no model revision, so the row does not claim one.
-    assert passed[0]["model"]["revision"] is None
+def test_no_row_claims_parity_and_the_interp_engine_row_states_the_agreement_numbers(matrix: dict) -> None:
+    # Regression: this row was parity_passed on an audit that records no pass criterion and no verdict.
+    assert find(matrix, status="parity_passed") == []
+    assert "parity_passed" in matrix["status_order"]                     # the word stays in the vocabulary
+    row, = find(matrix, model_study_id="gemma-2-2b", backend="cpu_interp_engine")
+    assert (row["status"], row["dtype"], row["model"]["revision"]) == ("artifact_available", "float32", None)
+    assert "parity_record" not in row
+    report = json.loads((ENGINE / "ops" / "backend_agreement_interp_vs_hosted_20260904.json").read_text("utf-8"))
+    assert not [key for key in report if "pass" in key or "verdict" in key]
+    note = row["status_note"]
+    # The numbers in the note are the report's own.
+    assert (report["probability"]["n"], report["penalty"]["n"]) == (71, 29) and "71 of 100" in note
+    for value in (report["probability"]["mean"], report["probability"]["median"], report["probability"]["max"],
+                  report["penalty"]["max"], report["thresholds"]["near"], report["thresholds"]["far"]):
+        assert str(value) in note, value
+    censored = report["censoring"]
+    assert (censored["clinical"]["reference_null_candidate_measured"],
+            censored["patient"]["reference_null_candidate_measured"]) == (8, 21)
+    assert "8 clinical and 21 patient" in note and "no pass criterion" in note
+    assert {item["source"].split(" (")[0] for item in row["evidence"]} == {
+        "docs/backend_agreement_20260903.md", "ops/backend_agreement_interp_vs_hosted_20260904.json"}
     # The bfloat16 lane of the same model has a recorded audit that did not pass per pair.
     assert find(matrix, model_study_id="gemma-2-2b", backend="cpu_transformers")[0]["status"] == "artifact_available"
+
+
+def test_hosted_graph_rows_with_nothing_pinned_are_identity_unknown(matrix: dict) -> None:
+    # Regression: both rows were artifact_available with model revision, artifact revision and hash all null.
+    rows = find(matrix, method="attribution_graph", backend="hosted_neuronpedia")
+    assert sorted(r["model"]["study_id"] for r in rows) == ["gemma-2-2b", "qwen3-4b"]
+    for row in rows:
+        assert row["model"]["revision"] is None and row["artifact"]["revision"] is None
+        assert row["artifact"]["sha256"] is None
+        assert row["status"] == "artifact_available_identity_unknown"
+    # No row above identity_unknown is without a model revision, except the interp-engine row, whose note says so.
+    unpinned = [r for r in matrix["rows"] if r["model"]["revision"] is None
+                and capabilities.status_rank(r["status"]) > capabilities.status_rank("artifact_available_identity_unknown")]
+    assert [(r["model"]["study_id"], r["backend"]) for r in unpinned] == [("gemma-2-2b", "cpu_interp_engine")]
+
+
+def test_a_row_without_a_revision_never_answers_above_artifact_available_for_a_named_revision() -> None:
+    # Regression: lookup returned parity_passed from a null-revision row for any revision asked.
+    row = {"model": {"study_id": "toy-model", "hf_id": "fixture/toy-model", "revision": None},
+           "method": "behavior_next_token", "backend": "cpu_interp_engine", "dtype": None, "artifact": None,
+           "status": "parity_passed", "status_note": "placeholder note",
+           "evidence": [{"source": "placeholder", "date": "2026-11-10"}],
+           "parity_record": {"source": "placeholder", "date": "2026-11-10", "scope": "placeholder"}}
+    asked = capabilities.lookup(f"fixture/toy-model@{'f' * 40}", "behavior_next_token", "cpu_interp_engine", rows=[row])
+    assert (asked["status"], asked["row_status"], asked["status_capped"]) == ("artifact_available", "parity_passed", True)
+    assert asked["revision_match"] == "row_revision_not_recorded" and asked["matched"] is True
+    assert "records no model revision" in asked["status_note"] and "placeholder note" in asked["status_note"]
+    # A question that names no revision gets the row as it is, and so does a row pinned to the asked revision.
+    bare = capabilities.lookup("fixture/toy-model", "behavior_next_token", "cpu_interp_engine", rows=[row])
+    assert (bare["status"], bare["status_capped"], bare["revision_match"]) == ("parity_passed", False, "exact")
+    pinned = {**row, "model": {**row["model"], "revision": "f" * 40}}
+    exact = capabilities.lookup(f"fixture/toy-model@{'f' * 40}", "behavior_next_token", "cpu_interp_engine",
+                                rows=[pinned])
+    assert (exact["status"], exact["status_capped"], exact["revision_match"]) == ("parity_passed", False, "exact")
+    # A weaker status is not raised to the ceiling.
+    weak = capabilities.lookup(f"fixture/toy-model@{'f' * 40}", "behavior_next_token", "cpu_interp_engine",
+                               rows=[{**row, "status": "architecture_supported"}])
+    assert (weak["status"], weak["status_capped"]) == ("architecture_supported", False)
 
 
 def test_matrix_holds_the_rows_the_design_names(matrix: dict) -> None:
@@ -366,6 +523,11 @@ def test_matrix_holds_the_rows_the_design_names(matrix: dict) -> None:
     assert graphs["gemma-2-2b"]["artifact"]["calibration"] == "calibrated_reference"
     assert graphs["qwen3-4b"]["artifact"]["id"] == "transcoder-hp"
     assert graphs["qwen3-4b"]["artifact"]["calibration"] == "not_calibrated"
+    # The released ICA basis is cited where the fork names its Hugging Face id, not at a local fit command.
+    released = find(matrix, method="ica_lens")
+    cited = [e["source"] for r in released if r["artifact"] and r["artifact"]["id"] == "sida/icalens-qwen3.5-2b-ultrachat-1m"
+             for e in r["evidence"]]
+    assert cited and all(source.endswith(": README.md:53") for source in cited)
     hosted_lens = find(matrix, method="j_lens", backend="hosted_neuronpedia")
     assert {r["model"]["study_id"] for r in hosted_lens} == {"gemma-2-2b", "gemma-2-2b-it"}
     assert all(r["status"] == "artifact_available_identity_unknown" and r["model"]["revision"] is None
@@ -531,6 +693,86 @@ def test_behaviour_adapter_reports_absent_fixtures_as_unavailable(protocol: dict
         task_for(planner.build_plan(protocol, matrix), "fam-1", "clinical", "logit_lens"),
         {"fixtures_dir": tmp_path, "protocol": protocol})
     assert state == "unavailable" and "readout_spec.json" in reason
+
+
+def test_a_fixture_file_that_is_not_json_is_unavailable_and_has_an_identity(protocol: dict, matrix: dict,
+                                                                            tmp_path: Path) -> None:
+    # Regression: read_json raised JSONDecodeError out of preflight and the run stopped with a traceback.
+    (tmp_path / "behavior_logits.json").write_text('{"rows": [', encoding="utf-8")
+    task = task_for(planner.build_plan(protocol, matrix), "fam-1", "clinical", "behavior_next_token")
+    context = {"fixtures_dir": tmp_path, "protocol": protocol}
+    state, reason = behavior_fixture.ADAPTER.preflight(task, context)
+    assert state == "unavailable" and "is not JSON" in reason
+    assert len(behavior_fixture.ADAPTER.input_identity(task, context)) == 64
+    (tmp_path / "behavior_logits.json").write_text("[1, 2]", encoding="utf-8")
+    state, reason = behavior_fixture.ADAPTER.preflight(task, {"fixtures_dir": tmp_path, "protocol": protocol})
+    assert state == "unavailable" and "not a JSON object" in reason
+
+
+def test_input_identity_is_the_digest_of_the_fixture_file_hashes(protocol: dict, matrix: dict, tmp_path: Path) -> None:
+    plan = planner.build_plan(protocol, matrix)
+    context = {"fixtures_dir": FIXTURES, "protocol": protocol}
+
+    def sha(name: str) -> str:
+        return hashlib.sha256((FIXTURES / name).read_bytes()).hexdigest()
+
+    behaviour = behavior_fixture.ADAPTER.input_identity(task_for(plan, "fam-1", "clinical", "behavior_next_token"), context)
+    assert behaviour == canonical({"adapter_inputs": {"behavior_logits.json": sha("behavior_logits.json")}})
+    lens = readout_exploratory.ADAPTER.input_identity(task_for(plan, "fam-1", "clinical", "logit_lens"), context)
+    assert lens == canonical({"adapter_inputs": {"readout_packet.json": sha("readout_packet.json"),
+                                                 "readout_spec.json": sha("readout_spec.json")}})
+    absent = {"fixtures_dir": tmp_path, "protocol": protocol}
+    assert behavior_fixture.ADAPTER.input_identity(plan["tasks"][0], absent) is None
+    assert readout_exploratory.ADAPTER.input_identity(plan["tasks"][0], absent) is None
+    # The registry helper: an adapter without the hook is "not implemented", and a bad return value refuses.
+    assert adapters.input_identity(behavior_fixture.ADAPTER, plan["tasks"][0], context) == (True, behaviour)
+    assert adapters.input_identity(object(), plan["tasks"][0], context) == (False, None)
+
+    class Raises:
+        def input_identity(self, task: dict, context: dict) -> str:
+            raise OSError("placeholder: unreadable")
+
+    class Wrong:
+        def input_identity(self, task: dict, context: dict) -> str:
+            return "not-a-digest"
+
+    assert adapters.input_identity(Raises(), plan["tasks"][0], context) == (True, None)
+    with pytest.raises(Refusal) as caught:
+        adapters.input_identity(Wrong(), plan["tasks"][0], context)
+    assert caught.value.code == "adapter_contract"
+
+
+def test_readout_targets_must_be_the_protocols_targets(protocol: dict, matrix: dict) -> None:
+    # Regression: readout_spec.json could score t1 on another token than the protocol declares and still validate.
+    plan = planner.build_plan(protocol, matrix)
+    context = {"fixtures_dir": FIXTURES, "protocol": protocol}
+    adapter = readout_exploratory.ADAPTER
+    task = task_for(plan, "fam-1", "clinical", "logit_lens")
+    payload = adapter.execute_fixture(task, context)
+    adapter.validate_payload(payload, task, context)
+    assert [(s["target_id"], s["role"], s["token_id"]) for s in payload["readouts"][0]["scores"]] == [
+        (t["id"], t.get("role", "answer"), t["token_ids"][0]) for t in protocol["case_families"][0]["targets"]]
+
+    def code(changed_payload: dict, changed_protocol: dict = protocol) -> str:
+        with pytest.raises(Refusal) as caught:
+            adapter.validate_payload(changed_payload, task, {"fixtures_dir": FIXTURES, "protocol": changed_protocol})
+        return caught.value.code
+
+    other_token = copy.deepcopy(payload)
+    other_token["readouts"][0]["scores"][0]["token_id"] = 2     # not an excluded token, so the rank rules still hold
+    assert code(other_token) == "missing_targets"
+    other_role = copy.deepcopy(payload)
+    other_role["readouts"][1]["scores"][0]["role"] = "intermediate"
+    assert code(other_role) == "missing_targets"
+    dropped = copy.deepcopy(payload)
+    del dropped["readouts"][2]["scores"][1]
+    assert code(dropped) == "missing_targets"
+    renamed = copy.deepcopy(protocol)
+    renamed["case_families"][0]["targets"][0]["id"] = "renamed_t1"
+    assert code(payload, renamed) == "missing_targets"
+    retokened = copy.deepcopy(protocol)
+    retokened["case_families"][0]["targets"][0]["token_ids"] = [2]
+    assert code(payload, retokened) == "missing_targets"
 
 
 def test_readout_payload_wraps_the_v1_report_without_its_prompt_text(protocol: dict, matrix: dict) -> None:
@@ -708,6 +950,47 @@ def test_no_runtime_is_estimated_without_a_measured_rate(protocol: dict, matrix:
     assert caught.value.code == "rates_source"
 
 
+def rates_doc(*rows: dict) -> dict:
+    return {"schema_version": "patientwords.experiment-rates/1", "rates": list(rows)}
+
+
+def rate_row(method: str, backend: str, seconds: object = 80.0) -> dict:
+    return {"method": method, "backend": backend, "seconds_per_task": seconds, "source": "placeholder run",
+            "n_samples": 5}
+
+
+def test_no_runtime_is_estimated_when_no_task_is_ready(protocol: dict, matrix: dict) -> None:
+    # Regression: sum([]) gave runtime_seconds_estimate 0 for a plan whose every task needs a model run.
+    protocol["model"].update({"study_id": "gemma-2-2b", "hf_id": "google/gemma-2-2b", "backend": "cpu_interp_engine",
+                              "revision": "f" * 40, "tokenizer_revision": "f" * 40, "dtype": "float32",
+                              "hidden_size": 2304, "n_layers": 26})
+    protocol["methods"] = [{"id": "behavior_next_token"}]
+    plan = planner.build_plan(protocol, matrix, rates=rates_doc(rate_row("behavior_next_token", "cpu_interp_engine")))
+    assert plan["totals"]["by_planned_state"] == {"ready": 0, "unsupported": 0, "unavailable": 9}
+    assert plan["totals"]["runtime_seconds_estimate"] is None and plan["rates_used"] == []
+    assert any("no task is ready, so no runtime is estimated" in note for note in plan["estimate_notes"])
+    # The row records no revision, so the plan carries the lowered answer and says which kind of match it was.
+    capability = plan["tasks"][0]["capability"]
+    assert (capability["status"], capability["revision_match"]) == ("artifact_available", "row_revision_not_recorded")
+
+
+def test_a_rates_document_with_two_rows_for_one_method_and_backend_is_refused(protocol: dict, matrix: dict) -> None:
+    # Regression: the dict comprehension kept the last of two rows without saying so.
+    def code(doc: dict) -> str:
+        with pytest.raises(Refusal) as caught:
+            planner.build_plan(protocol, matrix, rates=doc)
+        return caught.value.code
+
+    assert code(rates_doc(rate_row("behavior_next_token", "fixture", 2.0),
+                          rate_row("behavior_next_token", "fixture", 9.0))) == "duplicate_rate"
+    assert code(rates_doc(rate_row("behavior_next_token", "fixture", float("inf")))) == "rates_source"
+    assert code(rates_doc(rate_row("behavior_next_token", "fixture", float("nan")))) == "rates_source"
+    # The same method on two backends is two rates, not a duplicate.
+    two = rates_doc(rate_row("behavior_next_token", "fixture", 2.0), rate_row("logit_lens", "fixture", 3.0),
+                    rate_row("behavior_next_token", "cpu_transformers", 50.0))
+    assert planner.build_plan(protocol, matrix, rates=two)["totals"]["runtime_seconds_estimate"] == pytest.approx(45.0)
+
+
 def test_an_excluded_family_is_listed_and_gets_no_task(protocol: dict, matrix: dict) -> None:
     protocol["exclusions"] = [{"family_id": "fam-2", "reason": "placeholder exclusion"}]
     plan = planner.build_plan(protocol, matrix)
@@ -865,6 +1148,80 @@ def test_envelope_rules(run: tuple[RunStore, dict]) -> None:
         assert envelope_code(doc, root) == code, code
     excluded = change(change(done, "counts/completed", 0), "counts/exclusions", [{"reason": "placeholder", "n": 1}])
     assert envelope_code(excluded, root) == "counts_arithmetic"             # completed state needs a completed unit
+
+
+def changes(doc: dict, **paths: object) -> dict:
+    for path, value in paths.items():
+        doc = change(doc, path.replace("__", "/"), value)
+    return doc
+
+
+def test_counts_and_resources_must_agree_with_the_execution_state(run: tuple[RunStore, dict]) -> None:
+    # Regression: each of these envelopes validated.
+    store, plan = run
+    root = store.run_dir
+    done = envelope_of(store, plan, "fam-1", "clinical", "logit_lens")
+    skipped = envelope_of(store, plan, "fam-1", "clinical", "j_lens")
+    assert skipped["status"]["execution"] == "unsupported"
+    failed = changes(done, status={"execution": "failed", "reason": "placeholder failure"}, payload=None,
+                     resources__storage_bytes=None)
+    failed["attempt_history"][-1]["state"] = "failed"
+    # (a) failed, yet it counts one completed unit and no failed unit.
+    assert envelope_code(failed, root) == "counts_arithmetic"
+    assert envelope.validate_envelope(changes(failed, counts__completed=0, counts__failed=1),
+                                      payload_root=root)["execution"] == "failed"
+    # (b) never ran, yet it accepts and completes a unit.
+    assert envelope_code(changes(skipped, counts__accepted=1, counts__completed=1), root) == "counts_arithmetic"
+    assert envelope_code(changes(skipped, counts__accepted=1, counts__failed=1), root) == "counts_arithmetic"
+    # (c) never ran, yet it reports measured runtime and cost.
+    measured = changes(skipped, resources__measured=True, resources__runtime_seconds=12.5, resources__cost_usd=3.0)
+    assert envelope_code(measured, root) == "resources_rule"
+    for state in ("unavailable", "not_run"):
+        other = changes(measured, status={"execution": state, "reason": "placeholder"})
+        other["attempt_history"][-1]["state"] = state
+        assert envelope_code(other, root) == "resources_rule"
+    # An invalid single-task envelope cannot count a completed unit either.
+    invalid = changes(failed, status={"execution": "invalid", "reason": "placeholder"})
+    invalid["attempt_history"][-1]["state"] = "invalid"
+    assert envelope_code(invalid, root) == "counts_arithmetic"
+
+
+def test_method_representation_and_variant_are_checked_on_read(run: tuple[RunStore, dict]) -> None:
+    # Regression: behavior_next_token with representation_type ica_component validated, as did an unknown variant.
+    store, plan = run
+    root = store.run_dir
+    behaviour = envelope_of(store, plan, "fam-1", "clinical", "behavior_next_token")
+    assert envelope_code(change(behaviour, "method/representation_type", "ica_component"), root) == "representation_type"
+    lens = envelope_of(store, plan, "fam-1", "clinical", "logit_lens")
+    assert envelope_code(change(lens, "method/representation_type", "ica_component"), root) == "representation_type"
+    assert envelope_code(change(lens, "source/variant", "no_such_variant"), root) == "unknown_variant"
+    assert envelope_code(change(lens, "environment/input_identity_sha256", "abc"), root) == "input_identity"
+
+
+def test_envelope_evidence_labels_follow_the_open_results_vocabulary(run: tuple[RunStore, dict]) -> None:
+    # Regression: a non-synthetic envelope could say "public" with a restriction reason, or any visibility word.
+    store, plan = run
+    root = store.run_dir
+    done = envelope_of(store, plan, "fam-1", "clinical", "logit_lens")
+
+    def labelled(**evidence: object) -> dict:
+        return change(done, "evidence", {"evidence_class": "exploratory_post_registration",
+                                         "clinical_review": "domain_review_pending", "visibility": "public",
+                                         "restriction_reasons": [], "analysis_memberships": [], "synthetic": False,
+                                         **evidence})
+
+    assert envelope.validate_envelope(labelled(), payload_root=root)["status"] == "validated"
+    assert envelope.validate_envelope(labelled(analysis_memberships=["study-interim/1"]),
+                                      payload_root=root)["status"] == "validated"
+    assert envelope.validate_envelope(labelled(visibility="restricted", restriction_reasons=["placeholder_restriction"]),
+                                      payload_root=root)["status"] == "validated"
+    for evidence in ({"visibility": "whatever"},
+                     {"visibility": "public", "restriction_reasons": ["placeholder_restriction"]},
+                     {"visibility": "public", "restriction_reasons": ["placeholder_restriction"],
+                      "analysis_memberships": ["study-interim/1"]},
+                     {"visibility": "restricted"},
+                     {"analysis_memberships": ["placeholder-membership/9"]}):
+        assert envelope_code(labelled(**evidence), root) == "evidence_fields", evidence
 
 
 def test_measured_resources_of_a_skipped_task_may_not_hold_an_estimate(run: tuple[RunStore, dict]) -> None:

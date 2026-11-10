@@ -15,13 +15,14 @@ Three limits follow from v1 and are kept visible:
 """
 from __future__ import annotations
 
+import json
 import math
 from pathlib import Path
 from typing import Any
 
 from scripts.exploratory_methods import SCHEMA as V1_SCHEMA
 from scripts.exploratory_methods import build_report
-from scripts.experiments.common import FIXTURE_BACKEND, FIXTURE_MODEL, integer, read_json, require, sha256_file
+from scripts.experiments.common import FIXTURE_BACKEND, FIXTURE_MODEL, digest, integer, require, sha256_bytes
 
 SPEC_FILE = "readout_spec.json"
 PACKET_FILE = "readout_packet.json"
@@ -44,19 +45,38 @@ class ReadoutExploratoryAdapter:
                            "arithmetic runs; the packet supplies the readout logits.",
         }]
 
+    def _raw(self, context: dict) -> dict[str, Any] | None:
+        """The bytes and SHA-256 of both fixture files, read once per run. None when either file is absent.
+        Parsing and hashing use these same bytes, so a recorded hash is the hash of what was read."""
+        directory = Path(context["fixtures_dir"])
+        cache = context.setdefault("_cache", {})
+        key = ("readout_files", str(directory))
+        if key not in cache:
+            paths = {name: directory / name for name in (SPEC_FILE, PACKET_FILE)}
+            if not all(path.is_file() for path in paths.values()):
+                cache[key] = None
+            else:
+                data = {name: path.read_bytes() for name, path in paths.items()}
+                cache[key] = {"bytes": data, "files": {name: sha256_bytes(data[name]) for name in sorted(data)}}
+        return cache[key]
+
+    def input_identity(self, task: dict, context: dict) -> str | None:
+        """Digest of the two fixture files' bytes: the inputs of a readout task outside its spec."""
+        raw = self._raw(context)
+        return digest({"adapter_inputs": raw["files"]}) if raw is not None else None
+
     def _load(self, context: dict) -> dict[str, Any] | None:
         """Spec, packet and the v1 report, built once per fixtures directory. None when a file is absent."""
         directory = Path(context["fixtures_dir"])
         cache = context.setdefault("_cache", {})
         key = ("readout", str(directory))
         if key not in cache:
-            spec_path, packet_path = directory / SPEC_FILE, directory / PACKET_FILE
-            if not (spec_path.is_file() and packet_path.is_file()):
+            raw = self._raw(context)
+            if raw is None:
                 cache[key] = None
             else:
-                spec, packet = read_json(spec_path), read_json(packet_path)
-                cache[key] = {"spec": spec, "report": build_report(spec, packet),
-                              "files": {SPEC_FILE: sha256_file(spec_path), PACKET_FILE: sha256_file(packet_path)}}
+                spec, packet = (json.loads(raw["bytes"][name].decode("utf-8")) for name in (SPEC_FILE, PACKET_FILE))
+                cache[key] = {"spec": spec, "report": build_report(spec, packet), "files": dict(raw["files"])}
         return cache[key]
 
     @staticmethod
@@ -70,10 +90,11 @@ class ReadoutExploratoryAdapter:
 
     def preflight(self, task: dict, context: dict) -> tuple[str, str | None]:
         directory = Path(context["fixtures_dir"])
-        if not ((directory / SPEC_FILE).is_file() and (directory / PACKET_FILE).is_file()):
+        raw = self._raw(context)
+        if raw is None:
             return "unavailable", f"{SPEC_FILE} and {PACKET_FILE} are not both present in {directory}"
         try:
-            spec_doc = read_json(directory / SPEC_FILE)
+            spec_doc = json.loads(raw["bytes"][SPEC_FILE].decode("utf-8"))
             case = next((c for c in spec_doc["cases"] if c["id"] == task["spec"]["family_id"]), None)
             v1_variant = spec_doc.get(VARIANT_MAP_KEY, {}).get(task["spec"]["variant"])
         except (KeyError, TypeError, ValueError) as exc:
@@ -148,8 +169,17 @@ class ReadoutExploratoryAdapter:
         rows = payload.get("readouts")
         require(isinstance(rows, list) and [(r.get("layer"), r.get("position")) for r in rows] == expected,
                 "readout_grid", "Every planned layer and position must be present exactly once, in order")
+        family = next(f for f in context["protocol"]["case_families"] if f["family_id"] == spec["family_id"])
+        wanted = sorted((t["id"], t.get("role", "answer"), t["token_ids"][0]) for t in family["targets"])
         excluded = set(payload.get("filter", {}).get("excluded_token_ids", []))
         for row in rows:
+            # The v1 specification is a file outside the protocol. Its targets must be the protocol's own:
+            # the same ids, roles and first token ids, each once. The detail names ids and token ids only.
+            got = sorted((score.get("target_id"), score.get("role"), score.get("token_id"))
+                         for score in row["scores"])
+            require(got == wanted, "missing_targets",
+                    f"layer {row['layer']} position {row['position']}: the readout scores (target_id, role, "
+                    f"token_id) {got} are not the protocol family's targets {wanted}")
             for score in row["scores"]:
                 probability = score.get("full_vocab_probability")
                 require(type(probability) is float and math.isfinite(probability) and 0.0 < probability <= 1.0,

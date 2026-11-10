@@ -71,6 +71,32 @@ def test_a_rate_slower_than_the_leg_budget_still_gets_one_pair_per_leg():
     assert out["per_model"]["m"]["pairs_per_leg"] == 1 and out["per_model"]["m"]["legs"] == 3
 
 
+def test_legs_respect_the_backfill_planners_cap_on_pairs_per_fire(capsys):
+    # Regression: 7200 // 44.0 = 163 pairs per leg for olmo-2-1b, so 150 pairs were printed as 1 leg, while
+    # backfill_planner._rate_chunk caps a fire at 120 pairs and fires 2.
+    recorded = estimate.recorded_slowest_rates()
+    assert recorded["max_pairs_per_leg"] == backfill_planner.LOGITS_CHUNK_FAST == 120
+    assert backfill_planner._rate_chunk("olmo-2-1b") == 120
+    rates = {"olmo-2-1b": backfill_planner.SECONDS_PER_PAIR["olmo-2-1b"]}
+    uncapped = estimate.estimate_cpu_logits_seconds(150, rates, leg_budget_seconds=7200)
+    assert uncapped["per_model"]["olmo-2-1b"]["pairs_per_leg"] == 163 and uncapped["per_model"]["olmo-2-1b"]["legs"] == 1
+    capped = estimate.estimate_cpu_logits_seconds(150, rates, leg_budget_seconds=7200, max_pairs_per_leg=120)
+    # min(120, 163) = 120 pairs per leg; ceil(150 / 120) = 2 legs.
+    assert capped["per_model"]["olmo-2-1b"] == {"seconds_per_pair": 44.0, "runner_seconds": 6600.0,
+                                                "pairs_per_leg": 120, "legs": 2}
+    assert "min(max_pairs_per_leg" in capped["formula"] and "min(max_pairs_per_leg" not in uncapped["formula"]
+    # The command line applies the recorded cap, and every model's pairs per leg is the planner's own chunk.
+    assert estimate.main(["--families", "150"]) == 0
+    out = json.loads(capsys.readouterr().out)
+    for model, entry in out["time"]["per_model"].items():
+        assert entry["pairs_per_leg"] == backfill_planner._rate_chunk(model), model
+    assert out["time"]["per_model"]["olmo-2-1b"]["legs"] == 2
+    assert refusal_code(estimate.estimate_cpu_logits_seconds, 1, {"m": 1.0}, max_pairs_per_leg=120) == \
+        "invalid_estimate_input"                                               # a cap needs a leg budget
+    assert refusal_code(estimate.estimate_cpu_logits_seconds, 1, {"m": 1.0}, leg_budget_seconds=7200,
+                        max_pairs_per_leg=0) == "invalid_estimate_input"
+
+
 def test_cpu_logits_seconds_refuses_bad_inputs():
     call = estimate.estimate_cpu_logits_seconds
     assert refusal_code(call, 1, {}) == "invalid_estimate_input"

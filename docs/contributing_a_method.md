@@ -27,7 +27,8 @@ payload. The envelope records, for each task:
   special tokens, truncation, alignment;
 - `model`: study id, repository id, revision, provider, route, hosted timestamp;
 - `environment`: source commits, packages, lock hash, backend, device, dtype, quantization,
-  attention implementation, sampling;
+  attention implementation, sampling, the SHA-256 of the adapter source files, and
+  `input_identity_sha256` (below);
 - `method`: id, representation type, capture site, layer index base (0), layers, positions,
   preprocessing, fitted artifact hash with its fit provenance, output head;
 - `counts`, `resources`, `status` (execution state and reason), `payload` and `not_recorded`.
@@ -39,6 +40,16 @@ Three rules decide most reviews:
 2. Execution state uses the fixed vocabulary `not_run`, `unsupported`, `unavailable`,
    `invalid`, `failed`, `completed`. A zero or opposite-direction effect is `completed`.
 3. A resource number is stored only when it was measured. An estimate belongs in the plan.
+   A task that ended `unsupported`, `unavailable` or `not_run` accepts no unit and records
+   no resource.
+
+An adapter that reads files outside the protocol (fixture files, a basis manifest, an
+activation dataset) should also expose the optional hook
+`input_identity(self, task, context) -> str | None`: the SHA-256 that
+`scripts.experiments.common.digest` gives for a mapping of input name to file SHA-256, or
+None when the inputs cannot be read. The store records it in the envelope and reuses a
+completed result only while it is unchanged. Without the hook the value is recorded as
+null in `not_recorded`, and a changed input file is not detected at reuse.
 
 ## 2. Result type: a typed payload, never a generic score
 
@@ -69,8 +80,13 @@ backend and artifact. Each row carries `evidence` (a file path or URL, with a da
 These are different facts. Architecture support says the code path exists. Artifact
 availability says a fitted lens or basis can be fetched; with `identity_unknown`, its fit
 revision or provenance is not recorded. `parity_passed` says a recorded audit compared this
-exact combination against a reference, and the row cites the record. A passing fixture test
-is `runtime_verified_offline_fixture` and nothing stronger; it is not evidence of parity.
+exact combination against a reference, and the row cites the record. The record must state
+the pass criterion, where it was written before the run, and what the comparison covered.
+No row holds `parity_passed` on 2026-11-10: the one row that did was lowered to
+`artifact_available` because its audit states no pass criterion. A row with no recorded
+model revision never answers above `artifact_available` for a lookup that names a revision.
+A passing fixture test is `runtime_verified_offline_fixture` and nothing stronger; it is
+not evidence of parity.
 
 A combination the matrix marks `unsupported` stays in the plan as `unsupported` with its
 reason. It is counted, not skipped.

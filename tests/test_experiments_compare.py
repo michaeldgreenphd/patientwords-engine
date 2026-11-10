@@ -105,6 +105,12 @@ def test_readout_block_keeps_raw_and_filtered_ranks_apart(finished: RunStore) ->
     # Token 3. a: beaten by tokens 4,5,6,7 raw (rank 5), by 4,5 filtered (rank 3). b: 5 raw winners, 3 filtered.
     assert (c1["a"]["raw_rank"], c1["a"]["filtered_rank"], c1["b"]["raw_rank"], c1["b"]["filtered_rank"]) == (5, 3, 6, 4)
     assert set(t1["a"]) == {"raw_rank", "filtered_rank", "excluded_candidate", "top_k"}
+    # Each target row says which token its ranks are for, as the behaviour block does.
+    assert (t1["token_id"], c1["token_id"]) == (5, 3)
+    behaviour = entry(comparison, "fam-1", "clinical_vs_colloquial")["behavior"]["targets"]
+    assert [(t["target_id"], t["token_id"]) for t in behaviour] == [
+        (t["target_id"], t["token_id"]) for t in layer_1["targets"]]
+    assert layer_1["targets_only_in_a"] == [] and layer_1["targets_only_in_b"] == []
     assert [layer["layer"] for layer in block["layers"]] == [0, 1]
     assert not {"rank_difference", "difference_a_minus_b", "mean_rank"} & keys_of(block)
 
@@ -216,6 +222,60 @@ def test_a_block_reads_only_its_own_payload_kind(finished: RunStore) -> None:
     assert caught.value.code == "filter_mismatch"
 
 
+def test_readout_block_refuses_two_tokens_under_one_target_id_and_lists_one_sided_targets(finished: RunStore) -> None:
+    # Regression: the block carried no token_id, did not compare tokens between a and b, and dropped a target
+    # present on one side only.
+    rows = finished.read_collected()["assembly"]["tasks"]
+    a = finished.read_payload(next(r["payload"] for r in rows if (r["method"], r["family_id"], r["variant"]) == (
+        "logit_lens", "fam-1", "clinical")))
+    b = finished.read_payload(next(r["payload"] for r in rows if (r["method"], r["family_id"], r["variant"]) == (
+        "logit_lens", "fam-1", "colloquial")))
+    other_token = copy.deepcopy(b)
+    for row in other_token["readouts"]:
+        row["scores"][0]["token_id"] = 2
+    with pytest.raises(Refusal) as caught:
+        compare.readout_block(a, other_token)
+    assert caught.value.code == "payload_mismatch" and "token 5" in str(caught.value) and "token 2" in str(caught.value)
+    one_sided = copy.deepcopy(b)
+    for row in one_sided["readouts"]:
+        row["scores"] = [score for score in row["scores"] if score["target_id"] != "c1"]
+    block = compare.readout_block(a, one_sided)
+    for layer in block["layers"]:
+        assert [t["target_id"] for t in layer["targets"]] == ["t1"]
+        assert (layer["targets_only_in_a"], layer["targets_only_in_b"]) == (["c1"], [])
+
+
+def test_a_readout_fixture_that_scores_another_token_does_not_complete(protocol: dict, tmp_path: Path) -> None:
+    # Regression: the protocol declared t1 as token 2 while readout_spec.json (outside the protocol and its
+    # digest) scores t1 on token 5; all 18 tasks completed and the comparison showed two tokens under one id.
+    for family in protocol["case_families"]:
+        for target in family["targets"]:
+            if target["id"] == "t1":
+                target["token_ids"] = [2]
+    store = RunStore(tmp_path / "run")
+    summary = store.run_fixture(planner.build_plan(protocol, capabilities.load_matrix()), "w0", fixtures_dir=FIXTURES,
+                                protocol=protocol)
+    assert summary["by_state"]["completed"] == 9 and summary["by_state"]["invalid"] == 9
+    reasons = {common.read_json(p)["status"]["reason"].split(":")[0] for p in store.envelope_files()
+               if common.read_json(p)["status"]["execution"] == "invalid"}
+    assert reasons == {"missing_targets"}
+    store.collect()
+    comparison = compare.compare_run(store.run_dir)
+    block = entry(comparison, "fam-1", "clinical_vs_colloquial")
+    assert block["readout"]["logit_lens"]["status"] == "not_computed"
+    assert block["behavior"]["status"] == "computed" and block["behavior"]["targets"][0]["token_id"] == 2
+    # Renamed target ids: the readout rows name ids the protocol does not contain, so they do not complete either.
+    renamed = json.loads(PROTOCOL.read_text(encoding="utf-8"))
+    for family in renamed["case_families"]:
+        for target in family["targets"]:
+            target["id"] = "renamed_" + target["id"]
+    renamed["primary_endpoint"]["target"] = "renamed_t1"
+    other = RunStore(tmp_path / "renamed")
+    summary = other.run_fixture(planner.build_plan(renamed, capabilities.load_matrix()), "w0", fixtures_dir=FIXTURES,
+                                protocol=renamed)
+    assert summary["by_state"]["completed"] == 9 and summary["by_state"]["invalid"] == 9
+
+
 # ------------------------------------------------------------------------------------------------ bundle
 
 def test_bundle_is_schema_valid_deterministic_and_labelled(finished: RunStore) -> None:
@@ -235,6 +295,10 @@ def test_bundle_is_schema_valid_deterministic_and_labelled(finished: RunStore) -
     assert set(rows) == {("behavior_next_token", "ready"), ("logit_lens", "ready"), ("j_lens", "unsupported"),
                          ("jpp", "unavailable")}
     assert all(row["tasks"] == 9 and row["evidence"] for row in rows.values())
+    # Every capability row says whether the matrix row names the protocol's model revision.
+    assert {row["revision_match"] for row in rows.values()} == {"exact"}
+    assert first["execution"]["ready_complete"] is True and first["execution"]["attempt_outcomes_differ"] == []
+    assert first["execution"]["ended_line_missing"] == []
     assert len(first["provenance"]["payloads"]) == 18
     assert first["provenance"]["protocol_sha256"] == first["protocol"]["sha256"]
     assert first["provenance"]["comparison_sha256"] == common.digest(compare.compare_run(finished.run_dir))

@@ -12,7 +12,7 @@ import importlib
 from collections.abc import Mapping
 from typing import Any, Iterator, Protocol, runtime_checkable
 
-from scripts.experiments.common import METHOD_IDS, METHOD_PAYLOAD_KINDS, Refusal, require
+from scripts.experiments.common import HEX64, METHOD_IDS, METHOD_PAYLOAD_KINDS, Refusal, require
 
 
 @runtime_checkable
@@ -34,6 +34,49 @@ class Adapter(Protocol):
 
     def validate_payload(self, payload: dict, task: dict, context: dict) -> None:
         """Raise ``Refusal`` when the payload does not match the task (shape, hashes, row alignment)."""
+
+
+# ---------------------------------------------------------------------------------------------------------
+# OPTIONAL HOOK, not part of the ``Adapter`` protocol above:
+#
+#     def input_identity(self, task: dict, context: dict) -> str | None
+#
+# It returns the SHA-256 (64 lowercase hex digits) that identifies every input of this task which the task spec
+# does not cover: the bytes of the fixture files, a basis manifest, an activation dataset. Build it with
+# ``scripts.experiments.common.digest`` over a mapping of input name to file SHA-256. Return None when those
+# inputs cannot be read now. The method must not execute the task and must not raise for an absent file.
+#
+# The run store records the value in the envelope as ``environment.input_identity_sha256`` and reuses a
+# completed envelope only when the value computed now equals the recorded one. An adapter without the hook has
+# a null value recorded (listed in ``not_recorded``) and its completed envelopes are reused on the payload
+# hash and the adapter source hashes alone, as before the hook existed.
+# ---------------------------------------------------------------------------------------------------------
+#
+# OPTIONAL ATTRIBUTE: ``source_files``, a tuple of paths of further source files the adapter's payloads depend
+# on (modules it imports for its arithmetic). The store hashes them into ``environment.source_files_sha256``
+# beside the adapter module itself, and a changed hash stops reuse.
+# ---------------------------------------------------------------------------------------------------------
+INPUT_IDENTITY_HOOK = "input_identity"
+
+
+def input_identity(adapter: Any, task: dict, context: dict) -> tuple[bool, str | None]:
+    """``(implemented, digest)`` for one task.
+
+    ``implemented`` is False when the adapter has no ``input_identity`` method; the digest is then None and
+    means "not recorded". With the hook, the digest is its return value, or None when the hook returns None or
+    raises: the inputs cannot be identified now, which never equals a recorded identity. A return value that
+    is neither None nor 64 hex digits refuses ``adapter_contract``.
+    """
+    hook = getattr(adapter, INPUT_IDENTITY_HOOK, None)
+    if not callable(hook):
+        return False, None
+    try:
+        value = hook(task, context)
+    except Exception:  # unreadable inputs: no identity now; preflight or execution reports the cause
+        return True, None
+    require(value is None or (isinstance(value, str) and bool(HEX64.fullmatch(value))), "adapter_contract",
+            f"{type(adapter).__module__}.{INPUT_IDENTITY_HOOK} must return 64 hex digits or None")
+    return True, value
 
 
 # ---------------------------------------------------------------------------------------------------------

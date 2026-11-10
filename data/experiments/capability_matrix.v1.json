@@ -1,7 +1,7 @@
 {
   "schema_version": "patientwords.capability-matrix/1",
   "as_of": "2026-11-10",
-  "description": "What is known about each model revision x method x backend x artifact, with the evidence. A status is one of status_order and is never merged with another. model.revision null means no revision is recorded for that route; such a row answers a lookup for any revision and its status_note says what is not attested. Evidence dates are the date of the cited record, or the date a file was read when it carries none.",
+  "description": "What is known about each model revision x method x backend x artifact, with the evidence. A status is one of status_order and is never merged with another. model.revision null means no revision is recorded for that route; such a row answers a lookup for any revision, never with a status above artifact_available when the lookup names a revision, and its status_note says what is not attested. Evidence dates are the date of the cited record, or the date a file was read when it carries none.",
   "status_order": [
     "unsupported",
     "architecture_supported",
@@ -26,7 +26,7 @@
   },
   "not_verified": [
     "No row was re-measured. Statuses restate committed records read on 2026-11-10.",
-    "Hugging Face and Neuronpedia were not contacted; released ICA bases and the Neuronpedia id qwen3.5-2b-pt are recorded from repository text and a design note only.",
+    "Hugging Face and Neuronpedia were not contacted. Released ICA bases are recorded from the text of the ICA fork only. The Neuronpedia id qwen3.5-2b-pt is an id supplied in the owner's task brief of 2026-11-10 for this session; it has no retrievable record in the repository and is unverified against the service (www.neuronpedia.org was blocked by this environment's network policy on 2026-11-10).",
     "Counts of landed runs in status notes are directory counts at engine head d8d0855d."
   ],
   "rows": [
@@ -447,7 +447,7 @@
       "backend": "cpu_interp_engine",
       "dtype": "float32",
       "artifact": null,
-      "status": "parity_passed",
+      "status": "artifact_available",
       "evidence": [
         {
           "source": "docs/backend_agreement_20260903.md (Results, run 2026-09-04)",
@@ -458,12 +458,7 @@
           "date": "2026-09-04"
         }
       ],
-      "status_note": "Parity here means agreement with the hosted service's three-decimal next-token probabilities on one batch. The audited summary (trace_out/verify_pairs_20260710T011743Z__gemma-2-2b) records inference.revision null, so model.revision is null in this row: the run predates enforced pinning. That it loaded the commit pinned later is inferred, not recorded.",
-      "parity_record": {
-        "source": "docs/backend_agreement_20260903.md (Results, run 2026-09-04)",
-        "date": "2026-09-04",
-        "scope": "One batch (pairs_20260710T011743Z, 50 pairs), one model. interp-engine 1.5.1 eager CPU float32 against hosted next-token probabilities: 71 side-measurements, mean absolute difference 0.00062, median 0.0002, maximum 0.0273 from one row and 0.0005 over the other 70, which is the rounding limit of the hosted values. Tokenization parity held on all 100 prompts."
-      }
+      "status_note": "Lowered from parity_passed to artifact_available on 2026-11-10: the route exists and one run landed, and the cited records state no pass criterion and no verdict for this comparison. ops/backend_agreement_interp_vs_hosted_20260904.json compares interp-engine 1.5.1 eager CPU float32 with the hosted next-token probabilities on one batch (pairs_20260710T011743Z, 50 pairs, one model). It covers 71 of 100 side-measurements: the hosted route reported no value for 8 clinical and 21 patient sides. Over those 71 the absolute probability difference has mean 0.00062, median 0.0002 and maximum 0.0273, with 1 of 71 above each of the report's thresholds (near 0.01, far 0.02). Over the 29 pairs with a penalty on both sides the maximum penalty difference is 0.027, with 1 of 29 above each threshold. The report has no pass or verdict field. docs/backend_agreement_20260903.md wrote its thresholds before the run for the maximum per-pair penalty difference between interp-engine float32 and the local bfloat16 path (at or below 0.0315, under 0.005, above 0.0315) and calls none of them a pass. Its statement that interp-engine and the hosted values agree to 0.0005, the rounding limit of the hosted three-decimal values, holds for 70 measurements once one row is left out (index 20, patient side, where the hosted path recorded another token's probability); that row was left out after the run. Tokenization parity held on all 100 prompts. The hosted reference route carries the target-read limitation recorded in AGENTS.md. The audited summary (trace_out/verify_pairs_20260710T011743Z__gemma-2-2b) records inference.revision null, so model.revision is null in this row: the run predates enforced pinning. That it loaded the commit pinned later is inferred, not recorded."
     },
     {
       "model": {
@@ -484,7 +479,7 @@
         "fit_tokenizer_revision": null,
         "calibration": "calibrated_reference"
       },
-      "status": "artifact_available",
+      "status": "artifact_available_identity_unknown",
       "evidence": [
         {
           "source": "scripts/feature_models.py (CALIBRATED_FEATURE_SOURCES)",
@@ -516,7 +511,7 @@
         "fit_tokenizer_revision": null,
         "calibration": "not_calibrated"
       },
-      "status": "artifact_available",
+      "status": "artifact_available_identity_unknown",
       "evidence": [
         {
           "source": "docs/cross-model.md (qwen3-4b feature labels, registered 2026-10-09)",
@@ -811,7 +806,7 @@
       "status": "artifact_available_identity_unknown",
       "evidence": [
         {
-          "source": "michaeldgreenphd/patientwords-ica-lens-paper@aa3b95c9e755e4374f8c9645a064e3f51d96066e: docs/fit-and-publish.md:168-176",
+          "source": "michaeldgreenphd/patientwords-ica-lens-paper@aa3b95c9e755e4374f8c9645a064e3f51d96066e: README.md:53",
           "date": "2026-11-10"
         }
       ],
@@ -834,7 +829,7 @@
           "date": "2026-11-10"
         }
       ],
-      "status_note": "The ICA fork's framing registry names Qwen/Qwen3.5-2B-Base; the fork names no published basis for it. A Neuronpedia release id qwen3.5-2b-pt is reported for this model family in the 2026-11-10 design note. It is recorded here as an unverified alias of engine id qwen3.5-2b-base. No checkpoint revision, basis hash or layer list was read, so the status is architecture_supported and not an artifact status.",
+      "status_note": "The ICA fork's framing registry names Qwen/Qwen3.5-2B-Base; the fork names no published basis for it. The id qwen3.5-2b-pt was supplied in the owner's task brief of 2026-11-10 for this session as the Neuronpedia id of this checkpoint. The brief has no retrievable record in the repository, and the id is unverified against the service (www.neuronpedia.org was blocked by this environment's network policy on 2026-11-10). It is recorded here as an unverified alias of engine id qwen3.5-2b-base. No checkpoint revision, basis hash or layer list was read, so the status is architecture_supported and not an artifact status.",
       "aliases": [
         {
           "namespace": "neuronpedia",

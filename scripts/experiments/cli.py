@@ -4,9 +4,11 @@ Everything here is offline. No command loads a model, opens a network connection
 
 Commands: ``validate``, ``plan``, ``run-fixture``, ``collect``, ``compare``, ``bundle``, ``capabilities``.
 Each prints one JSON object. Exit codes: 0 success; 1 the command finished and the run is not clean (an
-attempt ended ``failed`` or ``invalid``, or ``collect --require-complete`` found missing tasks); 2 a refusal,
-printed as ``{"status": "refused", "code": ..., "detail": ...}``; 3 a configuration error (the holdout seal or
-the results policy could not be evaluated), which is not a refusal.
+attempt ended ``failed`` or ``invalid``; ``run-fixture`` was not stopped by ``--stop-after`` and left a ready
+task without a completed result; or ``collect --require-complete`` found a planned task without an envelope
+or a ready task without a completed one); 2 a refusal, printed as
+``{"status": "refused", "code": ..., "detail": ...}``; 3 a configuration error (the holdout seal or the
+results policy could not be evaluated), which is not a refusal.
 
 Writers refuse a path under ``trace_out``, ``data``, ``pilot``, ``ops``, ``modes``, ``.github``, ``.claude``,
 ``.githooks`` or ``.git``, and any path inside a Git checkout unless ``--allow-root`` names a directory that
@@ -95,7 +97,11 @@ def cmd_run_fixture(args: argparse.Namespace) -> int:
     summary = store.run_fixture(plan, args.worker, fixtures_dir=args.fixtures, protocol=protocol,
                                 stop_after=args.stop_after)
     _emit({"status": "ran", "run_dir": str(store.run_dir), **summary})
-    return EXIT_NOT_CLEAN if summary["by_state"]["failed"] or summary["by_state"]["invalid"] else EXIT_OK
+    # A run that was not stopped on request and still leaves ready tasks without a completed result computed
+    # less than its plan asked for (absent or unreadable fixtures, for example). That is not a clean run.
+    unfinished = summary["remaining_ready"] > 0 and not summary["stopped_early"]
+    not_clean = summary["by_state"]["failed"] or summary["by_state"]["invalid"] or unfinished
+    return EXIT_NOT_CLEAN if not_clean else EXIT_OK
 
 
 def cmd_collect(args: argparse.Namespace) -> int:
@@ -104,12 +110,16 @@ def cmd_collect(args: argparse.Namespace) -> int:
     assembly = collected["assembly"]
     _emit({"status": "collected", "collected": str(store.collected_path),
            "assembly_sha256": collected["assembly_sha256"], "complete": assembly["complete"],
+           "ready_complete": assembly["ready_complete"],
            "by_state": assembly["by_state"], "counts": assembly["counts"],
            "missing": [f"{m['task_id']}.r{m['replicate']}" for m in assembly["missing"]],
-           "uncertain": assembly["uncertain"], "duplicate_identical": assembly["duplicate_identical"],
+           "uncertain": assembly["uncertain"], "ended_line_missing": assembly["ended_line_missing"],
+           "duplicate_identical": assembly["duplicate_identical"],
+           "attempt_outcomes_differ": assembly["attempt_outcomes_differ"],
            "reused_events": collected["metrics"]["reused_events"],
            "executed_attempts": collected["metrics"]["executed_attempts"]})
-    return EXIT_NOT_CLEAN if args.require_complete and not assembly["complete"] else EXIT_OK
+    finished = assembly["complete"] and assembly["ready_complete"]
+    return EXIT_NOT_CLEAN if args.require_complete and not finished else EXIT_OK
 
 
 def cmd_compare(args: argparse.Namespace) -> int:
@@ -181,7 +191,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub = add("collect", cmd_collect, "Assemble shards into collected.json; verifies every payload hash.")
     sub.add_argument("--run-dir", type=Path, required=True)
-    sub.add_argument("--require-complete", action="store_true", help="exit 1 when planned tasks are missing")
+    sub.add_argument("--require-complete", action="store_true",
+                     help="exit 1 when a planned task has no envelope or a ready task has no completed result")
     allow_root(sub)
 
     sub = add("compare", cmd_compare, "Derive per-family comparison blocks from a collected run.")

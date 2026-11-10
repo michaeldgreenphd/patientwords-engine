@@ -31,6 +31,8 @@ from scripts.experiments.planner import estimate_activation_bytes, estimate_fit_
 TIME_FORMULA = ("runner_seconds = ceil(pair_equivalents * (1 + failed_attempt_fraction)) * seconds_per_pair, "
                 "summed over models; pair_equivalents = case_families * replicates * prompts_per_family / 2")
 LEG_FORMULA = "legs = ceil(attempted_pairs / max(1, floor(leg_budget_seconds / seconds_per_pair)))"
+CAPPED_LEG_FORMULA = ("legs = ceil(attempted_pairs / max(1, min(max_pairs_per_leg, "
+                      "floor(leg_budget_seconds / seconds_per_pair))))")
 LOGITS_FORMULA = ("full vocabulary: positions * vocab_size * bytes_per_value(dtype); "
                   "top-k: positions * top_k * (4 + bytes_per_value(dtype)), a 4-byte token id beside each value")
 WEIGHTS_FORMULA = "weight_bytes = parameters * bytes_per_value(dtype)"
@@ -47,6 +49,8 @@ def recorded_slowest_rates() -> dict[str, Any]:
         "seconds_per_pair": dict(backfill_planner.SECONDS_PER_PAIR),
         "source": "scripts/backfill_planner.py SECONDS_PER_PAIR: " + backfill_planner.RATES_SOURCE,
         "leg_budget_seconds": backfill_planner.HALF_TIMEOUT_S,
+        # backfill_planner._rate_chunk never gives one fire more than a whole batch, whatever the rate allows.
+        "max_pairs_per_leg": backfill_planner.LOGITS_CHUNK_FAST,
         "n_samples": None,
         "label": "measured (slowest successful run per model; sample size not recorded)",
     }
@@ -61,13 +65,18 @@ def attempted_units(units: float, failed_attempt_fraction: float) -> int:
 
 def estimate_cpu_logits_seconds(case_families: int, rates: Mapping[str, float], *, replicates: int = 1,
                                 prompts_per_family: int = 2, failed_attempt_fraction: float = 0.0,
-                                leg_budget_seconds: int | None = None) -> dict[str, Any]:
+                                leg_budget_seconds: int | None = None,
+                                max_pairs_per_leg: int | None = None) -> dict[str, Any]:
     """Runner seconds for the legacy first-token endpoint over a grid, per model and in total.
 
     ``rates`` maps a model id to seconds per pair. A pair is two prompts, which is the unit the recorded rates
     use. A family with three variants is 1.5 pair-equivalents: an assumption that time scales with the number of
     prompts. The recorded rates include model load, so short legs cost more per pair than this predicts and the
     total is not a wall-clock time: queueing, install and matrix parallelism are outside the formula.
+
+    ``max_pairs_per_leg`` caps the pairs one leg may hold, as ``backfill_planner._rate_chunk`` caps a fire at a
+    whole batch. Without it a fast model's leg count is lower than the number of fires the planner would make.
+    It applies only together with ``leg_budget_seconds``.
     """
     require(integer(case_families) and integer(replicates, 1) and integer(prompts_per_family, 1),
             "invalid_estimate_input", "case_families, replicates and prompts_per_family must be integers; "
@@ -76,6 +85,9 @@ def estimate_cpu_logits_seconds(case_families: int, rates: Mapping[str, float], 
             "invalid_estimate_input", "rates must map at least one model to a positive seconds-per-pair value")
     require(leg_budget_seconds is None or integer(leg_budget_seconds, 1), "invalid_estimate_input",
             "leg_budget_seconds must be a positive integer or None")
+    require(max_pairs_per_leg is None or (integer(max_pairs_per_leg, 1) and leg_budget_seconds is not None),
+            "invalid_estimate_input",
+            "max_pairs_per_leg must be a positive integer or None, and needs leg_budget_seconds")
     pair_equivalents = case_families * replicates * prompts_per_family / 2
     attempted = attempted_units(pair_equivalents, failed_attempt_fraction)
     per_model: dict[str, Any] = {}
@@ -83,6 +95,8 @@ def estimate_cpu_logits_seconds(case_families: int, rates: Mapping[str, float], 
         entry: dict[str, Any] = {"seconds_per_pair": rates[model], "runner_seconds": attempted * rates[model]}
         if leg_budget_seconds is not None:
             pairs_per_leg = max(1, math.floor(leg_budget_seconds / rates[model]))
+            if max_pairs_per_leg is not None:
+                pairs_per_leg = min(pairs_per_leg, max_pairs_per_leg)
             entry["pairs_per_leg"] = pairs_per_leg
             entry["legs"] = math.ceil(attempted / pairs_per_leg)
         per_model[model] = entry
@@ -91,7 +105,8 @@ def estimate_cpu_logits_seconds(case_families: int, rates: Mapping[str, float], 
         "attempted_pair_equivalents": attempted,
         "per_model": per_model,
         "runner_seconds": sum(entry["runner_seconds"] for entry in per_model.values()),
-        "formula": TIME_FORMULA if leg_budget_seconds is None else TIME_FORMULA + "; " + LEG_FORMULA,
+        "formula": TIME_FORMULA if leg_budget_seconds is None else TIME_FORMULA + "; " + (
+            LEG_FORMULA if max_pairs_per_leg is None else CAPPED_LEG_FORMULA),
         "assumptions": [
             "time scales with the number of prompts, so a family of v variants is v / 2 pairs",
             f"failed_attempt_fraction = {failed_attempt_fraction} is a stated allowance, not a measured rate",
@@ -192,7 +207,8 @@ def main(argv: list[str] | None = None) -> int:
             "time": estimate_cpu_logits_seconds(
                 args.families, rates, replicates=args.replicates, prompts_per_family=args.prompts_per_family,
                 failed_attempt_fraction=args.failed_attempt_fraction,
-                leg_budget_seconds=recorded["leg_budget_seconds"]),
+                leg_budget_seconds=recorded["leg_budget_seconds"],
+                max_pairs_per_leg=recorded["max_pairs_per_leg"]),
         }
         if args.tokens_per_prompt is not None and args.layers is not None and args.hidden_size is not None:
             out["storage"] = estimate_grid_storage(

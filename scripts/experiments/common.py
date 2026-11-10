@@ -51,6 +51,11 @@ EXECUTION_STATES = ("not_run", "unsupported", "unavailable", "invalid", "failed"
 UNCERTAIN = "uncertain"
 PLANNED_STATES = ("ready", "unsupported", "unavailable")
 
+# Visibility words of an evidence block. "public" and "restricted" are the two values
+# scripts/results_policy.py (classify_part) assigns under docs/open_results_policy.md; that module exposes no
+# constant for them. "not_published" is this package's word for a synthetic document, which is never shared.
+VISIBILITIES = ("public", "restricted", "not_published")
+
 # Weakest to strongest. A later status never follows from an earlier one.
 CAPABILITY_STATUSES = (
     "unsupported", "architecture_supported", "artifact_available_identity_unknown", "artifact_available",
@@ -210,16 +215,53 @@ def atomic_write_bytes(path: Path | str, data: bytes) -> None:
         if os.path.exists(temp_name):
             os.unlink(temp_name)
         raise
+    _fsync_directory(target.parent)
+
+
+def _fsync_directory(directory: Path) -> None:
     try:
-        directory = os.open(target.parent, os.O_RDONLY)
+        handle = os.open(directory, os.O_RDONLY)
     except OSError:
         return
     try:
-        os.fsync(directory)
+        os.fsync(handle)
     except OSError:
         pass
     finally:
-        os.close(directory)
+        os.close(handle)
+
+
+def exclusive_write_bytes(path: Path | str, data: bytes) -> None:
+    """Create ``path`` holding ``data``; raise ``FileExistsError`` when the name is already taken.
+
+    The bytes go to a temporary file in the same directory, are fsynced, and the name is then made with
+    ``os.link``, which never replaces an existing entry. Of two processes that write the same name, exactly one
+    succeeds, and a reader never sees a partial file. Where the filesystem has no hard links the file is
+    created with ``O_EXCL`` instead: still exclusive, and a reader may then see it while it is being written.
+    This function checks no path rule; the run store calls it for attempt envelopes.
+    """
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    handle, temp_name = tempfile.mkstemp(dir=target.parent, prefix=f".{target.name}.", suffix=".tmp")
+    try:
+        with os.fdopen(handle, "wb") as stream:
+            stream.write(data)
+            stream.flush()
+            os.fsync(stream.fileno())
+        try:
+            os.link(temp_name, target)
+        except FileExistsError:
+            raise
+        except OSError:
+            direct = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            with os.fdopen(direct, "wb") as stream:
+                stream.write(data)
+                stream.flush()
+                os.fsync(stream.fileno())
+    finally:
+        if os.path.exists(temp_name):
+            os.unlink(temp_name)
+    _fsync_directory(target.parent)
 
 
 def atomic_write_json(path: Path | str, obj: Any) -> None:
