@@ -5,8 +5,10 @@ import copy
 from datetime import date, datetime, timezone
 from decimal import Decimal
 import json
+import os
 from pathlib import Path
 import signal
+import subprocess
 import time
 from typing import Any
 
@@ -23,6 +25,20 @@ from scripts import fire_trigger as ft
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = ROOT / 'tests/fixtures/action_annotations'
+# A day inside the committed price receipt's window (2026-10-26 to 2026-11-02),
+# so receipt-reading tests do not depend on the day they run.
+RECEIPT_DAY = date(2026, 10, 27)
+OUTSIDE_RECEIPT = [date(2026, 10, 25), date(2026, 11, 3)]
+
+
+def frozen_clock(now: datetime) -> type[datetime]:
+    """A datetime class whose now() is fixed, to replace a module's clock."""
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz: Any = None) -> datetime:
+            return now
+
+    return Clock
 
 
 @pytest.fixture
@@ -177,7 +193,7 @@ def test_unknown_usage_is_not_priced(usage: Any, price: dict) -> None:
 def test_tier_threshold_and_price_expiry(price: dict) -> None:
     assert ab.usage_cost({'input_tokens': 100000, 'output_tokens': 100}, price) == Decimal('0.01005')
     assert ab.usage_cost({'input_tokens': 100001, 'output_tokens': 100}, price) == Decimal('0.0502505')
-    for day in (date(2026, 10, 25), date(2026, 11, 3)):
+    for day in OUTSIDE_RECEIPT:
         with pytest.raises(aa.AnnotationRefusal, match='price_receipt_expired_or_future'):
             ab.prices(ROOT, day)
 
@@ -220,7 +236,7 @@ def test_owner_authorized_recovery_has_a_distinct_fixed_nonce() -> None:
     recovery = aa.read_json(ROOT / 'data/action_annotations/recovery_20261026.v1.json')
     params = {**live_params(), '_nonce': recovery['nonce']}
     assert recovery['nonce'] != ai.NONCE
-    assert not ap.params_problems(params, ROOT)
+    assert not ap.params_problems(params, ROOT, today=RECEIPT_DAY)
     assert ft.reused_nonce(ap.TRIGGER, params, [{'trigger': ap.TRIGGER, 'nonce': recovery['nonce']}])
 
 
@@ -365,9 +381,6 @@ def test_seal_failure_is_not_suppressed(source_tree: Path, monkeypatch: pytest.M
 
 @pytest.fixture
 def ci_tree(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest) -> tuple:
-    import os
-    import subprocess
-
     recovering = getattr(request, 'param', False)
     quoting = recovering in ('quotes', 'quotes_low_budget')
     now = datetime(2026, 10, 27 if quoting else 26, 13, 0, tzinfo=timezone.utc)
@@ -375,22 +388,27 @@ def ci_tree(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, request: pytest.Fix
              [ap.recovery_receipt(ROOT)['prior_reservation']] if recovering else [])
     nonce = ap.QUOTE_NONCE if quoting else ap.RECOVERY_NONCE if recovering else ai.NONCE
 
-    class Clock(datetime):
-        @classmethod
-        def now(cls, tz: Any = None) -> datetime:
-            return now
-
-    monkeypatch.setattr(ap, 'datetime', Clock)
+    monkeypatch.setattr(ap, 'datetime', frozen_clock(now))
     monkeypatch.setattr(ft, 'utc_now', lambda: now)
     monkeypatch.setenv('GITHUB_ACTIONS', 'true')
     root = tmp_path / 'repo'
     root.mkdir()
     remote = tmp_path / 'remote.git'
-    env = {**os.environ, 'GIT_AUTHOR_NAME': 'Fixture', 'GIT_COMMITTER_NAME': 'Fixture',
-           'GIT_AUTHOR_EMAIL': 'fixture', 'GIT_COMMITTER_EMAIL': 'fixture'}
+    # The caller's git configuration must not reach these repositories: identity,
+    # signing and hooks are decided here. The two variables also cover the admission
+    # code's own git reads; -c covers a git older than those variables (2.32).
+    monkeypatch.setenv('GIT_CONFIG_GLOBAL', os.devnull)
+    monkeypatch.setenv('GIT_CONFIG_SYSTEM', os.devnull)
+    # Not named env: the helper is returned and must keep this environment after
+    # the CI environment below is built.
+    git_env = {**os.environ, 'GIT_AUTHOR_NAME': 'Fixture', 'GIT_COMMITTER_NAME': 'Fixture',
+               'GIT_AUTHOR_EMAIL': 'fixture', 'GIT_COMMITTER_EMAIL': 'fixture'}
 
     def git(*args: str) -> str:
-        return subprocess.check_output(['git', *args], cwd=root, env=env, stderr=subprocess.DEVNULL, text=True).strip()
+        done = subprocess.run(['git', '-c', 'commit.gpgsign=false', *args], cwd=root, env=git_env,
+                              capture_output=True, text=True)
+        assert done.returncode == 0, f'git {args} exited {done.returncode}: {done.stderr}'
+        return done.stdout.strip()
 
     git('init', '--bare', str(remote))
     git('init', '-b', 'main')
@@ -423,11 +441,49 @@ def ci_tree(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, request: pytest.Fix
     git('push', 'origin', 'HEAD:main')
     event = tmp_path / 'event.json'
     write(event, {'created': False, 'before': base, 'after': head})
-    env = {'GITHUB_ACTIONS': 'true', 'GITHUB_EVENT_NAME': 'push', 'GITHUB_REF': 'refs/heads/main',
-           'GITHUB_REPOSITORY': 'michaeldgreenphd/patientwords-engine', 'GITHUB_RUN_ATTEMPT': '1',
-           'GITHUB_ACTOR': 'michaeldgreenphd', 'GITHUB_TRIGGERING_ACTOR': 'michaeldgreenphd', 'GITHUB_RUN_ID': '42',
-           'GITHUB_SHA': head, 'GITHUB_EVENT_PATH': str(event)}
-    return root, params, env, git
+    ci_env = {'GITHUB_ACTIONS': 'true', 'GITHUB_EVENT_NAME': 'push', 'GITHUB_REF': 'refs/heads/main',
+              'GITHUB_REPOSITORY': 'michaeldgreenphd/patientwords-engine', 'GITHUB_RUN_ATTEMPT': '1',
+              'GITHUB_ACTOR': 'michaeldgreenphd', 'GITHUB_TRIGGERING_ACTOR': 'michaeldgreenphd', 'GITHUB_RUN_ID': '42',
+              'GITHUB_SHA': head, 'GITHUB_EVENT_PATH': str(event)}
+    return root, params, ci_env, git
+
+
+def test_ci_tree_ignores_the_callers_git_configuration(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest) -> None:
+    """A caller whose global config signs commits or runs hooks must not change the fixture."""
+    home = tmp_path / 'home'
+    hooks = home / 'hooks'
+    hooks.mkdir(parents=True)
+    (hooks / 'pre-commit').write_text('#!/bin/sh\nexit 1\n')
+    (hooks / 'pre-commit').chmod(0o755)
+    (home / '.gitconfig').write_text(
+        f'[commit]\n\tgpgsign = true\n[gpg]\n\tformat = ssh\n[gpg "ssh"]\n\tprogram = {home / "no-signer"}\n'
+        f'[user]\n\tsigningkey = {home / "no-key.pub"}\n[core]\n\thooksPath = {hooks}\n')
+    monkeypatch.setenv('HOME', str(home))
+    for name in ('XDG_CONFIG_HOME', 'GIT_CONFIG_GLOBAL', 'GIT_CONFIG_SYSTEM'):
+        monkeypatch.delenv(name, raising=False)
+    # Without the fixture's isolation this configuration refuses every commit.
+    probe = tmp_path / 'probe'
+    probe.mkdir()
+    subprocess.run(['git', 'init', '-q', '-b', 'main'], cwd=probe, check=True)
+    refused = subprocess.run(['git', 'commit', '--allow-empty', '-m', 'probe'], cwd=probe, capture_output=True,
+                             env={**os.environ, 'GIT_AUTHOR_NAME': 'Fixture', 'GIT_COMMITTER_NAME': 'Fixture',
+                                  'GIT_AUTHOR_EMAIL': 'fixture', 'GIT_COMMITTER_EMAIL': 'fixture'})
+    assert refused.returncode != 0
+    root, params, env, git = request.getfixturevalue('ci_tree')
+    assert ap.admit_ci(params, env, root)['engine_commit'] == git('rev-parse', 'HEAD')
+    # The returned helper keeps its identity and isolation after the fixture returns.
+    git('commit', '--allow-empty', '-m', 'after the fixture returned')
+    assert git('log', '-1', '--format=%an <%ae>') == 'Fixture <fixture>'
+    assert 'gpgsig' not in git('cat-file', '-p', 'HEAD')
+
+
+@pytest.mark.parametrize('ci_tree', [False, 'quotes'], indirect=True)
+def test_ci_admission_refuses_an_expired_price_receipt(ci_tree: tuple, monkeypatch: pytest.MonkeyPatch) -> None:
+    root, params, env, _ = ci_tree
+    monkeypatch.setattr(ap, 'datetime', frozen_clock(datetime(2026, 11, 3, 13, 0, tzinfo=timezone.utc)))
+    with pytest.raises(aa.AnnotationRefusal, match='action_params_invalid'):
+        ap.admit_ci(params, env, root)
 
 
 def test_ci_admission_uses_real_git_and_existing_budget_gate(ci_tree: tuple) -> None:
@@ -537,14 +593,31 @@ def quote_params() -> dict:
 
 
 def test_quote_attempt_requires_exact_plan_nonce_pair_and_preserved_contracts(tmp_path: Path) -> None:
-    assert not ap.params_problems(quote_params(), ROOT)
+    assert not ap.params_problems(quote_params(), ROOT, today=RECEIPT_DAY)
     assert ft.is_paid_fire(ap.TRIGGER, quote_params())
     assert ft.reused_nonce(ap.TRIGGER, quote_params(), [{'trigger': ap.TRIGGER, 'nonce': ap.QUOTE_NONCE}])
     for change in ({'_nonce': ai.NONCE}, {'_nonce': ap.RECOVERY_NONCE},
                    {'_nonce': ap.QUOTE_NONCE + '-again'}, {'plan_sha256': ai.PLAN_SHA256},
                    {'plan_sha256': aq.MANIFEST_SHA256}, {'max_spend': '0.01'}):
-        assert ap.params_problems({**quote_params(), **change}, ROOT)
-    assert ap.params_problems(quote_params(), tmp_path) == ['action_plan_or_price_unavailable']
+        assert ap.params_problems({**quote_params(), **change}, ROOT, today=RECEIPT_DAY)
+    assert ap.params_problems(quote_params(), tmp_path, today=RECEIPT_DAY) == ['action_plan_or_price_unavailable']
+
+
+@pytest.mark.parametrize('day', OUTSIDE_RECEIPT)
+def test_params_refuse_a_date_outside_the_price_receipt(day: date) -> None:
+    for params in (live_params(), {**live_params(), '_nonce': ap.RECOVERY_NONCE}, quote_params()):
+        assert not ap.params_problems(params, ROOT, today=RECEIPT_DAY)
+        assert ap.params_problems(params, ROOT, today=day) == ['action_plan_or_price_unavailable']
+
+
+def test_params_use_the_current_utc_date_unless_one_is_named(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The fire path and CI gate name no date, so an expired receipt still refuses them."""
+    monkeypatch.setattr(ap, 'datetime', frozen_clock(datetime(2026, 11, 2, 23, 59, tzinfo=timezone.utc)))
+    assert not ap.params_problems(quote_params(), ROOT)
+    assert not ft.lane_params_problems(ap.TRIGGER, quote_params(), repo=ROOT)
+    monkeypatch.setattr(ap, 'datetime', frozen_clock(datetime(2026, 11, 3, 0, 0, tzinfo=timezone.utc)))
+    assert ap.params_problems(quote_params(), ROOT) == ['action_plan_or_price_unavailable']
+    assert ft.lane_params_problems(ap.TRIGGER, quote_params(), repo=ROOT) == ['action_plan_or_price_unavailable']
 
 
 @pytest.mark.parametrize('mutation', ['missing', 'duplicate', 'fourth', 'order', 'resolved', 'evicted', 'amount'])

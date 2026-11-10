@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import argparse
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal
 import os
 from pathlib import Path
@@ -102,8 +102,14 @@ def git(*args: str, root: Path = ROOT) -> str:
     return subprocess.check_output(['git', '-C', str(root), *args], text=True).strip()
 
 
-def params_problems(params: dict[str, Any], root: Path | None = None) -> list[str]:
-    """Exact pilot trigger contract, shared by the fire path and execution gate."""
+def params_problems(params: dict[str, Any], root: Path | None = None, *,
+                    today: date | None = None) -> list[str]:
+    """Exact pilot trigger contract, shared by the fire path and execution gate.
+
+    The dated price receipt is checked against ``today``; the default is the
+    current UTC date, which the fire path and the execution gate always use.
+    Only tests name another date, so they do not depend on the day they run.
+    """
     if not isinstance(params, dict):
         return ['action_params_shape']
     if set(params) - {'mode', 'plan_sha256', 'max_spend', 'expected_commit'} - {
@@ -125,7 +131,7 @@ def params_problems(params: dict[str, Any], root: Path | None = None) -> list[st
     if root is not None:
         try:
             inputs.verified_bytes(root, inputs.PLAN, inputs.PLAN_SHA256)
-            budget.prices(root, datetime.now(timezone.utc).date())
+            budget.prices(root, datetime.now(timezone.utc).date() if today is None else today)
             if params['_nonce'] == RECOVERY_NONCE:
                 recovery_receipt(root)
             if quote_plan:
