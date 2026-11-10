@@ -25,6 +25,7 @@ retro-edited into the frozen document.
 | 2026-10-09 → | three models added to the CPU-logits matrix after registration | CPU logits on four models (the 2026-07-11 row's additions already secondary/exploratory) | registered and pinned, nothing measured yet; the first fire of each is a limit-3 probe: `gemma-4-e2b` (`google/gemma-4-E2B`, base), the newest Gemma generation as a base checkpoint, extending the `gemma-2-2b` → `gemma-3-4b-it` line; `qwen3.5-2b-base` (`Qwen/Qwen3.5-2B-Base`, base), a true Qwen base where the registered Qwen3 entries are post-trained, with a new tokenizer and a hybrid linear-attention architecture; `medgemma-1.5-4b-it` (`google/medgemma-1.5-4b-it`, instruction-tuned), the only new small medical checkpoint of 2026 and a third medical-tune point on the Gemma 3 4B base beside `gemma-3-4b-it` and `medgemma-4b-it` (`docs/model_matrix.md`) | post-registration exploratory family (owner approval 2026-10-09); no primary endpoint uses them; disclose in writeup |
 | 2026-10-09 → | backfill of those three models to parity with the original ten | CPU logits on four models | all three passed their limit-3 probes (logits-eval run 37960095244, nothing committed). $0 logits-eval fires measure `gemma-4-e2b` and `qwen3.5-2b-base` on the 2,343 pairs the original models cover (`docs/routine_standing_prompt.md` §3e, or a session chain), and on no batch the original models have not measured; `medgemma-1.5-4b-it` first on an owner-confirmed priority selection (proposal: 84 pairs, `scripts/select_priority_pairs.py`), then the rest (`docs/model_matrix.md`) | still exploratory, and held from every published aggregate until the owner releases them (`scripts/publication_hold.py`). The first statistics run after a release grows the exploratory Benjamini-Hochberg family from six tests to as many as nine, so the six earlier exploratory models' adjusted q-values change from that run on; the confirmatory family of four is unchanged; disclose in writeup |
 | 2026-10-09 (found) → | the original models' cross-model coverage was short of the 39 batches | the pre-registered four measured on every pair (the 2026-08-15 owner decision set full parity across 39 batches for the six claim-grade models; `docs/coordination/backfill_8b_complete_20260826.md` reported it reached) | counted 2026-10-09 against meditron3-8b's 2,343 pairs: `gemma-3-4b-it` missed 702, `qwen3-1.7b` 764, `qwen3-4b` 947 (three of the pre-registered four), and `llama-3.2-3b` 975, `olmo-2-1b` 985, `gemma-2-2b-it` 1,140; `gemma-2-2b` was complete through its hosted traces. Every interim statistic published so far was computed over the rows that existed | backfill approved by the owner 2026-10-09 (`scripts/backfill_chain.py`, `docs/model_matrix.md`); the filled values reach published numbers only at an owner release (`scripts/publication_release.py`), and each release changes interim statistics, which must be disclosed with its date; disclose in writeup |
+| 2026-07-30 → 2026-11-10 | an interim aggregate pooled the holdout: `ops/tier_sensitivity.json` | Amendment 1: interim analyses use only the exploration split | `scripts/tier_sensitivity.py` counted every row of the collector row file, which keeps holdout rows flagged; the file committed on 2026-07-30 held per-model downgrade/upgrade counts and sign tests over 8,151 rows, 622 of them (351 flipped) on 108 holdout phrases. Verified by recount from that commit's inputs, not inferred | corrective (2026-11-10): the script excludes holdout phrases (engine PR #165) and the file is regenerated from the same 2026-07-30 inputs; the registered holdout analysis has not been run; disclose in the endpoint writeup. Entry 2026-11-10 below |
 
 Owner reviews this log at endpoint time; anything confirmatory built on a
 diverged element moves to an amendment first.
@@ -263,3 +264,101 @@ agreement statistic was computed. It was committed later the same day, with the 
    exploratory beside the registered result and never replaces it.
 7. **Pooled sign test detail (open point).** After the majority-sign label (ties toward zero), situations labelled
    zero are dropped from the pooled sign test and counted, matching the within-model rule.
+
+## 2026-11-10 — `ops/tier_sensitivity.json` pooled the holdout (2026-07-30); script and file corrected
+
+Counts, stems and paths only; this entry quotes no sealed phrase and no
+holdout-row text.
+
+**Defect.** `scripts/tier_sensitivity.py` (added 2026-07-30, engine commit
+`994d754a`) read `rows` from the engine-root `urgency_shift.json` and counted
+every flipped row per model. The collector keeps holdout rows in that file,
+flagged `tierb_split == "holdout"` by `tierb_split.stamp_rows`, so that the
+split stays auditable; the script applied no filter. Its output,
+`ops/tier_sensitivity.json`, is an interim analysis: per-model downgrade and
+upgrade counts and exact sign tests under four vocabulary scenarios. Amendment 1
+restricts interim analyses to the exploration split. `scripts/paired_stats.py`
+built its unified phrase set from the same file with no filter either; its
+committed outputs (`paired_stats.json`, `paired_stats_out.json`) were last
+committed on 2026-07-08, before `tierb.start_utc` (2026-07-10), so they hold no
+Tier B row.
+
+**How it was established.** A read-only check on 2026-11-10 found that the
+script had no filter and that the current row file gives different baseline
+counts with and without holdout phrases. The row file of 2026-07-30 is in git:
+it was committed at 13:18 UTC that day (`5960c0b4`), and the tree of
+`994d754a` (15:43 UTC) holds it unchanged (sha256 `fce3900f…04eb1f`). A recount
+from that tree's row file, vocabulary and spec gives the committed file's
+downgrade and upgrade counts exactly in all 40 model × scenario cells when
+every row is counted. With holdout phrases excluded the recount matches the
+committed file only for the 2 models whose counts the exclusion does not
+change. This is a recount, not an inference from the code. One assumption
+remains: that the script ran on the row file as committed, which an exact
+match in 40 cells makes very likely but does not prove.
+
+**Affected rows.** The 2026-07-30 row file has 8,151 rows: 5,580 flagged
+explore, 622 flagged holdout and 1,949 with no flag. The 622 rows (351 of them
+flipped) sit on 108 holdout phrases; no row of a holdout phrase lacks the flag.
+All 622 were counted. They changed the downgrade or upgrade count in 32 of the
+40 cells, for 8 of the 10 models (`apertus-8b-meditronfo` and `meditron3-8b`,
+one counted flip each, are unchanged).
+
+**Fix.** Engine PR #165 (merged 2026-11-10) added
+`tierb_split.drop_holdout_phrase_rows`, the phrase-keyed exclusion
+`paired_stats_rigor.load_rows` has applied since 2026-07-14, and both scripts
+now call it before counting and record the rows and phrases excluded. The pull
+request that adds this entry makes `tier_sensitivity.py` record its inputs
+(`sources`: path and sha256 of each file; `_provenance`; `note`) and
+regenerates `ops/tier_sensitivity.json` from the 2026-07-30 inputs, so the only
+analytic difference from the first version is the exclusion: the row file,
+vocabulary and spec of engine commit `994d754a` (the vocabulary and spec are
+byte-identical on `main` today) and the site's `data/advice_scenarios.json` at
+site commit `62c7c2c6` (2026-07-29, the version current on 2026-07-30). The
+file was not regenerated from the current row file (18,205 rows), because that
+would have replaced the 2026-07-30 analysis with a different one.
+
+**What changed in the file.** 622 rows on 108 phrases are excluded; 7,529 of
+8,151 rows are analyzed. "Downgrades exceed upgrades in all four scenarios"
+holds for the same 8 of 10 models as before. "Sign test p < 0.05 in all four
+scenarios" held for 3 models (`gemma-2-2b`, `gemma-3-4b-it`, `qwen3-4b`) and
+now holds for 4 (`olmo-2-1b` added). The advice block does not read the row
+file: its counts are identical (37 down / 35 up at baseline). Every `sign_p` is
+now unrounded (the shared exact sign test, 2026-09-30); the first version
+rounded to 5 decimals, so the advice p-values differ by less than 5e-06. The
+commit message of `994d754a` reports the first version's verdicts; they
+describe the pooled counts.
+
+**What was exposed.** The 2026-07-30 file is a pooled look: it reports explore
+and holdout rows together and no holdout-only number. The registered holdout
+analysis has not been run and no holdout-only endpoint was computed. A
+holdout-only downgrade/upgrade count per model is nevertheless derivable by
+subtraction, from the two versions of this file in git history and from the
+engine-root row file itself, which is public and carries the flags. The
+2026-11-10 check that found the defect compared per-model baseline counts with
+and without holdout phrases on the current row file (as described in the task
+that opened PR #165; not re-run for this entry). The recount for this entry
+compared the two per-model counts for equality and printed pooled totals with
+and without holdout phrases to the session's own output; it wrote neither to a
+file. No site page and no claims-manifest entry names
+`ops/tier_sensitivity.json` (grep of both repositories, 2026-11-10); whether a
+page quotes one of its numbers without naming the file was not checked.
+
+**Earlier statements this corrects.** The 2026-09-23 entry's closing sentence
+("no interim aggregate included a holdout row") was already corrected for
+`data/tag_mass.json` on 2026-09-30; it was also wrong about
+`ops/tier_sensitivity.json`, which had pooled the holdout since 2026-07-30.
+
+**Not changed, not audited.** `scripts/convergence_tracker.py` keeps its own
+inline copy of the phrase-keyed exclusion. `scripts/tier_sensitivity.py` still
+counts steered and outcome-selected batches, which `paired_stats_rigor.py`
+excludes (POPULATION-DEF option B): a population difference, not a seal
+matter. `coverage_gaps.py` and `specialty_breakdown.py` read the site's
+published `data/urgency_shift.json`, not the engine-root row file; that file
+carries no split flags, and the 2026-11-10 seal sweep found no sealed phrase in
+it. Other analyses that read the engine-root row file were not audited for this
+entry.
+
+**Disposition.** Corrective; no endpoint changes. Disclose in the endpoint
+writeup that an interim per-model sign-test analysis pooled the holdout from
+2026-07-30 to 2026-11-10. Whether that needs an amendment before the holdout
+readout is the owner's decision at endpoint review.
