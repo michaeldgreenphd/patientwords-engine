@@ -1,0 +1,155 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "patientwords.experiment-protocol/1",
+  "title": "Experiment protocol",
+  "description": "Structure only, in the keyword subset scripts/frontend_contract_schema.py executes. Vocabularies (splits, variants, method ids, dtypes), hashes and cross-field rules are enforced by scripts/experiments/protocol.py.",
+  "type": "object",
+  "required": [
+    "schema_version", "protocol_id", "version", "synthetic", "seed", "evidence", "model", "input_settings",
+    "case_families", "methods", "comparisons", "replicates", "primary_endpoint", "exclusions"
+  ],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "protocol_id": {"type": "string"},
+    "version": {"type": "string"},
+    "synthetic": {"type": "boolean"},
+    "seed": {"type": "integer"},
+    "evidence": {
+      "type": "object",
+      "required": ["evidence_class", "clinical_review"],
+      "properties": {
+        "evidence_class": {"type": "string"},
+        "clinical_review": {"type": "string"},
+        "visibility": {"type": "string"},
+        "restriction_reasons": {"type": "array", "items": {"type": "string"}},
+        "analysis_memberships": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "model": {
+      "type": "object",
+      "required": [
+        "study_id", "hf_id", "revision", "tokenizer_id", "tokenizer_revision", "hidden_size", "n_layers",
+        "dtype", "backend"
+      ],
+      "properties": {
+        "study_id": {"type": "string"},
+        "hf_id": {"type": "string"},
+        "revision": {"type": "string"},
+        "tokenizer_id": {"type": "string"},
+        "tokenizer_revision": {"type": "string"},
+        "hidden_size": {"type": "integer"},
+        "n_layers": {"type": "integer"},
+        "dtype": {"type": "string"},
+        "backend": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "input_settings": {
+      "type": "object",
+      "required": ["chat_template", "add_special_tokens", "truncation"],
+      "properties": {
+        "chat_template": {"type": ["string", "null"]},
+        "add_special_tokens": {"type": "boolean"},
+        "truncation": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "case_families": {"type": "array", "items": {"$ref": "#/definitions/family"}},
+    "methods": {"type": "array", "items": {"$ref": "#/definitions/method"}},
+    "comparisons": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "a", "b"],
+        "properties": {"id": {"type": "string"}, "a": {"type": "string"}, "b": {"type": "string"}},
+        "additionalProperties": false
+      }
+    },
+    "replicates": {"type": "integer"},
+    "primary_endpoint": {
+      "type": "object",
+      "required": ["method", "metric", "target"],
+      "properties": {
+        "method": {"type": "string"},
+        "metric": {"type": "string"},
+        "target": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "exclusions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["family_id", "reason"],
+        "properties": {"family_id": {"type": "string"}, "reason": {"type": "string"}},
+        "additionalProperties": false
+      }
+    },
+    "notes": {"type": "string"}
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "family": {
+      "type": "object",
+      "required": ["family_id", "split", "review_status", "legacy_join", "facts", "variants", "targets"],
+      "properties": {
+        "family_id": {"type": "string"},
+        "split": {"type": "string"},
+        "review_status": {"type": "string"},
+        "legacy_join": {
+          "type": ["object", "null"],
+          "required": ["batch", "batch_index", "model"],
+          "properties": {
+            "batch": {"type": "string"},
+            "batch_index": {"type": "integer"},
+            "model": {"type": "string"}
+          },
+          "additionalProperties": false
+        },
+        "facts": {"type": "array", "items": {"type": "string"}},
+        "variants": {"type": "object", "additionalProperties": {"$ref": "#/definitions/variant"}},
+        "targets": {"type": "array", "items": {"$ref": "#/definitions/target"}}
+      },
+      "additionalProperties": false
+    },
+    "variant": {
+      "type": "object",
+      "required": ["prompt", "prompt_sha256", "token_ids", "token_sha256"],
+      "properties": {
+        "prompt": {"type": "string"},
+        "prompt_sha256": {"type": "string"},
+        "token_ids": {"type": "array", "items": {"type": "integer"}},
+        "token_sha256": {"type": "string"},
+        "register": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "target": {
+      "type": "object",
+      "required": ["id", "text", "token_ids"],
+      "properties": {
+        "id": {"type": "string"},
+        "text": {"type": "string"},
+        "token_ids": {"type": "array", "items": {"type": "integer"}},
+        "role": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "method": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {
+        "id": {"type": "string"},
+        "capture_site": {"type": "string"},
+        "layer_index_base": {"type": "integer"},
+        "layers": {"type": "array", "items": {"type": "integer"}},
+        "positions": {"type": "string"},
+        "output_head": {"type": "string"},
+        "basis": {"type": "object"},
+        "artifact": {"type": "object"}
+      },
+      "additionalProperties": false
+    }
+  }
+}

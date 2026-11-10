@@ -1,0 +1,220 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "patientwords.experiment-envelope/1",
+  "title": "Experiment run envelope",
+  "description": "Structure only, in the keyword subset scripts/frontend_contract_schema.py executes. The top level is closed: an envelope has no field for a result number. Vocabularies, the not_recorded rule, counts arithmetic, the resources rule and the payload hash are enforced by scripts/experiments/envelope.py. A provenance field may be null only when its JSON pointer is in not_recorded; the string not_applicable is a recorded value.",
+  "type": "object",
+  "required": [
+    "schema_version", "run_id", "task_id", "spec_sha256", "replicate", "attempt", "attempt_history",
+    "protocol", "source", "evidence", "input", "model", "environment", "method", "counts", "resources",
+    "status", "payload", "not_recorded"
+  ],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "run_id": {"type": "string"},
+    "task_id": {"type": "string"},
+    "spec_sha256": {"type": "string"},
+    "replicate": {"type": "integer"},
+    "attempt": {"type": "integer"},
+    "attempt_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["attempt", "state", "reason", "started_utc"],
+        "properties": {
+          "attempt": {"type": "integer"},
+          "state": {"type": "string"},
+          "reason": {"type": ["string", "null"]},
+          "started_utc": {"type": ["string", "null"]},
+          "worker": {"type": ["string", "null"]}
+        },
+        "additionalProperties": false
+      }
+    },
+    "protocol": {
+      "type": "object",
+      "required": ["id", "version", "sha256"],
+      "properties": {
+        "id": {"type": "string"},
+        "version": {"type": "string"},
+        "sha256": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "experiment_id", "family_id", "variant", "register", "role", "turn", "branch", "legacy_join"
+      ],
+      "properties": {
+        "experiment_id": {"type": ["string", "null"]},
+        "family_id": {"type": ["string", "null"]},
+        "variant": {"type": ["string", "null"]},
+        "register": {"type": ["string", "null"]},
+        "role": {"type": ["string", "null"]},
+        "turn": {"type": ["integer", "string", "null"]},
+        "branch": {"type": ["string", "null"]},
+        "legacy_join": {"type": ["object", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "evidence": {
+      "type": "object",
+      "required": [
+        "evidence_class", "clinical_review", "visibility", "restriction_reasons", "analysis_memberships",
+        "synthetic"
+      ],
+      "properties": {
+        "evidence_class": {"type": "string"},
+        "clinical_review": {"type": "string"},
+        "visibility": {"type": "string"},
+        "restriction_reasons": {"type": "array", "items": {"type": "string"}},
+        "analysis_memberships": {"type": "array", "items": {"type": "string"}},
+        "synthetic": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "input": {
+      "type": "object",
+      "required": [
+        "prompt_sha256", "token_sha256", "n_tokens", "tokenizer", "chat_template", "special_tokens",
+        "truncation", "alignment"
+      ],
+      "properties": {
+        "prompt_sha256": {"type": ["string", "null"]},
+        "token_sha256": {"type": ["string", "null"]},
+        "n_tokens": {"type": ["integer", "null"]},
+        "tokenizer": {
+          "type": "object",
+          "required": ["id", "revision"],
+          "properties": {"id": {"type": ["string", "null"]}, "revision": {"type": ["string", "null"]}},
+          "additionalProperties": false
+        },
+        "chat_template": {"type": ["string", "null"]},
+        "special_tokens": {"type": ["object", "null"]},
+        "truncation": {"type": ["boolean", "null"]},
+        "alignment": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "model": {
+      "type": "object",
+      "required": [
+        "study_id", "hf_id", "revision", "hidden_size", "n_layers", "provider", "route",
+        "hosted_timestamp_utc"
+      ],
+      "properties": {
+        "study_id": {"type": ["string", "null"]},
+        "hf_id": {"type": ["string", "null"]},
+        "revision": {"type": ["string", "null"]},
+        "hidden_size": {"type": ["integer", "null"]},
+        "n_layers": {"type": "integer"},
+        "provider": {"type": ["string", "null"]},
+        "route": {"type": ["string", "null"]},
+        "hosted_timestamp_utc": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "environment": {
+      "type": "object",
+      "required": [
+        "source_commits", "packages", "lock_sha256", "backend", "device", "dtype", "quantization",
+        "attention_implementation", "sampling"
+      ],
+      "properties": {
+        "source_commits": {"type": ["object", "null"]},
+        "packages": {"type": ["object", "null"]},
+        "lock_sha256": {"type": ["string", "null"]},
+        "backend": {"type": ["string", "null"]},
+        "device": {"type": ["string", "null"]},
+        "dtype": {"type": ["string", "null"]},
+        "quantization": {"type": ["string", "null"]},
+        "attention_implementation": {"type": ["string", "null"]},
+        "sampling": {"type": ["object", "null"]},
+        "source_files_sha256": {"type": "object", "additionalProperties": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "method": {
+      "type": "object",
+      "required": [
+        "id", "representation_type", "capture_site", "layer_index_base", "layers", "positions",
+        "preprocessing", "fitted_artifact", "output_head"
+      ],
+      "properties": {
+        "id": {"type": "string"},
+        "representation_type": {"type": "string"},
+        "capture_site": {"type": ["string", "null"]},
+        "layer_index_base": {"type": "integer"},
+        "layers": {"type": "array", "items": {"type": "integer"}},
+        "positions": {"type": ["string", "array", "null"]},
+        "preprocessing": {"type": ["string", "null"]},
+        "fitted_artifact": {
+          "type": "object",
+          "required": ["sha256", "fit_provenance"],
+          "properties": {
+            "sha256": {"type": ["string", "null"]},
+            "fit_provenance": {"type": ["object", "string", "null"]}
+          },
+          "additionalProperties": false
+        },
+        "output_head": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "counts": {
+      "type": "object",
+      "required": ["requested", "accepted", "completed", "failed", "exclusions"],
+      "properties": {
+        "requested": {"type": "integer"},
+        "accepted": {"type": "integer"},
+        "completed": {"type": "integer"},
+        "failed": {"type": "integer"},
+        "exclusions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["reason", "n"],
+            "properties": {"reason": {"type": "string"}, "n": {"type": "integer"}},
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "resources": {
+      "type": "object",
+      "required": ["runtime_seconds", "peak_memory_bytes", "storage_bytes", "usage", "cost_usd", "measured"],
+      "properties": {
+        "runtime_seconds": {"type": ["number", "null"]},
+        "peak_memory_bytes": {"type": ["number", "null"]},
+        "storage_bytes": {"type": ["number", "null"]},
+        "usage": {"type": ["object", "null"]},
+        "cost_usd": {"type": ["number", "null"]},
+        "measured": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "status": {
+      "type": "object",
+      "required": ["execution", "reason"],
+      "properties": {
+        "execution": {"type": "string"},
+        "reason": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "payload": {
+      "type": ["object", "null"],
+      "required": ["kind", "sha256", "path"],
+      "properties": {
+        "kind": {"type": "string"},
+        "sha256": {"type": "string"},
+        "path": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "not_recorded": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": false
+}

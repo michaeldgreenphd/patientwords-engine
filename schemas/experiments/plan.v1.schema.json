@@ -1,0 +1,182 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "patientwords.experiment-plan/1",
+  "title": "Experiment plan",
+  "description": "Structure only, in the keyword subset scripts/frontend_contract_schema.py executes. The planned-state vocabulary and the rule that task_id is the first 16 hex digits of exploratory_methods.digest(spec) are enforced by scripts/experiments/planner.py. A plan holds no clock value, no prompt text and no target text.",
+  "type": "object",
+  "required": [
+    "schema_version", "protocol", "digest_convention", "synthetic", "seed", "replicates", "evidence",
+    "protocol_summary", "excluded", "capability_matrix", "adapters", "tasks", "totals", "rates_used",
+    "estimate_notes"
+  ],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "protocol": {"$ref": "#/definitions/protocol_ref"},
+    "digest_convention": {"type": "string"},
+    "synthetic": {"type": "boolean"},
+    "seed": {"type": "integer"},
+    "replicates": {"type": "integer"},
+    "evidence": {"type": "object"},
+    "protocol_summary": {
+      "type": "object",
+      "required": ["model", "input_settings", "families", "methods", "comparisons", "primary_endpoint"],
+      "properties": {
+        "model": {"type": "object"},
+        "input_settings": {"type": "object"},
+        "families": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["family_id", "split", "review_status", "legacy_join", "variants", "targets"],
+            "properties": {
+              "family_id": {"type": "string"},
+              "split": {"type": "string"},
+              "review_status": {"type": "string"},
+              "legacy_join": {"type": ["object", "null"]},
+              "variants": {"type": "array", "items": {"type": "string"}},
+              "targets": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["id", "role", "token_ids"],
+                  "properties": {
+                    "id": {"type": "string"},
+                    "role": {"type": "string"},
+                    "token_ids": {"type": "array", "items": {"type": "integer"}}
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "methods": {"type": "array", "items": {"type": "string"}},
+        "comparisons": {"type": "array", "items": {"type": "object"}},
+        "primary_endpoint": {"type": "object"}
+      },
+      "additionalProperties": false
+    },
+    "excluded": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["family_id", "reason"],
+        "properties": {"family_id": {"type": "string"}, "reason": {"type": "string"}},
+        "additionalProperties": false
+      }
+    },
+    "capability_matrix": {
+      "type": "object",
+      "required": ["schema_version", "sha256", "as_of"],
+      "properties": {
+        "schema_version": {"type": "string"},
+        "sha256": {"type": "string"},
+        "as_of": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "adapters": {"type": "object", "additionalProperties": {"type": "string"}},
+    "tasks": {"type": "array", "items": {"$ref": "#/definitions/task"}},
+    "totals": {
+      "type": "object",
+      "required": ["tasks", "by_planned_state", "by_method", "estimates", "runtime_seconds_estimate"],
+      "properties": {
+        "tasks": {"type": "integer"},
+        "by_planned_state": {"type": "object", "additionalProperties": {"type": "integer"}},
+        "by_method": {
+          "type": "object",
+          "additionalProperties": {"type": "object", "additionalProperties": {"type": "integer"}}
+        },
+        "estimates": {
+          "type": "object",
+          "required": ["tokens", "activation_bytes", "ready_tokens", "ready_activation_bytes", "measured"],
+          "properties": {
+            "tokens": {"type": "integer"},
+            "activation_bytes": {"type": "integer"},
+            "ready_tokens": {"type": "integer"},
+            "ready_activation_bytes": {"type": "integer"},
+            "measured": {"type": "boolean"}
+          },
+          "additionalProperties": false
+        },
+        "runtime_seconds_estimate": {"type": ["number", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "rates_used": {"type": "array", "items": {"type": "object"}},
+    "estimate_notes": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "protocol_ref": {
+      "type": "object",
+      "required": ["id", "version", "sha256"],
+      "properties": {
+        "id": {"type": "string"},
+        "version": {"type": "string"},
+        "sha256": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "task": {
+      "type": "object",
+      "required": [
+        "task_id", "spec_sha256", "spec", "replicate", "capability", "planned_state", "reason", "estimate"
+      ],
+      "properties": {
+        "task_id": {"type": "string"},
+        "spec_sha256": {"type": "string"},
+        "spec": {
+          "type": "object",
+          "required": ["protocol_sha256", "family_id", "variant", "model", "method", "input", "settings"],
+          "properties": {
+            "protocol_sha256": {"type": "string"},
+            "family_id": {"type": "string"},
+            "variant": {"type": "string"},
+            "model": {"type": "object"},
+            "method": {"type": "object", "required": ["id"], "properties": {"id": {"type": "string"}}},
+            "input": {
+              "type": "object",
+              "required": ["prompt_sha256", "token_sha256"],
+              "properties": {"prompt_sha256": {"type": "string"}, "token_sha256": {"type": "string"}},
+              "additionalProperties": false
+            },
+            "settings": {"type": "object"}
+          },
+          "additionalProperties": false
+        },
+        "replicate": {"type": "integer"},
+        "capability": {
+          "type": "object",
+          "required": ["status", "evidence", "status_note", "matched", "revision_match", "declared_by"],
+          "properties": {
+            "status": {"type": "string"},
+            "evidence": {"type": "string"},
+            "status_note": {"type": "string"},
+            "matched": {"type": "boolean"},
+            "revision_match": {"type": ["string", "null"]},
+            "declared_by": {"type": ["string", "null"]}
+          },
+          "additionalProperties": false
+        },
+        "planned_state": {"type": "string"},
+        "reason": {"type": ["string", "null"]},
+        "estimate": {
+          "type": "object",
+          "required": ["tokens", "captured_positions", "layers", "activation_bytes", "assumptions", "measured"],
+          "properties": {
+            "tokens": {"type": "integer"},
+            "captured_positions": {"type": "integer"},
+            "layers": {"type": "integer"},
+            "activation_bytes": {"type": "integer"},
+            "assumptions": {"type": "array", "items": {"type": "string"}},
+            "measured": {"type": "boolean"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

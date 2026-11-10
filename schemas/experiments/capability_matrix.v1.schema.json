@@ -1,0 +1,92 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "patientwords.capability-matrix/1",
+  "title": "Capability matrix",
+  "description": "Structure only, in the keyword subset scripts/frontend_contract_schema.py executes. Status and method vocabularies, hash formats, evidence dates and the parity_record rule are enforced by scripts/experiments/capabilities.py.",
+  "type": "object",
+  "required": ["schema_version", "as_of", "status_order", "backends", "rows"],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "as_of": {"type": "string"},
+    "description": {"type": "string"},
+    "status_order": {"type": "array", "items": {"type": "string"}},
+    "status_meaning": {"type": "object", "additionalProperties": {"type": "string"}},
+    "backends": {"type": "object", "additionalProperties": {"type": "string"}},
+    "not_verified": {"type": "array", "items": {"type": "string"}},
+    "rows": {"type": "array", "items": {"$ref": "#/definitions/row"}}
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "row": {
+      "type": "object",
+      "required": ["model", "method", "backend", "dtype", "artifact", "status", "evidence", "status_note"],
+      "properties": {
+        "model": {
+          "type": "object",
+          "required": ["study_id", "hf_id", "revision"],
+          "properties": {
+            "study_id": {"type": ["string", "null"]},
+            "hf_id": {"type": "string"},
+            "revision": {"type": ["string", "null"]}
+          },
+          "additionalProperties": false
+        },
+        "method": {"type": "string"},
+        "backend": {"type": "string"},
+        "dtype": {"type": ["string", "null"]},
+        "artifact": {
+          "type": ["object", "null"],
+          "required": ["id"],
+          "properties": {
+            "id": {"type": "string"},
+            "repository": {"type": ["string", "null"]},
+            "revision": {"type": ["string", "null"]},
+            "path": {"type": ["string", "null"]},
+            "sha256": {"type": ["string", "null"]},
+            "fit_model_revision": {"type": ["string", "null"]},
+            "fit_tokenizer_revision": {"type": ["string", "null"]},
+            "calibration": {"type": ["string", "null"]}
+          },
+          "additionalProperties": false
+        },
+        "status": {"type": "string"},
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["source", "date"],
+            "properties": {"source": {"type": "string"}, "date": {"type": "string"}},
+            "additionalProperties": false
+          }
+        },
+        "status_note": {"type": "string"},
+        "parity_record": {
+          "type": "object",
+          "required": ["source", "date", "scope"],
+          "properties": {
+            "source": {"type": "string"},
+            "date": {"type": "string"},
+            "scope": {"type": "string"}
+          },
+          "additionalProperties": false
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["namespace", "id", "verified"],
+            "properties": {
+              "namespace": {"type": "string"},
+              "id": {"type": "string"},
+              "verified": {"type": "boolean"},
+              "note": {"type": "string"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "declared_by": {"type": "string"}
+      },
+      "additionalProperties": false
+    }
+  }
+}
