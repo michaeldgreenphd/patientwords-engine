@@ -38,6 +38,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import results_policy as rp  # noqa: E402
+from export_results_catalogue import sealed_pair_keys  # noqa: E402
 from provenance_stamp import engine_sha  # noqa: E402
 
 SCHEMA = "patientwords.open-results-migration/1"
@@ -49,6 +50,8 @@ def classify_all(engine: Path, policy: rp.Policy, seal_paths: dict[str, Any] | N
     manifest = rp.load_manifest(engine) if (engine / rp.RELEASE_MANIFEST).exists() else None
     ledger = rp.load_ledger(engine)
     seal_paths = seal_paths or {}
+    # the catalogue's own rule: a pair sealed in any run is withheld in every run
+    sealed_keys = sealed_pair_keys(engine, policy, manifest, ledger, seal_paths)
     newly_parts: Counter[tuple[str, str, str]] = Counter()
     newly_rows: Counter[tuple[str, str, str]] = Counter()
     already = Counter()
@@ -79,8 +82,7 @@ def classify_all(engine: Path, policy: rp.Policy, seal_paths: dict[str, Any] | N
         n_public = 0
         if d.rows_exported:
             for result in summary["results"]:
-                clinical = (result.get("prompts") or {}).get("clinical")
-                if rp.row_restriction(d.stem, result.get("index"), clinical, **seal_paths):
+                if (d.stem, result.get("index")) in sealed_keys:
                     sealed_rows["inside study-interim/1" if in_study else "outside study-interim/1"] += 1
                 else:
                     n_public += 1
@@ -107,7 +109,9 @@ def classify_all(engine: Path, policy: rp.Policy, seal_paths: dict[str, Any] | N
         "still_restricted": {
             "rows_withheld_by_tier_b_seal": dict(sorted(sealed_rows.items())),
             "parts_by_restriction": dict(sorted(restricted_parts.items())),
-            "note": "sealed rows are counted, never listed; the seal is unchanged by this policy",
+            "sealed_pairs": len(sealed_keys),
+            "note": "sealed rows are counted, never listed; the seal is unchanged by this policy. The count is "
+                    "pair-level, as the catalogue applies it: every run's row at a sealed (stimulus set, index)",
         },
         "listed_without_rows": {"parts_by_family": dict(sorted(listed_without_rows.items())),
                                 "note": "visible in the catalogue with counts and hashes; rows need a policy "

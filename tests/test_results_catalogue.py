@@ -424,3 +424,71 @@ def test_calibrated_clinical_mass_is_written_per_phrasing_and_passes_the_contrac
     assert part["clinical_mass"] == "per row"
     assert all(row["clinical_mass"] == {"clinical": 0.42, "patient": 0.31} for row in part["rows"])
     assert _gate(site) == []
+
+
+# ---------------------------------------------------------------- the seal is decided per pair (review, 2026-11-10)
+
+def test_a_pair_sealed_through_one_runs_trace_time_prompt_is_withheld_in_every_run(engine, tmp_path):
+    """Regression: three real Tier B pairs are sealed only because one run traced them with a probe extension
+    that hashes holdout. Deciding row by row published the pair's prompts and its rows from every other run."""
+    extended = next(f"{OPEN[2]} ext{i}" for i in range(1, 500) if tierb_split.is_holdout(f"{OPEN[2]} ext{i}"))
+    assert not tierb_split.is_holdout(OPEN[2])                    # the accepted prompt itself is not holdout
+    probe = _result(4)
+    probe["prompts"] = {"clinical": extended, "patient": PATIENT[3]}
+    _part(engine, f"{BATCH}__llama-3.2-3b", _summary([probe], "llama-3.2-3b"), "batch_summary.part_04.json")
+    out = tmp_path / "out"
+    assert _export(engine, out) == 0
+    runs = _runs(out)
+    # pair 4 was public in the gemma-4-e2b and qwen3-4b runs before; it is now withheld in all three
+    for run_dir, withheld in ((f"{BATCH}__gemma-4-e2b", 2), (f"{BATCH}__qwen3-4b", 2), (f"{BATCH}__llama-3.2-3b", 1)):
+        assert runs[run_dir]["counts"]["rows_withheld_sealed"] == withheld, run_dir
+        if runs[run_dir]["rows_file"]:
+            assert all(row["index"] != 4 for row in _rows(out, run_dir)), run_dir
+    stimuli = json.loads((out / "stimuli" / f"{BATCH}.json").read_text(encoding="utf-8"))
+    assert "4" not in stimuli["pairs"] and "2" not in stimuli["pairs"]
+    for path in (p for p in out.rglob("*") if p.is_file()):
+        text = path.read_text(encoding="utf-8")
+        assert extended not in text and OPEN[2] not in text and PATIENT[3] not in text, path
+
+
+def test_a_registered_phrase_in_another_case_or_spacing_on_a_hand_authored_set_is_withheld(engine, tmp_path):
+    """On a stem outside Tier B the row-level seal is an exact string test. The exporter also applies the
+    publish gate's matcher, so it never writes what scripts/seal_check.py would then refuse."""
+    variant = _result(1)
+    variant["prompts"] = {"clinical": f"  {SEALED.upper()}   and a probe extension", "patient": "beta wording 9"}
+    _part(engine, "agscen_20990102__qwen3-4b", _summary([variant, _result(3)], "qwen3-4b"))
+    out = tmp_path / "out"
+    assert _export(engine, out) == 0
+    run = _runs(out)["agscen_20990102__qwen3-4b"]
+    assert run["counts"]["rows_withheld_sealed"] == 1 and run["counts"]["rows_public"] == 1
+    for path in (p for p in out.rglob("*") if p.is_file()):
+        assert SEALED.upper() not in path.read_text(encoding="utf-8").upper(), path
+
+
+@pytest.mark.parametrize("mutate", ["index_string", "index_none", "prompts_list", "result_string"])
+def test_a_malformed_exported_result_refuses_the_export_and_writes_nothing(engine, tmp_path, mutate):
+    bad = _result(1)
+    if mutate == "index_string":
+        bad["index"] = "1"
+    elif mutate == "index_none":
+        bad["index"] = None
+    elif mutate == "prompts_list":
+        bad["prompts"] = [CLINICAL[0], PATIENT[0]]
+    summary = _summary(["not an object"] if mutate == "result_string" else [bad], "qwen3-4b")
+    _part(engine, "agscen_20990103__qwen3-4b", summary)
+    out = tmp_path / "out"
+    assert _export(engine, out) == 2 and not out.exists()
+
+
+def test_a_run_with_one_failed_part_and_one_intact_part_lists_the_intact_rows_and_passes_the_gate(engine, tmp_path):
+    """Regression: such a run was marked restricted while it listed rows, and the contract gate then rejected
+    the whole catalogue."""
+    _part(engine, f"{BATCH}__gemma-4-e2b", {"graph_model": "gemma-4-e2b", "results": [_result(1)]},
+          "batch_summary.part_09.json")                                        # no backend key: malformed
+    site = _published_site(engine, tmp_path)
+    run = _runs(site / "data" / "results_catalogue")[f"{BATCH}__gemma-4-e2b"]
+    assert run["visibility"] == "public" and run["restricted_parts"] == 1 and run["rows_file"]
+    assert run["restriction_reasons"] == ["artifact_integrity:malformed"]
+    states = {p["name"]: p["artifact_integrity"] for p in run["parts"]}
+    assert states == {"batch_summary.part_01.json": "unrecorded", "batch_summary.part_09.json": "malformed"}
+    assert _gate(site) == []

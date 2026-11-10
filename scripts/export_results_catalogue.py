@@ -10,8 +10,13 @@ analysis. Row-level results are written for every stimulus class the policy expo
 
 What is never written:
 
-* a row the Tier B seal covers (scripts/tierb_split.py sealed_pair, asked per row; counted, never listed).
-  If the seal cannot be evaluated the run stops with exit 2 and writes nothing;
+* a pair the Tier B seal covers. The seal is decided per PAIR, not per row: if scripts/tierb_split.py
+  sealed_pair seals the pair's row in any run (the accepted prompt, a trace-time prompt with a probe extension,
+  or a registered phrase), every run's row at that (stimulus set, index) is withheld and the pair's prompts
+  are never written, as the gallery exporter does. A pair is also withheld when its prompt text contains a
+  registered holdout phrase by scripts/seal_check.py's own matcher (case, whitespace and encodings), unless
+  the owner's allowlist rules that containing field public. Withheld rows are counted, never listed. If the
+  seal cannot be evaluated the run stops with exit 2 and writes nothing;
 * the text of a redistribution-limited stimulus family, or rows of a part whose bytes differ from a recorded
   sha256, or of a malformed part: those runs are listed with the reason, without rows;
 * clinical mass from a model/source-set pair that is not calibrated (scripts/feature_models.py): the field is
@@ -54,6 +59,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import results_policy as rp  # noqa: E402
+import seal_check  # noqa: E402
 from feature_models import clinical_mass_publishable  # noqa: E402
 from provenance_stamp import engine_sha  # noqa: E402
 from sparse_guard import hidden_tracked  # noqa: E402
@@ -162,6 +168,72 @@ def build_row(result: dict[str, Any], *, selection_label: str | None, mass_publi
     return row
 
 
+def _exportable_parts(engine: Path, policy: rp.Policy, manifest: Any, ledger: Any):
+    """(run directory name, stem, part path, parsed summary) for every part whose rows the policy exports."""
+    for run_path in sorted(p for p in (engine / "trace_out").iterdir() if p.is_dir()):
+        stem = rp.run_dir_parts(run_path.name)[0]
+        for part in sorted(run_path.glob("batch_summary*.json")):
+            try:
+                summary = json.loads(part.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            d = rp.classify_part(engine, part, summary, policy=policy, manifest=manifest, ledger=ledger)
+            if d.rows_exported and d.analysis[rp.PUBLIC_DISPLAY]["eligible"]:
+                yield run_path.name, stem, d.path, summary
+
+
+def sealed_pair_keys(engine: Path, policy: rp.Policy, manifest: Any, ledger: Any,
+                     seal_paths: dict[str, Any]) -> set[tuple[str, int]]:
+    """Every (stimulus set, index) that must be withheld in every run.
+
+    A pair is sealed when the seal covers its row in ANY run. One run's trace-time prompt can hash holdout
+    while the accepted prompt and the other runs' prompts do not (a screening probe extension); the divergence
+    log (2026-07-17) keeps such pairs sealed, and the gallery exporter withholds the whole pair. Deciding row
+    by row would publish the pair's text and its other rows (found by review, 2026-11-10).
+
+    A pair is also sealed when its prompt text contains a registered holdout phrase under the matcher that
+    scripts/seal_check.py uses for the publish gate, so this exporter never writes what that gate would
+    refuse. The owner's allowlist (data/seal_allowlist.json) applies exactly as it does there.
+
+    The same pass validates each exported result: its index must be an integer and its prompts an object.
+    Raises ``results_policy.SealError`` when the seal cannot be evaluated."""
+    row_paths = {k: v for k, v in seal_paths.items() if k in ("dashboard_path", "simulated_dir")}
+    dashboard = Path(seal_paths.get("dashboard_path") or rp._tierb_split.DASHBOARD_PATH)
+    simulated = Path(seal_paths.get("simulated_dir") or rp._tierb_split.SIMULATED_DIR)
+    allow_path = Path(seal_paths.get("allowlist_path") or rp.ENGINE / "data" / "seal_allowlist.json")
+    registry = seal_check.sealed_registry(str(simulated), str(dashboard))
+    try:
+        allow = seal_check.resolve_allowlist(seal_check.load_allowlist(allow_path), registry, simulated)
+    except ValueError as exc:
+        raise CatalogueError(f"the seal allowlist {allow_path} is malformed: {exc}") from exc
+    sealed: set[tuple[str, int]] = set()
+    text_verdict: dict[tuple[Any, Any], bool] = {}
+    for _run_dir, stem, rel, summary in _exportable_parts(engine, policy, manifest, ledger):
+        for result in summary["results"]:
+            if not isinstance(result, dict):
+                raise CatalogueError(f"{rel}: a result is not an object")
+            index = result.get("index")
+            if type(index) is not int:
+                raise CatalogueError(f"{rel}: a result's index is {type(index).__name__}, not an integer; "
+                                     "rows are joined and sealed by integer index")
+            prompts = result.get("prompts")
+            if prompts is not None and not isinstance(prompts, dict):
+                raise CatalogueError(f"{rel}#{index}: 'prompts' is {type(prompts).__name__}, not an object")
+            clinical, patient = (prompts or {}).get("clinical"), (prompts or {}).get("patient")
+            if (stem, index) in sealed:
+                continue
+            if rp.row_restriction(stem, index, clinical, **row_paths):
+                sealed.add((stem, index))
+                continue
+            key = (clinical, patient)
+            if key not in text_verdict:
+                text = "\n".join(json.dumps(t, ensure_ascii=False) for t in key if isinstance(t, str))
+                text_verdict[key] = bool(text) and bool(seal_check.scan_text(text, registry, allow, ".json")[0])
+            if text_verdict[key]:
+                sealed.add((stem, index))
+    return sealed
+
+
 def _penalty_sign(value: Any) -> str:
     if not isinstance(value, (int, float)) or isinstance(value, bool):
         return "missing"
@@ -187,6 +259,7 @@ def collect(engine: Path, *, policy: rp.Policy | None = None, seal_paths: dict[s
     ledger = rp.load_ledger(engine)
     selections = _selection_index(policy, engine)
     seal_paths = seal_paths or {}
+    sealed_keys = sealed_pair_keys(engine, policy, manifest, ledger, seal_paths)
     membership_ids = list(policy.doc["memberships"])
     analysis_ids = [m for m in membership_ids if policy.membership(m)["purpose"] == "analysis"]
 
@@ -251,11 +324,9 @@ def collect(engine: Path, *, policy: rp.Policy | None = None, seal_paths: dict[s
             row_memberships = [m for m in analysis_ids if d.analysis[m]["eligible"]]
             part_rows: list[dict[str, Any]] = []
             for result in summary["results"]:
-                if not isinstance(result, dict):
-                    raise CatalogueError(f"{d.path}: a result is not an object")
                 index = result.get("index")
                 clinical = (result.get("prompts") or {}).get("clinical")
-                if rp.row_restriction(stem, index, clinical, **seal_paths):
+                if (stem, index) in sealed_keys:          # the pair is sealed in every run, not only this one
                     run_counts["rows_withheld_sealed"] += 1
                     restriction_counts["sealed_holdout"] += 1
                     continue
@@ -294,8 +365,11 @@ def collect(engine: Path, *, policy: rp.Policy | None = None, seal_paths: dict[s
         model = first.model if first else (None if instrument else suffix)
         if instrument:
             model = None
-        visibility = ("restricted" if any(d.visibility == "restricted" for d in decisions)
-                      or entry.get("restriction") else "public")
+        # A run is restricted when its stimulus class is, or when every part it has is. A run with one failed
+        # part and one intact part stays public: the intact part's rows are listed and the failed part carries
+        # its own integrity state and reason (restriction_reasons names it at run level too).
+        visibility = ("restricted" if entry.get("restriction")
+                      or (decisions and all(d.visibility == "restricted" for d in decisions)) else "public")
         reasons = sorted({r for d in decisions for r in d.restriction_reasons}
                          | ({entry["restriction"]} if entry.get("restriction") else set()))
         if not decisions:
@@ -317,6 +391,7 @@ def collect(engine: Path, *, policy: rp.Policy | None = None, seal_paths: dict[s
             "visibility": visibility, "restriction_reasons": reasons,
             "execution_states": dict(sorted(Counter(d.execution_state for d in decisions).items())),
             "n_parts": len(decisions),
+            "restricted_parts": sum(1 for d in decisions if d.visibility == "restricted"),
             "analysis_parts": {m: sum(1 for d in decisions if d.analysis[m]["eligible"]) for m in membership_ids},
             "other_artifacts": dict(sorted(other_kinds.items())),
             "rows_file": f"rows/{run_dir}.json" if row_parts else None,

@@ -51,15 +51,15 @@ results catalogue with rows:
 | Reason the study membership does not read them | Parts | Public rows |
 |---|---|---|
 | CPU-logits part outside the pin (gap-fill of six original models) | 93 | 1,889 |
-| Model `gemma-4-e2b` (2026-10-09 cohort) | 39 | 2,059 |
-| Model `qwen3.5-2b-base` (2026-10-09 cohort) | 39 | 2,059 |
+| Model `gemma-4-e2b` (2026-10-09 cohort) | 39 | 2,056 |
+| Model `qwen3.5-2b-base` (2026-10-09 cohort) | 39 | 2,056 |
 | Hand-authored exploratory sets (`agscen_`, seven models) | 113 | 1,722 |
-| **Total** | **284** | **7,729** |
+| **Total** | **284** | **7,723** |
 
 `medgemma-1.5-4b-it` has no landed part. When its priority-selection parts land, the
 catalogue labels those rows `outcome_selected_priority_subset`.
 
-The catalogue also lists, per row, the 17,175 rows of parts that were already inside
+The catalogue also lists, per row, the 17,145 rows of parts that were already inside
 the published statistics. Before this change the site's per-row values were the gallery
 payload (four models), the trimmed urgency rows file, and a collaborator archive that
 `scripts/README.md` dates to 2026-08-20.
@@ -68,9 +68,19 @@ payload (four models), the trimmed urgency rows file, and a collaborator archive
 
 | Restriction | Count | Released by |
 |---|---|---|
-| Rows the Tier B seal covers | 2,018 rows counted and never written (1,642 in parts inside the study membership, 376 in parts outside it) | the owner's explicit unseal instruction |
+| Rows the Tier B seal covers | 2,054 rows at 187 sealed pairs, counted and never written (1,672 in parts inside the study membership, 382 in parts outside it) | the owner's explicit unseal instruction |
 | Redistribution-limited text (`pabharvest_`) | 3 parts listed without rows | a recorded licence review |
 | Artifact integrity failures | 0 parts | restoring the recorded bytes |
+
+The seal is applied per pair. A pair that `sealed_pair` seals in any run is withheld in
+every run, and its prompts are never written. Three Tier B pairs are sealed only because one
+run traced them with a probe extension whose text hashes holdout
+(`docs/prereg_divergence_log.md`, 2026-07-17); the gallery exporter already withholds them
+whole. A first version of the catalogue exporter decided row by row and would have listed
+those three pairs' prompts and 36 rows from other runs. A review found it before anything
+was pushed; `tests/test_results_catalogue.py` has the regression test. The exporter also
+applies the publish gate's own phrase matcher (`scripts/seal_check.py`), so it does not write
+what that gate would then refuse.
 
 Listed without rows for a scope reason, not a restriction: 225 parts of stimulus
 families with no row-export entry in policy version `open-results/1`, and 40 parts of
