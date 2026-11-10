@@ -51,6 +51,13 @@ None when the inputs cannot be read. The store records it in the envelope and re
 completed result only while it is unchanged. Without the hook the value is recorded as
 null in `not_recorded`, and a changed input file is not detected at reuse.
 
+The hook returns one value for every task of the method in a fixtures directory: it hashes
+the method's whole input set, not one task's rows. `collect` refuses
+`mixed_input_identities` when the completed envelopes of one method record more than one
+value (or more than one set of adapter source hashes) and no single recorded pair covers
+every completed task. The label values an evidence block may carry are listed in
+[experiment_interface/README.md](experiment_interface/README.md#three-things-kept-apart).
+
 ## 2. Result type: a typed payload, never a generic score
 
 Declare a new payload kind, `<name>/<version>`, with its own schema file under
@@ -83,8 +90,11 @@ revision or provenance is not recorded. `parity_passed` says a recorded audit co
 exact combination against a reference, and the row cites the record. The record must state
 the pass criterion, where it was written before the run, and what the comparison covered.
 No row holds `parity_passed` on 2026-11-10: the one row that did was lowered to
-`artifact_available` because its audit states no pass criterion. A row with no recorded
-model revision never answers above `artifact_available` for a lookup that names a revision.
+`artifact_available_identity_unknown` because its audit states no pass criterion and its
+run recorded no model revision. A row at `artifact_available` or above must record a model
+revision, or an artifact revision or SHA-256 (`unpinned_status` otherwise), and a row with
+no recorded model revision never answers above `artifact_available_identity_unknown` for a
+lookup that names a revision.
 A passing fixture test is `runtime_verified_offline_fixture` and nothing stronger; it is
 not evidence of parity.
 
@@ -97,8 +107,10 @@ Add a synthetic fixture under `tests/fixtures/experiments/`:
 
 - abstract placeholder phrases only. No text from `data/simulated/` or `trace_out/` (the
   Tier B holdout seal), and no medical vocabulary in Python source;
-- `synthetic: true`, `evidence_class: "synthetic_fixture"`, `visibility: "not_published"`,
-  `analysis_memberships: []`;
+- `synthetic: true`, `evidence_class: "synthetic_fixture"`,
+  `clinical_review: "not_applicable_synthetic"`, `visibility: "not_published"`,
+  `analysis_memberships: []`. The validators refuse any other class, review status or
+  visibility on a synthetic document;
 - expected values that were derived independently of the adapter under test, so the test can
   fail;
 - a recorded seed for anything random.

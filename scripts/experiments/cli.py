@@ -6,7 +6,8 @@ Commands: ``validate``, ``plan``, ``run-fixture``, ``collect``, ``compare``, ``b
 Each prints one JSON object. Exit codes: 0 success; 1 the command finished and the run is not clean (an
 attempt ended ``failed`` or ``invalid``; ``run-fixture`` was not stopped by ``--stop-after`` and left a ready
 task without a completed result; or ``collect --require-complete`` found a planned task without an envelope
-or a ready task without a completed one); 2 a refusal, printed as
+or a ready task without a completed result that counts: a completed result whose task was executed again
+under changed inputs without completing does not count); 2 a refusal, printed as
 ``{"status": "refused", "code": ..., "detail": ...}``; 3 a configuration error (the holdout seal or the
 results policy could not be evaluated), which is not a refusal.
 
@@ -116,6 +117,7 @@ def cmd_collect(args: argparse.Namespace) -> int:
            "uncertain": assembly["uncertain"], "ended_line_missing": assembly["ended_line_missing"],
            "duplicate_identical": assembly["duplicate_identical"],
            "attempt_outcomes_differ": assembly["attempt_outcomes_differ"],
+           "completed_under_superseded_inputs": assembly["completed_under_superseded_inputs"],
            "reused_events": collected["metrics"]["reused_events"],
            "executed_attempts": collected["metrics"]["executed_attempts"]})
     finished = assembly["complete"] and assembly["ready_complete"]

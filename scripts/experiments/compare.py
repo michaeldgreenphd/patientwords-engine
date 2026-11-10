@@ -13,6 +13,13 @@ Blocks have different units and are never added, averaged or otherwise combined.
 not both complete is listed with each side's state and reason; its block says ``not_computed``. A missing value
 is never written as zero.
 
+A block is computed only from two payloads recorded under the same inputs outside the task spec. The collector
+already refuses a run whose completed envelopes of one method record different adapter source hashes or input
+identities (``mixed_input_identities``) and sets aside a completed result whose task was executed again under
+changed inputs without completing. ``compare_run`` checks the two sides of each block again and refuses with the
+same code, and ``behavior_block`` refuses ``payload_mismatch`` for two payloads that name different fixture
+files.
+
 No statistic is computed here: there is one value per family, variant and replicate, so there is no interval,
 no test and no random draw. Replicates are reported side by side and are not pooled.
 """
@@ -38,6 +45,10 @@ def behavior_block(payload_a: Mapping[str, Any], payload_b: Mapping[str, Any]) -
     require(payload_a["model"] == payload_b["model"] and payload_a["vocabulary_size"] == payload_b["vocabulary_size"]
             and payload_a["probability_kind"] == payload_b["probability_kind"], "payload_mismatch",
             "The two behaviour payloads differ in model, vocabulary size or probability kind")
+    fixture_a, fixture_b = ((payload.get("fixture") or {}).get("sha256") for payload in (payload_a, payload_b))
+    require(fixture_a is None or fixture_b is None or fixture_a == fixture_b, "payload_mismatch",
+            f"The two behaviour payloads were computed from different fixture files ({str(fixture_a)[:12]} and "
+            f"{str(fixture_b)[:12]}); a difference across two fixture versions is not a comparison of variants")
     b_rows = {row["target_id"]: row for row in payload_b["targets"]}
     targets = []
     for row in payload_a["targets"]:
@@ -130,6 +141,12 @@ def ica_block(payload_a: Mapping[str, Any], payload_b: Mapping[str, Any]) -> dic
     ``scores``: rows of ``{layer, position, component, score}``. Refuses ``basis_mismatch`` when the two payloads
     name different basis hashes: scores under two bases share no coordinate.
     A component present on one side only has a null difference; it is not treated as zero.
+
+    ``preprocessing_mode`` and ``preprocessing_read_from`` are copied from the payloads' ``basis`` record
+    (``basis.preprocessing_mode`` is the mode the ICA adapter read from the saved artifact, and
+    ``basis.preprocessing_read_from`` says where in the artifact it read it). Each is null when the payloads do
+    not record it. Two payloads under one basis hash that record different modes refuse
+    ``preprocessing_mismatch``.
     """
     require(payload_a.get("kind") == ICA_KIND and payload_b.get("kind") == ICA_KIND, "payload_kind",
             f"the ICA block reads {ICA_KIND} payloads only")
@@ -139,6 +156,14 @@ def ica_block(payload_a: Mapping[str, Any], payload_b: Mapping[str, Any]) -> dic
             "Each ICA payload must name its basis by manifest SHA-256")
     require(basis_a == basis_b, "basis_mismatch",
             f"The two variants were scored under different bases ({basis_a[:12]} and {basis_b[:12]})")
+    recorded = {}
+    for key in ("preprocessing_mode", "preprocessing_read_from"):
+        values = [payload["basis"].get(key) for payload in (payload_a, payload_b)]
+        values = [value if isinstance(value, str) and value else None for value in values]
+        require(key != "preprocessing_mode" or values[0] == values[1], "preprocessing_mismatch",
+                f"The two variants name one basis ({basis_a[:12]}) and record preprocessing modes {values[0]!r} "
+                f"and {values[1]!r}")
+        recorded[key] = values[0] if values[0] == values[1] else None
     rows_a, rows_b = _ica_rows(payload_a), _ica_rows(payload_b)
     layers = []
     for layer in sorted(set(rows_a) & set(rows_b)):
@@ -156,6 +181,8 @@ def ica_block(payload_a: Mapping[str, Any], payload_b: Mapping[str, Any]) -> dic
                        "energy_share_status_a": status_a, "energy_share_status_b": status_b,
                        "components": components})
     return {"status": "computed", "payload_kind": ICA_KIND, "basis_manifest_sha256": basis_a,
+            "preprocessing_mode": recorded["preprocessing_mode"],
+            "preprocessing_read_from": recorded["preprocessing_read_from"],
             "sign_convention": SIGN_CONVENTION, "energy_share_label": ENERGY_LABEL,
             "position": "highest_captured_position_of_each_layer",
             "layers_only_in_a": sorted(set(rows_a) - set(rows_b)),
@@ -189,12 +216,13 @@ def compare_run(run_dir: Any, *, allow_roots: Iterable[Any] = ()) -> dict[str, A
         key = (family_id, variant, method, replicate)
         if key in rows:
             row = rows[key]
-            return {"execution": row["execution"], "reason": row["reason"], "payload": row["payload"]}
+            return {"execution": row["execution"], "reason": row["reason"], "payload": row["payload"],
+                    "inputs": row.get("inputs")}
         if key in planned:
             return {"execution": "not_run", "reason": "planned task has no envelope in the collected run",
-                    "payload": None}
+                    "payload": None, "inputs": None}
         return {"execution": "not_run", "reason": "no task was planned for this family, variant and method",
-                "payload": None}
+                "payload": None, "inputs": None}
 
     families = []
     for family in summary["families"]:
@@ -216,6 +244,10 @@ def compare_run(run_dir: Any, *, allow_roots: Iterable[Any] = ()) -> dict[str, A
                         block: dict[str, Any] = _not_computed(sides)
                         kind = None
                     else:
+                        require(sides["a"]["inputs"] == sides["b"]["inputs"], "mixed_input_identities",
+                                f"{family['family_id']} {comparison['id']} {method}: the two variants' envelopes "
+                                "record different adapter source hashes or input identities, so their payloads "
+                                "were computed under different inputs and no block is derived from them")
                         payloads = {name: store.read_payload(sides[name]["payload"]) for name in ("a", "b")}
                         kind = sides["a"]["payload"]["kind"]
                         require(sides["b"]["payload"]["kind"] == kind, "payload_mismatch",

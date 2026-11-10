@@ -32,9 +32,35 @@ What the store guarantees, and what it does not:
   a completed envelope is preferred. A worker name must belong to one process at a time; an envelope file is
   created exclusively, so of two processes that pick the same attempt file one refuses ``attempt_collision``.
 * The collector is the only assembler. It verifies every payload hash each time it runs.
-* ``payloads/``, ``shards/``, each shard directory and ``journal.jsonl`` must be real entries inside the run
-  directory. A symbolic link in their place refuses ``run_dir_symlink``, so a write cannot leave the directory
-  whose path was checked.
+* A completed envelope counts only for the inputs it recorded. When a task was executed again because its
+  inputs outside the spec changed and the later attempt did not complete, the earlier completed envelope is
+  not the task's collected result: the task is collected in the later attempt's state and listed in
+  ``completed_under_superseded_inputs``. When the completed envelopes of one method cannot all be taken from
+  one recorded pair of adapter source hashes and input identity, the collector refuses
+  ``mixed_input_identities``. A completed envelope for a task the plan does not mark ready refuses
+  ``plan_state_conflict``.
+* Symbolic links inside the run directory. ``payloads/``, ``shards/``, each shard directory and
+  ``journal.jsonl`` must be real entries of the run directory; a link in their place refuses
+  ``run_dir_symlink``. Where this is enforced:
+
+  - ``check_layout`` inspects those entries at construction, before a run and before every assembly. It is a
+    check of paths at that moment and guarantees nothing about a later moment.
+  - Every payload and every envelope is written through a descriptor of its directory. The store opens the
+    run directory, then ``payloads`` or ``shards`` and the shard directory, one component at a time, each
+    with ``O_NOFOLLOW`` and relative to the descriptor of the component before it, and creates, links and
+    renames the file relative to the last descriptor. This is done again for every write. A link that is in
+    place of one of those components when the store opens it refuses ``run_dir_symlink`` and no byte is
+    written through it. A component replaced after its descriptor was opened does not move the write: it
+    goes to the directory that was opened.
+  - Each journal line is appended through a descriptor opened with ``O_NOFOLLOW``.
+  - ``plan.json`` and ``collected.json`` are put in place with ``os.replace``, which replaces a link at that
+    name and does not write through it.
+
+  Not covered: a directory above the run directory that is replaced by a link after ``RunStore`` resolved
+  the path (only the run directory's own entry is opened with ``O_NOFOLLOW``), reads (a payload is read by
+  path when an envelope is validated; its SHA-256 is compared), and platforms without directory descriptors
+  (``common.DIR_FD_WRITES`` false), where the store calls ``check_layout`` right before each write and an
+  interval between that check and the write remains.
 
 Fixture timings recorded here are real wall-clock measurements of this process. They say nothing about a
 model run.
@@ -44,6 +70,7 @@ from __future__ import annotations
 import json
 import os
 import platform
+import stat
 import subprocess
 import sys
 import time
@@ -53,9 +80,9 @@ from typing import Any, Iterable, Mapping
 
 from scripts.experiments.adapters import input_identity, load_adapter
 from scripts.experiments.common import (
-    COLLECTED_SCHEMA, ENGINE, EXECUTION_STATES, FIXTURE_BACKEND, NOT_APPLICABLE, SAFE_NAME, UNCERTAIN, Refusal,
-    atomic_write_bytes, atomic_write_json, check_output_path, digest, exclusive_write_bytes, json_bytes, read_json,
-    require, sha256_bytes, sha256_file, utc_now,
+    COLLECTED_SCHEMA, DIR_FD_WRITES, ENGINE, EXECUTION_STATES, FIXTURE_BACKEND, NOT_APPLICABLE, SAFE_NAME,
+    UNCERTAIN, Refusal, atomic_write_bytes, atomic_write_json, check_output_path, digest, exclusive_write_bytes,
+    json_bytes, read_json, require, sha256_bytes, sha256_file, utc_now,
 )
 from scripts.experiments.envelope import (
     NOT_EXECUTED_STATES, build_envelope, method_block, null_pointers, validate_envelope,
@@ -68,7 +95,10 @@ TIMING_CAVEAT = ("Wall-clock seconds measured in the named process on offline fi
 EXECUTION_GUARANTEE = ("No exactly-once claim. Each attempt is journaled before and after it runs. Identical "
                        "duplicates are kept once, two completed results with different payloads refuse, attempts "
                        "that ended in different states in two shards are listed, and an attempt with a start, no "
-                       "end and no envelope is listed as uncertain: it may or may not have executed.")
+                       "end and no envelope is listed as uncertain: it may or may not have executed. A completed "
+                       "result whose task was executed again under changed inputs without completing is not "
+                       "counted, and completed results of one method recorded under different inputs refuse.")
+SYMLINK_REMEDY = "Remove the link or use a new run directory"
 
 
 @lru_cache(maxsize=1)
@@ -120,9 +150,9 @@ class RunStore:
         """Refuse a run directory in which ``payloads/``, ``shards/``, a shard directory or ``journal.jsonl``
         is a symbolic link or resolves outside the run directory.
 
-        The output-path rules are applied to the run directory itself. Writes below it follow links in these
-        entries, so a link there would send payloads, envelopes or journal lines to a place that was never
-        checked. Called at construction, before a run and before every assembly.
+        The output-path rules are applied to the run directory itself. Called at construction, before a run
+        and before every assembly. It reports the paths as they are when it runs; the writes themselves are
+        protected separately (``_open_dir``), because a link can appear after this check.
         """
         entries = [self.payloads_dir, self.shards_dir, self.journal_path]
         if self.shards_dir.is_dir() and not self.shards_dir.is_symlink():
@@ -137,7 +167,51 @@ class RunStore:
             require(not outside, "run_dir_symlink",
                     f"{entry.relative_to(self.run_dir).as_posix()} in {self.run_dir} is a symbolic link or "
                     "resolves outside the run directory; the store writes only inside the directory whose path "
-                    "it checked. Remove the link or use a new run directory")
+                    f"it checked. {SYMLINK_REMEDY}")
+
+    def _open_dir(self, *parts: str) -> int | None:
+        """An open descriptor of ``run_dir/<parts>`` for one write; the caller closes it.
+
+        The run directory and then each part are opened with ``O_NOFOLLOW``, each part relative to the
+        descriptor before it, and a missing part is created. A symbolic link at any of them refuses
+        ``run_dir_symlink``. Returns None where the platform has no directory descriptors: the paths are then
+        checked with ``check_layout`` and created, and the caller writes by path.
+        """
+        if not DIR_FD_WRITES:
+            self.check_layout()
+            self.run_dir.joinpath(*parts).mkdir(parents=True, exist_ok=True)
+            self.check_layout()
+            return None
+        self.run_dir.mkdir(parents=True, exist_ok=True)
+        flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+        try:
+            handle = os.open(self.run_dir, flags)
+        except OSError:
+            require(not self.run_dir.is_symlink(), "run_dir_symlink",
+                    f"the run directory {self.run_dir} is now a symbolic link. {SYMLINK_REMEDY}")
+            raise
+        walked: list[str] = []
+        for part in parts:
+            walked.append(part)
+            try:
+                try:
+                    os.mkdir(part, dir_fd=handle)
+                except FileExistsError:
+                    pass
+                following = os.open(part, flags, dir_fd=handle)
+            except OSError:
+                try:
+                    linked = stat.S_ISLNK(os.stat(part, dir_fd=handle, follow_symlinks=False).st_mode)
+                except OSError:
+                    linked = False
+                os.close(handle)
+                require(not linked, "run_dir_symlink",
+                        f"{'/'.join(walked)} in {self.run_dir} is a symbolic link; nothing is written through "
+                        f"it. {SYMLINK_REMEDY}")
+                raise
+            os.close(handle)
+            handle = following
+        return handle
 
     # ------------------------------------------------------------------ plan
 
@@ -259,15 +333,40 @@ class RunStore:
         return index
 
     def _write_payload(self, payload: Mapping[str, Any]) -> dict[str, Any]:
+        """Put a payload in ``payloads/`` under its SHA-256, through a descriptor of that directory."""
         data = json_bytes(payload)
         sha = sha256_bytes(data)
         path = self.payloads_dir / f"{sha}.json"
-        if path.exists():
-            require(path.read_bytes() == data, "payload_hash",
-                    f"payloads/{sha}.json holds bytes that do not hash to its name")
-        else:
-            atomic_write_bytes(path, data)
+        handle = self._open_dir("payloads")
+        try:
+            existing = self._read_existing(handle, path)
+            if existing is not None:
+                require(existing == data, "payload_hash",
+                        f"payloads/{sha}.json holds bytes that do not hash to its name")
+            else:
+                atomic_write_bytes(path, data, dir_fd=handle)
+        finally:
+            if handle is not None:
+                os.close(handle)
         return {"kind": payload["kind"], "sha256": sha, "path": f"payloads/{sha}.json", "bytes": len(data)}
+
+    def _read_existing(self, handle: int | None, path: Path) -> bytes | None:
+        """The bytes of ``path``'s final name in the directory ``handle`` names, or None when it is absent.
+        A symbolic link at that name refuses ``run_dir_symlink``."""
+        if handle is None:
+            return path.read_bytes() if path.exists() else None
+        try:
+            file = os.open(path.name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=handle)
+        except FileNotFoundError:
+            return None
+        except OSError:
+            linked = stat.S_ISLNK(os.stat(path.name, dir_fd=handle, follow_symlinks=False).st_mode)
+            require(not linked, "run_dir_symlink",
+                    f"{path.relative_to(self.run_dir).as_posix()} in {self.run_dir} is a symbolic link; it is "
+                    f"neither read nor written. {SYMLINK_REMEDY}")
+            raise
+        with os.fdopen(file, "rb") as stream:
+            return stream.read()
 
     # ------------------------------------------------------------------ run
 
@@ -346,6 +445,8 @@ class RunStore:
             try:
                 reference = self._write_payload(payload)
             except Refusal as exc:
+                if exc.code == "run_dir_symlink":
+                    raise  # the run directory is not what was checked: stop, do not record around it
                 state, reason, payload = "failed", f"{exc.code}: {exc}", None
         # An attempt that ended unavailable or unsupported at preflight computed nothing: it accepts no unit
         # and records no resource, like a task that was never ready.
@@ -403,11 +504,15 @@ class RunStore:
             not_recorded=not_recorded, output_head=block["output_head"], payload_root=self.run_dir)
         path = (self.shards_dir / worker
                 / f"{task['task_id']}.r{task['replicate']}.a{attempt}.envelope.json")
+        handle = self._open_dir("shards", worker)
         try:
             # Exclusive: of two processes that picked the same attempt file, one writes and the other refuses.
-            exclusive_write_bytes(path, json_bytes(envelope))
+            exclusive_write_bytes(path, json_bytes(envelope), dir_fd=handle)
         except FileExistsError:
             raise Refusal("attempt_collision", f"{path.name} already exists in shard {worker}") from None
+        finally:
+            if handle is not None:
+                os.close(handle)
         return path
 
     def run_fixture(self, plan: dict[str, Any], worker: str, *, fixtures_dir: Path | str,
@@ -575,19 +680,99 @@ class RunStore:
 
     # -------------------------------------------------------------- collect
 
+    @staticmethod
+    def _recorded_inputs(doc: Mapping[str, Any]) -> tuple[str, str | None]:
+        """The inputs outside the spec an envelope recorded: its adapter source hashes (as canonical JSON) and
+        its input identity. Two envelopes with equal values were produced from the same adapter files and the
+        same fixture or basis files."""
+        environment = doc["environment"]
+        return (json.dumps(environment.get("source_files_sha256"), sort_keys=True),
+                environment.get("input_identity_sha256"))
+
+    @staticmethod
+    def _journal_index(events: list[dict[str, Any]]) -> dict[str, dict[Any, Any]]:
+        """What the collector reads from the journal about reuse, by position in the file: the
+        ``completed_result_not_reused`` note and the line number of each ``started`` line, and the line number
+        of the last ``reused`` line of each ``(spec_sha256, replicate)``."""
+        index: dict[str, dict[Any, Any]] = {"not_reused": {}, "started_at": {}, "last_reused": {}}
+        for number, event in enumerate(events):
+            if event.get("event") == "started":
+                index["started_at"][RunStore._ident(event)] = number
+                if event.get("completed_result_not_reused"):
+                    index["not_reused"][RunStore._ident(event)] = event["completed_result_not_reused"]
+            elif event.get("event") == "reused":
+                index["last_reused"][(event.get("spec_sha256"), event.get("replicate"))] = number
+        return index
+
+    def _superseding_attempts(self, completed: list[dict[str, Any]], group: list[dict[str, Any]],
+                              journal: Mapping[str, Mapping[Any, Any]]) -> list[dict[str, Any]]:
+        """Attempts that show the completed envelopes of one key no longer stand for the task.
+
+        An attempt qualifies when it has a higher attempt number than every completed envelope of the key, did
+        not complete, and was an execution under other inputs: its ``started`` journal line carries
+        ``completed_result_not_reused`` (the store wrote that when it declined to reuse the completed result),
+        or its envelope records adapter source hashes or an input identity that differ from the latest
+        completed envelope's. An envelope that records no adapter source hashes and has no such journal line
+        is a planned-state record, not an execution, and does not qualify. A later failed attempt under the
+        same recorded inputs (a second worker's transient failure) does not qualify either.
+
+        An attempt stops qualifying when the journal holds a ``reused`` line for the key after that attempt's
+        ``started`` line: a later run compared the completed envelope's recorded inputs with the inputs then
+        in place, found them equal and reused it (the inputs were put back). An attempt with no ``started``
+        line in the journal cannot be ordered against a ``reused`` line and keeps qualifying.
+        """
+        latest = max(entry["doc"]["attempt"] for entry in completed)
+        recorded = {self._recorded_inputs(entry["doc"]) for entry in completed if entry["doc"]["attempt"] == latest}
+        later = []
+        for entry in group:
+            doc = entry["doc"]
+            if entry["execution"] == "completed" or doc["attempt"] <= latest:
+                continue
+            ident = (doc["spec_sha256"], doc["replicate"], doc["attempt"], entry["worker"], doc["run_id"])
+            marked = journal["not_reused"].get(ident)
+            differs = ("source_files_sha256" in doc["environment"]
+                       and self._recorded_inputs(doc) not in recorded)
+            started_at = journal["started_at"].get(ident)
+            reused_at = journal["last_reused"].get((doc["spec_sha256"], doc["replicate"]))
+            if started_at is not None and reused_at is not None and reused_at > started_at:
+                continue  # the completed result was confirmed against the inputs after this attempt
+            if marked or differs:
+                why = ([str(item) for item in marked] if isinstance(marked, list) and marked else
+                       ["the attempt's envelope records adapter source hashes or an input identity that differ "
+                        "from the completed envelope's"])
+                later.append({"attempt": doc["attempt"], "worker": entry["worker"], "state": entry["execution"],
+                              "envelope_path": entry["path"], "completed_result_not_reused": why})
+        return later
+
     def assemble(self) -> dict[str, Any]:
         """Read every shard and return the deterministic assembly. Writes nothing.
 
         Refuses: an envelope that fails validation (including ``payload_hash`` for altered payload bytes), an
         envelope of another protocol (``incompatible_shard``), an envelope whose family, variant, method or
-        input differs from the planned task of its ``spec_sha256`` (``envelope_task_mismatch``), and two
+        input differs from the planned task of its ``spec_sha256`` (``envelope_task_mismatch``), a completed
+        envelope for a task the plan does not mark ready, at any attempt number (``plan_state_conflict``), two
         completed envelopes of one ``(spec_sha256, replicate)`` with different payload hashes
-        (``duplicate_conflict``).
+        (``duplicate_conflict``), and completed envelopes of one method that cannot all be taken from one
+        recorded pair of adapter source hashes and input identity (``mixed_input_identities``).
 
         Two shards that hold the same attempt number of one key with different outcomes do not refuse: each is
         an honest record of its own process (a transient failure in one worker, a completed attempt in the
         other). The completed envelope is kept, as it is across attempt numbers, and the differing outcomes are
-        listed in ``attempt_outcomes_differ``.
+        listed in ``attempt_outcomes_differ``. That holds for a task the plan marks ready; for any other task
+        a completed envelope refuses, as stated above.
+
+        A completed envelope is not kept when a later attempt of its key was executed under other inputs and
+        did not complete (``_superseding_attempts``). The task is then collected in the state of its last
+        attempt, so it is not counted in ``ready_completed``, and it is listed in
+        ``completed_under_superseded_inputs`` with the completed envelopes that were set aside. It counts
+        again once a later attempt completes, or once a later run reuses it because the inputs it recorded
+        are in place again.
+
+        Per method, one recorded pair of adapter source hashes and input identity must cover every task that
+        has a completed envelope. Where a task has several completed envelopes (identical payloads recorded
+        under different inputs), the one recorded under the common pair is kept. A resume under unchanged
+        inputs always satisfies this. An adapter's ``input_identity`` must therefore identify the inputs of
+        the method's whole task set in a fixtures directory, not one task's rows.
         """
         self.check_layout()
         plan = self.read_plan()
@@ -619,14 +804,26 @@ class RunStore:
                 differing = sorted(key for key in wanted if stated[key] != wanted[key])
                 require(not differing, "envelope_task_mismatch",
                         f"{rel}: {differing} differ from the planned task with the same spec_sha256")
+                require(doc["status"]["execution"] != "completed" or task["planned_state"] == "ready",
+                        "plan_state_conflict",
+                        f"{rel}: a completed envelope (attempt {doc['attempt']}) for a task the plan marks "
+                        f"{task['planned_state']} ({task['reason']}). The plan does not execute this task, so "
+                        "a result for it is not collected. Either the plan was built again under another "
+                        "capability matrix or adapter set than the one the envelope was written under, or the "
+                        "envelope does not belong to this run. Collect with the plan the results were computed "
+                        "under, or run the current plan in a new run directory")
             groups.setdefault((doc["spec_sha256"], doc["replicate"]), []).append({
                 "path": rel, "worker": path.parent.name, "doc": doc, "sha256": sha256_file(path),
                 "execution": doc["status"]["execution"],
                 "payload_sha256": doc["payload"]["sha256"] if doc["payload"] else None})
 
-        tasks, duplicate_identical, unplanned, outcomes_differ = [], [], [], []
-        for key in sorted(groups, key=lambda k: (k[0][:16], k[1])):
-            group = sorted(groups[key], key=lambda e: (e["doc"]["attempt"], e["worker"], e["path"]))
+        events = self.read_journal()
+        journal = self._journal_index(events)
+        duplicate_identical, outcomes_differ, superseded = [], [], []
+        order = sorted(groups, key=lambda k: (k[0][:16], k[1]))
+        usable: dict[tuple[str, int], list[dict[str, Any]]] = {}   # completed envelopes that may be kept
+        for key in order:
+            group = groups[key] = sorted(groups[key], key=lambda e: (e["doc"]["attempt"], e["worker"], e["path"]))
             name = f"task {key[0][:16]} replicate {key[1]}"
             completed = [e for e in group if e["execution"] == "completed"]
             hashes = sorted({e["payload_sha256"] for e in completed})
@@ -651,10 +848,53 @@ class RunStore:
                         "task_id": key[0][:16], "replicate": key[1], "attempt": number,
                         "outcomes": [{"worker": e["worker"], "state": e["execution"], "envelope_path": e["path"]}
                                      for e in entries]})
+            later = self._superseding_attempts(completed, group, journal) if completed else []
+            if later:
+                superseded.append({
+                    "task_id": key[0][:16], "replicate": key[1],
+                    "completed": [{"attempt": e["doc"]["attempt"], "worker": e["worker"],
+                                   "envelope_path": e["path"], "payload_sha256": e["payload_sha256"]}
+                                  for e in completed],
+                    "later_attempts": later})
+                completed = []
+            usable[key] = completed
+
+        # One recorded pair of adapter source hashes and input identity per method, across its planned tasks.
+        chosen: dict[str, tuple[str, str | None]] = {}
+        by_method: dict[str, list[tuple[str, int]]] = {}
+        for key in order:
+            if key in planned and usable[key]:
+                by_method.setdefault(planned[key]["spec"]["method"]["id"], []).append(key)
+        for method, keys in sorted(by_method.items()):
+            recorded = [[self._recorded_inputs(e["doc"]) for e in usable[key]] for key in keys]
+            common = set(recorded[0]).intersection(*recorded[1:])
+            if not common:
+                pairs = sorted({pair for pairs in recorded for pair in pairs}, key=str)
+                examples = []
+                for pair in pairs[:4]:
+                    entry = next(e for key in keys for e in usable[key] if self._recorded_inputs(e["doc"]) == pair)
+                    covered = sum(1 for pairs_of_key in recorded if pair in pairs_of_key)
+                    examples.append(f"{entry['path']} (input identity {str(pair[1])[:12]}, adapter sources "
+                                    f"{digest(json.loads(pair[0]))[:12]}; covers {covered} of {len(keys)} tasks)")
+                raise Refusal("mixed_input_identities",
+                              f"method {method}: its completed envelopes record {len(pairs)} different pairs of "
+                              "adapter source hashes and input identity, and no one pair covers every completed "
+                              f"task: {examples}. Results computed under different fixture files or adapter "
+                              "sources are not assembled into one run. Run the plan again so that every task "
+                              "completes under the current inputs, or use a new run directory")
+            chosen[method] = next(pair for pair in recorded[0] if pair in common)
+
+        tasks, unplanned = [], []
+        for key in order:
+            group, completed = groups[key], usable[key]
             if completed:
-                kept, same = completed[0], completed[1:]
+                method = planned[key]["spec"]["method"]["id"] if key in planned else None
+                kept = next((e for e in completed if self._recorded_inputs(e["doc"]) == chosen.get(method)),
+                            completed[0])
+                same = [e for e in completed if e is not kept]
             else:
-                last = by_attempt[max(by_attempt)]
+                last_number = max(e["doc"]["attempt"] for e in group)
+                last = [e for e in group if e["doc"]["attempt"] == last_number and e["execution"] != "completed"]
                 kept, same = last[0], [e for e in last[1:] if e["execution"] == last[0]["execution"]]
             if same:
                 duplicate_identical.append({"task_id": key[0][:16], "replicate": key[1], "kept": kept["path"],
@@ -669,6 +909,9 @@ class RunStore:
                 "execution": kept["execution"], "reason": doc["status"]["reason"], "attempt": doc["attempt"],
                 "worker": kept["worker"], "envelope": {"path": kept["path"], "sha256": kept["sha256"]},
                 "payload": doc["payload"],
+                # What the kept envelope recorded about its inputs outside the spec; compare reads these.
+                "inputs": {"input_identity_sha256": doc["environment"].get("input_identity_sha256"),
+                           "source_files_sha256": doc["environment"].get("source_files_sha256")},
                 "attempts": [{"attempt": e["doc"]["attempt"], "worker": e["worker"], "state": e["execution"],
                               "envelope_path": e["path"]} for e in group],
             }
@@ -682,7 +925,6 @@ class RunStore:
                    for key, t in sorted(planned.items(), key=lambda item: (item[1]["task_id"], item[0][1]))
                    if key not in groups]
         completed_keys = {(row["spec_sha256"], row["replicate"]) for row in tasks if row["execution"] == "completed"}
-        events = self.read_journal()
         index = {key: [(self.run_dir / e["path"], e["doc"]) for e in group] for key, group in groups.items()}
         uncertain = [{"task_id": e.get("task_id"), "replicate": e.get("replicate"), "attempt": e.get("attempt"),
                       "worker": e.get("worker"), "run_id": e.get("run_id"), "started_utc": e.get("utc"),
@@ -701,6 +943,7 @@ class RunStore:
             "ended_line_missing": ended_line_missing,
             "duplicate_identical": duplicate_identical,
             "attempt_outcomes_differ": outcomes_differ,
+            "completed_under_superseded_inputs": superseded,
             "journal_unparseable_lines": [e["line"] for e in events if e.get("event") == "unparseable"],
             "by_state": by_state,
             "counts": {"planned": len(planned), "with_envelope": len(tasks), "missing": len(missing),
@@ -708,10 +951,12 @@ class RunStore:
                        "ended_line_missing": len(ended_line_missing),
                        "duplicate_identical": len(duplicate_identical),
                        "attempt_outcomes_differ": len(outcomes_differ),
+                       "completed_under_superseded_inputs": len(superseded),
                        "ready_planned": len(ready),
                        "ready_completed": ready_completed},
             # ``complete``: every planned task has an envelope. ``ready_complete``: every task planned as ready
-            # has a completed envelope. A run can be complete and compute nothing; the second flag says so.
+            # has a completed envelope that counts (see ``completed_under_superseded_inputs``). A run can be
+            # complete and compute nothing; the second flag says so.
             "complete": not missing,
             "ready_complete": ready_completed == len(ready),
         }

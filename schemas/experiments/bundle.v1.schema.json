@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "patientwords.experiment-bundle/1",
   "title": "Experiment preview bundle",
-  "description": "Structure only, in the keyword subset scripts/frontend_contract_schema.py executes. The top level is closed. Comparison blocks keep their own shapes (behavior, readout, ica) and are described in scripts/experiments/compare.py; this schema states where they sit, not their inner fields. A bundle holds no prompt text, no target text and no clock value.",
+  "description": "Structure only, in the keyword subset scripts/frontend_contract_schema.py executes. The top level is closed. Comparison blocks keep their own shapes (behavior, readout, ica) and are described in scripts/experiments/compare.py; this schema states where they sit, not their inner fields. A bundle holds no prompt text, no target text and no clock value. Added to version 1 on 2026-11-10, all optional so that an earlier bundle still validates: protocol.families[].variant_inputs (hashes and a token count per variant, never text), ica.preprocessing_mode and ica.preprocessing_read_from, execution.counts.executed_attempts and execution.counts.reused_events (counts of journal lines), and execution.completed_under_superseded_inputs.",
   "type": "object",
   "required": [
     "schema_version", "protocol", "evidence", "plan_totals", "execution", "comparisons", "methods_not_run",
@@ -25,7 +25,27 @@
         "replicates": {"type": "integer"},
         "model": {"type": "object"},
         "input_settings": {"type": "object"},
-        "families": {"type": "array", "items": {"type": "object"}},
+        "families": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "variant_inputs": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "required": ["prompt_sha256", "token_sha256", "n_tokens"],
+                  "properties": {
+                    "prompt_sha256": {"type": "string"},
+                    "token_sha256": {"type": "string"},
+                    "n_tokens": {"type": "integer"}
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
         "methods": {"type": "array", "items": {"type": "string"}},
         "comparisons": {"type": "array", "items": {"type": "object"}},
         "primary_endpoint": {"type": "object"},
@@ -66,6 +86,7 @@
         "ended_line_missing": {"type": "array", "items": {"type": "object"}},
         "duplicate_identical": {"type": "array", "items": {"type": "object"}},
         "attempt_outcomes_differ": {"type": "array", "items": {"type": "object"}},
+        "completed_under_superseded_inputs": {"type": "array", "items": {"type": "object"}},
         "execution_guarantee": {"type": "string"},
         "timing_caveat": {"type": "string"}
       },
@@ -92,7 +113,13 @@
                 "replicate": {"type": "integer"},
                 "behavior": {"type": "object"},
                 "readout": {"type": "object", "additionalProperties": {"type": "object"}},
-                "ica": {"type": "object"},
+                "ica": {
+                  "type": "object",
+                  "properties": {
+                    "preprocessing_mode": {"type": ["string", "null"]},
+                    "preprocessing_read_from": {"type": ["string", "null"]}
+                  }
+                },
                 "references": {"type": "object", "additionalProperties": {"type": "object"}},
                 "methods_not_run": {"type": "array", "items": {"type": "object"}}
               },

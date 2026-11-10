@@ -55,9 +55,10 @@ printed as JSON; 3 a configuration error (the holdout seal or the results policy
 be evaluated). "Not clean" covers three cases: an attempt ended `failed` or `invalid`;
 `run-fixture` was not stopped by `--stop-after` and left a ready task without a completed
 result (absent or unreadable fixtures, for example); `collect --require-complete` found a
-planned task without an envelope or a ready task without a completed one. An adapter error
-at preflight is recorded as a `failed` or `invalid` attempt, and the run goes on to the
-next task.
+planned task without an envelope or a ready task without a completed result that counts (a
+completed result set aside under `completed_under_superseded_inputs`, below, does not
+count). An adapter error at preflight is recorded as a `failed` or `invalid` attempt, and
+the run goes on to the next task.
 
 The holdout seal is checked for every family of a non-synthetic protocol. A family with a
 `legacy_join` has its clinical prompt checked as that row. Every other variant prompt, and
@@ -76,12 +77,26 @@ is unknown.
 **Evidence and visibility** come from the [open-results policy](../open_results_policy.md):
 evidence class, clinical-review status, visibility, restriction reasons, analysis
 memberships. A fixture run is `synthetic_fixture`, `not_published`, in no membership.
-The protocol and envelope validators check these labels: visibility is `public`,
-`restricted` or `not_published`; `restricted` needs at least one named reason and `public`
-needs none; every analysis membership must be a name the committed policy
-(`data/results_policy/policy.v1.json`) declares. The check is on the label only. Whether a
-membership rule admits a result is decided by `scripts/results_policy.py` on a landed part,
-and evidence class and clinical-review status are not checked against a list here.
+The protocol and envelope validators check these labels against the committed policy
+(`data/results_policy/policy.v1.json`, read through `scripts/results_policy.py`):
+
+- `evidence_class` is a class a model cohort or a stimulus class declares, or `unclassified`
+  (what the policy assigns where no entry declares one). A synthetic document says
+  `synthetic_fixture`.
+- `clinical_review` is a review status a stimulus class declares. A synthetic document says
+  `not_applicable_synthetic`; no other document may.
+- visibility is `public`, `restricted` or `not_published`; `restricted` needs at least one
+  reason and `public` needs none.
+- each restriction reason is a restriction name the policy declares (`sealed_holdout`,
+  `redistribution_limited_text`, `artifact_integrity`, `uncalibrated_clinical_mass` in policy
+  version open-results/1), alone or followed by `:detail`.
+- every analysis membership is a name the policy declares.
+
+Visibility and analysis membership are not coupled, because the policy keeps them
+independent: the restricted-text stimulus class is inside `study-interim/1` in policy
+version open-results/1, so a `restricted` document may name a membership. These are checks
+of labels only. Whether a membership rule admits a result, and which restriction applies to
+it, is decided by `scripts/results_policy.py` on a landed part.
 
 **Capability status** says what is known about a model revision, method, backend and
 artifact, weakest to strongest: `unsupported`, `architecture_supported`,
@@ -90,19 +105,22 @@ artifact, weakest to strongest: `unsupported`, `architecture_supported`,
 `data/experiments/capability_matrix.v1.json` cites its evidence. "The architecture is
 supported" and "this combination passed parity" are different rows. On 2026-11-10 no row
 is `parity_passed`. The one row that held that status (gemma-2-2b next-token behaviour
-through interp-engine in float32 against the hosted service) was lowered to
-`artifact_available` the same day: the cited records
+through interp-engine in float32 against the hosted service) was lowered the same day and
+is `artifact_available_identity_unknown`: the cited records
 (`docs/backend_agreement_20260903.md`, `ops/backend_agreement_interp_vs_hosted_20260904.json`)
 state no pass criterion and no verdict for that comparison, cover 71 of 100
 side-measurements, and record no checkpoint revision. The row's status note carries the
 agreement numbers. The two hosted attribution-graph rows are
-`artifact_available_identity_unknown`, because no model revision, artifact revision or
-artifact hash is recorded for them.
+`artifact_available_identity_unknown` for the same reason: no model revision, artifact
+revision or artifact hash is recorded for them.
 
-A row that records no model revision answers a lookup for any revision, and never with a
-status above `artifact_available` when the lookup names a revision. The bundle's capability
-rows carry `revision_match`, which says whether the row names the protocol's revision
-(`exact`) or records none (`row_revision_not_recorded`).
+`artifact_available` and every status above it need a recorded identity: the row records a
+model revision, or an artifact revision or SHA-256. `validate_matrix` refuses a row that
+holds such a status without one (`unpinned_status`). A row that records no model revision
+answers a lookup for any revision, and never with a status above
+`artifact_available_identity_unknown` when the lookup names a revision. The bundle's
+capability rows carry `revision_match`, which says whether the row names the protocol's
+revision (`exact`) or records none (`row_revision_not_recorded`).
 
 ## Identity, attempts and replicates
 
@@ -123,10 +141,45 @@ adapter module and `scripts/exploratory_methods.py`) and
 `environment.input_identity_sha256`, a digest the adapter computes over the hashes of the
 files a task reads (its optional `input_identity` hook). A completed envelope is reused
 only when both still hold. When one differs, the task is executed again as a new attempt
-and counted as executed. If the new payload differs from the old one, `collect` refuses
-`duplicate_conflict` and says that the recorded inputs differ; the plan then needs a new
-run directory. An adapter without the hook has a null identity recorded in `not_recorded`
-and is reused on the payload hash and the source hashes alone.
+and counted as executed. An adapter without the hook has a null identity recorded in
+`not_recorded` and is reused on the payload hash and the source hashes alone.
+
+What `collect` does with a task that was executed again under changed inputs:
+
+| The new attempt | `collect` |
+|---|---|
+| completed with the same payload bytes | keeps one envelope and lists the other in `duplicate_identical` |
+| completed with other payload bytes | refuses `duplicate_conflict` and says that the recorded inputs differ; the plan needs a new run directory |
+| did not complete (failed, invalid, unavailable) | sets the earlier completed envelope aside: the task is collected in the new attempt's state, is not counted in `ready_completed`, and is listed in `completed_under_superseded_inputs`; `collect --require-complete` exits 1 and the bundle carries the limitation `completed_results_under_superseded_inputs_not_counted_see_execution` |
+
+The third row applies when the later attempt's `started` journal line records that a
+completed result was not reused, or when its envelope records other adapter source hashes or
+another input identity than the completed envelope. A later failure under the same recorded
+inputs (a second worker's transient error) does not set a completed result aside. A result
+that was set aside counts again once a later attempt completes, or once a later run reuses
+it because the inputs it recorded are in place again (the journal then holds a `reused`
+line after the failed attempt's `started` line).
+
+Across tasks, `collect` requires that the completed envelopes of one method can all be
+taken from one recorded pair of adapter source hashes and input identity, and refuses
+`mixed_input_identities` otherwise. A resume under unchanged inputs always satisfies this.
+After an edit that leaves the payload bytes unchanged, a task may hold two completed
+envelopes; the one recorded under the pair that covers every task is kept. An adapter's
+`input_identity` therefore identifies the inputs of the method's whole task set in a
+fixtures directory, not one task's rows. `compare` checks the two sides of each block
+again and refuses with the same code, and the behaviour block refuses `payload_mismatch`
+for two payloads that name different fixture files.
+
+A completed envelope for a task the plan does not mark `ready` refuses
+`plan_state_conflict`, at any attempt number. This happens when the plan was built again
+under another capability matrix or adapter set than the one the envelope was written under,
+or when an envelope was put in a shard by hand.
+
+Run directories written before engine commit `66514e0d` are not collected by this version
+when they hold an envelope of a ready task that ended `unavailable` at preflight: that
+commit stopped recording a runtime for such an attempt, the validator now refuses the older
+shape (`resources_rule`), and the envelope schema version did not change. No converter
+exists. Run the plan again in a new run directory.
 
 The journal records a line before a task starts and another when it ends. A start without
 an end and without an envelope is listed as an uncertain attempt and is kept. A start
@@ -141,8 +194,9 @@ envelopes that name different payloads, and lists planned tasks with no envelope
 workers' attempts of one number ended in different states (one failed, one completed), the
 completed envelope is kept, the difference is listed in `attempt_outcomes_differ`, and the
 bundle carries a limitation that names it. `complete` means every planned task has an
-envelope; `ready_complete` means every ready task has a completed one. The bundle lists a
-limitation when ready tasks did not complete and another when no task completed.
+envelope; `ready_complete` means every ready task has a completed one that counts. The
+bundle lists a limitation when ready tasks did not complete and another when no task
+completed.
 
 ## Provenance that is missing stays missing
 
@@ -163,8 +217,16 @@ Writers refuse a path under `trace_out`, `data`, `pilot`, `ops`, `modes`, `.gith
 `.claude`, `.githooks` or `.git`, and any path inside a Git checkout unless `--allow-root`
 names it. Inside a run directory, `payloads/`, `shards/`, each shard directory and
 `journal.jsonl` must be real entries: a symbolic link in their place refuses
-`run_dir_symlink`. Fixture output therefore cannot reach a measurement collector, the
-site's data or a historical manifest.
+`run_dir_symlink`. The paths are checked when the store is opened, before a run and before
+every assembly. Each payload and envelope is then written through a descriptor of its
+directory, opened one component at a time without following a link, so a link created
+during a run takes no write; each journal line is appended through a descriptor opened the
+same way. Two limits: a directory above the run directory that is replaced by a link after
+the store resolved its path is not detected, and on a platform without directory
+descriptors (Windows) the store checks the paths right before each write, which leaves an
+interval between the check and the write. Fixture output therefore cannot reach a
+measurement collector, the site's data or a historical manifest through a run directory on
+the platforms the project runs on (Linux).
 
 ## What was verified, and what was not
 

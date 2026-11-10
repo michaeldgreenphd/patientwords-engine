@@ -18,6 +18,7 @@ import hashlib
 import json
 import os
 import re
+import secrets
 import tempfile
 from datetime import datetime, timezone
 from functools import lru_cache
@@ -196,13 +197,62 @@ def check_output_path(path: Path | str, allow_roots: Iterable[Path | str] = ()) 
     return resolved
 
 
-def atomic_write_bytes(path: Path | str, data: bytes) -> None:
+# True where a file can be created, linked and renamed relative to an open directory descriptor and a path can be
+# opened without following a final symbolic link. The run store then writes payloads and envelopes through a
+# descriptor of the directory it opened component by component, so no link is followed between a check and a
+# write. False on a platform without these calls (Windows); the store checks the paths right before the write.
+DIR_FD_WRITES = (hasattr(os, "O_NOFOLLOW") and hasattr(os, "O_DIRECTORY")
+                 and {os.open, os.mkdir, os.link, os.rename, os.unlink, os.stat} <= os.supports_dir_fd)
+
+
+def _temp_at(dir_fd: int, name: str, data: bytes) -> str:
+    """Write ``data`` to a new temporary file in the directory ``dir_fd`` names, fsync it, return its name."""
+    temp_name = f".{name}.{os.getpid()}.{secrets.token_hex(8)}.tmp"
+    handle = os.open(temp_name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=dir_fd)
+    try:
+        with os.fdopen(handle, "wb") as stream:
+            stream.write(data)
+            stream.flush()
+            os.fsync(stream.fileno())
+    except BaseException:
+        _unlink_at(dir_fd, temp_name)
+        raise
+    return temp_name
+
+
+def _unlink_at(dir_fd: int, name: str) -> None:
+    try:
+        os.unlink(name, dir_fd=dir_fd)
+    except FileNotFoundError:
+        pass
+
+
+def _fsync_fd(handle: int) -> None:
+    try:
+        os.fsync(handle)
+    except OSError:
+        pass
+
+
+def atomic_write_bytes(path: Path | str, data: bytes, *, dir_fd: int | None = None) -> None:
     """Write through a temporary file in the same directory, fsync it, then ``os.replace`` it into place.
 
     A reader sees the old file or the new file, never a partial one. The directory entry is fsynced where the
-    platform allows it. This function checks no path rule; callers go through ``write_json`` or the run store.
+    platform allows it. With ``dir_fd`` (an open descriptor of the target's directory) only the final name of
+    ``path`` is used and every call is made relative to that descriptor, so the bytes land in the directory
+    the caller opened whatever the path's components point at by then; nothing is created by path. This
+    function checks no path rule; callers go through ``write_json`` or the run store.
     """
     target = Path(path)
+    if dir_fd is not None:
+        temp_name = _temp_at(dir_fd, target.name, data)
+        try:
+            os.replace(temp_name, target.name, src_dir_fd=dir_fd, dst_dir_fd=dir_fd)
+        except BaseException:
+            _unlink_at(dir_fd, temp_name)
+            raise
+        _fsync_fd(dir_fd)
+        return
     target.parent.mkdir(parents=True, exist_ok=True)
     handle, temp_name = tempfile.mkstemp(dir=target.parent, prefix=f".{target.name}.", suffix=".tmp")
     try:
@@ -231,16 +281,35 @@ def _fsync_directory(directory: Path) -> None:
         os.close(handle)
 
 
-def exclusive_write_bytes(path: Path | str, data: bytes) -> None:
+def exclusive_write_bytes(path: Path | str, data: bytes, *, dir_fd: int | None = None) -> None:
     """Create ``path`` holding ``data``; raise ``FileExistsError`` when the name is already taken.
 
     The bytes go to a temporary file in the same directory, are fsynced, and the name is then made with
     ``os.link``, which never replaces an existing entry. Of two processes that write the same name, exactly one
     succeeds, and a reader never sees a partial file. Where the filesystem has no hard links the file is
     created with ``O_EXCL`` instead: still exclusive, and a reader may then see it while it is being written.
-    This function checks no path rule; the run store calls it for attempt envelopes.
+    With ``dir_fd`` only the final name of ``path`` is used, relative to that open directory descriptor, as in
+    ``atomic_write_bytes``. This function checks no path rule; the run store calls it for attempt envelopes.
     """
     target = Path(path)
+    if dir_fd is not None:
+        temp_name = _temp_at(dir_fd, target.name, data)
+        try:
+            try:
+                os.link(temp_name, target.name, src_dir_fd=dir_fd, dst_dir_fd=dir_fd)
+            except FileExistsError:
+                raise
+            except OSError:
+                direct = os.open(target.name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600,
+                                 dir_fd=dir_fd)
+                with os.fdopen(direct, "wb") as stream:
+                    stream.write(data)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+        finally:
+            _unlink_at(dir_fd, temp_name)
+        _fsync_fd(dir_fd)
+        return
     target.parent.mkdir(parents=True, exist_ok=True)
     handle, temp_name = tempfile.mkstemp(dir=target.parent, prefix=f".{target.name}.", suffix=".tmp")
     try:

@@ -206,6 +206,29 @@ def test_ica_block_refuses_two_bases_and_keeps_missing_values_missing() -> None:
     assert silent["layers"][0]["energy_share_status_a"] == "not_computed_zero_or_non_finite_energy"
 
 
+def test_ica_block_carries_the_preprocessing_mode_the_payloads_record() -> None:
+    # Added for the preview bundle (2026-11-10): the mode is copied from the payloads' basis record.
+    def with_mode(payload: dict, mode: object, read_from: object = "placeholder.json#/mode") -> dict:
+        payload["basis"].update({"preprocessing_mode": mode, "preprocessing_read_from": read_from})
+        return payload
+
+    plain = compare.ica_block(ica_payload("a" * 64, {0: 1.0}), ica_payload("a" * 64, {0: 2.0}))
+    assert (plain["preprocessing_mode"], plain["preprocessing_read_from"]) == (None, None)   # not recorded: null
+    block = compare.ica_block(with_mode(ica_payload("a" * 64, {0: 1.0}), "placeholder-mode"),
+                              with_mode(ica_payload("a" * 64, {0: 2.0}), "placeholder-mode"))
+    assert (block["preprocessing_mode"], block["preprocessing_read_from"]) == ("placeholder-mode",
+                                                                              "placeholder.json#/mode")
+    with pytest.raises(Refusal) as caught:
+        compare.ica_block(with_mode(ica_payload("a" * 64, {0: 1.0}), "placeholder-mode"),
+                          with_mode(ica_payload("a" * 64, {0: 2.0}), "another-mode"))
+    assert caught.value.code == "preprocessing_mismatch"
+    # A mode recorded on one side only is a disagreement about one basis, not a missing value.
+    with pytest.raises(Refusal) as caught:
+        compare.ica_block(with_mode(ica_payload("a" * 64, {0: 1.0}), "placeholder-mode"),
+                          ica_payload("a" * 64, {0: 2.0}))
+    assert caught.value.code == "preprocessing_mismatch"
+
+
 def test_a_block_reads_only_its_own_payload_kind(finished: RunStore) -> None:
     rows = finished.read_collected()["assembly"]["tasks"]
     lens = finished.read_payload(next(r["payload"] for r in rows if r["method"] == "logit_lens"))
@@ -220,6 +243,22 @@ def test_a_block_reads_only_its_own_payload_kind(finished: RunStore) -> None:
     with pytest.raises(Refusal) as caught:
         compare.readout_block(lens, other_filter)
     assert caught.value.code == "filter_mismatch"
+
+
+def test_behaviour_block_refuses_payloads_of_two_fixture_files(finished: RunStore) -> None:
+    # Regression (second review round): a difference across two fixture versions was computed as if it were a
+    # difference between two variants. A payload that names no fixture file is not refused on this ground.
+    rows = [r for r in finished.read_collected()["assembly"]["tasks"] if r["method"] == "behavior_next_token"]
+    a, b = (finished.read_payload(row["payload"]) for row in rows[:2])
+    assert a["fixture"]["sha256"] == b["fixture"]["sha256"]
+    assert compare.behavior_block(a, b)["status"] == "computed"
+    other = copy.deepcopy(b)
+    other["fixture"]["sha256"] = "0" * 64
+    with pytest.raises(Refusal) as caught:
+        compare.behavior_block(a, other)
+    assert caught.value.code == "payload_mismatch" and "different fixture files" in str(caught.value)
+    del other["fixture"]
+    assert compare.behavior_block(a, other)["status"] == "computed"
 
 
 def test_readout_block_refuses_two_tokens_under_one_target_id_and_lists_one_sided_targets(finished: RunStore) -> None:
@@ -304,6 +343,51 @@ def test_bundle_is_schema_valid_deterministic_and_labelled(finished: RunStore) -
     assert first["provenance"]["comparison_sha256"] == common.digest(compare.compare_run(finished.run_dir))
     assert "scripts/exploratory_methods.py" in first["provenance"]["source_files_sha256"]
     assert "generated_utc" not in keys_of(first)
+    assert first["execution"]["completed_under_superseded_inputs"] == []
+
+
+def test_bundle_carries_variant_hashes_token_counts_and_journal_counts(finished: RunStore, protocol: dict) -> None:
+    # Added to bundle version 1 on 2026-11-10 for the browser preview, which printed "not in this bundle".
+    built = bundle_module.build_bundle(finished.run_dir)
+    assert common.structural_errors(built, "bundle") == []
+    for family in built["protocol"]["families"]:
+        source = next(f for f in protocol["case_families"] if f["family_id"] == family["family_id"])
+        assert family["variants"] == sorted(source["variants"])                # the earlier field is unchanged
+        assert family["variant_inputs"] == {
+            name: {"prompt_sha256": entry["prompt_sha256"], "token_sha256": entry["token_sha256"],
+                   "n_tokens": len(entry["token_ids"])} for name, entry in source["variants"].items()}
+    text = json.dumps(built)
+    prompts = [entry["prompt"] for f in protocol["case_families"] for entry in f["variants"].values()]
+    assert prompts and all(prompts) and not [prompt for prompt in prompts if prompt in text]
+    counts = built["execution"]["counts"]
+    assert (counts["executed_attempts"], counts["reused_events"]) == (18, 0)
+    # A second run executes nothing and reuses 18 results. The assembly is unchanged, so collected.json is
+    # still current; the counts are read from the journal and say what happened.
+    finished.run_fixture(planner.build_plan(protocol, capabilities.load_matrix()), "w0", fixtures_dir=FIXTURES,
+                         protocol=protocol)
+    again = bundle_module.build_bundle(finished.run_dir)
+    assert (again["execution"]["counts"]["executed_attempts"], again["execution"]["counts"]["reused_events"]) == (18, 18)
+    # A bundle without the added fields is still a valid version 1 bundle.
+    older = copy.deepcopy(built)
+    for family in older["protocol"]["families"]:
+        del family["variant_inputs"]
+    del older["execution"]["counts"]["executed_attempts"], older["execution"]["counts"]["reused_events"]
+    del older["execution"]["completed_under_superseded_inputs"]
+    assert common.structural_errors(older, "bundle") == []
+    wrong = copy.deepcopy(built)
+    wrong["protocol"]["families"][0]["variant_inputs"]["clinical"]["prompt"] = "placeholder text"
+    assert common.structural_errors(wrong, "bundle")                           # the entry is closed: no text field
+
+
+def test_an_excluded_family_has_no_variant_inputs(protocol: dict, tmp_path: Path) -> None:
+    protocol["exclusions"] = [{"family_id": "fam-3", "reason": "placeholder exclusion"}]
+    store = RunStore(tmp_path / "run")
+    store.run_fixture(planner.build_plan(protocol, capabilities.load_matrix()), "w0", fixtures_dir=FIXTURES,
+                      protocol=protocol)
+    store.collect()
+    families = {f["family_id"]: f for f in bundle_module.build_bundle(store.run_dir)["protocol"]["families"]}
+    assert "variant_inputs" not in families["fam-3"] and set(families["fam-1"]["variant_inputs"]) == {
+        "clinical", "colloquial", "normalized"}
 
 
 def test_bundle_copies_no_prompt_or_target_text(finished: RunStore) -> None:

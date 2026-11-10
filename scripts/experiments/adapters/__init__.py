@@ -50,6 +50,12 @@ class Adapter(Protocol):
 # completed envelope only when the value computed now equals the recorded one. An adapter without the hook has
 # a null value recorded (listed in ``not_recorded``) and its completed envelopes are reused on the payload
 # hash and the adapter source hashes alone, as before the hook existed.
+#
+# The value must be the same for every task of one method in one fixtures directory: hash the method's whole
+# input set (the fixture file, the basis, the dataset manifest and the files it names), not one task's rows.
+# The collector refuses ``mixed_input_identities`` when the completed envelopes of one method record more than
+# one value and no single value covers every completed task, because that is what results computed under two
+# versions of the inputs look like.
 # ---------------------------------------------------------------------------------------------------------
 #
 # OPTIONAL ATTRIBUTE: ``source_files``, a tuple of paths of further source files the adapter's payloads depend

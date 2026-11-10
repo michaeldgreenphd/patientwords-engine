@@ -104,6 +104,59 @@ def test_expected_ica_values_and_undefined_shares() -> None:
     assert cep.energy_shares([0, 0]) == [None, None]
 
 
+# ------------------------------------------------------------------------------------------ added bundle fields
+
+def test_expected_variant_inputs_come_from_the_fixture_protocol_and_hold_no_text() -> None:
+    expected = cep.expected_variant_inputs(PROTOCOL)
+    assert len(expected) == 9 and set(expected[("fam-1", "clinical")]) == {"prompt_sha256", "token_sha256", "n_tokens"}
+    entry = PROTOCOL["case_families"][0]["variants"]["clinical"]
+    assert expected[("fam-1", "clinical")] == {"prompt_sha256": entry["prompt_sha256"],
+                                               "token_sha256": entry["token_sha256"],
+                                               "n_tokens": str(len(entry["token_ids"]))}
+    prompts = [e["prompt"] for f in PROTOCOL["case_families"] for e in f["variants"].values()]
+    assert not [prompt for prompt in prompts if prompt in json.dumps(sorted(map(str, expected.items())))]
+
+
+def test_expected_preprocessing_is_the_protocols_ica_block() -> None:
+    index = json.loads(cep.ICA_INDEX.read_text(encoding="utf-8"))
+    assert cep.expected_preprocessing(PROTOCOL) == index["method_block"]["basis"]["preprocessing"]
+    without = dict(PROTOCOL, methods=[m for m in PROTOCOL["methods"] if m["id"] != "ica_lens"])
+    with pytest.raises(ValueError, match="ica_lens"):
+        cep.expected_preprocessing(without)
+
+
+def test_expected_journal_counts_sum_the_run_summaries() -> None:
+    steps = [{"step": "validate"}, {"step": "run-fixture --stop-after 5", "executed": 5, "reused": 0},
+             {"step": "run-fixture (resume)", "executed": 22, "reused": 5}, {"step": "collect --require-complete"}]
+    assert cep.expected_journal_counts(steps) == {"executed": 27, "reused": 5}
+    with pytest.raises(ValueError, match="no run-fixture step"):
+        cep.expected_journal_counts(steps[:1])
+
+
+def _toy_bundle() -> dict:
+    return {
+        "protocol": {"families": [{"family_id": "fam-1", "variants": ["clinical"],
+                                   "variant_inputs": {"clinical": {"prompt_sha256": "a" * 64,
+                                                                   "token_sha256": "b" * 64, "n_tokens": 3}}}]},
+        "comparisons": [{"family_id": "fam-1", "comparisons": [
+            {"comparison_id": "c", "ica": {"status": "computed", "preprocessing_mode": "placeholder-mode",
+                                           "preprocessing_read_from": "placeholder.json#/mode"}},
+            {"comparison_id": "d"}]}],
+        "execution": {"counts": {"planned": 1, "executed_attempts": 1, "reused_events": 0}},
+    }
+
+
+def test_without_added_fields_removes_exactly_the_four_additions() -> None:
+    bundle = _toy_bundle()
+    older = cep.without_added_fields(bundle)
+    assert older["protocol"]["families"] == [{"family_id": "fam-1", "variants": ["clinical"]}]
+    assert older["comparisons"][0]["comparisons"][0]["ica"] == {"status": "computed"}
+    assert older["execution"]["counts"] == {"planned": 1}
+    assert "variant_inputs" in bundle["protocol"]["families"][0]          # the input is not changed
+    with pytest.raises(ValueError, match="none of the fields"):
+        cep.without_added_fields(older)                                  # nothing to remove: not a silent pass
+
+
 # ------------------------------------------------------------------------------------------ number formats
 
 def test_number_formats_mirror_the_page() -> None:
@@ -246,6 +299,15 @@ def test_the_page_carries_the_strings_the_checker_reads() -> None:
     for text in (cep.SYNTHETIC_TEXT, *cep.IDLE_SENTENCES, cep.NOT_RECORDED, cep.WINDOW_MISS, cep.NO_INTERVENTION,
                  cep.BUNDLE_SCHEMA, cep.BELOW_DISPLAY, 'id="exp-methods-body"'):
         assert text in source, text
+    # The fields added to bundle version 1 on 2026-11-10: the page reads each by the name the bundle writer
+    # uses, keeps the fallback text for a bundle without them, and marks the cells the checker reads.
+    assert f"var NOT_IN_BUNDLE='{cep.NOT_IN_BUNDLE}'" in source
+    for prefix in (cep.PROMPT_TEXT_ABSENT, cep.EXECUTED_ABSENT, cep.REUSED_ABSENT):
+        assert prefix[len(cep.MISS):-len(cep.NOT_IN_BUNDLE)] + "'+NOT_IN_BUNDLE" in source, prefix
+    for name in ("variant_inputs", "preprocessing_mode", "preprocessing_read_from", "executed_attempts",
+                 "reused_events", "'data-col':'executed'", "'data-col':'reused'", "'data-col':'ica_preprocessing'",
+                 "'data-col':'ica_preprocessing_source'", "['token_sha256',"):
+        assert name in source, name
     assert "fetch(" in source and source.count("fetch(") == 1               # one request site: the bundle
     for forbidden in ("http://", "<script src", "<link rel=\"stylesheet\"", "@import"):
         assert forbidden not in source.replace("http://www.w3.org/2000/svg", ""), forbidden
@@ -287,8 +349,14 @@ def test_the_preview_check_passes_in_chromium(tmp_path: Path) -> None:
     results = {check["name"]: check["result"] for check in receipt["checks"]}
     assert set(results.values()) == {"passed", "detected_then_restored_pass"}
     defects = [name for name, result in results.items() if result == "detected_then_restored_pass"]
-    for wanted in ("wrong_schema", "missing_bundle_file", "without_a_state", "traversal"):
+    for wanted in ("wrong_schema", "missing_bundle_file", "without_a_state", "traversal",
+                   "older_bundle_without_the_added_fields"):
         assert any(wanted in name for name in defects), wanted
+    added = next(check for check in receipt["checks"]
+                 if check["name"] == "prompt_hashes_token_counts_preprocessing_and_run_counts_equal_the_fixture")
+    assert (added["result"], added["variant_rows"], added["executed_attempts"], added["reused_events"]) == (
+        "passed", 9, 27, 5)
+    assert added["prompt_text_on_page"] == 0
     assert results["no_parameter_shows_the_statement_and_requests_no_data"] == "passed"
     assert receipt["browser_external_requests"] == [] and receipt["versions"]["chromium"]
     assert receipt["bundle"]["schema_version"] == "patientwords.experiment-bundle/1"

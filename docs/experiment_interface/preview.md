@@ -2,8 +2,9 @@
 
 Written 2026-11-10. The site has a viewer page for experiment bundles, and one command
 checks that the page renders a synthetic bundle faithfully. The check passed locally on
-2026-11-10: 26 checks, 0 failed. It is a software check on hand-written numbers. It loads
-no model, measures nothing and publishes nothing. No study bundle exists yet.
+2026-11-10: 28 checks, 0 failed (26 before the bundle gained the four fields described
+under *Fields added to bundle version 1*). It is a software check on hand-written numbers.
+It loads no model, measures nothing and publishes nothing. No study bundle exists yet.
 
 | Piece | Where |
 |---|---|
@@ -57,14 +58,21 @@ reader's order:
    synthetic bundle carries the text "synthetic fixture - not a measurement" there,
    beside every case family and beside the methods table.
 2. Protocol id and version, model and tokenizer identity with revisions.
-3. Each case family: the variants; the original model output (the target's
-   full-vocabulary next-token probability per variant, and the signed difference per
-   comparison with the sign in words); the internal analyses the bundle holds (readout
-   ranks with raw and filtered rank side by side, ICA component scores under one basis
-   with shares labelled "squared-coordinate share, not a probability"); intervention
-   evidence, or "no intervention in this bundle".
+3. Each case family: the variants, each with its prompt SHA-256, the SHA-256 of its token
+   ids and its token count (the prompt text itself is not in a bundle, and the cell says
+   so); the original model output (the target's full-vocabulary next-token probability per
+   variant, and the signed difference per comparison with the sign in words); the internal
+   analyses the bundle holds (readout ranks with raw and filtered rank side by side, ICA
+   component scores under one basis with its preprocessing mode and where that mode was
+   read from, and shares labelled "squared-coordinate share, not a probability");
+   intervention evidence, or "no intervention in this bundle".
 4. A table of every planned method with its execution state and reason in words.
-5. Plan totals, execution counts, external links, provenance hashes, limitations.
+5. Plan totals, execution counts (among them the attempts executed and the results reused
+   from an earlier run, with a line that says both are counts of journal lines), external
+   links, provenance hashes, limitations.
+
+Where a bundle does not carry one of these values the page prints a dash and "not in this
+bundle" in that place. It fills nothing in.
 
 The page refuses a `bundle` value that is absolute, has a scheme, contains `..`, has a
 character outside `A-Z a-z 0-9 . _ - /`, or does not end in `.json`. It says so and
@@ -77,6 +85,10 @@ makes no request.
 | Target probabilities and signed differences | the softmax of `tests/fixtures/experiments/behavior_logits.json`, recomputed in the script. Not read from the bundle. |
 | ICA scores, differences and shares | a literal table in the script, worked by hand from the toy basis. A unit test fails if it stops agreeing with the fixture builder's table. |
 | ICA basis hash shown | `tests/fixtures/experiments/ica/fixture_index.json` |
+| Prompt SHA-256, token-id SHA-256 and token count of every variant | the fixture protocol file. Not read from the bundle. |
+| No prompt text on the page | every prompt string of the fixture protocol is searched for in the page text; the prompt cell must read "prompt text is not in this bundle" |
+| ICA preprocessing mode | the `basis.preprocessing` of the fixture protocol's `ica_lens` block. The adapter completes a task only when its payload records that mode. |
+| Attempts executed and results reused | the sums of `executed` and `reused` over the `run-fixture` summaries the command line printed in step 2 (27 and 5). Not read from the bundle. |
 | Methods listed, with state | the method list of the fixture protocol; three completed, `j_lens` unsupported, `jpp` unavailable, each with the bundle's reason |
 | Protocol, model and tokenizer identity; planned task count | the fixture protocol file |
 | Readout ranks and top-k wording | the bundle itself. This is rendering fidelity only. The script has no independent readout oracle. |
@@ -93,6 +105,7 @@ Deliberate defects, each followed by a restored pass:
 | `schema_version` changed to `.../2` | error state naming both strings; no part of the bundle rendered |
 | Bundle file deleted | missing state with "HTTP 404" |
 | A method's state counts, another's payload records and their block states removed | "state not recorded" for both; neither reads "completed" |
+| The four fields added on 2026-11-10 removed, as in a bundle written before them | the page renders in full with the synthetic label beside every family; the hash, token-count, preprocessing, executed and reused places each read "not in this bundle"; the check of those values fails on this copy |
 | `?bundle=../data/experiment_preview/bundle.json`, literal and percent-encoded, and two `bundle` parameters | refused; no request beyond the page. Without the rule the first two would reach the served bundle. |
 | One probability and one ICA score sign changed | the value checks fail |
 
@@ -119,7 +132,7 @@ part of the script.
 - The page does not validate a bundle against `schemas/experiments/bundle.v1.schema.json`.
   It checks the schema string and the presence and type of the blocks it reads.
 - A bundle with many families: every family is rendered into the page. There is no
-  paging. Three families make a page about 12,600 CSS px tall at 1280 px with all
+  paging. Three families make a page about 13,000 CSS px tall at 1280 px with all
   families open.
 
 ## Findings from building it
@@ -140,24 +153,48 @@ part of the script.
    not run: `scripts/check_pages.py` waits for network idle on `goto`, so it would have
    reported the old page as a navigation timeout instead of a missing data file. With
    the fix it reports the 404 as a failed data request (run 2026-11-10).
-3. **`patientwords.experiment-bundle/1` does not carry four things the page has a
-   place for.** Prompt hashes and token counts per variant, the ICA preprocessing mode,
-   and the count of reused results. The page prints "not in this bundle" for each. The
-   plan and the run store hold all four; adding them is a change to
-   `scripts/experiments/bundle.py` and its schema.
+3. **`patientwords.experiment-bundle/1` did not carry four things the page has a place
+   for.** Prompt hashes and token counts per variant, the ICA preprocessing mode, and the
+   count of reused results. They were added on 2026-11-10; see the next section. The page
+   printed "not in this bundle" for each and still does for a bundle without them.
 4. **The bundle contract does not say where a link record sits.** The page reads a
    record of the `link_or_fallback` shape from a comparison's `references.<key>.neuronpedia`
    and from an ICA component's `neuronpedia`. That placement is this page's reading,
    not a contract.
+
+## Fields added to bundle version 1
+
+Added on 2026-11-10 by `scripts/experiments/bundle.py` and `scripts/experiments/compare.py`.
+The schema version string is unchanged. Each field is optional in
+`schemas/experiments/bundle.v1.schema.json`, so a bundle written before the change still
+validates and a reader that ignores the fields is unaffected.
+
+| Field | Content | Source |
+|---|---|---|
+| `protocol.families[].variant_inputs.<variant>` | `prompt_sha256`, `token_sha256`, `n_tokens`. The entry is closed: it cannot hold text. | the plan's tasks (`spec.input` and `estimate.tokens`). `protocol.families[].variants` stays the list of names it was. |
+| `comparisons[].comparisons[].ica.preprocessing_mode`, `.preprocessing_read_from` | the mode the ICA adapter read from the saved artifact, and where in the artifact it read it | the two ICA payloads' `basis` record. Null when the payloads do not record it; two payloads under one basis hash that record different modes refuse `preprocessing_mismatch`. |
+| `execution.counts.executed_attempts`, `.reused_events` | the number of `started` lines and of `reused` lines in the run directory's journal | the journal, read when the bundle is built. A task found complete by two later runs counts as two reuse events. |
+
+Limits: a family the protocol excludes has no task in the plan and therefore no
+`variant_inputs`; the page prints "not in this bundle" for its hashes. The counts are of
+journal lines, so a journal with an unparseable line undercounts (the collector reports such
+lines). Prompt text is not added and is not planned for version 1.
+
+`execution.completed_under_superseded_inputs` was added the same day for the run store
+([README.md](README.md), *Identity, attempts and replicates*). The page does not render
+that list; the bundle's limitation
+`completed_results_under_superseded_inputs_not_counted_see_execution` is shown with the
+other limitations.
 
 ## Maintenance costs
 
 - The address rule exists twice: `bundleRefusal` in the page and `bundle_param_refusal`
   in the script. The browser run compares them on every case, so a change to one
   without the other fails the check. Offline, only the Python copy is tested.
-- The script holds the page's visible strings as constants. A wording change on the
-  page needs the same change in the script; `tests/test_check_experiment_preview.py`
-  fails offline when a string is missing from the page source.
+- The script holds the page's visible strings as constants, the three "not in this bundle"
+  sentences among them. A wording change on the page needs the same change in the script;
+  `tests/test_check_experiment_preview.py` fails offline when a string, or one of the
+  bundle field names the page reads, is missing from the page source.
 - The expected method states and the ICA table are specific to the fixture protocol.
   A change to the fixture needs a change here.
 - `exp-methods-body` is not in `JS_TABLE_BODIES` of `scripts/check_pages.py`. Until it

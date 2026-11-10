@@ -835,11 +835,12 @@ def test_an_envelope_file_is_created_exclusively(plan: dict, protocol: dict, tmp
     store = RunStore(tmp_path / "run")
     original = store_module.exclusive_write_bytes
 
-    def another_process_wrote_first(path: Path, data: bytes) -> None:
+    def another_process_wrote_first(path: Path, data: bytes, **how: object) -> None:
         # The other process creates the same attempt file after this one chose its name and before it writes.
+        # ``how`` carries the directory descriptor the store now writes through (second review round).
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b"the other process's envelope")
-        original(path, data)
+        original(path, data, **how)
 
     monkeypatch.setattr(store_module, "exclusive_write_bytes", another_process_wrote_first)
     with pytest.raises(Refusal) as caught:
@@ -880,3 +881,355 @@ def test_an_envelope_filed_under_another_tasks_labels_is_refused(plan: dict, pro
         assert caught.value.code == "envelope_task_mismatch" and key in str(caught.value)
     common.atomic_write_json(path, original)
     assert store.collect()["assembly"]["complete"] is True
+
+
+# -------------------------------------------------------------- second review round, 2026-11-10
+
+def drop_first_row_and_change_the_rest(fixtures: Path, family_id: str, variant: str) -> None:
+    """Fixture version B: the named row is gone and every other row has other logits. Still synthetic."""
+    path = fixtures / "behavior_logits.json"
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    doc["rows"] = [row for row in doc["rows"] if (row["family_id"], row["variant"]) != (family_id, variant)]
+    for row in doc["rows"]:
+        row["logits"] = list(reversed(row["logits"]))
+    path.write_text(json.dumps(doc), encoding="utf-8")
+
+
+def test_a_completed_result_is_not_collected_when_its_rerun_under_changed_inputs_did_not_complete(
+        plan: dict, protocol: dict, tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+    # Regression: run 1 completed one task under fixture version A; version B dropped that task's row; run 2
+    # executed it again (inputs changed), it ended unavailable, and the other tasks completed under B. The
+    # collector kept the version A envelope: collect --require-complete exited 0 and compare computed a
+    # behaviour block from one payload of each fixture version.
+    fixtures = copy_fixtures(tmp_path)
+    store = RunStore(tmp_path / "run")
+    first = run(store, plan, protocol, fixtures_dir=fixtures, stop_after=1)
+    task = next(t for t in plan["tasks"] if t["task_id"] == first["executed_task_ids"][0])
+    family_id, variant = task["spec"]["family_id"], task["spec"]["variant"]
+    assert task["spec"]["method"]["id"] == "behavior_next_token"
+    drop_first_row_and_change_the_rest(fixtures, family_id, variant)
+    second = run(store, plan, protocol, fixtures_dir=fixtures)
+    assert second["inputs_changed_task_ids"] == [task["task_id"]] and second["remaining_ready"] == 1
+    assert (second["executed"], second["by_state"]["completed"]) == (18, 17)
+    # Nine tasks planned as unavailable, recorded in run 1 or run 2, and the one that lost its fixture row.
+    assert first["by_state"]["unavailable"] + second["by_state"]["unavailable"] == 10
+
+    assembly = store.collect()["assembly"]
+    listed, = assembly["completed_under_superseded_inputs"]
+    assert (listed["task_id"], listed["replicate"]) == (task["task_id"], 0)
+    assert [(c["attempt"], c["worker"]) for c in listed["completed"]] == [(1, "w0")]
+    later, = listed["later_attempts"]
+    assert (later["attempt"], later["state"]) == (2, "unavailable")
+    assert "differ from the identity" in later["completed_result_not_reused"][0]
+    row = next(r for r in assembly["tasks"] if r["task_id"] == task["task_id"])
+    assert (row["execution"], row["attempt"], row["payload"]) == ("unavailable", 2, None)
+    assert assembly["by_state"]["completed"] == 17 and assembly["by_state"]["unavailable"] == 10
+    assert (assembly["counts"]["ready_planned"], assembly["counts"]["ready_completed"]) == (18, 17)
+    assert assembly["counts"]["completed_under_superseded_inputs"] == 1
+    assert (assembly["complete"], assembly["ready_complete"]) == (True, False)
+    # Every behaviour payload that is kept names fixture version B.
+    kept = {store.read_payload(r["payload"])["fixture"]["sha256"] for r in assembly["tasks"]
+            if r["method"] == "behavior_next_token" and r["execution"] == "completed"}
+    assert kept == {common.sha256_file(fixtures / "behavior_logits.json")}
+
+    code, out = invoke(capsys, "collect", "--run-dir", store.run_dir, "--require-complete")
+    assert code == 1 and out["ready_complete"] is False
+    assert [entry["task_id"] for entry in out["completed_under_superseded_inputs"]] == [task["task_id"]]
+
+    compared = compare.compare_run(store.run_dir)
+    family = next(f for f in compared["families"] if f["family_id"] == family_id)
+    for entry in family["comparisons"]:
+        expected = "not_computed" if variant in (entry["a"], entry["b"]) else "computed"
+        assert entry["behavior"]["status"] == expected, entry["comparison_id"]
+    assert any(variant in (e["a"], e["b"]) for e in family["comparisons"])
+    built = bundle_module.build_bundle(store.run_dir)
+    assert bundle_module.SUPERSEDED_INPUTS in built["limitations"]
+    assert bundle_module.READY_NOT_COMPLETED in built["limitations"]
+    assert built["execution"]["completed_under_superseded_inputs"] == assembly["completed_under_superseded_inputs"]
+    assert common.structural_errors(built, "bundle") == []
+
+
+def test_a_rerun_that_fails_under_a_changed_adapter_sets_the_old_result_aside_until_it_completes(
+        plan: dict, protocol: dict, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    store = RunStore(tmp_path / "run")
+    run(store, plan, protocol)
+    original_hashes = store_module._source_hashes
+
+    def edited(adapter: object) -> dict[str, str]:
+        hashes = dict(original_hashes(adapter))
+        if adapter is behavior_fixture.ADAPTER:
+            hashes["scripts/experiments/adapters/behavior_fixture.py"] = "0" * 64
+        return hashes
+
+    original = behavior_fixture.ADAPTER.execute_fixture
+    calls = []
+
+    def fails_once(task: dict, context: dict) -> dict:
+        calls.append(task["task_id"])
+        if len(calls) == 1:
+            raise RuntimeError("placeholder failure under the edited adapter")
+        return original(task, context)
+
+    monkeypatch.setattr(store_module, "_source_hashes", edited)
+    monkeypatch.setattr(behavior_fixture.ADAPTER, "execute_fixture", fails_once)
+    second = run(store, plan, protocol)
+    assert (second["executed"], second["by_state"]["failed"], second["by_state"]["completed"]) == (9, 1, 8)
+    assembly = store.collect()["assembly"]
+    listed, = assembly["completed_under_superseded_inputs"]
+    assert listed["task_id"] == calls[0] and listed["later_attempts"][0]["state"] == "failed"
+    assert "adapter source files differ" in listed["later_attempts"][0]["completed_result_not_reused"][0]
+    assert assembly["ready_complete"] is False and assembly["by_state"]["failed"] == 1
+    # The other eight were executed again and completed with the same payload bytes: kept once.
+    assert assembly["by_state"]["completed"] == 17 and assembly["counts"]["duplicate_identical"] == 8
+
+    monkeypatch.setattr(behavior_fixture.ADAPTER, "execute_fixture", original)
+    third = run(store, plan, protocol)
+    assert (third["executed"], third["reused"]) == (1, 17)
+    after = store.collect()["assembly"]
+    # Attempt 3 completed under the current adapter with the bytes of attempt 1: nothing is set aside now.
+    assert after["completed_under_superseded_inputs"] == [] and after["ready_complete"] is True
+    assert after["by_state"]["completed"] == 18
+
+
+def test_a_result_set_aside_counts_again_once_a_later_run_reuses_it_under_its_recorded_inputs(
+        plan: dict, protocol: dict, tmp_path: Path) -> None:
+    # The fixture file is absent for one run and is then put back unchanged. While it is absent the nine
+    # behaviour tasks are executed again and end unavailable, so their completed results are set aside. The
+    # third run compares the recorded inputs with the restored file, reuses all 18 and reports nothing left to
+    # do; collect must then agree with it.
+    fixtures = copy_fixtures(tmp_path)
+    store = RunStore(tmp_path / "run")
+    run(store, plan, protocol, fixtures_dir=fixtures)
+    logits = fixtures / "behavior_logits.json"
+    kept = logits.read_bytes()
+    logits.unlink()
+    second = run(store, plan, protocol, fixtures_dir=fixtures)
+    assert (second["executed"], second["by_state"]["unavailable"], second["remaining_ready"]) == (9, 9, 9)
+    absent = store.collect()["assembly"]
+    assert absent["counts"]["completed_under_superseded_inputs"] == 9 and absent["ready_complete"] is False
+    assert all("cannot be identified now" in entry["later_attempts"][0]["completed_result_not_reused"][0]
+               for entry in absent["completed_under_superseded_inputs"])
+    logits.write_bytes(kept)
+    third = run(store, plan, protocol, fixtures_dir=fixtures)
+    assert (third["executed"], third["reused"], third["remaining_ready"]) == (0, 18, 0)
+    restored = store.collect()["assembly"]
+    assert restored["completed_under_superseded_inputs"] == [] and restored["ready_complete"] is True
+    assert restored["by_state"]["completed"] == 18
+    row = next(r for r in restored["tasks"] if r["method"] == "behavior_next_token")
+    assert [(a["attempt"], a["state"]) for a in row["attempts"]] == [(1, "completed"), (2, "unavailable")]
+    assert (row["execution"], row["attempt"]) == ("completed", 1)
+
+
+def test_a_later_failure_under_the_same_inputs_does_not_set_a_completed_result_aside(
+        plan: dict, protocol: dict, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # A second worker that never saw the completed result and failed twice is an honest record of that worker.
+    # Its inputs are the recorded ones, so the completed envelope stays the collected result.
+    store, other = RunStore(tmp_path / "run"), RunStore(tmp_path / "elsewhere")
+    original = behavior_fixture.ADAPTER.execute_fixture
+    first_task = plan["tasks"][0]["task_id"]
+
+    def fails_on_the_first_task(task: dict, context: dict) -> dict:
+        if task["task_id"] == first_task:
+            raise RuntimeError("placeholder transient failure")
+        return original(task, context)
+
+    monkeypatch.setattr(behavior_fixture.ADAPTER, "execute_fixture", fails_on_the_first_task)
+    run(store, plan, protocol, worker="w0")
+    run(store, plan, protocol, worker="w0")
+    monkeypatch.setattr(behavior_fixture.ADAPTER, "execute_fixture", original)
+    run(other, plan, protocol, worker="w1")
+    shutil.copytree(other.shards_dir / "w1", store.shards_dir / "w1")
+    shutil.copytree(other.payloads_dir, store.payloads_dir, dirs_exist_ok=True)
+    assembly = store.collect()["assembly"]
+    row = next(r for r in assembly["tasks"] if r["task_id"] == first_task)
+    assert [(a["attempt"], a["worker"], a["state"]) for a in row["attempts"]] == [
+        (1, "w0", "failed"), (1, "w1", "completed"), (2, "w0", "failed")]
+    assert (row["execution"], row["worker"]) == ("completed", "w1")
+    assert assembly["completed_under_superseded_inputs"] == [] and assembly["ready_complete"] is True
+
+
+def merged_from_two_fixture_versions(plan: dict, protocol: dict, tmp_path: Path) -> tuple[RunStore, str]:
+    """A run directory in which worker a completed the first three ready tasks under fixture version A (two
+    behaviour variants of the first family among them) and worker b's shard, computed elsewhere under version
+    B, supplies every other task, the first family's third variant included. No task has two completed
+    envelopes, so nothing refuses as a duplicate. The store was collected before the merge."""
+    fixtures_a, fixtures_b = copy_fixtures(tmp_path, "fixtures_a"), copy_fixtures(tmp_path, "fixtures_b")
+    swap_two_weights(fixtures_b)
+    store, other = RunStore(tmp_path / "run"), RunStore(tmp_path / "elsewhere")
+    done = run(store, plan, protocol, worker="worker-a", fixtures_dir=fixtures_a, stop_after=3)["executed_task_ids"]
+    store.collect()
+    run(other, plan, protocol, worker="worker-b", fixtures_dir=fixtures_b)
+    (store.shards_dir / "worker-b").mkdir()
+    for path in sorted((other.shards_dir / "worker-b").glob("*.envelope.json")):
+        doc = common.read_json(path)
+        if doc["status"]["execution"] == "completed" and doc["task_id"] not in done:
+            shutil.copy(path, store.shards_dir / "worker-b" / path.name)
+            shutil.copy(other.run_dir / doc["payload"]["path"], store.run_dir / doc["payload"]["path"])
+    return store, done[0]
+
+
+def test_completed_results_of_one_method_under_two_input_identities_are_refused(plan: dict, protocol: dict,
+                                                                              tmp_path: Path) -> None:
+    # Regression: nothing compared the recorded input identities across tasks, so results of two fixture
+    # versions were assembled into one run that reported ready_complete.
+    store, _ = merged_from_two_fixture_versions(plan, protocol, tmp_path)
+    with pytest.raises(Refusal) as caught:
+        store.collect()
+    assert caught.value.code == "mixed_input_identities"
+    assert "behavior_next_token" in str(caught.value) and "new run directory" in str(caught.value)
+    assert code_of(lambda: compare.compare_run(store.run_dir)) == "mixed_input_identities"
+    assert code_of(lambda: bundle_module.build_bundle(store.run_dir)) == "mixed_input_identities"
+
+
+def test_compare_checks_the_two_sides_of_a_block_itself(plan: dict, protocol: dict, tmp_path: Path,
+                                                        monkeypatch: pytest.MonkeyPatch) -> None:
+    # The collector's check is switched off here to show that compare does not rely on it.
+    store, _ = merged_from_two_fixture_versions(plan, protocol, tmp_path)
+    monkeypatch.setattr(RunStore, "_recorded_inputs", staticmethod(lambda doc: ("same", "same")))
+    assembly = store.collect()["assembly"]
+    behaviour = [r for r in assembly["tasks"] if r["method"] == "behavior_next_token"]
+    assert len({r["inputs"]["input_identity_sha256"] for r in behaviour}) == 2
+    assert code_of(lambda: compare.compare_run(store.run_dir)) == "mixed_input_identities"
+
+
+def test_a_resume_after_an_adapter_edit_keeps_one_recorded_input_pair_per_method(
+        plan: dict, protocol: dict, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # A legitimate resume must stay collectable. Run 1 stops after five tasks; the adapter file then changes
+    # in a way that leaves the payload bytes unchanged; run 2 executes the five again and the rest for the
+    # first time. Each of the five has two completed envelopes; the one recorded under the pair that covers
+    # every task is kept, so the method's kept envelopes record one pair.
+    store = RunStore(tmp_path / "run")
+    first = run(store, plan, protocol, stop_after=5)
+    original_hashes = store_module._source_hashes
+
+    def edited(adapter: object) -> dict[str, str]:
+        hashes = dict(original_hashes(adapter))
+        hashes["scripts/exploratory_methods.py"] = "0" * 64      # a file every adapter's payloads depend on
+        return hashes
+
+    monkeypatch.setattr(store_module, "_source_hashes", edited)
+    second = run(store, plan, protocol)
+    assert (second["executed"], second["reused"], second["remaining_ready"]) == (18, 0, 0)
+    assembly = store.collect()["assembly"]
+    assert assembly["ready_complete"] is True and assembly["counts"]["duplicate_identical"] == 5
+    assert assembly["completed_under_superseded_inputs"] == []
+    for method in ("behavior_next_token", "logit_lens"):
+        rows = [r for r in assembly["tasks"] if r["method"] == method]
+        assert {json.dumps(r["inputs"], sort_keys=True) for r in rows} == {json.dumps(rows[0]["inputs"], sort_keys=True)}
+        assert rows[0]["inputs"]["source_files_sha256"]["scripts/exploratory_methods.py"] == "0" * 64
+    rerun = [r for r in assembly["tasks"] if r["task_id"] in first["executed_task_ids"]]
+    assert {r["attempt"] for r in rerun} == {2}
+    assert compare.compare_run(store.run_dir)["families"]
+
+
+def completed_copy_of(store: RunStore, not_ready: dict, attempt: int) -> dict:
+    """A hand-made completed envelope for the task of ``not_ready`` (an envelope the plan-state recorder
+    wrote), with a hand-made payload of a kind the method files."""
+    kind = common.METHOD_PAYLOAD_KINDS[not_ready["method"]["id"]][0]
+    data = common.json_bytes({"kind": kind, "note": "hand-made placeholder"})
+    sha = hashlib.sha256(data).hexdigest()
+    (store.payloads_dir / f"{sha}.json").write_bytes(data)
+    doc = copy.deepcopy(not_ready)
+    doc["attempt"] = attempt
+    doc["status"] = {"execution": "completed", "reason": None}
+    doc["attempt_history"] = [{**doc["attempt_history"][-1], "attempt": attempt, "state": "completed", "reason": None}]
+    doc["counts"] = {"requested": 1, "accepted": 1, "completed": 1, "failed": 0, "exclusions": []}
+    doc["resources"] = {**doc["resources"], "measured": True, "runtime_seconds": 0.1}
+    doc["payload"] = {"kind": kind, "sha256": sha, "path": f"payloads/{sha}.json"}
+    return doc
+
+
+@pytest.mark.parametrize("attempt", [1, 2])
+def test_a_completed_envelope_for_a_task_the_plan_does_not_mark_ready_is_refused(attempt: int, plan: dict,
+                                                                               protocol: dict, tmp_path: Path) -> None:
+    # Regression: removing shard_disagreement let a completed envelope for a task planned as unsupported be
+    # collected as completed (by_state completed 19 with 18 ready tasks). It refuses at any attempt number;
+    # at attempt 2 it was accepted before the first review round as well.
+    store = RunStore(tmp_path / "run")
+    run(store, plan, protocol)
+    for state in ("unsupported", "unavailable"):
+        recorded = next(d for d in map(common.read_json, store.envelope_files()) if d["status"]["execution"] == state)
+        assert next(t for t in plan["tasks"] if t["task_id"] == recorded["task_id"])["planned_state"] == state
+        forged = completed_copy_of(store, recorded, attempt)
+        assert envelope.validate_envelope(forged, payload_root=store.run_dir)["status"] == "validated"
+        path = store.shards_dir / "wx" / f"{forged['task_id']}.r0.a{attempt}.envelope.json"
+        common.atomic_write_json(path, forged)
+        with pytest.raises(Refusal) as caught:
+            store.collect()
+        assert caught.value.code == "plan_state_conflict"
+        assert f"shards/wx/{path.name}" in str(caught.value) and state in str(caught.value)
+        path.unlink()
+    assert store.collect()["assembly"]["by_state"]["completed"] == 18
+
+
+@pytest.mark.parametrize("entry", ["payloads", "shards", "shards/w0"])
+def test_a_link_created_during_a_run_takes_no_write(entry: str, plan: dict, protocol: dict, tmp_path: Path,
+                                                    monkeypatch: pytest.MonkeyPatch) -> None:
+    # Regression: the layout was checked once before the task loop. A link put at payloads/ after that check
+    # received all 18 payload files of the run. The directory names below stand for a protected root.
+    elsewhere = tmp_path / "trace_out" / "landed"
+    elsewhere.mkdir(parents=True)
+    store = RunStore(tmp_path / "run")
+    original = behavior_fixture.ADAPTER.execute_fixture
+    link = store.run_dir / entry
+
+    def another_actor_links_first(task: dict, context: dict) -> dict:
+        # Stands for a second process acting after run_fixture's layout check and before the first write.
+        if not link.is_symlink():
+            assert not link.exists()
+            link.parent.mkdir(parents=True, exist_ok=True)
+            link.symlink_to(elsewhere, target_is_directory=True)
+        return original(task, context)
+
+    monkeypatch.setattr(behavior_fixture.ADAPTER, "execute_fixture", another_actor_links_first)
+    with pytest.raises(Refusal) as caught:
+        run(store, plan, protocol)
+    assert caught.value.code == "run_dir_symlink" and entry in str(caught.value)
+    assert list(elsewhere.iterdir()) == []
+    assert list(store.run_dir.rglob("*.envelope.json")) == []
+    # The attempt has a journaled start and no envelope: it is reported as uncertain, never as completed.
+    assert [e["attempt"] for e in store.uncertain_attempts()] == [1]
+
+
+def test_a_write_through_a_directory_descriptor_stays_in_the_directory_that_was_opened(tmp_path: Path) -> None:
+    if not common.DIR_FD_WRITES:
+        pytest.skip("this platform has no directory descriptors; the store checks paths before each write")
+    real, elsewhere = tmp_path / "payloads", tmp_path / "elsewhere"
+    real.mkdir()
+    elsewhere.mkdir()
+    handle = common.os.open(real, common.os.O_RDONLY | common.os.O_DIRECTORY | common.os.O_NOFOLLOW)
+    try:
+        # The path is replaced by a link after the descriptor was opened.
+        real.rename(tmp_path / "moved")
+        real.symlink_to(elsewhere, target_is_directory=True)
+        common.atomic_write_bytes(real / "a.json", b"one", dir_fd=handle)
+        common.exclusive_write_bytes(real / "b.json", b"two", dir_fd=handle)
+        with pytest.raises(FileExistsError):
+            common.exclusive_write_bytes(real / "b.json", b"three", dir_fd=handle)
+    finally:
+        common.os.close(handle)
+    assert list(elsewhere.iterdir()) == []
+    assert sorted(p.name for p in (tmp_path / "moved").iterdir()) == ["a.json", "b.json"]
+    assert (tmp_path / "moved" / "b.json").read_bytes() == b"two"
+
+
+def test_without_directory_descriptors_the_store_checks_paths_before_each_write(plan: dict, protocol: dict,
+                                                                              tmp_path: Path,
+                                                                              monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(store_module, "DIR_FD_WRITES", False)
+    store = RunStore(tmp_path / "run")
+    assert run(store, plan, protocol)["by_state"]["completed"] == 18
+    assert store.collect()["assembly"]["ready_complete"] is True
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    fresh = RunStore(tmp_path / "run2")
+    original = behavior_fixture.ADAPTER.execute_fixture
+
+    def another_actor_links_first(task: dict, context: dict) -> dict:
+        if not (fresh.run_dir / "payloads").is_symlink():
+            (fresh.run_dir / "payloads").symlink_to(elsewhere, target_is_directory=True)
+        return original(task, context)
+
+    monkeypatch.setattr(behavior_fixture.ADAPTER, "execute_fixture", another_actor_links_first)
+    assert code_of(lambda: run(fresh, plan, protocol)) == "run_dir_symlink"
+    assert list(elsewhere.iterdir()) == []

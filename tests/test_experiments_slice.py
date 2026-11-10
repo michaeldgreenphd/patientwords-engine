@@ -82,6 +82,24 @@ def test_the_whole_slice_runs_interrupts_resumes_and_reuses(tmp_path: Path) -> N
     text = json.dumps(bundle)
     assert "understanding_score" not in text and "risk_score" not in text     # typed blocks, no merged score
 
+    # Fields added to bundle version 1 on 2026-11-10 for the browser preview. Each expected value comes from
+    # the fixture protocol or from the run summaries above, not from the bundle.
+    protocol = json.loads(PROTOCOL.read_text(encoding="utf-8"))
+    for family in bundle["protocol"]["families"]:
+        source = next(f for f in protocol["case_families"] if f["family_id"] == family["family_id"])
+        assert family["variant_inputs"] == {
+            name: {"prompt_sha256": entry["prompt_sha256"], "token_sha256": entry["token_sha256"],
+                   "n_tokens": len(entry["token_ids"])} for name, entry in source["variants"].items()}
+    prompts = [entry["prompt"] for f in protocol["case_families"] for entry in f["variants"].values()]
+    assert prompts and all(prompts) and not [prompt for prompt in prompts if prompt in text]
+    counts = bundle["execution"]["counts"]
+    assert counts["executed_attempts"] == first["executed"] + second["executed"] + third["executed"] == 27
+    assert counts["reused_events"] == first["reused"] + second["reused"] + third["reused"] == 32
+    declared = next(m for m in protocol["methods"] if m["id"] == "ica_lens")["basis"]["preprocessing"]
+    blocks = [entry["ica"] for family in bundle["comparisons"] for entry in family["comparisons"]]
+    assert len(blocks) == 6 and {block["preprocessing_mode"] for block in blocks} == {declared}
+    assert all(block["preprocessing_read_from"] for block in blocks)
+
 
 def test_a_changed_input_is_new_work_and_is_refused_in_the_old_run_directory(tmp_path: Path) -> None:
     plan, runs = tmp_path / "plan.json", tmp_path / "runs"

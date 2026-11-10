@@ -53,7 +53,7 @@ def real_like(protocol: dict) -> dict:
     doc = copy.deepcopy(protocol)
     doc["synthetic"] = False
     doc["evidence"] = {"evidence_class": "exploratory_post_registration", "clinical_review": "domain_review_pending",
-                       "visibility": "restricted", "restriction_reasons": ["placeholder_restriction"]}
+                       "visibility": "restricted", "restriction_reasons": ["redistribution_limited_text"]}
     doc["model"]["backend"] = "cpu_transformers"
     for number, family in enumerate(doc["case_families"], start=1):
         family["legacy_join"] = {"batch": "placeholder_batch", "batch_index": number, "model": "toy-model"}
@@ -402,22 +402,78 @@ def test_protocol_evidence_labels_follow_the_open_results_vocabulary(protocol: d
     accepted = [
         {"visibility": "public"},
         {"visibility": "public", "restriction_reasons": [], "analysis_memberships": declared},
-        {"visibility": "restricted", "restriction_reasons": ["placeholder_restriction"]},
+        {"visibility": "restricted", "restriction_reasons": ["redistribution_limited_text"]},
+        # A restriction name the policy declares may carry a detail after a colon, as the policy's own
+        # "artifact_integrity:hash_mismatch" does.
+        {"visibility": "restricted", "restriction_reasons": ["artifact_integrity:hash_mismatch", "sealed_holdout"]},
+        # Visibility and membership are independent in the policy: a restricted document may name one.
+        {"visibility": "restricted", "restriction_reasons": ["redistribution_limited_text"],
+         "analysis_memberships": ["study-interim/1"]},
         {"visibility": "not_published"},
+        {"visibility": "public", "evidence_class": "registered_cohort"},
+        {"visibility": "public", "evidence_class": "unclassified",
+         "clinical_review": "owner_read_equivalence_and_domain_review_pending"},
     ]
     for evidence in accepted:
         assert validate_protocol(with_evidence(protocol, **evidence), **no_seal)["status"] == "validated"
     refused = [
         {},                                                                           # visibility not stated
         {"visibility": "whatever"},
-        {"visibility": "public", "restriction_reasons": ["placeholder_restriction"]},
+        {"visibility": "public", "restriction_reasons": ["redistribution_limited_text"]},
         {"visibility": "restricted"},
         {"visibility": "restricted", "restriction_reasons": []},
         {"visibility": "restricted", "restriction_reasons": [""]},
         {"visibility": "public", "analysis_memberships": ["placeholder-membership/9"]},
+        # Second review round: a reason must be a restriction the policy declares, optionally with a detail.
+        {"visibility": "restricted", "restriction_reasons": ["placeholder_restriction"]},
+        {"visibility": "restricted", "restriction_reasons": ["sealed_holdout", "because the owner said so"]},
+        {"visibility": "restricted", "restriction_reasons": ["artifact_integrity:"]},
+        {"visibility": "not_published", "restriction_reasons": ["placeholder_restriction"]},
+        # ... and evidence class and review status come from the policy's vocabularies.
+        {"visibility": "public", "evidence_class": "measured"},
+        {"visibility": "public", "evidence_class": "whatever_class"},
+        {"visibility": "public", "clinical_review": "whatever"},
+        {"visibility": "public", "clinical_review": "reviewed"},
+        {"visibility": "public", "clinical_review": "not_applicable_synthetic"},  # a synthetic document's word
     ]
     for evidence in refused:
         assert refusal(with_evidence(protocol, **evidence), **no_seal) == "evidence_fields", evidence
+
+
+def test_the_label_vocabularies_are_read_from_the_committed_results_policy(monkeypatch: pytest.MonkeyPatch,
+                                                                           tmp_path: Path) -> None:
+    from scripts import results_policy
+
+    policy = results_policy.load_policy(results_policy.ENGINE / results_policy.POLICY_PATH)
+    vocabulary = envelope.policy_vocabulary()
+    assert vocabulary["restrictions"] == frozenset(policy.doc["restrictions"])
+    assert vocabulary["memberships"] == frozenset(policy.doc["memberships"])
+    assert vocabulary["clinical_reviews"] == {entry["clinical_review"]
+                                              for entry in policy.doc["stimulus_classes"].values()}
+    cohort_classes = {cohort["evidence_class"] for cohort in policy.doc["model_cohorts"].values()}
+    assert cohort_classes < vocabulary["evidence_classes"] and "registered_cohort" in cohort_classes
+    # "unclassified" is what the policy assigns where no entry declares a class; it has no constant there.
+    assert policy.evidence_class("unclassified", None) == envelope.UNCLASSIFIED_CLASS
+    assert envelope.UNCLASSIFIED_CLASS in vocabulary["evidence_classes"]
+    # The two synthetic words are this package's own and are not in the policy.
+    assert envelope.SYNTHETIC_CLASS not in vocabulary["evidence_classes"]
+    assert envelope.SYNTHETIC_REVIEW not in vocabulary["clinical_reviews"]
+    # $PW_RESULTS_POLICY does not change what an experiment document may state.
+    other = tmp_path / "policy.json"
+    other.write_text("{}", encoding="utf-8")
+    monkeypatch.setenv(results_policy.POLICY_ENV, str(other))
+    assert envelope.policy_vocabulary() == vocabulary
+
+
+def test_a_synthetic_document_is_checked_without_reading_the_policy(protocol: dict,
+                                                                    monkeypatch: pytest.MonkeyPatch) -> None:
+    def unreadable() -> dict:
+        raise AssertionError("the policy file was read for a synthetic document")
+
+    monkeypatch.setattr(envelope, "policy_vocabulary", unreadable)
+    assert validate_protocol(protocol)["status"] == "validated"
+    protocol["evidence"]["clinical_review"] = "domain_review_pending"
+    assert refusal(protocol) == "synthetic_label"
 
 
 def test_a_synthetic_protocol_is_not_published_and_joins_no_membership(protocol: dict) -> None:
@@ -459,7 +515,10 @@ def test_no_row_claims_parity_and_the_interp_engine_row_states_the_agreement_num
     assert find(matrix, status="parity_passed") == []
     assert "parity_passed" in matrix["status_order"]                     # the word stays in the vocabulary
     row, = find(matrix, model_study_id="gemma-2-2b", backend="cpu_interp_engine")
-    assert (row["status"], row["dtype"], row["model"]["revision"]) == ("artifact_available", "float32", None)
+    # Second review round: with no model revision and no artifact revision or hash, the row is identity_unknown.
+    assert (row["status"], row["dtype"], row["model"]["revision"], row["artifact"]) == (
+        "artifact_available_identity_unknown", "float32", None, None)
+    assert "inferred, not recorded" in row["status_note"]
     assert "parity_record" not in row
     report = json.loads((ENGINE / "ops" / "backend_agreement_interp_vs_hosted_20260904.json").read_text("utf-8"))
     assert not [key for key in report if "pass" in key or "verdict" in key]
@@ -487,13 +546,48 @@ def test_hosted_graph_rows_with_nothing_pinned_are_identity_unknown(matrix: dict
         assert row["model"]["revision"] is None and row["artifact"]["revision"] is None
         assert row["artifact"]["sha256"] is None
         assert row["status"] == "artifact_available_identity_unknown"
-    # No row above identity_unknown is without a model revision, except the interp-engine row, whose note says so.
+    # No row above identity_unknown is without a model revision. The interp-engine row was the one exception
+    # until the second review round lowered it.
     unpinned = [r for r in matrix["rows"] if r["model"]["revision"] is None
                 and capabilities.status_rank(r["status"]) > capabilities.status_rank("artifact_available_identity_unknown")]
-    assert [(r["model"]["study_id"], r["backend"]) for r in unpinned] == [("gemma-2-2b", "cpu_interp_engine")]
+    assert unpinned == []
 
 
-def test_a_row_without_a_revision_never_answers_above_artifact_available_for_a_named_revision() -> None:
+def test_a_row_at_artifact_available_or_above_records_a_revision_or_an_artifact_identity(matrix: dict) -> None:
+    # Regression: the matrix defined artifact_available as "a pinned artifact or route" and nothing checked it;
+    # one row held the status with model.revision null and no artifact.
+    def code(row: dict) -> str | None:
+        doc = copy.deepcopy(matrix)
+        doc["rows"] = [row]
+        try:
+            capabilities.validate_matrix(doc)
+        except Refusal as exc:
+            return exc.code
+        return None
+
+    base = {"model": {"study_id": "toy-model", "hf_id": "fixture/toy-model", "revision": None},
+            "method": "jpp", "backend": "cpu_transformers", "dtype": None, "artifact": None,
+            "status_note": "placeholder note", "evidence": [{"source": "placeholder", "date": "2026-11-10"}]}
+    record = {"parity_record": {"source": "placeholder", "date": "2026-11-10", "scope": "placeholder"}}
+    for status in ("artifact_available", "runtime_verified_offline_fixture", "parity_passed"):
+        assert code({**base, **record, "status": status}) == "unpinned_status", status
+        assert code({**base, **record, "status": status, "artifact": {"id": "lens-a"}}) == "unpinned_status"
+        assert code({**base, **record, "status": status, "artifact": {"id": "lens-a", "revision": None,
+                                                                     "sha256": None}}) == "unpinned_status"
+        assert code({**base, **record, "status": status, "model": {**base["model"], "revision": "f" * 40}}) is None
+        assert code({**base, **record, "status": status, "artifact": {"id": "lens-a", "sha256": "4" * 64}}) is None
+        assert code({**base, **record, "status": status, "artifact": {"id": "lens-a", "revision": "f" * 40}}) is None
+    for status in ("unsupported", "architecture_supported", "artifact_available_identity_unknown"):
+        assert code({**base, "status": status}) is None, status
+    for row in matrix["rows"]:
+        if capabilities.status_rank(row["status"]) >= capabilities.status_rank("artifact_available"):
+            artifact = row["artifact"] or {}
+            assert row["model"]["revision"] or artifact.get("revision") or artifact.get("sha256"), row["method"]
+    assert capabilities.status_rank(capabilities.UNRECORDED_REVISION_CEILING) < capabilities.status_rank(
+        capabilities.PINNED_FROM)
+
+
+def test_a_row_without_a_revision_never_answers_above_identity_unknown_for_a_named_revision() -> None:
     # Regression: lookup returned parity_passed from a null-revision row for any revision asked.
     row = {"model": {"study_id": "toy-model", "hf_id": "fixture/toy-model", "revision": None},
            "method": "behavior_next_token", "backend": "cpu_interp_engine", "dtype": None, "artifact": None,
@@ -501,7 +595,12 @@ def test_a_row_without_a_revision_never_answers_above_artifact_available_for_a_n
            "evidence": [{"source": "placeholder", "date": "2026-11-10"}],
            "parity_record": {"source": "placeholder", "date": "2026-11-10", "scope": "placeholder"}}
     asked = capabilities.lookup(f"fixture/toy-model@{'f' * 40}", "behavior_next_token", "cpu_interp_engine", rows=[row])
-    assert (asked["status"], asked["row_status"], asked["status_capped"]) == ("artifact_available", "parity_passed", True)
+    assert (asked["status"], asked["row_status"], asked["status_capped"]) == (
+        "artifact_available_identity_unknown", "parity_passed", True)
+    # artifact_available says "pinned"; a row without a revision does not state that for a named revision.
+    available = capabilities.lookup(f"fixture/toy-model@{'f' * 40}", "behavior_next_token", "cpu_interp_engine",
+                                    rows=[{**row, "status": "artifact_available"}])
+    assert (available["status"], available["status_capped"]) == ("artifact_available_identity_unknown", True)
     assert asked["revision_match"] == "row_revision_not_recorded" and asked["matched"] is True
     assert "records no model revision" in asked["status_note"] and "placeholder note" in asked["status_note"]
     # A question that names no revision gets the row as it is, and so does a row pinned to the asked revision.
@@ -971,7 +1070,9 @@ def test_no_runtime_is_estimated_when_no_task_is_ready(protocol: dict, matrix: d
     assert any("no task is ready, so no runtime is estimated" in note for note in plan["estimate_notes"])
     # The row records no revision, so the plan carries the lowered answer and says which kind of match it was.
     capability = plan["tasks"][0]["capability"]
-    assert (capability["status"], capability["revision_match"]) == ("artifact_available", "row_revision_not_recorded")
+    assert (capability["status"], capability["revision_match"]) == ("artifact_available_identity_unknown",
+                                                                    "row_revision_not_recorded")
+    assert plan["tasks"][0]["reason"].startswith("artifact identity unknown: ")
 
 
 def test_a_rates_document_with_two_rows_for_one_method_and_backend_is_refused(protocol: dict, matrix: dict) -> None:
@@ -1213,15 +1314,46 @@ def test_envelope_evidence_labels_follow_the_open_results_vocabulary(run: tuple[
     assert envelope.validate_envelope(labelled(), payload_root=root)["status"] == "validated"
     assert envelope.validate_envelope(labelled(analysis_memberships=["study-interim/1"]),
                                       payload_root=root)["status"] == "validated"
-    assert envelope.validate_envelope(labelled(visibility="restricted", restriction_reasons=["placeholder_restriction"]),
+    assert envelope.validate_envelope(labelled(visibility="restricted",
+                                               restriction_reasons=["redistribution_limited_text"]),
+                                      payload_root=root)["status"] == "validated"
+    # The policy keeps visibility and membership independent, so this pair of labels is not refused.
+    assert envelope.validate_envelope(labelled(visibility="restricted", analysis_memberships=["study-interim/1"],
+                                               restriction_reasons=["artifact_integrity:hash_mismatch"]),
                                       payload_root=root)["status"] == "validated"
     for evidence in ({"visibility": "whatever"},
-                     {"visibility": "public", "restriction_reasons": ["placeholder_restriction"]},
-                     {"visibility": "public", "restriction_reasons": ["placeholder_restriction"],
+                     {"visibility": "public", "restriction_reasons": ["redistribution_limited_text"]},
+                     {"visibility": "public", "restriction_reasons": ["redistribution_limited_text"],
                       "analysis_memberships": ["study-interim/1"]},
                      {"visibility": "restricted"},
-                     {"analysis_memberships": ["placeholder-membership/9"]}):
+                     {"analysis_memberships": ["placeholder-membership/9"]},
+                     # Second review round: these four were accepted as free text.
+                     {"visibility": "restricted", "restriction_reasons": ["placeholder_restriction"]},
+                     {"evidence_class": "whatever_class"},
+                     {"clinical_review": "whatever"},
+                     {"clinical_review": "not_applicable_synthetic"}):
         assert envelope_code(labelled(**evidence), root) == "evidence_fields", evidence
+    # A synthetic envelope keeps its own two words and nothing else.
+    assert envelope_code(change(done, "evidence/clinical_review", "domain_review_pending"), root) == "synthetic_label"
+
+
+def test_an_envelope_of_the_old_preflight_shape_is_refused_with_the_remedy(run: tuple[RunStore, dict],
+                                                                          tmp_path: Path) -> None:
+    # Before commit 66514e0d the store recorded a runtime for a ready task that ended unavailable at preflight
+    # (accepted 0, measured true). Such an envelope is refused; the detail names the commit and what to do.
+    store, plan = run
+    empty = tmp_path / "no_fixtures"
+    empty.mkdir()
+    other = RunStore(tmp_path / "old_run")
+    other.run_fixture(plan, "w0", fixtures_dir=empty, protocol=load("protocol_synthetic.json"), stop_after=1)
+    current = next(d for d in map(common.read_json, other.envelope_files())
+                   if d["status"]["execution"] == "unavailable" and d["method"]["id"] == "behavior_next_token")
+    assert current["resources"]["measured"] is False
+    old_shape = change(change(current, "resources/measured", True), "resources/runtime_seconds", 0.01)
+    with pytest.raises(Refusal) as caught:
+        envelope.validate_envelope(old_shape, payload_root=other.run_dir)
+    assert caught.value.code == "resources_rule"
+    assert "66514e0d" in str(caught.value) and "new run directory" in str(caught.value)
 
 
 def test_measured_resources_of_a_skipped_task_may_not_hold_an_estimate(run: tuple[RunStore, dict]) -> None:

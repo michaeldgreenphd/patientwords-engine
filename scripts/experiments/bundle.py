@@ -4,6 +4,19 @@ The bundle is the one file a browser preview reads: a protocol summary, plan tot
 blocks, the capability rows the plan used, evidence labels, provenance hashes and limitations. It copies no
 prompt text and no target text. It holds no clock value, so the same run directory gives the same bytes.
 
+Fields added to version 1 on 2026-11-10 (second review round). Each is additive and optional in the schema, so
+a reader of an earlier bundle finds them absent and a reader that ignores them is unaffected:
+
+* ``protocol.families[].variant_inputs``: per variant, ``prompt_sha256``, ``token_sha256`` and ``n_tokens``,
+  taken from the plan's tasks. Hashes and a count only; never prompt text. A family the protocol excludes has
+  no task, so it has no ``variant_inputs``.
+* ``comparisons[].comparisons[].ica.preprocessing_mode`` and ``preprocessing_read_from``: what the ICA payloads
+  record under ``basis`` (``scripts/experiments/compare.py``, ``ica_block``).
+* ``execution.counts.executed_attempts`` and ``execution.counts.reused_events``: the number of ``started`` and
+  of ``reused`` lines in the run directory's journal. A task found complete by two later runs counts as two
+  reuse events. These are counts of journal lines, not timings.
+* ``execution.completed_under_superseded_inputs``: see ``scripts/experiments/store.py``.
+
 A bundle built from a synthetic protocol always lists ``synthetic_not_measurement``. It is a rendering input
 for a preview and is not a publication artifact: its evidence block says ``not_published``.
 """
@@ -22,10 +35,12 @@ SYNTHETIC_LIMITATIONS = (
     "fixture_timings_say_nothing_about_model_runs",
 )
 # Added when the collected run shows the condition. The counts are in ``execution.counts`` and
-# ``execution.by_state``; the rows are in ``execution.attempt_outcomes_differ``.
+# ``execution.by_state``; the rows are in ``execution.attempt_outcomes_differ`` and
+# ``execution.completed_under_superseded_inputs``.
 READY_NOT_COMPLETED = "ready_tasks_not_completed_see_execution_counts"
 NOTHING_COMPLETED = "no_task_completed_so_no_value_was_computed"
 OUTCOMES_DIFFER = "attempt_outcomes_differ_between_workers_see_execution"
+SUPERSEDED_INPUTS = "completed_results_under_superseded_inputs_not_counted_see_execution"
 GENERAL_LIMITATIONS = (
     "no_statistic_computed_one_value_per_family_variant_replicate",
     "first_target_token_only_no_sequence_scoring",
@@ -55,6 +70,20 @@ def build_bundle(run_dir: Any, *, allow_roots: Iterable[Any] = ()) -> dict[str, 
             "planned_state": task["planned_state"], "reason": task["reason"], "tasks": 0})
         row["tasks"] += 1
 
+    # Hashes and token counts per family and variant, from the plan's tasks. No prompt text is in a plan.
+    variant_inputs: dict[str, dict[str, dict[str, Any]]] = {}
+    for task in plan["tasks"]:
+        spec = task["spec"]
+        variant_inputs.setdefault(spec["family_id"], {})[spec["variant"]] = {
+            "prompt_sha256": spec["input"]["prompt_sha256"], "token_sha256": spec["input"]["token_sha256"],
+            "n_tokens": task["estimate"]["tokens"]}
+    families = [{**family, "variant_inputs": {name: variant_inputs[family["family_id"]][name]
+                                              for name in sorted(variant_inputs[family["family_id"]])}}
+                if family["family_id"] in variant_inputs else dict(family) for family in summary["families"]]
+    events = store.read_journal()
+    journal_counts = {"executed_attempts": sum(1 for e in events if e.get("event") == "started"),
+                      "reused_events": sum(1 for e in events if e.get("event") == "reused")}
+
     engine_commits, source_files = set(), {}
     for row in assembly["tasks"]:
         envelope = read_json(store.run_dir / row["envelope"]["path"])
@@ -74,13 +103,15 @@ def build_bundle(run_dir: Any, *, allow_roots: Iterable[Any] = ()) -> dict[str, 
         limitations.append("uncertain_attempts_present_see_execution")
     if assembly["attempt_outcomes_differ"]:
         limitations.append(OUTCOMES_DIFFER)
+    if assembly["completed_under_superseded_inputs"]:
+        limitations.append(SUPERSEDED_INPUTS)
 
     bundle = {
         "schema_version": BUNDLE_SCHEMA,
         "protocol": {
             **plan["protocol"], "synthetic": plan["synthetic"], "seed": plan["seed"],
             "replicates": plan["replicates"], "model": summary["model"],
-            "input_settings": summary["input_settings"], "families": summary["families"],
+            "input_settings": summary["input_settings"], "families": families,
             "methods": summary["methods"], "comparisons": summary["comparisons"],
             "primary_endpoint": summary["primary_endpoint"], "excluded": plan["excluded"],
         },
@@ -94,12 +125,14 @@ def build_bundle(run_dir: Any, *, allow_roots: Iterable[Any] = ()) -> dict[str, 
         },
         "plan_totals": {**plan["totals"], "adapters": plan["adapters"], "estimate_notes": plan["estimate_notes"]},
         "execution": {
-            "by_state": assembly["by_state"], "counts": assembly["counts"], "complete": assembly["complete"],
+            "by_state": assembly["by_state"], "counts": {**assembly["counts"], **journal_counts},
+            "complete": assembly["complete"],
             "ready_complete": assembly["ready_complete"],
             "missing": assembly["missing"], "uncertain": assembly["uncertain"],
             "ended_line_missing": assembly["ended_line_missing"],
             "duplicate_identical": assembly["duplicate_identical"],
             "attempt_outcomes_differ": assembly["attempt_outcomes_differ"],
+            "completed_under_superseded_inputs": assembly["completed_under_superseded_inputs"],
             "execution_guarantee": collected["execution_guarantee"],
             "timing_caveat": TIMING_CAVEAT,
         },

@@ -19,8 +19,12 @@ from scripts.experiments.common import (
 
 MATRIX_PATH = ENGINE / "data" / "experiments" / "capability_matrix.v1.json"
 FIXTURE_CEILING = "runtime_verified_offline_fixture"
-# The strongest answer a row with no recorded model revision may give to a question about a named revision.
-UNRECORDED_REVISION_CEILING = "artifact_available"
+# The strongest answer a row with no recorded model revision may give to a question about a named revision:
+# the route exists and what it loaded is not recorded. ``artifact_available`` and every status above it state
+# something about a pinned identity, which such a row does not have for the revision asked.
+UNRECORDED_REVISION_CEILING = "artifact_available_identity_unknown"
+# From this status upward a row must record a model revision, or an artifact revision or SHA-256.
+PINNED_FROM = "artifact_available"
 
 
 def status_rank(status: str) -> int:
@@ -59,6 +63,11 @@ def _check_row(row: Any, where: str) -> None:
         require(isinstance(artifact, dict) and text(artifact.get("id")), "capability_row", f"{where}: artifact.id")
         sha = artifact.get("sha256")
         require(sha is None or bool(HEX64.fullmatch(str(sha))), "capability_row", f"{where}: artifact.sha256")
+    pinned = revision is not None or (isinstance(artifact, dict)
+                                      and (text(artifact.get("revision")) or text(artifact.get("sha256"))))
+    require(status_rank(row["status"]) < status_rank(PINNED_FROM) or pinned, "unpinned_status",
+            f"{where}: status {row['status']} needs a recorded model.revision, or an artifact revision or "
+            f"sha256; a row that records none of them is at most {UNRECORDED_REVISION_CEILING}")
     if row["status"] == "parity_passed":
         record = row.get("parity_record")
         require(isinstance(record, dict) and text(record.get("source")) and text(record.get("scope"))
@@ -67,7 +76,9 @@ def _check_row(row: Any, where: str) -> None:
 
 
 def validate_matrix(doc: Any) -> dict[str, Any]:
-    """Validate a capability matrix document and return it. Refuses duplicate keys and uncited statuses."""
+    """Validate a capability matrix document and return it. Refuses duplicate keys, uncited statuses, and a
+    row at ``artifact_available`` or above that records no model revision and no artifact revision or SHA-256
+    (``unpinned_status``)."""
     try:
         require(isinstance(doc, dict) and doc.get("schema_version") == CAPABILITY_SCHEMA, "schema_version",
                 f"Expected {CAPABILITY_SCHEMA}")
@@ -137,9 +148,9 @@ def lookup(model_revision: Mapping[str, Any] | str, method: str, backend: str, a
     Rows at exactly the asked revision are used first. If there is none, rows whose ``model.revision`` is null
     are used: such a row describes a route that records no revision (a hosted service, an audit run before
     pinning), and the answer then carries ``revision_match: "row_revision_not_recorded"``. Such an answer is
-    never stronger than ``artifact_available``: a row that records no revision cannot state that a named
-    revision passed an audit or ran. The row's own status is returned as ``row_status`` and ``status_capped``
-    says whether the answer was lowered.
+    never stronger than ``artifact_available_identity_unknown``: a row that records no model revision cannot
+    state that a named revision is pinned, ran or passed an audit. The row's own status is returned as
+    ``row_status`` and ``status_capped`` says whether the answer was lowered.
 
     Selection, in order: rows naming that artifact; else rows with no artifact; else, when no artifact was
     asked for, every row of the key. Where more than one row remains, the weakest status is returned, so an

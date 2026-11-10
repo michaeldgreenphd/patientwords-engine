@@ -15,8 +15,13 @@ What runs, in order:
 3. The copy is served over HTTP on an ephemeral loopback port under ``/patientwords/``, and Chromium opens the
    real page, ``experiments/index.html``, with its real JavaScript.
 4. The rendered text is compared with values this script works out itself: the softmax of the fixture logits,
-   and the hand-computed ICA scores of the toy basis. They are not read back from the bundle.
-5. Deliberate defects are served, each followed by a restored pass.
+   and the hand-computed ICA scores of the toy basis. They are not read back from the bundle. The four things
+   added to bundle version 1 on 2026-11-10 are compared the same way: prompt and token hashes and token counts
+   with the fixture protocol file, the ICA preprocessing mode with the protocol's method block, and the
+   executed and reused counts with the summaries the command line printed in step 2.
+5. Deliberate defects are served, each followed by a restored pass. One of them is a copy of the bundle
+   without those four additions, as a bundle written before them: the page must render it and say
+   "not in this bundle" in each place.
 
 This is a software check of a viewer on hand-written numbers. It loads no model and says nothing about one.
 
@@ -72,6 +77,12 @@ IDLE_SENTENCES = (
 NOT_RECORDED = "state not recorded"
 WINDOW_MISS = "not observed in the top-k window"
 NO_INTERVENTION = "no intervention in this bundle"
+# What the page prints where a bundle does not carry a value it has a place for.
+MISS = "\u2014 "
+NOT_IN_BUNDLE = "not in this bundle"
+PROMPT_TEXT_ABSENT = MISS + "prompt text is " + NOT_IN_BUNDLE
+EXECUTED_ABSENT = MISS + "executed count is " + NOT_IN_BUNDLE
+REUSED_ABSENT = MISS + "reuse count is " + NOT_IN_BUNDLE
 SHARE_LABEL = "squared-coordinate share, not a probability"
 SHARE_UNDEFINED = "\u2014 not computed: zero or non-finite energy"
 MINUS = "\u2212"
@@ -230,6 +241,60 @@ def expected_ica(protocol: Mapping[str, Any]) -> dict[tuple[str, str, int], dict
                     "share_a": shares_a[component], "share_b": shares_b[component],
                     "a_name": comparison["a"], "b_name": comparison["b"]}
     return out
+
+
+# ------------------------------------------------------------------------------------------ added bundle fields
+
+def expected_variant_inputs(protocol: Mapping[str, Any]) -> dict[tuple[str, str], dict[str, str]]:
+    """``{(family, variant): {prompt_sha256, token_sha256, n_tokens}}`` as the page must print them, read from
+    the fixture protocol file. Hashes and a count; the prompt text itself is never expected on the page."""
+    out: dict[tuple[str, str], dict[str, str]] = {}
+    for family in protocol["case_families"]:
+        for name, entry in family["variants"].items():
+            out[(family["family_id"], name)] = {"prompt_sha256": entry["prompt_sha256"],
+                                                "token_sha256": entry["token_sha256"],
+                                                "n_tokens": str(len(entry["token_ids"]))}
+    return out
+
+
+def expected_preprocessing(protocol: Mapping[str, Any]) -> str:
+    """The preprocessing mode the fixture protocol's ICA method block declares. The ICA adapter completes a
+    task only when the mode its payload records equals this one, so it is what a completed block must show."""
+    blocks = [method for method in protocol["methods"] if method["id"] == "ica_lens"]
+    if len(blocks) != 1 or not isinstance(blocks[0].get("basis", {}).get("preprocessing"), str):
+        raise ValueError("the fixture protocol does not declare one ica_lens basis with a preprocessing mode")
+    return blocks[0]["basis"]["preprocessing"]
+
+
+def expected_journal_counts(cli_steps: Sequence[Mapping[str, Any]]) -> dict[str, int]:
+    """Executed attempts and reuse events, summed over the ``run-fixture`` summaries the command line printed.
+    Not read from the bundle."""
+    runs = [step for step in cli_steps if str(step.get("step", "")).startswith("run-fixture")]
+    if not runs:
+        raise ValueError("no run-fixture step was recorded")
+    return {"executed": sum(step["executed"] for step in runs), "reused": sum(step["reused"] for step in runs)}
+
+
+def without_added_fields(bundle: Mapping[str, Any]) -> dict[str, Any]:
+    """A copy of ``bundle`` as it was written before 2026-11-10: no ``variant_inputs``, no ICA preprocessing
+    fields, no executed or reused count. It must still be a valid version 1 bundle and the page must render it.
+    Raises ``ValueError`` when the bundle carries none of them, so that the check cannot pass on a bundle that
+    never had the fields."""
+    doc = copy.deepcopy(dict(bundle))
+    removed = 0
+    for family in doc["protocol"]["families"]:
+        removed += family.pop("variant_inputs", None) is not None
+    for family in doc["comparisons"]:
+        for entry in family["comparisons"]:
+            block = entry.get("ica")
+            if isinstance(block, dict):
+                removed += block.pop("preprocessing_mode", None) is not None
+                block.pop("preprocessing_read_from", None)
+    for key in ("executed_attempts", "reused_events"):
+        removed += doc["execution"]["counts"].pop(key, None) is not None
+    if not removed:
+        raise ValueError("the bundle carries none of the fields added on 2026-11-10")
+    return doc
 
 
 def _fixed(value: float) -> str:
@@ -732,7 +797,7 @@ def assert_other_sections(page: Any, protocol: Mapping[str, Any], validated: Map
     planned = page.locator('#exp-totals dd[data-col="planned_tasks"]').inner_text().strip()
     assert planned == str(tasks), f"planned tasks shown {planned!r}; families x variants x methods is {tasks}"
     reused = page.locator('#exp-totals dd[data-col="reused"]').inner_text().strip()
-    assert reused.isdigit() or reused.startswith("\u2014"), f"the reuse count reads {reused!r}"
+    assert reused.isdigit(), f"the reuse count reads {reused!r}"
     packages = page.locator('#exp-provenance dd[data-col="packages"]').inner_text().strip()
     assert packages.startswith("python "), f"package versions read {packages!r}"
     links = page.evaluate("""() => ({
@@ -750,6 +815,53 @@ def assert_other_sections(page: Any, protocol: Mapping[str, Any], validated: Map
     return {"planned_tasks": tasks, "reuse_count_shown": reused, "limitations": len(limitations),
             "prompt_hash_cells": sorted({row["cells"]["prompt_sha256"] for row in variants})[:2],
             "token_count_cells": sorted({row["cells"]["n_tokens"] for row in variants})[:2]}
+
+
+ADDED_FIELDS = """() => ({
+    executed: document.querySelector('#exp-totals dd[data-col="executed"]').innerText.trim(),
+    reused: document.querySelector('#exp-totals dd[data-col="reused"]').innerText.trim(),
+    preprocessing: Array.from(document.querySelectorAll(
+        '[data-kind="ica-block"] dd[data-col="ica_preprocessing"]')).map((d) => d.innerText.trim()),
+    preprocessing_source: Array.from(document.querySelectorAll(
+        '[data-kind="ica-block"] dd[data-col="ica_preprocessing_source"]')).map((d) => d.innerText.trim()),
+    text: document.querySelector('main').innerText,
+})"""
+
+
+def shown_added_fields(page: Any) -> dict[str, Any]:
+    """What the page prints for the fields added to bundle version 1 on 2026-11-10."""
+    shown = page.evaluate(ADDED_FIELDS)
+    shown["variants"] = {key: {name: cells.get(name) for name in ("prompt_sha256", "token_sha256", "n_tokens",
+                                                                   "prompt")}
+                         for key, cells in keyed(table_rows(page).get("variant", []), "family", "variant").items()}
+    return shown
+
+
+def assert_added_fields(page: Any, protocol: Mapping[str, Any], variant_inputs: Mapping[tuple[str, str], Any],
+                        preprocessing: str, counts: Mapping[str, int]) -> dict[str, Any]:
+    """Prompt and token hashes, token counts, the ICA preprocessing mode and the executed and reused counts,
+    each against a value that was not read from the bundle. No prompt text may be on the page."""
+    shown = shown_added_fields(page)
+    assert set(shown["variants"]) == set(variant_inputs), "the variant rows are not the protocol's variants"
+    for key, want in variant_inputs.items():
+        got = {name: shown["variants"][key][name] for name in ("prompt_sha256", "token_sha256", "n_tokens")}
+        assert got == dict(want), f"{key}: page shows {got}, the fixture protocol gives {dict(want)}"
+        assert shown["variants"][key]["prompt"] == PROMPT_TEXT_ABSENT, (
+            f"{key}: the prompt cell reads {shown['variants'][key]['prompt']!r}")
+    prompts = [entry["prompt"] for family in protocol["case_families"] for entry in family["variants"].values()]
+    leaked = [number for number, prompt in enumerate(prompts) if prompt and prompt in shown["text"]]
+    assert prompts and not leaked, f"the page shows the text of {len(leaked)} fixture prompts"
+    families = len(protocol["case_families"])
+    assert shown["preprocessing"] == [preprocessing] * families, (
+        f"preprocessing mode shown {shown['preprocessing']}, the protocol's ICA block declares {preprocessing!r}")
+    assert len(shown["preprocessing_source"]) == families and all(shown["preprocessing_source"]), (
+        "a completed ICA block does not say where its preprocessing mode was read from")
+    assert (shown["executed"], shown["reused"]) == (str(counts["executed"]), str(counts["reused"])), (
+        f"executed and reused shown ({shown['executed']!r}, {shown['reused']!r}); the command line reported "
+        f"{counts['executed']} executed attempts and {counts['reused']} reuse events")
+    return {"variant_rows": len(variant_inputs), "preprocessing_mode": preprocessing,
+            "executed_attempts": counts["executed"], "reused_events": counts["reused"],
+            "prompt_text_on_page": 0}
 
 
 def assert_no_overflow(page: Any) -> dict[str, Any]:
@@ -799,6 +911,9 @@ class Session:
     phone: Any
     receipt: dict[str, Any]
     shots: Path | None
+    variant_inputs: dict[tuple[str, str], dict[str, str]] = field(default_factory=dict)
+    preprocessing: str = ""
+    journal_counts: dict[str, int] = field(default_factory=dict)
     states: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     @property
@@ -883,6 +998,9 @@ def check_rendered_bundle(s: Session, recorder: Recorder) -> None:
                      lambda: assert_not_computed_blocks(page, s.families))
         recorder.run("protocol_model_totals_links_limitations",
                      lambda: assert_other_sections(page, s.protocol, s.validated))
+        recorder.run("prompt_hashes_token_counts_preprocessing_and_run_counts_equal_the_fixture",
+                     lambda: assert_added_fields(page, s.protocol, s.variant_inputs, s.preprocessing,
+                                                 s.journal_counts))
         recorder.run("no_horizontal_overflow_at_1280", lambda: assert_no_overflow(page))
         s.shot(page, "experiment_bundle_1280.png")
     finally:
@@ -1045,6 +1163,32 @@ def detect_state_not_recorded(s: Session) -> dict[str, Any]:
         page.close()
 
 
+def detect_older_bundle(s: Session) -> dict[str, Any]:
+    """A bundle without the fields added on 2026-11-10 must render in full, keep the synthetic label beside
+    every family, and print "not in this bundle" in each place those fields have. Nothing may be filled in."""
+    page, log = s.open()
+    try:
+        s.core(page, log)                                   # still a correct render of everything else
+        banner = assert_banner(page, s.families)
+        shown = shown_added_fields(page)
+        missing = MISS + NOT_IN_BUNDLE
+        assert len(shown["variants"]) == len(s.variant_inputs), "a family does not list every variant"
+        for key, cells in shown["variants"].items():
+            assert (cells["prompt_sha256"], cells["token_sha256"], cells["n_tokens"]) == (missing,) * 3, (
+                f"{key}: without variant_inputs the cells read {cells}")
+            assert cells["prompt"] == PROMPT_TEXT_ABSENT, f"{key}: the prompt cell reads {cells['prompt']!r}"
+        assert shown["preprocessing"] == [missing] * s.families, f"preprocessing reads {shown['preprocessing']}"
+        assert shown["preprocessing_source"] == [], "a source is shown for a mode the bundle does not carry"
+        assert (shown["executed"], shown["reused"]) == (EXECUTED_ABSENT, REUSED_ABSENT), (
+            f"executed and reused read ({shown['executed']!r}, {shown['reused']!r})")
+        return {"synthetic_banners": banner, "variant_cells": missing, "executed": shown["executed"],
+                "reused": shown["reused"],
+                "added_fields_assertion_rejects": rejected(lambda: assert_added_fields(
+                    page, s.protocol, s.variant_inputs, s.preprocessing, s.journal_counts))}
+    finally:
+        page.close()
+
+
 def detect_traversal_refused(s: Session) -> dict[str, Any]:
     """Each address would reach the served bundle if it were followed. The page must refuse it and request nothing."""
     cases = (("literal", page_url(s.base, raw_query="bundle=../data/experiment_preview/bundle.json")),
@@ -1185,6 +1329,8 @@ def run_browser_checks(s: Session, recorder: Recorder) -> None:
                lambda: detect_error_state(s, "missing", "Missing", ["HTTP 404", f"data/{BUNDLE_PARAM}"]))
     run_defect(recorder, s, "defect_method_records_without_a_state_read_state_not_recorded_not_completed",
                lambda: s.write(stateless_bundle(s.bundle)), lambda: detect_state_not_recorded(s))
+    run_defect(recorder, s, "older_bundle_without_the_added_fields_reads_not_in_this_bundle",
+               lambda: s.write(without_added_fields(s.bundle)), lambda: detect_older_bundle(s))
     run_defect(recorder, s, "defect_traversal_parameter_is_refused_without_a_request",
                lambda: None, lambda: detect_traversal_refused(s))
     run_defect(recorder, s, "control_a_wrong_probability_and_a_flipped_score_fail_the_value_checks",
@@ -1279,7 +1425,10 @@ def run(site_source: Path, browser_path: str | None, shots: Path | None, receipt
                     base=origin + "/patientwords", served=served, original=original, bundle=bundle,
                     protocol=protocol, validated=validated, behavior=behavior, ica=expected_ica(protocol),
                     basis_sha256=basis_sha256, desktop=new_context(browser, origin, blocked, 1280, 900),
-                    phone=new_context(browser, origin, blocked, 390, 844), receipt=receipt, shots=shots)
+                    phone=new_context(browser, origin, blocked, 390, 844), receipt=receipt, shots=shots,
+                    variant_inputs=expected_variant_inputs(protocol),
+                    preprocessing=expected_preprocessing(protocol),
+                    journal_counts=expected_journal_counts(receipt["cli_steps"]))
                 run_browser_checks(session, recorder)
 
                 def no_outside_request() -> dict[str, Any]:

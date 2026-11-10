@@ -387,7 +387,12 @@ model run was planned, executed or stored with it.
   `duplicate_identical`, refuses `duplicate_conflict`, lists planned tasks with no envelope
   as `missing`, lists a `started` without `ended` and without an envelope as `uncertain`,
   and lists attempts of one number that ended in different states in two shards as
-  `attempt_outcomes_differ` while keeping the completed envelope.
+  `attempt_outcomes_differ` while keeping the completed envelope. A completed result whose
+  task was executed again under changed inputs without completing is set aside and listed
+  (`completed_under_superseded_inputs`); completed results of one method recorded under
+  different inputs refuse (`mixed_input_identities`), and so does a completed envelope for
+  a task the plan does not mark ready (`plan_state_conflict`). Payloads and envelopes are
+  written through a directory descriptor opened without following a link.
 - **Remains.** The store makes no exactly-once claim and must not be given one. For a paid
   call the rule is the existing one: an uncertain attempt and its reservation are kept for
   reconciliation (`cli reconcile-spend` in the Petri lane); the attempt is not retried

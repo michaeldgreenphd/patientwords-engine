@@ -28,8 +28,18 @@ EVIDENCE_KEYS = ("evidence_class", "clinical_review", "visibility", "restriction
                  "synthetic")
 SYNTHETIC_CLASS = "synthetic_fixture"
 SYNTHETIC_VISIBILITY = "not_published"
+# The review status of a synthetic document: its text is placeholders, so there is nothing to review. The
+# open-results policy does not declare this word or SYNTHETIC_CLASS; they are this package's two additions to
+# the policy's vocabularies and are valid for a synthetic document only.
+SYNTHETIC_REVIEW = "not_applicable_synthetic"
+# What ``results_policy.Policy.evidence_class`` returns for a stimulus family or model that no policy entry
+# declares. That module has no constant for it; tests/test_experiments_core.py compares the two.
+UNCLASSIFIED_CLASS = "unclassified"
 # States in which nothing was executed for the task: such an envelope accepts no unit and measures no resource.
 NOT_EXECUTED_STATES = ("not_run", "unsupported", "unavailable")
+# The commit that introduced the rule above for ``unavailable``. The envelope schema version did not change
+# with it, so the refusal names the commit and the remedy (docs/experiment_interface/README.md).
+PREFLIGHT_RESOURCES_COMMIT = "66514e0d"
 
 
 def _escape(key: str) -> str:
@@ -90,30 +100,68 @@ def method_block(method: Mapping[str, Any], payload: Mapping[str, Any] | None = 
     }
 
 
-def declared_memberships() -> frozenset[str]:
-    """Membership names the committed results policy declares (``data/results_policy/policy.v1.json``), read
-    through ``scripts/results_policy.py``. The committed file is named explicitly, so ``$PW_RESULTS_POLICY``
-    does not change what an experiment document may state. A policy that cannot be read raises
-    ``PolicyError``: a configuration error, not a refusal."""
+def policy_vocabulary() -> dict[str, frozenset[str]]:
+    """The label vocabularies of the committed results policy (``data/results_policy/policy.v1.json``), read
+    through ``scripts/results_policy.py``:
+
+    * ``evidence_classes``: every ``evidence_class`` a model cohort or a stimulus class declares, and
+      ``unclassified``, which the policy assigns where no entry declares one;
+    * ``clinical_reviews``: every ``clinical_review`` a stimulus class declares;
+    * ``restrictions``: the names under ``restrictions``;
+    * ``memberships``: the names under ``memberships``.
+
+    The committed file is named explicitly, so ``$PW_RESULTS_POLICY`` does not change what an experiment
+    document may state. A policy that cannot be read raises ``PolicyError``: a configuration error, not a
+    refusal. ``load_policy`` caches on the file's size and modification time.
+    """
     from scripts import results_policy
 
-    policy = results_policy.load_policy(results_policy.ENGINE / results_policy.POLICY_PATH)
-    return frozenset(policy.doc["memberships"])
+    doc = results_policy.load_policy(results_policy.ENGINE / results_policy.POLICY_PATH).doc
+    declared = [cohort.get("evidence_class") for cohort in doc["model_cohorts"].values()]
+    declared += [entry.get("evidence_class") for entry in doc["stimulus_classes"].values()]
+    return {
+        "evidence_classes": frozenset(value for value in declared if value) | {UNCLASSIFIED_CLASS},
+        "clinical_reviews": frozenset(entry["clinical_review"] for entry in doc["stimulus_classes"].values()),
+        "restrictions": frozenset(doc["restrictions"]),
+        "memberships": frozenset(doc["memberships"]),
+    }
+
+
+def declared_memberships() -> frozenset[str]:
+    """Membership names the committed results policy declares (see ``policy_vocabulary``)."""
+    return policy_vocabulary()["memberships"]
 
 
 def check_evidence_labels(evidence: Mapping[str, Any], synthetic: bool) -> None:
     """The open-results vocabulary rules for an evidence block (``docs/open_results_policy.md``).
 
-    Visibility is one of ``VISIBILITIES``. ``restricted`` needs at least one named reason and ``public`` needs
-    none. Every analysis membership must be a name the committed policy declares. A synthetic document is
-    ``not_published`` and joins no membership. Absent keys read as a synthetic document's defaults.
+    * ``evidence_class`` is ``synthetic_fixture`` for a synthetic document and otherwise one of the classes
+      the committed policy uses (``policy_vocabulary``).
+    * ``clinical_review`` is ``not_applicable_synthetic`` for a synthetic document and otherwise one of the
+      review statuses the policy's stimulus classes declare.
+    * Visibility is one of ``VISIBILITIES``. ``restricted`` needs at least one reason and ``public`` needs
+      none. A synthetic document is ``not_published``.
+    * Each restriction reason is a restriction name the policy declares, alone or followed by ``:detail``
+      (the policy itself writes ``artifact_integrity:hash_mismatch``).
+    * Every analysis membership is a name the policy declares. A synthetic document joins none.
 
-    Naming a declared membership is checked as a label only: whether a membership rule would admit the result
-    is decided by ``scripts/results_policy.py`` on a landed part, never here.
+    Absent ``visibility``, ``restriction_reasons`` and ``analysis_memberships`` read as a synthetic document's
+    defaults. An absent ``evidence_class`` or ``clinical_review`` is not checked here; the callers require both.
+
+    Visibility and analysis membership are not coupled here, because the policy keeps them independent: a
+    result joins a statistic through a membership rule whatever its visibility (the restricted-text stimulus
+    class ``redistribution_limited_text`` is inside ``study-interim/1`` in policy version open-results/1). A
+    ``restricted`` document may therefore name a membership. These are checks of labels only: whether a
+    membership rule admits a result, and which restriction applies to it, are decided by
+    ``scripts/results_policy.py`` on a landed part, never here.
+
+    The policy file is read only when a label needs it. A synthetic document with no restriction reason is
+    checked against this package's own constants, so fixtures validate without the policy file.
     """
     visibility = evidence.get("visibility", SYNTHETIC_VISIBILITY if synthetic else None)
     reasons = evidence.get("restriction_reasons", [])
     memberships = evidence.get("analysis_memberships", [])
+    evidence_class, review = evidence.get("evidence_class"), evidence.get("clinical_review")
     require(visibility in VISIBILITIES, "evidence_fields",
             f"evidence.visibility must be one of {list(VISIBILITIES)}; got {visibility!r}"
             + ("" if synthetic else " (a non-synthetic protocol must state it)"))
@@ -124,12 +172,31 @@ def check_evidence_labels(evidence: Mapping[str, Any], synthetic: bool) -> None:
             "A synthetic document must have visibility 'not_published'")
     require(not synthetic or not memberships, "synthetic_label",
             "A synthetic document joins no analysis membership")
+    require(not synthetic or review is None or review == SYNTHETIC_REVIEW, "synthetic_label",
+            f"A synthetic document's clinical_review must be {SYNTHETIC_REVIEW!r}; got {review!r}")
     require(visibility != "restricted" or bool(reasons), "evidence_fields",
             "visibility 'restricted' needs at least one named reason in evidence.restriction_reasons")
     require(visibility != "public" or not reasons, "evidence_fields",
             f"visibility 'public' cannot carry restriction reasons {reasons}")
+    if synthetic and not reasons:
+        return
+    vocabulary = policy_vocabulary()
+    if not synthetic:
+        require(evidence_class is None or evidence_class in vocabulary["evidence_classes"], "evidence_fields",
+                f"evidence.evidence_class {evidence_class!r} is not a class the committed results policy uses: "
+                f"{sorted(vocabulary['evidence_classes'])}")
+        require(review is None or review in vocabulary["clinical_reviews"], "evidence_fields",
+                f"evidence.clinical_review {review!r} is not a review status the committed results policy "
+                f"declares: {sorted(vocabulary['clinical_reviews'])}"
+                + (f" ({SYNTHETIC_REVIEW!r} is for a synthetic document only)" if review == SYNTHETIC_REVIEW
+                   else ""))
+    bad = sorted(r for r in reasons
+                 if r.partition(":")[0] not in vocabulary["restrictions"] or r.endswith(":"))
+    require(not bad, "evidence_fields",
+            f"evidence.restriction_reasons {bad} do not start with a restriction the committed results policy "
+            f"declares ({sorted(vocabulary['restrictions'])}); write the name, or the name followed by ':detail'")
     if memberships:
-        unknown = sorted(set(memberships) - declared_memberships())
+        unknown = sorted(set(memberships) - vocabulary["memberships"])
         require(not unknown, "evidence_fields",
                 f"evidence.analysis_memberships names {unknown}, which the committed results policy does not "
                 "declare")
@@ -308,7 +375,10 @@ def _validate(doc: Any, payload_root: Path | None) -> dict[str, Any]:
 
     resources = doc["resources"]
     require(execution not in NOT_EXECUTED_STATES or resources["measured"] is False, "resources_rule",
-            f"An envelope in state {execution} executed nothing, so it measures no resource")
+            f"An envelope in state {execution} executed nothing, so it measures no resource. A run directory "
+            f"written before engine commit {PREFLIGHT_RESOURCES_COMMIT} recorded a runtime for a task that ended "
+            "unavailable at preflight; such a directory is not converted or collected: run its plan again in a "
+            "new run directory")
     for key in NUMERIC_RESOURCES:
         value = resources[key]
         require(value is None or (type(value) in (int, float) and math.isfinite(value) and value >= 0),
