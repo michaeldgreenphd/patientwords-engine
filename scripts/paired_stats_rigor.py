@@ -57,12 +57,14 @@ try:  # invoked from the repo root (CLI/nightly) vs loaded by path (tests)
     from scripts.provenance_stamp import provenance
     from scripts.publication_hold import is_held
     from scripts.sign_test_exact import sign_test  # exact, unrounded; shared with urgency_shift.py
+    from scripts.tierb_split import drop_holdout_phrase_rows
 except ImportError:
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from provenance_stamp import provenance
     from publication_hold import is_held
     from sign_test_exact import sign_test
+    from tierb_split import drop_holdout_phrase_rows
 
 # Observational generation batches: the confirmatory population. Everything
 # else (steered runs, outcome-selected sets, imports, re-traces, sentinels)
@@ -114,13 +116,12 @@ def load_rows(path):
     # Phrase-keyed exclusion (2026-07-14): a phrase flagged holdout anywhere is
     # excluded everywhere, so re-runs of a holdout phrase in split-less batches
     # cannot leak into interim numbers (found by the independent replication).
-    holdout_phrases = {r["clinical_prompt"] for r in rows
-                       if r.get("tierb_split") == "holdout"}
-    kept = [r for r in rows if r["clinical_prompt"] not in holdout_phrases]
-    excluded = len(rows) - len(kept)
+    # The rule lives in scripts/tierb_split.py so tier_sensitivity.py and
+    # paired_stats.py apply the same one.
+    kept, excluded, n_holdout_phrases = drop_holdout_phrase_rows(rows)
     if excluded:
         print(f"Amendment 1: excluded {excluded} rows across "
-              f"{len(holdout_phrases)} holdout phrases from interim analysis")
+              f"{n_holdout_phrases} holdout phrases from interim analysis")
     # POPULATION-DEF option B: drop the outcome-selected supplementary sets.
     supp = [r for r in kept if r.get("batch") in _SUPPLEMENTARY_STAMPS]
     if supp:

@@ -15,6 +15,17 @@ publication-grade comparisons:
    provenance block (observed_prob patient - clinical). Pearson and Spearman,
    computed exactly (no scipy).
 
+Holdout (docs/preregistration_tierB.md, Amendment 1; phrase-keyed since
+2026-07-14): the unified-set statistics are an interim analysis, so every
+phrase the collector flagged ``tierb_split == "holdout"`` on any row is
+excluded on all of its rows before the unified set is built
+(``scripts/tierb_split.drop_holdout_phrase_rows``, the rule
+``paired_stats_rigor.load_rows`` applies). The counts go to stderr and to the
+output's ``holdout_exclusion`` block. Added 2026-11-10; the committed
+paired_stats.json and paired_stats_out.json (2026-07-08) predate Tier B. The
+validity section reads the hand-measured pairs and their live trace, not the
+row file, so the exclusion does not touch it.
+
 Usage:
   python scripts/urgency_shift.py --out urgency_shift.json   # collector first
   python scripts/paired_stats.py --rows urgency_shift.json
@@ -28,7 +39,14 @@ import json
 import math
 import random
 import re
+import sys
 from pathlib import Path
+
+try:  # repo root on sys.path vs sibling import (python scripts/paired_stats.py)
+    from scripts.tierb_split import drop_holdout_phrase_rows
+except ImportError:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from tierb_split import drop_holdout_phrase_rows
 
 parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
 parser.add_argument("--rows", default="urgency_shift.json")
@@ -90,8 +108,22 @@ def spearman(xs, ys):
 
 
 data = json.loads(Path(args.rows).read_text(encoding="utf-8"))
+# Amendment 1: holdout phrases never enter an interim statistic (module docstring).
+rows, n_holdout_rows, n_holdout_phrases = drop_holdout_phrase_rows(data["rows"])
+holdout_exclusion = {
+    "rule": ("Amendment 1, phrase-keyed: a clinical prompt flagged tierb_split == 'holdout' "
+             "on any row is excluded on every row (scripts/tierb_split.drop_holdout_phrase_rows)"),
+    "rows_read": len(data["rows"]),
+    "rows_with_split_flag": sum(1 for r in data["rows"] if r.get("tierb_split") is not None),
+    "rows_excluded": n_holdout_rows,
+    "phrases_excluded": n_holdout_phrases,
+    "rows_analyzed": len(rows),
+}
+# stderr: stdout carries the output JSON only.
+print(f"Amendment 1: excluded {n_holdout_rows} rows across {n_holdout_phrases} holdout phrases "
+      f"from interim analysis ({len(rows)} of {len(data['rows'])} rows analyzed)", file=sys.stderr)
 by_phrase = {}
-for r in data["rows"]:
+for r in rows:
     by_phrase.setdefault((r["batch"], r["index"]), {})[r["model"]] = r
 
 unified = {k: v for k, v in by_phrase.items()
@@ -99,6 +131,7 @@ unified = {k: v for k, v in by_phrase.items()
                   for m in args.models)}
 
 out = {"unified_set": {"models": args.models, "phrases": len(unified)},
+       "holdout_exclusion": holdout_exclusion,
        "per_model": {}, "paired_differences": {}, "validity": None}
 
 for m in args.models:
@@ -173,7 +206,6 @@ def _exact_side(r, side):
     recorded = (r.get("probabilities") or {}).get(side)
     if isinstance(recorded, (int, float)) and not isinstance(recorded, bool):
         return recorded, "exact"
-    import sys
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     from medlang_circuits.targets import same_token
     token = r.get("target_token")

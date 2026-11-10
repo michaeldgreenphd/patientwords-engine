@@ -21,6 +21,16 @@ spec's tier-ladder collapses (merging adjacent tiers of the 4-step ladder).
 Reads the committed collector row file (urgency_shift.json at the repo root)
 and the site advice payload; writes ops/tier_sensitivity.json. $0, offline.
 
+Holdout (docs/preregistration_tierB.md, Amendment 1; phrase-keyed since
+2026-07-14): this is an interim analysis, so every phrase the collector
+flagged ``tierb_split == "holdout"`` on any row is excluded on all of its
+rows before anything is counted. The exclusion is
+``scripts/tierb_split.drop_holdout_phrase_rows``, the rule
+``paired_stats_rigor.load_rows`` applies. The numbers of rows and phrases
+excluded are printed and written to the output's ``holdout_exclusion`` block.
+The exclusion was added on 2026-11-10: the committed ops/tier_sensitivity.json
+(2026-07-30) was computed without it.
+
 Usage:
   python scripts/tier_sensitivity.py [--rows urgency_shift.json]
       [--tiers data/urgency_tiers.draft.json]
@@ -40,10 +50,12 @@ from pathlib import Path
 # The same function urgency_shift.py and paired_stats_rigor.py use.
 try:  # repo root on sys.path (tests) vs sibling import (python scripts/tier_sensitivity.py)
     from scripts.sign_test_exact import sign_test
+    from scripts.tierb_split import drop_holdout_phrase_rows
 except ImportError:
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from sign_test_exact import sign_test
+    from tierb_split import drop_holdout_phrase_rows
 
 
 def perturbed_vocab(vocab: dict, spec: dict, scenario: str) -> dict:
@@ -68,8 +80,33 @@ def tier_of(vocab: dict, token) -> int | None:
     return e["tier"] if e and e.get("tier") is not None else None
 
 
+def interim_rows(rows: list[dict]) -> tuple[list[dict], dict]:
+    """The rows an interim analysis may count, and a record of what was left out.
+
+    Applies the phrase-keyed holdout exclusion (see the module docstring) and
+    returns ``(kept, record)``. The record holds counts only, never a phrase:
+    rows read, rows carrying any ``tierb_split`` flag, rows excluded, phrases
+    excluded and rows analyzed. ``rows_with_split_flag`` of 0 means the row
+    file was not stamped by the collector, so the exclusion had nothing to
+    act on; the caller prints that instead of reporting a clean exclusion.
+    """
+    kept, n_excluded, n_phrases = drop_holdout_phrase_rows(rows)
+    return kept, {
+        "rule": ("Amendment 1, phrase-keyed: a clinical prompt flagged tierb_split == 'holdout' "
+                 "on any row is excluded on every row (scripts/tierb_split.drop_holdout_phrase_rows)"),
+        "rows_read": len(rows),
+        "rows_with_split_flag": sum(1 for r in rows if r.get("tierb_split") is not None),
+        "rows_excluded": n_excluded,
+        "phrases_excluded": n_phrases,
+        "rows_analyzed": len(kept),
+    }
+
+
 def next_token_scenarios(rows: list[dict], vocab: dict, spec: dict) -> dict:
     """Per-model down/up + sign test under each vocabulary scenario.
+
+    Counts every row it is given: ``main`` passes only ``interim_rows`` output,
+    and any other caller must exclude the holdout the same way first.
 
     Re-tiers each flipped row's top tokens directly (the greedy-continuation
     refinement in the collector applies to a token only when the token itself
@@ -155,7 +192,13 @@ def main(argv=None) -> None:
     args = ap.parse_args(argv)
 
     rows_doc = json.loads(Path(args.rows).read_text(encoding="utf-8"))
-    rows = rows_doc["rows"] if isinstance(rows_doc, dict) else rows_doc
+    rows, holdout_exclusion = interim_rows(rows_doc["rows"] if isinstance(rows_doc, dict) else rows_doc)
+    print(f"Amendment 1: excluded {holdout_exclusion['rows_excluded']} rows across "
+          f"{holdout_exclusion['phrases_excluded']} holdout phrases from interim analysis "
+          f"({holdout_exclusion['rows_analyzed']} of {holdout_exclusion['rows_read']} rows analyzed)")
+    if not holdout_exclusion["rows_with_split_flag"]:
+        print("NOTE: no row carries a tierb_split flag, so the holdout exclusion had nothing to act on. "
+              "Rows written by scripts/urgency_shift.py after Tier B started carry the flag.")
     vocab = json.loads(Path(args.tiers).read_text(encoding="utf-8"))["tokens"]
     spec = json.loads(Path(args.spec).read_text(encoding="utf-8"))
 
@@ -173,6 +216,7 @@ def main(argv=None) -> None:
               "A claim that survives all scenarios cannot be flipped by re-tiering the flagged set. "
               "Spec: " + args.spec + "; vocabulary: " + args.tiers + " (draft, domain review pending)."),
         "flagged_tokens": {"deciders": spec["deciders"], "blockers": spec["blockers"]},
+        "holdout_exclusion": holdout_exclusion,
         "next_token": nt,
         "next_token_verdicts": v,
         "advice_pooled": adv,
