@@ -470,11 +470,13 @@ compares the record with the entry. It refuses a record of any other kind (`link
   `reference_page`. Without it the result is what it was before, plus `kind` and the three
   reference keys, which then say `reference link not requested`.
 - **Unchanged meaning for an existing reader.** With a reference, `link` is null and `reason` and
-  `detail` still say why no exact link exists (`mapping not verified`). The site page of this
-  release shows a link only for an https string under `link` with the built-link reason and the
-  status `verified_exact` (the experiments page of the companion repository, read on 2026-11-10),
-  so it shows a reference result as "no link" with that reason. It does not render the `reference`
-  record; that needs a change in the companion repository.
+  `detail` still say why no exact link exists (`mapping not verified`). The experiments page of
+  the companion repository shows an exact link only for an https string under `link` with the
+  built-link reason and the status `verified_exact`. It renders a `reference` record as a
+  reference, with the fixed label, the date read and the identity status, and never as a verified
+  link; a record it does not accept shows as "no link" with the reason
+  (`docs/experiment_interface/preview.md`, *External links*). A page older than 2026-11-10 shows a
+  reference result as "no link" with the exact-link reason.
 - **Two flags in the registry.** `links_enabled` switches exact links and needs `verified_exact`.
   `reference.enabled` switches reference links and needs the reference status and a named record.
 
