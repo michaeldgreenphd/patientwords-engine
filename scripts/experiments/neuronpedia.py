@@ -844,6 +844,14 @@ def validate_request_record(doc: Any) -> dict[str, Any]:
             and not _credential_prefixed(endpoint["host"].split("."), host=True), "secret_in_record",
             "endpoint: a path segment or a host label starts like a credential of a known issuer. It is not "
             "repeated here")
+    # The token-shape screen that an id value gets applies to every path segment and host label too: a long
+    # run of mixed letters and digits is refused wherever it sits. No exception for a commit id or a content
+    # hash in a path: no endpoint the engine calls carries one, and a record names its response by
+    # response_sha256.
+    require(not any(_token_shaped(part) for part in endpoint["path"].split("/") + endpoint["host"].split(".")),
+            "secret_in_record",
+            "endpoint: a path segment or a host label is a long run of mixed letters and digits, the form of a "
+            "token. It is not repeated here")
     settings, identity = doc["effective_request_settings"], doc["service_identity"]
     require(isinstance(settings, dict) and isinstance(identity, dict), "request_record",
             "effective_request_settings and service_identity must be objects")

@@ -1020,6 +1020,34 @@ def test_a_result_set_aside_counts_again_once_a_later_run_reuses_it_under_its_re
     assert (row["execution"], row["attempt"]) == ("completed", 1)
 
 
+def test_a_reuse_by_a_run_that_was_already_going_does_not_clear_a_changed_input_failure(
+        plan: dict, protocol: dict, tmp_path: Path) -> None:
+    """Regression (Codex, PR 167): the collector cleared a set-aside result whenever a ``reused`` line sat below
+    the failed attempt's ``started`` line. Two workers on one run directory can be given different fixture
+    directories, so a worker that was already running can write that line while the other worker's rerun under
+    changed inputs fails. Only a run that began after the attempt ended confirms the inputs."""
+    old, changed = copy_fixtures(tmp_path, "old"), copy_fixtures(tmp_path, "changed")
+    (changed / "behavior_logits.json").unlink()
+    store = RunStore(tmp_path / "run")
+    run(store, plan, protocol, fixtures_dir=old)
+    failed = run(store, plan, protocol, worker="wB", fixtures_dir=changed)          # reruns end unavailable
+    assert failed["by_state"]["unavailable"] == 9
+    reusing = run(store, plan, protocol, worker="wA", fixtures_dir=old)             # reuses the old results
+    assert reusing["reused"] == 18
+    # Run in sequence, wA began after wB's attempts ended: its reuse confirms the recorded inputs.
+    assert store.collect()["assembly"]["completed_under_superseded_inputs"] == []
+    # The same events as two overlapping workers write them: wA's run began before wB's attempts.
+    lines = journal_lines(store)
+    events = [json.loads(line) for line in lines]
+    start_a = next(i for i, e in enumerate(events) if e["event"] == "run_started" and e["worker"] == "wA")
+    start_b = next(i for i, e in enumerate(events) if e["event"] == "run_started" and e["worker"] == "wB")
+    moved = lines[:start_b] + [lines[start_a]] + lines[start_b:start_a] + lines[start_a + 1:]
+    store.journal_path.write_text("\n".join(moved) + "\n", encoding="utf-8")
+    overlapping = RunStore(tmp_path / "run").collect()["assembly"]
+    assert overlapping["counts"]["completed_under_superseded_inputs"] == 9
+    assert overlapping["ready_complete"] is False
+
+
 def test_a_later_failure_under_the_same_inputs_does_not_set_a_completed_result_aside(
         plan: dict, protocol: dict, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     # A second worker that never saw the completed result and failed twice is an honest record of that worker.

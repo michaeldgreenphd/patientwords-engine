@@ -692,16 +692,27 @@ class RunStore:
     @staticmethod
     def _journal_index(events: list[dict[str, Any]]) -> dict[str, dict[Any, Any]]:
         """What the collector reads from the journal about reuse, by position in the file: the
-        ``completed_result_not_reused`` note and the line number of each ``started`` line, and the line number
-        of the last ``reused`` line of each ``(spec_sha256, replicate)``."""
-        index: dict[str, dict[Any, Any]] = {"not_reused": {}, "started_at": {}, "last_reused": {}}
+        ``completed_result_not_reused`` note of each ``started`` line, the line number of each attempt's
+        ``ended`` line, and, for each ``(spec_sha256, replicate)``, the latest ``run_started`` line among the
+        runs that wrote a ``reused`` line for it. A reusing run's start is the nearest ``run_started`` line
+        with its run id above the ``reused`` line, so two runs that share a run id (one process, one second)
+        are still told apart by position."""
+        index: dict[str, dict[Any, Any]] = {"not_reused": {}, "ended_at": {}, "reusing_run_started_at": {}}
+        run_start: dict[Any, int] = {}
         for number, event in enumerate(events):
-            if event.get("event") == "started":
-                index["started_at"][RunStore._ident(event)] = number
+            kind = event.get("event")
+            if kind == "started":
                 if event.get("completed_result_not_reused"):
                     index["not_reused"][RunStore._ident(event)] = event["completed_result_not_reused"]
-            elif event.get("event") == "reused":
-                index["last_reused"][(event.get("spec_sha256"), event.get("replicate"))] = number
+            elif kind == "ended":
+                index["ended_at"][RunStore._ident(event)] = number
+            elif kind == "run_started":
+                run_start[event.get("run_id")] = number
+            elif kind == "reused":
+                began = run_start.get(event.get("run_id"))
+                key = (event.get("spec_sha256"), event.get("replicate"))
+                if began is not None and began > index["reusing_run_started_at"].get(key, -1):
+                    index["reusing_run_started_at"][key] = began
         return index
 
     def _superseding_attempts(self, completed: list[dict[str, Any]], group: list[dict[str, Any]],
@@ -716,10 +727,14 @@ class RunStore:
         is a planned-state record, not an execution, and does not qualify. A later failed attempt under the
         same recorded inputs (a second worker's transient failure) does not qualify either.
 
-        An attempt stops qualifying when the journal holds a ``reused`` line for the key after that attempt's
-        ``started`` line: a later run compared the completed envelope's recorded inputs with the inputs then
-        in place, found them equal and reused it (the inputs were put back). An attempt with no ``started``
-        line in the journal cannot be ordered against a ``reused`` line and keeps qualifying.
+        An attempt stops qualifying when a run that began after the attempt had ended reused the completed
+        result: that run compared the completed envelope's recorded inputs with the inputs then in place,
+        found them equal and reused it (the inputs were put back). "Began after" is read from the journal: the
+        reusing run's ``run_started`` line follows the attempt's ``ended`` line. A ``reused`` line from a run
+        that was already going while the attempt ran does not count, wherever its line sits: two workers on
+        one run directory can be given different fixture directories, so a concurrent worker's reuse says
+        nothing about the inputs the failed attempt saw. An attempt with no ``ended`` line, or a reuse whose
+        run has no ``run_started`` line, cannot be ordered and the attempt keeps qualifying.
         """
         latest = max(entry["doc"]["attempt"] for entry in completed)
         recorded = {self._recorded_inputs(entry["doc"]) for entry in completed if entry["doc"]["attempt"] == latest}
@@ -732,10 +747,10 @@ class RunStore:
             marked = journal["not_reused"].get(ident)
             differs = ("source_files_sha256" in doc["environment"]
                        and self._recorded_inputs(doc) not in recorded)
-            started_at = journal["started_at"].get(ident)
-            reused_at = journal["last_reused"].get((doc["spec_sha256"], doc["replicate"]))
-            if started_at is not None and reused_at is not None and reused_at > started_at:
-                continue  # the completed result was confirmed against the inputs after this attempt
+            ended_at = journal["ended_at"].get(ident)
+            reuse_began = journal["reusing_run_started_at"].get((doc["spec_sha256"], doc["replicate"]))
+            if ended_at is not None and reuse_began is not None and reuse_began > ended_at:
+                continue  # a run that began after this attempt ended confirmed the completed result's inputs
             if marked or differs:
                 why = ([str(item) for item in marked] if isinstance(marked, list) and marked else
                        ["the attempt's envelope records adapter source hashes or an input identity that differ "
@@ -765,8 +780,8 @@ class RunStore:
         did not complete (``_superseding_attempts``). The task is then collected in the state of its last
         attempt, so it is not counted in ``ready_completed``, and it is listed in
         ``completed_under_superseded_inputs`` with the completed envelopes that were set aside. It counts
-        again once a later attempt completes, or once a later run reuses it because the inputs it recorded
-        are in place again.
+        again once a later attempt completes, or once a run that began after that attempt ended reuses it
+        because the inputs it recorded are in place again.
 
         Per method, one recorded pair of adapter source hashes and input identity must cover every task that
         has a completed envelope. Where a task has several completed envelopes (identical payloads recorded

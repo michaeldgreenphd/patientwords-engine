@@ -156,9 +156,11 @@ The third row applies when the later attempt's `started` journal line records th
 completed result was not reused, or when its envelope records other adapter source hashes or
 another input identity than the completed envelope. A later failure under the same recorded
 inputs (a second worker's transient error) does not set a completed result aside. A result
-that was set aside counts again once a later attempt completes, or once a later run reuses
-it because the inputs it recorded are in place again (the journal then holds a `reused`
-line after the failed attempt's `started` line).
+that was set aside counts again once a later attempt completes, or once a run that began
+after the failed attempt had ended reuses it because the inputs it recorded are in place
+again (in the journal, the reusing run's `run_started` line follows the attempt's `ended`
+line). A `reused` line from a run that was already going while the attempt ran does not
+count: two workers on one run directory can be given different fixture directories.
 
 Across tasks, `collect` requires that the completed envelopes of one method can all be
 taken from one recorded pair of adapter source hashes and input identity, and refuses

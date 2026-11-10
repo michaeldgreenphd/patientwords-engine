@@ -274,9 +274,11 @@ so the check has three parts.
     underscore, so a host label is also tested against the prefixes with a hyphen in its place: a
     host label that begins `hf-` is refused. That refuses some harmless host names. The rule is kept
     because a validated record is committed to a public repository.
-  - *Token form.* A string under an id key is refused when it holds a run of more than 24 letters
+  - *Token form.* A string under an id key, a segment of the endpoint path or a label of the
+    endpoint host is refused when it holds a run of more than 24 letters
     and digits with no separator that draws on at least two of lower-case letters, upper-case
-    letters and digits. Issued tokens have that form; the ids the engine and the registry use do
+    letters and digits. A path segment and a host label have no exception: a commit id or a
+    content hash in a path is refused too, and a record names its response by `response_sha256`. Issued tokens have that form; the ids the engine and the registry use do
     not. The one exception is 40 or 64 lower-case hex digits under `model_revision`,
     `instrument_revision` or `dictionary_revision`: a commit id or a content hash. A key that ends
     in `sha256` holds 64 hex digits by its own rule.

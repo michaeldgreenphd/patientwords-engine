@@ -914,6 +914,23 @@ def test_the_endpoint_host_and_path_are_bounded() -> None:
     assert request_refusal(lambda d: d["endpoint"].update(host="hf-mirror.invalid")).code == "secret_in_record"
 
 
+def test_a_token_shaped_path_segment_or_host_label_is_refused() -> None:
+    """Regression (Codex, PR 167): the endpoint got the issuer-prefix screen only, so a long mixed run of
+    letters and digits, refused as an id value, validated as a path segment and as a host label."""
+    filler = "Ab3" * 9                                          # 27 characters, three character classes
+    assert request_refusal(lambda d: d["effective_request_settings"].update(model_id=filler)).code == \
+        "secret_in_record"                                      # the rule an id value already had
+    for change in ({"path": f"/api/{filler}"}, {"path": f"/{filler}/graph"}, {"host": f"{filler.lower()}.invalid"},
+                   {"host": f"www.{filler.lower()}.invalid"}, {"path": "/api/" + "a1" * 20}):
+        caught = request_refusal(lambda d, change=change: d["endpoint"].update(change))
+        assert caught.code == "secret_in_record", change
+        assert filler not in str(caught) and filler.lower() not in str(caught)
+    # Short segments, words and a 24-character run still validate.
+    for path in ("/api/graph/new", "/api/lens/gemma-2-2b/12", "/" + "Ab3" * 8):
+        assert nps.validate_request_record({**request_document(), "endpoint": {
+            "method": "GET", "host": "www.service.invalid", "path": path}})
+
+
 def test_refusals_of_the_other_records_repeat_no_value_that_failed_its_check(
         real: dict, fixture_registry: dict, explanations: dict, graph_ref: dict, tmp_path: Path) -> None:
     """Each case puts the sentinel where a value or a key fails a check, and reads the message."""
