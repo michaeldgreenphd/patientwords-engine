@@ -102,6 +102,11 @@ reading both sources. The differences are in behaviour.
     as the 1.5.1 reference, and `mode: depth` on one model per family that has landed depth artifacts. The landed
     interp-engine artifacts record `inference.revision: null`, so the reference cannot be tied to a checkpoint
     commit; say so in the parity record.
+    Do not re-fire `mode: verify` on that same batch with `commit_outputs: true`: the run would write
+    `verify_summary.part_01.json` at the same path and replace the landed 1.5.1 reference, and the workflow
+    uploads no artifact, so `commit_outputs: false` keeps only the job-summary text. Run the candidate on a
+    batch with no landed verify directory
+    ([first_model_run_packet_20261110.md](exploratory/first_model_run_packet_20261110.md) names one).
 11. **Pins around it.** The fork's CI tests transformers 4.57.1 (configuration only) and the resolver's latest;
     the engine's 5.14.1 lies between them, untested by the fork. Python must be `>=3.11`.
 12. **Offline doubles are not evidence.** `tests/test_model_pins.py` and `tests/test_depth_probe.py` replace

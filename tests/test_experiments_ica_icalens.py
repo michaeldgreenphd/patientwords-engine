@@ -1,7 +1,7 @@
 """Checks against the real ``icalens`` package (the reference implementation), on toy data.
 
 These tests need ``torch``, ``safetensors`` and ``icalens``, which the engine environment does not have. They
-skip there with the reason below. They run in an isolated environment (see ``docs/experiments/ica_adapter.md``,
+skip there with the reason below. They run in an isolated environment (see ``docs/experiment_interface/ica_adapter.md``,
 section "Running the reference checks")::
 
     /home/user/.venvs/ica/bin/python -m pytest -q -p no:cacheprovider tests/test_experiments_ica_icalens.py

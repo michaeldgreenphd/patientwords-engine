@@ -89,7 +89,7 @@ INTERVENTION_REASON = (
     "This adapter reads scores from captured activations. It does not clamp, steer or ablate. An intervention "
     "is a separate experiment with its own prespecified plan, controls and edit-size record: see the "
     "intervention_plan of the exploratory contract (scripts/exploratory_methods.py, "
-    "docs/exploratory/methods_integration.md) and docs/experiments/ica_adapter.md, section 'Out of scope'.")
+    "docs/exploratory/methods_integration.md) and docs/experiment_interface/ica_adapter.md, section 'Out of scope'.")
 PARITY_NOTE = ("not_established: no real model was run and no score was compared with a real-model capture. "
                "Agreement between the two execution paths is agreement of arithmetic on the same saved matrices.")
 PATH_TOLERANCE = 1e-9
