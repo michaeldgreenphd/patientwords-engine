@@ -396,7 +396,8 @@ def ci_tree(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, request: pytest.Fix
     remote = tmp_path / 'remote.git'
     # The caller's git configuration must not reach these repositories: identity,
     # signing and hooks are decided here. The two variables also cover the admission
-    # code's own git reads; -c covers a git older than those variables (2.32).
+    # code's own git reads. Git older than 2.32 ignores them, so the helper also
+    # overrides signing and the hooks directory on its own command line.
     monkeypatch.setenv('GIT_CONFIG_GLOBAL', os.devnull)
     monkeypatch.setenv('GIT_CONFIG_SYSTEM', os.devnull)
     # Not named env: the helper is returned and must keep this environment after
@@ -405,8 +406,8 @@ def ci_tree(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, request: pytest.Fix
                'GIT_AUTHOR_EMAIL': 'fixture', 'GIT_COMMITTER_EMAIL': 'fixture'}
 
     def git(*args: str) -> str:
-        done = subprocess.run(['git', '-c', 'commit.gpgsign=false', *args], cwd=root, env=git_env,
-                              capture_output=True, text=True)
+        done = subprocess.run(['git', '-c', 'commit.gpgsign=false', '-c', f'core.hooksPath={os.devnull}', *args],
+                              cwd=root, env=git_env, capture_output=True, text=True)
         assert done.returncode == 0, f'git {args} exited {done.returncode}: {done.stderr}'
         return done.stdout.strip()
 
