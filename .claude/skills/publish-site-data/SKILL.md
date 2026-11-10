@@ -201,16 +201,26 @@ read under `study-interim/1`; if step 9's `git status` shows a change outside
 
 When step 2 changed the site's `data/urgency_shift.json` (new hosted parts landed, or
 the study pin was advanced in a reviewed change), record what the statistics were
-computed from before step 9's engine commit:
+computed from. Run it after step 9's two commits, because it refuses inputs that are
+not committed (untracked parts included) and site statistics files that differ from
+the site's HEAD:
 ```
 python scripts/results_snapshot.py create --id study-interim-<UTC date> \
     --supersedes <the id `results_snapshot.py list` marks current> --site ../patientwords \
     --change "<one sentence: what landed since the previous snapshot>"
 ```
 It writes a new immutable file under `data/analysis_snapshots/` and changes no
-published number; commit it with the engine-side outputs. It refuses an existing id:
-never edit or delete a snapshot. `results_snapshot.py verify` (exit 1) means a recorded
-input changed or went missing: put it in `blockers`.
+published number; commit the file and `index.json` in a second engine commit. It
+refuses an existing id, an id that does not supersede the current snapshot of its
+membership, and a directory holding a file the index does not list: never edit or
+delete a landed snapshot. It reads the committed policy whatever `PW_RESULTS_POLICY`
+says. The snapshot records each statistics file as published, with the generation time
+the file states; it does not recompute them (`--recomputed-statistics` records a
+comparison when the owner has recomputed `model_stats.json`).
+`results_snapshot.py verify` (exit 1) means a recorded part changed or went missing,
+the current snapshot no longer describes the checkout (the pin, the tiers file or the
+membership rule changed without a superseding snapshot), or a snapshot file is not
+indexed: put it in `blockers`.
 
 ## Never
 

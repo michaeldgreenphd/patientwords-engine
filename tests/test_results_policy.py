@@ -494,3 +494,40 @@ def test_payload_rows_of_excluded_classes_and_undeclared_models_do_not_enter_and
     for reason in ("site payload row of model nobody-declared (in no declared cohort) 1",
                    "site payload scenario of a stimulus class outside this membership 1"):
         assert reason in proc.stdout, reason
+
+
+def test_a_ledger_that_is_json_but_not_an_object_is_a_release_error(root):
+    """Regression: a list or string in the ledger file raised AttributeError past every caller's handler."""
+    path = root / rp.LEDGER_PATH
+    path.parent.mkdir(parents=True, exist_ok=True)
+    for body in ("[]", '"x"'):
+        path.write_text(body, encoding="utf-8")
+        with pytest.raises(rp.ReleaseError, match="is not a"):
+            rp.load_ledger(root)
+
+
+def test_overlapping_ledger_writers_keep_each_others_first_recordings(root):
+    """Regression: two exports that overlapped each read the ledger, added their own entries and replaced
+    the file through one shared temporary name, so the last writer dropped the other's entries."""
+    import threading
+
+    barrier = threading.Barrier(8)
+    errors: list[BaseException] = []
+
+    def write(n: int) -> None:
+        try:
+            barrier.wait(timeout=10)
+            for k in range(5):
+                rp.record_parts(root, {f"trace_out/run_{n}/batch_summary.part_{k:02d}.json": f"{n:x}" * 64},
+                                recorded_utc="2020-01-01T00:00:00Z", recorded_at_commit=None)
+        except BaseException as exc:                      # noqa: BLE001 - reported by the assertion below
+            errors.append(exc)
+
+    threads = [threading.Thread(target=write, args=(n,)) for n in range(1, 9)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=30)
+    assert not errors, errors
+    assert len(rp.load_ledger(root)) == 40
+    assert [p.name for p in (root / rp.LEDGER_PATH).parent.iterdir()] == [rp.LEDGER_PATH.name]   # no stray temp

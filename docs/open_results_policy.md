@@ -81,19 +81,36 @@ selects nothing. Sealed rows are counted and never written. The site publishes i
 `data/results_catalogue/`; the publish chain regenerates it, so a new part becomes
 public without anyone approving it individually. With `--record` the exporter appends
 the sha256 of each part it reads for the first time to
-`data/results_policy/part_ledger.v1.json`. A part whose bytes later differ from its
+`data/results_policy/part_ledger.v1.json`, under a lock so overlapping exports cannot
+drop each other's entries. A part that already differs from its pin is not recorded.
+A part whose bytes later differ from its
 record is refused by every membership and listed as `changed_since_recorded`. The ledger
 cannot show a change made before a part was first recorded; git history is the record for
 that.
 
 **Analysis snapshots** (`scripts/results_snapshot.py`, files under
-`data/analysis_snapshots/`) are immutable. A snapshot fixes one membership at one
-commit: every admitted part with its sha256 (hosted parts included), the policy
-version, the exclusions with counts, the models and correction families, per-model row
-denominators with sealed rows excluded, and the hashes of the published statistics
-files. `create` refuses an existing id. A correction or an extension is a new id that
-names what it supersedes and says what changed. `verify` fails when a recorded input is
-missing or different.
+`data/analysis_snapshots/`) are immutable once they land. A snapshot fixes one
+membership at one commit: every admitted part with its sha256 (hosted parts included),
+the policy version, the exclusions with counts, the models and correction families, and
+per-model row denominators with rows at sealed pairs excluded (the catalogue's
+pair-level rule). `create` refuses an existing id, inputs that are not committed
+(untracked parts included), and a second snapshot of a membership that does not name
+the current one with `--supersedes`. A correction or an extension is a new id that says
+what changed. Snapshots read the committed policy file whatever `PW_RESULTS_POLICY`
+says.
+
+A snapshot records the published statistics files as they stood: the sha256 of each,
+and the generation time and engine commit the file states for itself. It does not
+recompute them and does not claim they reproduce from its parts. Two reasons they may
+not: a statistics file can predate a part, and the collector also takes rows from the
+site's gallery payload (recorded as `inputs.site_payload`). `--recomputed-statistics`
+records a field-by-field comparison with a file the operator has just recomputed.
+
+`verify` exits 1 when a recorded part is missing or has different bytes, when a
+snapshot file changed or is not in the index, and, for the current snapshot of a
+membership, when the membership rule, the pinned manifest or a recorded input file
+differs from the record. A superseded snapshot reports those differences without
+failing. `tests/test_results_catalogue.py` runs it over every committed snapshot.
 
 ## What did not change on 2026-11-10
 
@@ -117,8 +134,8 @@ statistics would become.
 `PW_RESULTS_POLICY=/path/to/candidate.json` makes every collector read a candidate
 policy file. Every process that loads the policy while the variable is set writes one line
 naming that file to stderr, from the loader itself, so no collector can read a candidate
-policy silently. It is for offline previews and tests. The pin advance ignores it and reads
-the committed policy.
+policy silently. It is for offline previews and tests. The pin advance and the snapshot
+tool ignore it and read the committed policy.
 `scripts/open_results_migration.py` uses it to compute the comparison in a temporary
 directory.
 

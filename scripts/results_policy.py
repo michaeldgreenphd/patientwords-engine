@@ -52,6 +52,11 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+try:                                    # advisory locking is POSIX-only; without it writes are still atomic
+    import fcntl as _fcntl
+except ImportError:                     # pragma: no cover
+    _fcntl = None                       # type: ignore[assignment]
+
 try:
     from scripts import tierb_split as _tierb_split
 except ImportError:  # run as a script from scripts/
@@ -326,7 +331,7 @@ def load_ledger(root: Path | str) -> dict[str, str]:
     except (OSError, ValueError) as exc:
         raise ReleaseError(f"{path} is unreadable: {exc}") from None
     parts = doc.get("parts") if isinstance(doc, dict) else None
-    if doc.get("schema") != LEDGER_SCHEMA or not isinstance(parts, dict) or not all(
+    if not isinstance(doc, dict) or doc.get("schema") != LEDGER_SCHEMA or not isinstance(parts, dict) or not all(
             isinstance(k, str) and isinstance(v, dict) and isinstance(v.get("sha256"), str)
             and len(v["sha256"]) == 64 for k, v in parts.items()):
         raise ReleaseError(f"{path} is not a {LEDGER_SCHEMA} ledger with a {{path: {{sha256, ...}}}} 'parts' map")
@@ -339,6 +344,21 @@ def record_parts(root: Path | str, hashes: Mapping[str, str], *, recorded_utc: s
     hash whatever is passed: the return value lists ``added`` paths and ``conflicts`` (recorded hash differs).
     Nothing is written when there is nothing to add."""
     path = Path(root) / LEDGER_PATH
+    path.parent.mkdir(parents=True, exist_ok=True)
+    # One writer at a time: the ledger is read, extended and replaced under an exclusive lock on its
+    # directory, so two overlapping exports cannot each drop the other's first recordings.
+    lock_fd = os.open(path.parent, os.O_RDONLY) if _fcntl is not None else None
+    try:
+        if lock_fd is not None:
+            _fcntl.flock(lock_fd, _fcntl.LOCK_EX)
+        return _record_parts_locked(path, root, hashes, recorded_utc, recorded_at_commit)
+    finally:
+        if lock_fd is not None:
+            os.close(lock_fd)
+
+
+def _record_parts_locked(path: Path, root: Path | str, hashes: Mapping[str, str], recorded_utc: str,
+                         recorded_at_commit: str | None) -> dict[str, list[str]]:
     if path.exists():
         load_ledger(root)                                   # refuse to extend a malformed ledger
         doc = json.loads(path.read_text(encoding="utf-8"))
@@ -359,8 +379,7 @@ def record_parts(root: Path | str, hashes: Mapping[str, str], *, recorded_utc: s
     if added:
         doc["count"] = len(doc["parts"])
         doc["parts"] = dict(sorted(doc["parts"].items()))
-        path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_suffix(path.suffix + ".tmp")
+        tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
         tmp.write_text(json.dumps(doc, indent=1) + "\n", encoding="utf-8")
         tmp.replace(path)
     return {"added": added, "conflicts": conflicts}

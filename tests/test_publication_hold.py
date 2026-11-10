@@ -527,3 +527,19 @@ def test_a_preview_override_cannot_let_the_routine_advance_the_pin(git_root, mon
     monkeypatch.setenv("PW_RESULTS_POLICY", str(tmp_path / "candidate.json"))
     with pytest.raises(SystemExit, match="never the Routine's action while analysis_pin.auto_advance is false"):
         release.main(["--repo", str(git_root), "--release"])
+
+
+def test_an_unscoped_advance_keeps_an_entry_whose_part_is_gone(git_root, monkeypatch, capsys):
+    """Regression: an unscoped release wrote only the parts now committed, so a pinned part that had been
+    deleted was dropped from the record with exit 0."""
+    monkeypatch.delenv("PW_ROUTINE", raising=False)
+    manifest = json.loads((git_root / hold.RELEASE_MANIFEST).read_text())
+    gone = "trace_out/pairs_gone__qwen3-4b/batch_summary.part_01.json"
+    manifest["parts"][gone] = "0" * 64
+    _write(git_root / hold.RELEASE_MANIFEST, manifest)
+    _land_unreleased_original_part(git_root)
+    _commit(git_root, "landed")
+    assert release.main(["--repo", str(git_root), "--release"]) == 0
+    parts = json.loads((git_root / hold.RELEASE_MANIFEST).read_text())["parts"]
+    assert parts[gone] == "0" * 64 and len(parts) == 3
+    assert "1 pinned entry names a part that is no longer committed or admissible (kept)" in capsys.readouterr().out

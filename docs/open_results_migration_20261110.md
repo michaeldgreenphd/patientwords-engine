@@ -46,7 +46,8 @@ snapshots record hosted hashes for that reason.
 ## 2. What becomes visible
 
 Parts the hold kept out of everything the publish chain wrote, now listed in the
-results catalogue with rows:
+results catalogue. Their rows are listed except those at sealed Tier B pairs, which are
+counted and not written:
 
 | Reason the study membership does not read them | Parts | Public rows |
 |---|---|---|
@@ -132,7 +133,12 @@ What changes and why:
   This is the pin's effect, not a family effect, and it is why an advance of the pin
   needs its own snapshot.
 - **The Bonferroni simultaneous interval is sized over 12 models instead of 10**
-  (alpha 0.005 → 0.004167), so it widens for every model.
+  (alpha 0.005 → 0.004167). At fixed data and fixed draws that widens an interval. In this
+  comparison it is wider for 3 of the 10 shared models and narrower for 7
+  (`penalty_ci95_simultaneous` widths in the JSON: for example `gemma-3-4b-it`
+  0.0392 → 0.0339 and `medgemma-4b-it` 0.0250 → 0.0260), because six models gain rows and
+  the shared bootstrap stream shifts for all of them. `meditron3-8b`, whose data are
+  unchanged, moves 0.0185 → 0.0180 from the stream alone.
 - **Intervals move even where data do not**, because the bootstrap consumes one random
   stream in sorted model order. `qwen3-4b`'s 95% interval is [-0.0594, -0.0333] in one
   run and [-0.0574, -0.0343] in the other; part of that is new data and part is the

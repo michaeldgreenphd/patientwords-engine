@@ -296,7 +296,10 @@ def collect(engine: Path, *, policy: rp.Policy | None = None, seal_paths: dict[s
                 summary = None
             d = rp.classify_part(engine, part, summary, policy=policy, manifest=manifest, ledger=ledger)
             decisions.append(d)
-            if d.sha256:
+            # Only bytes that pass integrity are offered to the ledger. Recording a part that already
+            # differs from its pin would make the changed bytes its first recorded hash, and restoring the
+            # original would then fail against the ledger for good.
+            if d.sha256 and d.artifact_integrity in ("unrecorded", "recorded_match"):
                 hashes[d.path] = d.sha256
             totals["parts"] += 1
             for axis in ("execution_state", "artifact_integrity", "evidence_class", "clinical_review",
@@ -568,8 +571,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.record:
         result = rp.record_parts(engine, hashes, recorded_utc=index_doc["_provenance"]["generated_utc"],
                                  recorded_at_commit=engine_sha(engine))
+        differing = index_doc["totals"]["artifact_integrity"].get("changed_since_recorded", 0)
         print(f"  ledger: {len(result['added'])} part hash(es) recorded for the first time; "
-              f"{len(result['conflicts'])} part(s) differ from their recorded hash")
+              f"{differing + len(result['conflicts'])} part(s) differ from their recorded hash"
+              + (" (not recorded; restore the recorded bytes)" if differing else ""))
     return 0
 
 

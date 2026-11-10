@@ -21,6 +21,7 @@ import csv
 import hashlib
 import io
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -492,3 +493,183 @@ def test_a_run_with_one_failed_part_and_one_intact_part_lists_the_intact_rows_an
     states = {p["name"]: p["artifact_integrity"] for p in run["parts"]}
     assert states == {"batch_summary.part_01.json": "unrecorded", "batch_summary.part_09.json": "malformed"}
     assert _gate(site) == []
+
+
+# ---------------------------------------------------------------- snapshot and ledger integrity (review, 2026-11-10)
+
+def _git(root: Path, *argv: str) -> None:
+    subprocess.run(["git", "-C", str(root), "-c", "user.email=t@example.invalid", "-c", "user.name=t",
+                    "-c", "commit.gpgsign=false", *argv], check=True, capture_output=True, text=True)
+
+
+def _commit_all(root: Path, message: str = "base") -> None:
+    if not (root / ".git").exists():
+        _git(root, "init", "-q")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", message)
+
+
+def test_a_snapshot_denominator_excludes_a_pair_sealed_through_another_runs_prompt(engine):
+    """Regression: the snapshot decided the seal row by row while the catalogue decided it per pair, so a
+    committed snapshot counted 30 rows at pairs the catalogue withholds."""
+    extended = next(f"{OPEN[2]} ext{i}" for i in range(1, 500) if tierb_split.is_holdout(f"{OPEN[2]} ext{i}"))
+    probe = _result(3)
+    probe["prompts"] = {"clinical": extended, "patient": PATIENT[2]}
+    # an unpinned part of another model seals pair 3; the study membership does not even read this part
+    _part(engine, f"{BATCH}__llama-3.2-3b", _summary([probe], "llama-3.2-3b"), "batch_summary.part_03.json")
+    path = snap.create(engine, "study-interim-20200101", rp.STUDY_INTERIM, "first snapshot", seal_paths=_seal(engine))
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    assert doc["denominators"]["study_rows_by_model"] == {"gemma-2-2b": 1, "qwen3-4b": 1}
+    assert doc["exclusions"]["study_rows_withheld_by_seal"] == {"gemma-2-2b": 2, "qwen3-4b": 2}
+
+
+def test_a_snapshot_refuses_untracked_or_modified_inputs_and_a_preview_never_becomes_current(engine):
+    """Regression: the dirty check ignored untracked files, and a hosted part needs no pin, so an untracked
+    part entered a snapshot that said its inputs were committed."""
+    _commit_all(engine)
+    seal = _seal(engine)
+    _part(engine, "repeatability_r9", _summary([_result(1)], "gemma-2-2b", "hosted"))        # untracked
+    with pytest.raises(snap.SnapshotError, match="untracked files included"):
+        snap.create(engine, "study-interim-20200101", rp.STUDY_INTERIM, "first", seal_paths=seal)
+    assert not (engine / snap.SNAPSHOT_DIR).exists() or not list((engine / snap.SNAPSHOT_DIR).glob("*.json"))
+    preview = snap.create(engine, "study-interim-preview", rp.STUDY_INTERIM, "preview", seal_paths=seal,
+                          allow_dirty=True)
+    assert json.loads(preview.read_text(encoding="utf-8"))["inputs_committed"] is False
+    index = snap.load_index(engine)
+    assert index["current"] == {} and index["snapshots"][0]["preview"] is True
+    _commit_all(engine, "landed")
+    snap.create(engine, "study-interim-20200101", rp.STUDY_INTERIM, "first", seal_paths=seal)
+    assert snap.load_index(engine)["current"] == {rp.STUDY_INTERIM: "study-interim-20200101"}
+
+
+def test_a_new_snapshot_names_the_current_one_of_its_own_membership(engine):
+    seal = _seal(engine)
+    snap.create(engine, "study-interim-20200101", rp.STUDY_INTERIM, "first", seal_paths=seal)
+    snap.create(engine, "exploratory-open-20200101", rp.EXPLORATORY_OPEN, "separate analysis", seal_paths=seal)
+    with pytest.raises(snap.SnapshotError, match="already has a current snapshot"):
+        snap.create(engine, "study-interim-20200102", rp.STUDY_INTERIM, "second", seal_paths=seal)
+    with pytest.raises(snap.SnapshotError, match="supersedes one of its own membership"):
+        snap.create(engine, "study-interim-20200102", rp.STUDY_INTERIM, "second", seal_paths=seal,
+                    supersedes="exploratory-open-20200101")
+    with pytest.raises(snap.SnapshotError, match="not 'index'"):
+        snap.create(engine, "index", rp.STUDY_INTERIM, "x", seal_paths=seal)
+    snap.create(engine, "study-interim-20200102", rp.STUDY_INTERIM, "second", seal_paths=seal,
+                supersedes="study-interim-20200101")
+    assert snap.load_index(engine)["current"][rp.STUDY_INTERIM] == "study-interim-20200102"
+    assert sorted(p.name for p in (engine / snap.SNAPSHOT_DIR).iterdir()) == [
+        "exploratory-open-20200101.json", "index.json", "study-interim-20200101.json",
+        "study-interim-20200102.json"]                                    # no temporary file is left behind
+
+
+def test_verify_fails_the_current_snapshot_when_a_recorded_input_file_or_the_pin_changes(engine, capsys):
+    """Regression: verify compared the parts only, so a changed tiers file or manifest printed OK."""
+    seal = _seal(engine)
+    tiers = engine / "data" / "urgency_tiers.draft.json"
+    _write(tiers, {"tiers": ["a"]})
+    snap.create(engine, "study-interim-20200101", rp.STUDY_INTERIM, "first", seal_paths=seal)
+    assert snap.verify(engine, "study-interim-20200101")["ok"] is True
+    _write(tiers, {"tiers": ["a", "b"]})
+    report = snap.verify(engine, "study-interim-20200101")
+    assert report["ok"] is False and report["stale"] is True
+    assert report["config_changed"] == ["data/urgency_tiers.draft.json"]
+    assert snap.main(["--engine", str(engine), "verify"]) == 1
+    assert "no longer describes this checkout" in capsys.readouterr().out
+    # a superseding snapshot records the new file; the old one then reports the difference without failing
+    snap.create(engine, "study-interim-20200102", rp.STUDY_INTERIM, "tiers changed", seal_paths=seal,
+                supersedes="study-interim-20200101")
+    old = snap.verify(engine, "study-interim-20200101")
+    assert old["ok"] is True and old["current"] is False and old["config_changed"]
+    assert snap.main(["--engine", str(engine), "verify"]) == 0
+    manifest = engine / rp.RELEASE_MANIFEST
+    doc = json.loads(manifest.read_text(encoding="utf-8"))
+    doc["parts"]["trace_out/x__qwen3-4b/batch_summary.part_01.json"] = "0" * 64
+    _write(manifest, doc)
+    assert snap.verify(engine, "study-interim-20200102")["config_changed"] == [str(rp.RELEASE_MANIFEST)]
+
+
+def test_a_snapshot_file_the_index_does_not_list_fails_verify_and_blocks_create(engine, capsys):
+    """An interrupted create could leave a snapshot file with no index entry that verify and list never saw."""
+    seal = _seal(engine)
+    path = snap.create(engine, "study-interim-20200101", rp.STUDY_INTERIM, "first", seal_paths=seal)
+    orphan = path.with_name("study-interim-20200102.json")
+    orphan.write_text(path.read_text(encoding="utf-8")[:200], encoding="utf-8")            # truncated, unindexed
+    assert snap.main(["--engine", str(engine), "verify"]) == 1
+    assert "the index does not list: study-interim-20200102.json" in capsys.readouterr().out
+    assert snap.main(["--engine", str(engine), "list"]) == 0
+    assert "NOT INDEXED: study-interim-20200102.json" in capsys.readouterr().out
+    with pytest.raises(snap.SnapshotError, match="the index does not list"):
+        snap.create(engine, "study-interim-20200103", rp.STUDY_INTERIM, "x", seal_paths=seal,
+                    supersedes="study-interim-20200101")
+    assert snap.main(["--engine", str(engine), "verify", "--id", "study-interim-20200102"]) == 2   # no traceback
+
+
+def test_a_snapshot_reads_the_committed_policy_whatever_the_preview_variable_says(engine, tmp_path, monkeypatch,
+                                                                                    capsys):
+    """Regression: with PW_RESULTS_POLICY still exported, a snapshot recorded a candidate rule under the
+    study membership's name and became current."""
+    candidate = json.loads((rp.ENGINE / rp.POLICY_PATH).read_text(encoding="utf-8"))
+    candidate["memberships"][rp.STUDY_INTERIM]["exclude_model_cohorts"] = []
+    candidate["memberships"][rp.STUDY_INTERIM]["logits_manifest"] = None
+    _write(tmp_path / "candidate.json", candidate)
+    monkeypatch.setenv(rp.POLICY_ENV, str(tmp_path / "candidate.json"))
+    path = snap.create(engine, "study-interim-20200101", rp.STUDY_INTERIM, "first", seal_paths=_seal(engine))
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    assert "gemma-4-e2b" not in doc["families"]["models"] and doc["inputs"]["n_parts"] == 3
+    assert doc["policy"]["sha256"] == hashlib.sha256((rp.ENGINE / rp.POLICY_PATH).read_bytes()).hexdigest()
+    assert "is set and is ignored here" in capsys.readouterr().err
+
+
+def test_a_snapshot_records_whether_the_published_statistics_equal_a_recomputation(engine, tmp_path):
+    """Regression: a snapshot paired today's parts with a statistics file generated earlier and said nothing
+    about whether one reproduces from the other."""
+    site = tmp_path / "site"
+    published = {"seed": 7, "boot": 100, "per_model": {"qwen3-4b": {"penalty": {"mean": -0.0466}, "n_rows": 3}},
+                 "_provenance": {"generator": "g", "engine_sha": "abc+dirty", "generated_utc": "2020-01-01T00:00:00Z"}}
+    _write(site / "data" / "model_stats.json", published)
+    same, moved = tmp_path / "same.json", tmp_path / "moved.json"
+    _write(same, {**published, "_provenance": {"generated_utc": "later"}})
+    _write(moved, {"seed": 7, "boot": 100, "per_model": {"qwen3-4b": {"penalty": {"mean": -0.0465}, "n_rows": 3}}})
+    seal = _seal(engine)
+    doc = json.loads(snap.create(engine, "study-interim-20200101", rp.STUDY_INTERIM, "first", seal_paths=seal,
+                                 site=site).read_text(encoding="utf-8"))
+    assert doc["outputs"]["reproduces_from_inputs"] == "not_checked"
+    assert doc["outputs"]["stated_provenance"]["data/model_stats.json"]["engine_sha"] == "abc+dirty"
+    assert doc["outputs"]["stated_provenance"]["data/timeline.json"] is None
+    assert doc["inputs"]["site_payload"]["path"] == "data/simulated_scenarios.json"
+    doc = json.loads(snap.create(engine, "study-interim-20200102", rp.STUDY_INTERIM, "checked", seal_paths=seal,
+                                 site=site, supersedes="study-interim-20200101",
+                                 recomputed_statistics=moved).read_text(encoding="utf-8"))
+    check = doc["outputs"]["reproduces_from_inputs"]
+    assert check["identical"] is False and check["differing_fields"] == ["/per_model/qwen3-4b/penalty/mean"]
+    assert snap.reproduction_check(site, same)["identical"] is True
+    _write(moved, {"seed": 8, "boot": 100, "per_model": {}})
+    with pytest.raises(snap.SnapshotError, match="like for like"):
+        snap.reproduction_check(site, moved)
+
+
+def test_every_committed_snapshot_verifies_and_the_directory_holds_nothing_unindexed():
+    """The committed snapshots are checked by the suite, not only when someone runs verify."""
+    index = snap.load_index(rp.ENGINE)
+    assert snap.unindexed_files(rp.ENGINE) == []
+    for entry in index["snapshots"]:
+        report = snap.verify(rp.ENGINE, entry["id"])
+        assert report["ok"], (entry["id"], report["missing"][:3], report["changed"][:3], report["config_changed"])
+
+
+def test_record_does_not_store_the_hash_of_a_part_that_already_fails_its_pin(engine, tmp_path, capsys):
+    """Regression: --record stored the hash of a pinned part whose bytes had changed. After the part was
+    restored, the manifest wanted the original and the ledger the changed bytes, for good."""
+    out = tmp_path / "out"
+    target = engine / "trace_out" / f"{BATCH}__qwen3-4b" / "batch_summary.part_01.json"
+    rel = target.relative_to(engine).as_posix()
+    original = target.read_bytes()
+    _write(target, _summary([_result(1, -0.9)], "qwen3-4b"))                     # differs from the manifest
+    assert _export(engine, out, "--record") == 0
+    assert "1 part(s) differ from their recorded hash (not recorded" in capsys.readouterr().out
+    assert rel not in rp.load_ledger(engine)
+    target.write_bytes(original)                                                 # the release condition
+    assert _export(engine, out, "--record") == 0
+    assert "0 part(s) differ from their recorded hash" in capsys.readouterr().out
+    assert rp.load_ledger(engine)[rel] == hashlib.sha256(original).hexdigest()
+    part = next(p for p in _runs(out)[f"{BATCH}__qwen3-4b"]["parts"] if p["name"].endswith("part_01.json"))
+    assert part["artifact_integrity"] == "recorded_match"

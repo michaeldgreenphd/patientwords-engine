@@ -155,6 +155,14 @@ def main(argv: list[str] | None = None) -> int:
         print(f"scoped to {sorted(only)}: {len(added)} new part(s) pinned, {len(manifest)} kept"
               + (f" ({len(gone)} of them name a part that is no longer committed or admissible: "
                  f"{', '.join(gone[:3])})" if gone else ""))
+    else:
+        # An unscoped advance also only adds. An entry whose part is gone stays, named, so a deleted pinned
+        # part is seen as a missing input and is not silently dropped from the record.
+        gone = sorted(set(manifest) - set(current))
+        current = {**manifest, **{p: h for p, h in current.items() if p not in manifest}}
+        if gone:
+            print(f"{len(gone)} pinned entr{'y names' if len(gone) == 1 else 'ies name'} a part that is no "
+                  f"longer committed or admissible (kept): {', '.join(gone[:3])}")
     doc = {"schema": MANIFEST_SCHEMA,
            "released_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
            "released_at_commit": _git(root, "rev-parse", "HEAD").strip(),
