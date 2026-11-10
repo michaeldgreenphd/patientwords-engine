@@ -47,6 +47,14 @@ _SCHEMA_SPEC = importlib.util.spec_from_file_location(
 assert _SCHEMA_SPEC is not None and _SCHEMA_SPEC.loader is not None
 _SCHEMA_ADAPTER = importlib.util.module_from_spec(_SCHEMA_SPEC)
 _SCHEMA_SPEC.loader.exec_module(_SCHEMA_ADAPTER)
+# The experiments page's index (scripts/export_experiment_index.py) has its check in a sibling module, loaded
+# the same way. It reads only scripts/ of the engine.
+_INDEX_SPEC = importlib.util.spec_from_file_location(
+    "_patientwords_experiment_index_contract", Path(__file__).resolve().with_name("experiment_index_contract.py"))
+assert _INDEX_SPEC is not None and _INDEX_SPEC.loader is not None
+_INDEX_CONTRACT = importlib.util.module_from_spec(_INDEX_SPEC)
+_INDEX_SPEC.loader.exec_module(_INDEX_CONTRACT)
+check_experiment_index = _INDEX_CONTRACT.check_experiment_index
 
 # One structural authority for this artifact, also referenced by the HTTP contract.
 SIMULATED_SCHEMA_PATH = Path(__file__).resolve().parent / "contracts" / "simulated_scenarios.v1.schema.json"
@@ -1797,6 +1805,7 @@ def validate(site: Path, engine: Path | None, strict: bool = False, send_waivers
     check_owner_run(rep, site, send_waivers)
     check_jev_payloads(rep, site)
     check_results_catalogue(rep, site)
+    check_experiment_index(rep, site)
     if engine is not None and engine.is_dir():
         check_engine_copies(rep, site, engine)
     if strict:

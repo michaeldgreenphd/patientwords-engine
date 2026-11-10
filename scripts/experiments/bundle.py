@@ -2,7 +2,8 @@
 
 The bundle is the one file a browser preview reads: a protocol summary, plan totals, the per-family comparison
 blocks, the capability rows the plan used, evidence labels, provenance hashes and limitations. It copies no
-prompt text and no target text. It holds no clock value, so the same run directory gives the same bytes.
+target text, and no prompt text unless the explicit export described below applies. It holds no clock value,
+so the same run directory gives the same bytes.
 
 Fields added to version 1 on 2026-11-10 (second review round). Each is additive and optional in the schema, so
 a reader of an earlier bundle finds them absent and a reader that ignores them is unaffected:
@@ -17,15 +18,38 @@ a reader of an earlier bundle finds them absent and a reader that ignores them i
   reuse events. These are counts of journal lines, not timings.
 * ``execution.completed_under_superseded_inputs``: see ``scripts/experiments/store.py``.
 
+Explicit prompt-text export (added 2026-11-10, optional in the schema). ``build_bundle`` writes
+``protocol.families[].variant_text.<variant>`` (``prompt`` and ``prompt_sha256``) and
+``protocol.families[].prompt_text_export`` only when all of these hold:
+
+* the caller passes the protocol document (``bundle --protocol``), and its digest is the plan's protocol hash
+  (``protocol_mismatch`` otherwise);
+* the family's ``facts`` list holds the marker ``publication:prompt_text_approved`` (``PROMPT_TEXT_MARKER``).
+  A family without the marker has no ``variant_text``. The marker is part of the protocol, so it is part of
+  the protocol hash every task of the run is bound to;
+* the family has tasks in the plan (an excluded family has none) and each prompt's SHA-256 is the hash the
+  plan's tasks record for that variant (``prompt_hash`` otherwise);
+* for a non-synthetic protocol: the evidence block says ``public`` with no restriction reason
+  (``prompt_text_restricted`` otherwise), and the seal check that protocol validation applies passes again
+  at export time for the family's legacy row and for every variant prompt (``holdout_refusal`` otherwise; a
+  seal that cannot be evaluated raises ``SealError`` and nothing is written). A refusal names the family and
+  the variant and never repeats text.
+
+A synthetic protocol's placeholder text is exported under the same marker without a seal check, as protocol
+validation does for it; the bundle stays ``synthetic_fixture`` and ``not_published``. ``variant_inputs`` is
+unchanged and stays closed: a hash entry cannot hold text.
+
 A bundle built from a synthetic protocol always lists ``synthetic_not_measurement``. It is a rendering input
 for a preview and is not a publication artifact: its evidence block says ``not_published``.
 """
 from __future__ import annotations
 
 import platform
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable, Mapping
 
-from scripts.experiments.common import BUNDLE_SCHEMA, digest, read_json, require_structure
+from scripts.experiments.common import (
+    BUNDLE_SCHEMA, digest, prompt_digest, read_json, require, require_structure,
+)
 from scripts.experiments.compare import compare_run
 from scripts.experiments.store import TIMING_CAVEAT, RunStore
 
@@ -46,10 +70,87 @@ GENERAL_LIMITATIONS = (
     "first_target_token_only_no_sequence_scoring",
     "blocks_are_separate_and_never_combined_into_one_score",
 )
+# The marker a protocol family carries in ``facts`` when its prompt text is approved for publication. The
+# protocol schema is closed and has no dedicated field for this; ``facts`` is the per-family list of strings
+# the existing validator accepts. See docs/experiment_interface/preview.md, *Prompt text*.
+PROMPT_TEXT_MARKER = "publication:prompt_text_approved"
+RowRestriction = Callable[[str | None, int | None, str | None], str | None]
 
 
-def build_bundle(run_dir: Any, *, allow_roots: Iterable[Any] = ()) -> dict[str, Any]:
-    """The bundle document for a collected run directory. Reads only; the caller writes it."""
+def _default_row_restriction() -> RowRestriction:
+    from scripts import results_policy
+
+    return results_policy.row_restriction
+
+
+def approved_prompt_text(protocol: Mapping[str, Any] | None, plan: Mapping[str, Any],
+                         variant_inputs: Mapping[str, Mapping[str, Mapping[str, Any]]],
+                         row_restriction: RowRestriction | None = None) -> dict[str, dict[str, Any]]:
+    """``{family_id: {"variant_text": {...}, "prompt_text_export": {...}}}`` for the families whose prompt
+    text may be written into a bundle. Empty when no protocol is passed or no family carries the marker.
+
+    The rules are in this module's docstring. ``row_restriction`` defaults to
+    ``scripts.results_policy.row_restriction``; tests pass a stub so that no sealed text is read. It is not
+    called for a synthetic protocol.
+    """
+    if protocol is None:
+        return {}
+    require(isinstance(protocol, Mapping) and digest(dict(protocol)) == plan["protocol"]["sha256"],
+            "protocol_mismatch", "The protocol passed for prompt-text export is not the protocol this run's plan "
+            "was built from")
+    marked = [family for family in protocol["case_families"] if PROMPT_TEXT_MARKER in family.get("facts", [])]
+    if not marked:
+        return {}
+    synthetic = plan["synthetic"]
+    if not synthetic:
+        evidence = plan["evidence"]
+        reasons = evidence.get("restriction_reasons", [])
+        require(evidence.get("visibility") == "public" and not reasons, "prompt_text_restricted",
+                f"Prompt text is exported only for a protocol whose evidence block says visibility 'public' "
+                f"with no restriction reason; this one says {evidence.get('visibility')!r} with {len(reasons)} "
+                "restriction reason(s)")
+    check = None if synthetic else (row_restriction or _default_row_restriction())
+    out: dict[str, dict[str, Any]] = {}
+    for family in marked:
+        family_id, variants = family["family_id"], family["variants"]
+        if family_id not in variant_inputs:
+            continue  # an excluded family has no task; nothing of it was run, so nothing of it is exported
+        if check is not None:
+            join = family.get("legacy_join")
+            if join is not None:
+                restriction = check(join["batch"], join["batch_index"], variants.get("clinical", {}).get("prompt"))
+                require(restriction is None, "holdout_refusal",
+                        f"{family_id}: legacy row ({join['batch']}, {join['batch_index']}) is restricted: "
+                        f"{restriction}; its prompt text is not exported")
+            for name in sorted(variants):
+                if not variants[name]["prompt"]:
+                    continue
+                restriction = check(None, None, variants[name]["prompt"])
+                require(restriction is None, "holdout_refusal",
+                        f"{family_id}:{name}: the variant's prompt is restricted: {restriction}; its text is "
+                        "not exported")
+        text: dict[str, dict[str, str]] = {}
+        for name in sorted(variants):
+            recorded = variant_inputs[family_id].get(name, {}).get("prompt_sha256")
+            require(recorded is not None and prompt_digest(variants[name]["prompt"]) == recorded, "prompt_hash",
+                    f"{family_id}:{name}: the protocol's prompt is not the prompt the plan's tasks were built "
+                    "from (SHA-256 differs or the variant has no task)")
+            text[name] = {"prompt": variants[name]["prompt"], "prompt_sha256": recorded}
+        out[family_id] = {
+            "variant_text": text,
+            "prompt_text_export": {
+                "basis": "protocol_marker", "marker": PROMPT_TEXT_MARKER,
+                "seal_check": "not_applicable_synthetic" if synthetic else "passed_at_export"}}
+    return out
+
+
+def build_bundle(run_dir: Any, *, allow_roots: Iterable[Any] = (), protocol: Mapping[str, Any] | None = None,
+                 row_restriction: RowRestriction | None = None) -> dict[str, Any]:
+    """The bundle document for a collected run directory. Reads only; the caller writes it.
+
+    ``protocol`` is the protocol document the plan was built from. It is needed only for the explicit
+    prompt-text export (module docstring); without it the bundle holds hashes and no text.
+    """
     store = RunStore(run_dir, allow_roots=allow_roots)
     comparison = compare_run(run_dir, allow_roots=allow_roots)
     collected, plan = store.read_collected(), store.read_plan()
@@ -77,8 +178,10 @@ def build_bundle(run_dir: Any, *, allow_roots: Iterable[Any] = ()) -> dict[str, 
         variant_inputs.setdefault(spec["family_id"], {})[spec["variant"]] = {
             "prompt_sha256": spec["input"]["prompt_sha256"], "token_sha256": spec["input"]["token_sha256"],
             "n_tokens": task["estimate"]["tokens"]}
+    prompt_text = approved_prompt_text(protocol, plan, variant_inputs, row_restriction)
     families = [{**family, "variant_inputs": {name: variant_inputs[family["family_id"]][name]
-                                              for name in sorted(variant_inputs[family["family_id"]])}}
+                                              for name in sorted(variant_inputs[family["family_id"]])},
+                 **prompt_text.get(family["family_id"], {})}
                 if family["family_id"] in variant_inputs else dict(family) for family in summary["families"]]
     events = store.read_journal()
     journal_counts = {"executed_attempts": sum(1 for e in events if e.get("event") == "started"),

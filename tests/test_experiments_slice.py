@@ -101,6 +101,36 @@ def test_the_whole_slice_runs_interrupts_resumes_and_reuses(tmp_path: Path) -> N
     assert all(block["preprocessing_read_from"] for block in blocks)
 
 
+def test_the_slice_exports_placeholder_prompt_text_only_for_marked_families(tmp_path: Path) -> None:
+    """The explicit prompt-text export through the command line (added 2026-11-10). The marker is one string in
+    a family's ``facts``; it changes the protocol hash, so the marked protocol is a different run."""
+    marked = json.loads(PROTOCOL.read_text(encoding="utf-8"))
+    marked["case_families"][0]["facts"].append("publication:prompt_text_approved")
+    path, plan, runs = tmp_path / "marked.json", tmp_path / "plan.json", tmp_path / "runs"
+    path.write_text(json.dumps(marked), encoding="utf-8")
+    assert cli("validate", "--protocol", str(path))["protocol_sha256"] != cli(
+        "validate", "--protocol", str(PROTOCOL))["protocol_sha256"]
+    cli("plan", "--protocol", str(path), "--out", str(plan))
+    cli("run-fixture", "--plan", str(plan), "--fixtures", str(FX), "--protocol", str(path), "--run-dir", str(runs))
+    cli("collect", "--run-dir", str(runs), "--require-complete")
+    plain = cli("bundle", "--run-dir", str(runs), "--out", str(tmp_path / "plain.json"))
+    assert plain["prompt_text_families"] == []
+    prompts = {f["family_id"]: [e["prompt"] for e in f["variants"].values()] for f in marked["case_families"]}
+    assert not [p for group in prompts.values() for p in group if p in (tmp_path / "plain.json").read_text("utf-8")]
+    exported = cli("bundle", "--run-dir", str(runs), "--out", str(tmp_path / "text.json"), "--protocol", str(path))
+    assert exported["prompt_text_families"] == ["fam-1"] and exported["limitations"][0] == "synthetic_not_measurement"
+    bundle = json.loads((tmp_path / "text.json").read_text(encoding="utf-8"))
+    families = {f["family_id"]: f for f in bundle["protocol"]["families"]}
+    assert [v["prompt"] for v in families["fam-1"]["variant_text"].values()] == [
+        marked["case_families"][0]["variants"][name]["prompt"] for name in sorted(families["fam-1"]["variant_text"])]
+    assert "variant_text" not in families["fam-2"] and "variant_text" not in families["fam-3"]
+    assert bundle["evidence"]["evidence_class"] == "synthetic_fixture" and bundle["evidence"]["visibility"] == (
+        "not_published")
+    refused = cli("bundle", "--run-dir", str(runs), "--out", str(tmp_path / "wrong.json"), "--protocol",
+                  str(PROTOCOL), expect=2)
+    assert refused["code"] == "protocol_mismatch" and not (tmp_path / "wrong.json").exists()
+
+
 def test_a_changed_input_is_new_work_and_is_refused_in_the_old_run_directory(tmp_path: Path) -> None:
     plan, runs = tmp_path / "plan.json", tmp_path / "runs"
     cli("plan", "--protocol", str(PROTOCOL), "--out", str(plan))

@@ -1,26 +1,34 @@
-"""Preview one synthetic experiment bundle in the site's viewer page. No model, no measurement, no publication.
+"""Preview one synthetic experiment bundle in the site's experiments page. No model, no measurement, no publication.
 
     python scripts/check_experiment_preview.py --site ../patientwords [--browser CHROMIUM] [--receipt FILE]
         [--shots DIR]
 
 What runs, in order:
 
-1. The site checkout is copied to a temporary directory (``.git``, caches and ``modes/`` are left out; the viewer
+1. The site checkout is copied to a temporary directory (``.git``, caches and ``modes/`` are left out; the page
    references nothing under ``modes/``).
 2. The experiment command line (``python -m scripts.experiments.cli``) takes the synthetic fixture protocol
-   through validate, plan, an interrupted run, a resumed run, collect, compare and bundle. Its outputs go to a
-   work directory in the temporary tree. The command line refuses any path that has a ``data`` component, so the
-   finished bundle is copied, as a plain file, into the COPY's ``data/experiment_preview/``. Nothing is written
-   into the real site or into either checkout.
+   through validate, plan, an interrupted run, a resumed run, collect, compare and bundle. The protocol it
+   runs is a copy written in the temporary tree, with the prompt-text marker added to two of the three
+   families (``TEXT_FAMILIES``), so that one bundle shows both the explicit prompt-text export and the
+   "prompt text is not in this bundle" state. Its outputs go to a work directory in the temporary tree. The
+   command line refuses any path that has a ``data`` component, so the finished bundle is copied, as a plain
+   file, into the COPY's ``data/experiment_preview/``. Nothing is written into the real site or into either
+   checkout.
 3. The copy is served over HTTP on an ephemeral loopback port under ``/patientwords/``, and Chromium opens the
    real page, ``experiments/index.html``, with its real JavaScript.
 4. The rendered text is compared with values this script works out itself: the softmax of the fixture logits,
-   and the hand-computed ICA scores of the toy basis. They are not read back from the bundle. The four things
-   added to bundle version 1 on 2026-11-10 are compared the same way: prompt and token hashes and token counts
-   with the fixture protocol file, the ICA preprocessing mode with the protocol's method block, and the
-   executed and reused counts with the summaries the command line printed in step 2.
-5. Deliberate defects are served, each followed by a restored pass. One of them is a copy of the bundle
-   without those four additions, as a bundle written before them: the page must render it and say
+   and the hand-computed ICA scores of the toy basis. They are not read back from the bundle. The fields added
+   to bundle version 1 on 2026-11-10 are compared the same way: prompt and token hashes, token counts and the
+   exported prompt text with the protocol file, the ICA preprocessing mode with the protocol's method block,
+   and the executed and reused counts with the summaries the command line printed in step 2. The position of
+   every dot of the target-token probability plot is measured in the browser and compared with its value.
+5. The page with no address parameter is checked against the site's own ``data/experiments/index.json`` (it
+   lists nothing today), then against an index the real writer (``scripts/export_experiment_index.py``) builds
+   in the copy: the synthetic bundle is never listed; a copy of it relabelled as publishable, which exists
+   only in the temporary tree, is listed and its link opens it.
+6. Deliberate defects are served, each followed by a restored pass. One of them is a copy of the bundle
+   without the 2026-11-10 additions, as a bundle written before them: the page must render it and say
    "not in this bundle" in each place.
 
 This is a software check of a viewer on hand-written numbers. It loads no model and says nothing about one.
@@ -60,6 +68,18 @@ REGISTRY_FIXTURE = FIXTURES / "neuronpedia" / "representation_registry.fixture.j
 
 PAGE = "experiments/index.html"
 BUNDLE_PARAM = "experiment_preview/bundle.json"
+INDEX_FILE = "experiments/index.json"
+INDEX_SCHEMA = "patientwords.experiment-index/1"
+INDEX_WRITER = ROOT / "scripts" / "export_experiment_index.py"
+INDEX_CONTRACT = ROOT / "scripts" / "experiment_index_contract.py"
+INDEX_SCHEMA_FILE = ROOT / "scripts" / "contracts" / "experiment_index.v1.schema.json"
+# Where the relabelled copy of the fixture bundle is served for the listing check. It exists only in the
+# temporary copy of the site.
+RELABELLED_PARAM = "experiments/relabelled_fixture.json"
+# The marker scripts/experiments/bundle.py reads in a family's ``facts`` (a literal, not an import, so that a
+# renamed marker fails here), and the fixture families this check marks. The third family stays unmarked.
+PROMPT_TEXT_MARKER = "publication:prompt_text_approved"
+TEXT_FAMILIES = ("fam-1", "fam-2")
 BUNDLE_SCHEMA = "patientwords.experiment-bundle/1"
 RECEIPT_SCHEMA = "patientwords.experiment-preview-receipt/1"
 EVIDENCE = "local synthetic software test only"
@@ -69,11 +89,35 @@ EXIT_PASS, EXIT_FAILED, EXIT_SETUP = 0, 1, 2
 
 # Text the page prints. The checks compare rendered text, so these are the reader-visible strings.
 SYNTHETIC_TEXT = "synthetic fixture - not a measurement"
-IDLE_SENTENCES = (
-    "This page displays method-comparison bundles exported by the engine's experiment interface.",
-    "No study bundle is published yet.",
-    "Synthetic fixtures are never published.",
-)
+EMPTY_HEAD = "No experiment comparisons published yet"
+EMPTY_ROUTES = ("../results/", "../methods.html")
+# Reader-facing label -> the schema term it stands for. The page shows the label and keeps the term in its
+# Methods & source section (and beside the value where the label names one field).
+READER_LABELS = {
+    "Compare methods": "method-comparison bundle",
+    "Cases": "Case families",
+    "Run status": "Execution state",
+    "Included in analysis": "Analysis membership",
+    "Study version": "analysis pin",
+    "Methods & source": "Provenance",
+}
+SCHEMA_TERMS = ("evidence.analysis_memberships", "protocol.sha256", "execution.by_state", "protocol.families",
+                "patientwords.experiment-bundle/1")
+# Headings the page had before 2026-11-10. None may be a heading or a column head any more.
+RETIRED_HEADINGS = ("Method-comparison bundles", "Case families", "Execution state", "Analysis membership",
+                    "Analysis pin", "Provenance")
+ENDPOINT_LABEL = "Target-token probability"
+ENDPOINT_FIRST_TOKEN = "first encoded token"
+# What the endpoint must never be called in a heading, a column head or a label.
+FORBIDDEN_IN_LABELS = ("accuracy", "risk", "understanding", "combined", "composite", "overall")
+SCORE_LABEL = "signed component score"
+OPEN_ALL, CLOSE_ALL = "Open every case", "Close every case"
+CONFLICT = "two comparison blocks record different values"
+# Section and control ids that links and scripts/check_pages.py rely on. All must stay on the page.
+STABLE_IDS = ("main", "exp-idle", "exp-state", "exp-results", "evidence", "protocol", "families", "methods",
+              "totals", "links", "provenance", "limitations", "exp-evidence", "exp-protocol", "exp-families",
+              "exp-methods-body", "exp-totals", "exp-links", "exp-provenance", "exp-limitations", "exp-fam-toggle",
+              "exp-index-list")
 NOT_RECORDED = "state not recorded"
 WINDOW_MISS = "not observed in the top-k window"
 NO_INTERVENTION = "no intervention in this bundle"
@@ -245,6 +289,47 @@ def expected_ica(protocol: Mapping[str, Any]) -> dict[tuple[str, str, int], dict
 
 # ------------------------------------------------------------------------------------------ added bundle fields
 
+def marked_protocol(protocol: Mapping[str, Any], families: Sequence[str] = TEXT_FAMILIES) -> dict[str, Any]:
+    """A copy of ``protocol`` with the prompt-text marker in the ``facts`` of the named families. The marker is
+    part of the protocol, so the copy has another protocol hash and is a different run. Raises ``ValueError``
+    when a named family is absent."""
+    doc = copy.deepcopy(dict(protocol))
+    known = {family["family_id"] for family in doc["case_families"]}
+    if not set(families) <= known:
+        raise ValueError(f"the fixture protocol has no family {sorted(set(families) - known)}")
+    for family in doc["case_families"]:
+        if family["family_id"] in families and PROMPT_TEXT_MARKER not in family["facts"]:
+            family["facts"].append(PROMPT_TEXT_MARKER)
+    return doc
+
+
+def expected_prompt_text(protocol: Mapping[str, Any]) -> dict[tuple[str, str], str | None]:
+    """``{(family, variant): text or None}``: the prompt text the page must show for a variant of a marked
+    family, and None where the bundle may hold no text. Read from the protocol, not from the bundle."""
+    return {(family["family_id"], name): (entry["prompt"] if PROMPT_TEXT_MARKER in family["facts"] else None)
+            for family in protocol["case_families"] for name, entry in family["variants"].items()}
+
+
+def relabelled_as_publishable(bundle: Mapping[str, Any]) -> dict[str, Any]:
+    """A copy of a fixture bundle whose labels say it may be published: not synthetic, visibility ``public``,
+    no restriction reason. It is still hand-written fixture numbers. It exists so that the listing path of the
+    index writer and of the page can be exercised, and it is written only into a temporary tree.
+
+    Exported prompt text is removed: text exported under the synthetic rule was never asked of the holdout
+    seal, so a copy that claims to be publishable must not carry it."""
+    doc = copy.deepcopy(dict(bundle))
+    doc["protocol"]["synthetic"] = False
+    doc["evidence"].update({"synthetic": False, "evidence_class": "unclassified",
+                            "clinical_review": "domain_review_pending", "visibility": "public",
+                            "restriction_reasons": [], "analysis_memberships": []})
+    doc["limitations"] = [code for code in doc["limitations"] if not code.startswith(("synthetic_", "no_real_model",
+                                                                                      "fixture_timings"))]
+    for family in doc["protocol"]["families"]:
+        family.pop("variant_text", None)
+        family.pop("prompt_text_export", None)
+    return doc
+
+
 def expected_variant_inputs(protocol: Mapping[str, Any]) -> dict[tuple[str, str], dict[str, str]]:
     """``{(family, variant): {prompt_sha256, token_sha256, n_tokens}}`` as the page must print them, read from
     the fixture protocol file. Hashes and a count; the prompt text itself is never expected on the page."""
@@ -276,20 +361,25 @@ def expected_journal_counts(cli_steps: Sequence[Mapping[str, Any]]) -> dict[str,
 
 
 def without_added_fields(bundle: Mapping[str, Any]) -> dict[str, Any]:
-    """A copy of ``bundle`` as it was written before 2026-11-10: no ``variant_inputs``, no ICA preprocessing
-    fields, no executed or reused count. It must still be a valid version 1 bundle and the page must render it.
-    Raises ``ValueError`` when the bundle carries none of them, so that the check cannot pass on a bundle that
-    never had the fields."""
+    """A copy of ``bundle`` as it was written before 2026-11-10: no ``variant_inputs``, no exported prompt text
+    (``variant_text``, ``prompt_text_export``), no ICA preprocessing fields, no ``vocabulary_size`` in a
+    behaviour block, no executed or reused count. It must still be a valid version 1 bundle and the page must
+    render it. Raises ``ValueError`` when the bundle carries none of them, so that the check cannot pass on a
+    bundle that never had the fields."""
     doc = copy.deepcopy(dict(bundle))
     removed = 0
     for family in doc["protocol"]["families"]:
         removed += family.pop("variant_inputs", None) is not None
+        removed += family.pop("variant_text", None) is not None
+        family.pop("prompt_text_export", None)
     for family in doc["comparisons"]:
         for entry in family["comparisons"]:
             block = entry.get("ica")
             if isinstance(block, dict):
                 removed += block.pop("preprocessing_mode", None) is not None
                 block.pop("preprocessing_read_from", None)
+            if isinstance(entry.get("behavior"), dict):
+                removed += entry["behavior"].pop("vocabulary_size", None) is not None
     for key in ("executed_attempts", "reused_events"):
         removed += doc["execution"]["counts"].pop(key, None) is not None
     if not removed:
@@ -371,6 +461,7 @@ def new_receipt(site: Path, receipt_path: Path | None) -> dict[str, Any]:
     fixtures = [p for p in FIXTURES.rglob("*") if p.is_file() and "__pycache__" not in p.parts]
     tools = [Path(__file__).resolve(), ROOT / "schemas" / "experiments" / "bundle.v1.schema.json",
              ROOT / "data" / "experiments" / "capability_matrix.v1.json",
+             INDEX_WRITER, INDEX_CONTRACT, INDEX_SCHEMA_FILE,
              *[p for p in (ROOT / "scripts" / "experiments").rglob("*.py")]]
     page = site / PAGE
     return {
@@ -384,6 +475,8 @@ def new_receipt(site: Path, receipt_path: Path | None) -> dict[str, Any]:
         "engine": identity(ROOT, receipt_path),
         "frontend": identity(site, receipt_path),
         "page_sha256": {PAGE: sha256_file(page) if page.is_file() else None},
+        "protocol_run": f"tests/fixtures/experiments/{PROTOCOL.name} with {PROMPT_TEXT_MARKER!r} added to the facts "
+                        f"of {list(TEXT_FAMILIES)}, written in the temporary tree",
         "fixture_sha256": file_hashes(ROOT, fixtures),
         "tool_sha256": file_hashes(ROOT, [p for p in tools if p.is_file()]),
         "versions": {"python": sys.version.split()[0], "playwright": None, "chromium": None},
@@ -445,20 +538,27 @@ def run_cli(*argv: str, expect: int = 0) -> dict[str, Any]:
         raise SetupProblem(f"experiment command line step {argv[0]!r} printed no JSON: {proc.stdout[-400:]}") from exc
 
 
-def build_bundle(work: Path, receipt: dict[str, Any]) -> Path:
+def build_bundle(work: Path, receipt: dict[str, Any], protocol: Mapping[str, Any] | None = None) -> Path:
     """Run the synthetic slice through the real command line, with one interruption and a resume.
 
-    Returns the bundle path inside ``work``. Each step's summary goes into ``receipt['cli_steps']``.
+    ``protocol`` is the protocol document to run; the default is the fixture protocol with the prompt-text
+    marker on ``TEXT_FAMILIES``. It is written into ``work`` and every step names that file, so the bundle
+    step can export the marked families' placeholder text. Returns the bundle path inside ``work``. Each
+    step's summary goes into ``receipt['cli_steps']``.
     """
     steps = receipt["cli_steps"]
     plan, runs, bundle = work / "plan.json", work / "runs", work / "bundle.json"
-    validated = run_cli("validate", "--protocol", str(PROTOCOL))
+    source = work / "protocol_marked.json"
+    document = protocol if protocol is not None else marked_protocol(json.loads(PROTOCOL.read_text(encoding="utf-8")))
+    source.write_text(json.dumps(document), encoding="utf-8")
+    validated = run_cli("validate", "--protocol", str(source))
     steps.append({"step": "validate", "status": validated.get("status"), "synthetic": validated.get("synthetic"),
                   "protocol_sha256": validated.get("protocol_sha256")})
-    planned = run_cli("plan", "--protocol", str(PROTOCOL), "--out", str(plan))
+    planned = run_cli("plan", "--protocol", str(source), "--out", str(plan))
     steps.append({"step": "plan", "tasks": planned["totals"]["tasks"],
                   "by_planned_state": planned["totals"]["by_planned_state"]})
-    run = ("run-fixture", "--plan", str(plan), "--fixtures", str(FIXTURES), "--run-dir", str(runs))
+    run = ("run-fixture", "--plan", str(plan), "--fixtures", str(FIXTURES), "--protocol", str(source),
+           "--run-dir", str(runs))
     first = run_cli(*run, "--stop-after", "5")
     steps.append({"step": "run-fixture --stop-after 5", "executed": first["executed"], "reused": first["reused"],
                   "stopped_early": first["stopped_early"], "remaining_ready": first["remaining_ready"]})
@@ -471,8 +571,9 @@ def build_bundle(work: Path, receipt: dict[str, Any]) -> Path:
     compared = run_cli("compare", "--run-dir", str(runs), "--out", str(work / "compare.json"))
     steps.append({"step": "compare", "behavior_blocks_computed": compared["behavior_blocks_computed"],
                   "ica_blocks_computed": compared["ica_blocks_computed"]})
-    bundled = run_cli("bundle", "--run-dir", str(runs), "--out", str(bundle))
-    steps.append({"step": "bundle", "schema_version": bundled["schema_version"], "by_state": bundled["by_state"]})
+    bundled = run_cli("bundle", "--run-dir", str(runs), "--out", str(bundle), "--protocol", str(source))
+    steps.append({"step": "bundle --protocol", "schema_version": bundled["schema_version"],
+                  "by_state": bundled["by_state"], "prompt_text_families": bundled["prompt_text_families"]})
     ready = planned["totals"]["by_planned_state"].get("ready")
     if not (first["stopped_early"] and first["executed"] == 5 and second["reused"] == 5
             and second["executed"] == ready - 5 and second["remaining_ready"] == 0 and collected["complete"]):
@@ -526,13 +627,16 @@ def page_url(base: str, bundle: str | None = None, *, raw_query: str | None = No
 
 
 def open_all_families(page: Any) -> int:
-    """Open every family fold with the page's own button, from the keyboard. Returns how many were closed."""
+    """Open every case fold with the page's own button, from the keyboard, then every smaller fold (hashes,
+    protocol details, estimates), so that the text of every row can be read. Returns how many cases were
+    closed. The smaller folds are opened by script here; ``assert_keyboard`` opens one from the keyboard."""
     closed = "() => document.querySelectorAll('#exp-families details.fam-fold:not([open])').length"
     before = page.evaluate(closed)
     if before:
         page.focus("#exp-fam-toggle")
         page.keyboard.press("Enter")
-        assert page.evaluate(closed) == 0, "the family button did not open every family"
+        assert page.evaluate(closed) == 0, "the case button did not open every case"
+    page.evaluate("() => document.querySelectorAll('#exp-results details').forEach((d) => { d.open = true; })")
     return before
 
 
@@ -570,7 +674,12 @@ def page_state(page: Any) -> dict[str, Any]:
             label: box.querySelector('b') ? box.querySelector('b').textContent : null,
             messages: Array.from(box.querySelectorAll('span')).map((s) => s.textContent),
             border_style: getComputedStyle(box).borderTopStyle + '/' + getComputedStyle(box).borderLeftStyle,
+            links: Array.from(box.querySelectorAll('a')).map((a) => [a.getAttribute('href'), a.textContent,
+                                                                     a.hasAttribute('download')]),
             idle_visible: visible(document.getElementById('exp-idle')),
+            index: document.body.dataset.expIndex || null,
+            empty_visible: visible(document.getElementById('exp-empty')),
+            index_visible: visible(document.getElementById('exp-index')),
             results_visible: visible(document.getElementById('exp-results')),
             family_sections: document.querySelectorAll('#exp-families section').length,
             method_rows: document.querySelectorAll('#exp-methods-body tr').length,
@@ -579,12 +688,17 @@ def page_state(page: Any) -> dict[str, Any]:
 
 
 def table_rows(page: Any) -> dict[str, list[dict[str, Any]]]:
-    """Every data row of the rendered bundle as ``{kind: [{attrs, cells}]}``, with the text a reader sees."""
-    rows = page.evaluate("""() => Array.from(document.querySelectorAll('#exp-results tr[data-kind]')).map((tr) => ({
+    """Every data row of the rendered bundle as ``{kind: [{attrs, cells}]}``, with the text a reader sees.
+
+    A row is a table row, a row of the dot plot or a row of the paired wording. A cell that belongs to one
+    wording inside a row (the ICA table has one score cell and one share cell per wording) is keyed
+    ``<column>@<wording>``."""
+    rows = page.evaluate("""() => Array.from(document.querySelectorAll(
+        '#exp-results tr[data-kind], #exp-results [role="row"][data-kind]')).map((tr) => ({
         kind: tr.dataset.kind,
         attrs: Object.assign({}, tr.dataset),
-        cells: Object.fromEntries(Array.from(tr.querySelectorAll('td[data-col]')).map(
-            (td) => [td.dataset.col, td.innerText.trim()])),
+        cells: Object.fromEntries(Array.from(tr.querySelectorAll('[data-col]')).map(
+            (td) => [td.dataset.col + (td.dataset.variant ? '@' + td.dataset.variant : ''), td.innerText.trim()])),
     }))""")
     out: dict[str, list[dict[str, Any]]] = {}
     for row in rows:
@@ -632,7 +746,7 @@ def assert_banner(page: Any, families: int) -> dict[str, Any]:
     assert sum(1 for b in found if b["in_evidence"]) == 1, "the evidence section does not carry the banner once"
     assert sum(1 for b in found if b["in_methods"]) == 1, "the methods table does not carry the banner"
     assert len({b["in_family"] for b in found if b["in_family"]}) == families, "a family section lacks the banner"
-    evidence = page.locator('#exp-evidence dd[data-col="evidence_class"]').inner_text().strip()
+    evidence = page.locator('#exp-evidence [data-col="evidence_class"]').inner_text().strip()
     assert evidence == "synthetic_fixture", f"evidence class shown is {evidence!r}"
     return {"banners": len(found)}
 
@@ -644,14 +758,21 @@ def assert_behavior(page: Any, expected: Mapping[str, Any]) -> dict[str, Any]:
     for key, value in expected["variants"].items():
         assert shown[key]["probability"] == fmt_plain(value), (
             f"{key}: page shows {shown[key]['probability']!r}, the fixture logits give {fmt_plain(value)!r}")
+    by_wording = shown
     shown = keyed(rows.get("behavior-diff", []), "family", "comparison", "target")
     assert set(shown) == set(expected["differences"]), "the difference rows do not match the fixture's set"
     zeros, rounding = 0, []
     for key, want in expected["differences"].items():
         cells = shown[key]
-        assert (cells["a"], cells["b"]) == (fmt_plain(want["a"]), fmt_plain(want["b"])), (
-            f"{key}: page shows a, b = {cells['a']!r}, {cells['b']!r}; the fixture logits give "
+        # Each value is printed once, in the row of its wording. The difference row names its two wordings,
+        # and the two rows it names must show the values the fixture logits give for a and b.
+        assert f"{want['a_name']} (a) minus {want['b_name']} (b)" in cells["comparison"], (
+            f"{key}: the comparison cell reads {cells['comparison']!r}")
+        sides = tuple(by_wording[(key[0], want[name], key[2])]["probability"] for name in ("a_name", "b_name"))
+        assert sides == (fmt_plain(want["a"]), fmt_plain(want["b"])), (
+            f"{key}: the rows of its two wordings show {sides}; the fixture logits give "
             f"{fmt_plain(want['a'])!r}, {fmt_plain(want['b'])!r}")
+        assert "a" not in cells and "b" not in cells, f"{key}: a value is repeated in the difference row"
         got = (cells["difference"], cells["sign"])
         if not want["tie"]:
             wanted = (fmt_signed(want["difference"]), sign_text(want["difference"], want["a_name"], want["b_name"]))
@@ -677,37 +798,60 @@ def assert_ica(page: Any, expected: Mapping[tuple[str, str, int], Mapping[str, A
     rows = table_rows(page)
     shown = {(f, c, int(k)): cells for (f, c, k), cells in
              keyed(rows.get("ica", []), "family", "comparison", "component").items()}
-    assert set(shown) == set(expected), "the ICA rows do not match the hand-computed set"
-    undefined = 0
+    assert set(shown) == set(expected), "the ICA difference rows do not match the hand-computed set"
+    # A signed score and a share are printed once per wording, in the row of their layer and component.
+    by_wording = {(f, int(k)): cells for (f, layer, k), cells in
+                  keyed(rows.get("ica-wording", []), "family", "layer", "component").items()
+                  if layer == str(ICA_LAYER)}
+    assert set(by_wording) == {(f, k) for f, _c, k in expected}, "the per-wording ICA rows are not the fixture's"
+    undefined, wordings = 0, set()
     for key, want in expected.items():
-        cells = shown[key]
+        cells, mine = shown[key], by_wording[(key[0], key[2])]
         share = [SHARE_UNDEFINED if want[name] is None else fmt_plain(want[name]) for name in ("share_a", "share_b")]
         undefined += sum(1 for name in ("share_a", "share_b") if want[name] is None)
-        got = (cells["layer"], cells["score_a"], cells["score_b"], cells["difference"], cells["sign"],
-               cells["share_a"], cells["share_b"])
+        wordings |= {want["a_name"], want["b_name"]}
+        got = (cells["layer"], mine[f"score@{want['a_name']}"], mine[f"score@{want['b_name']}"],
+               cells["difference"], cells["sign"], mine[f"share@{want['a_name']}"], mine[f"share@{want['b_name']}"])
         wanted = (str(ICA_LAYER), fmt_signed(want["score_a"]), fmt_signed(want["score_b"]),
                   fmt_signed(want["difference"]), sign_text(want["difference"], want["a_name"], want["b_name"]),
                   share[0], share[1])
         assert got == wanted, f"{key}: page shows {got}, the hand-computed values are {wanted}"
+        assert not any(name.startswith(("score", "share")) for name in cells), (
+            f"{key}: a per-wording value is repeated in the difference row")
     blocks = page.evaluate("""() => Array.from(document.querySelectorAll('[data-kind="ica-block"]')).map((d) => ({
         basis: d.querySelector('dd[data-col="ica_basis"]').innerText.trim(),
         label: d.querySelector('dd[data-col="ica_share_label"]').innerText.trim(),
         preprocessing: d.querySelector('dd[data-col="ica_preprocessing"]').innerText.trim(),
-        heads: Array.from(d.querySelectorAll('th')).map((th) => th.textContent),
+        heads: Array.from(d.querySelector('tr[data-kind="ica-wording"]').closest('table').querySelectorAll('th'))
+            .map((th) => th.textContent),
+        narrow: Array.from(d.querySelectorAll('tr[data-kind="ica-wording"] td[data-variant]')).map(
+            (td) => [td.dataset.col, td.dataset.l]),
     }))""")
     assert blocks and all(b["basis"] == basis_sha256 for b in blocks), "the basis hash shown is not the fixture's"
-    assert all(b["label"] == SHARE_LABEL and sum(SHARE_LABEL in h for h in b["heads"]) == 2 for b in blocks), (
-        "an energy-share column is not labelled as a share that is not a probability")
+    for block in blocks:
+        share_heads = [h for h in block["heads"] if SHARE_LABEL in h]
+        score_heads = [h for h in block["heads"] if SCORE_LABEL in h]
+        assert block["label"] == SHARE_LABEL and len(share_heads) == len(wordings), (
+            "a share column is not labelled as a squared-coordinate share that is not a probability")
+        assert len(score_heads) == len(wordings) and not set(share_heads) & set(score_heads), (
+            "a signed-score column is not labelled as a signed component score, or one head carries both labels")
+        # The label the narrow layout prints beside each value keeps the same distinction.
+        assert all(("signed score" in label) == (col == "score") and ("squared-coordinate share" in label) == (
+            col == "share") for col, label in block["narrow"]), f"narrow-layout labels: {block['narrow'][:2]}"
     assert undefined > 0, "the fixture no longer holds a zero score vector; the undefined-share state is unchecked"
-    return {"component_rows": len(expected), "undefined_shares_shown_as_not_computed": undefined,
+    return {"component_rows": len(expected), "per_wording_rows": len(by_wording), "wordings": sorted(wordings),
+            "undefined_shares_shown_as_not_computed": undefined,
             "preprocessing_shown": sorted({b["preprocessing"] for b in blocks})}
 
 
 def assert_readout(page: Any, bundle: Mapping[str, Any]) -> dict[str, Any]:
-    """Rendering fidelity only: the ranks on the page are the bundle's ranks. No independent oracle is used."""
-    shown = keyed(table_rows(page).get("readout", []), "family", "method", "comparison", "layer", "target")
+    """Rendering fidelity only: the ranks on the page are the bundle's ranks. No independent oracle is used.
+
+    The page prints one row per wording, layer and target. Every side of every comparison block of the bundle
+    must equal the row of its wording, so a wording that sits in two comparisons is compared twice."""
+    shown = keyed(table_rows(page).get("readout", []), "family", "method", "variant", "layer", "target")
     expected: dict[tuple[str, ...], dict[str, str]] = {}
-    misses = 0
+    misses = sides = 0
     for family in bundle["comparisons"]:
         for entry in family["comparisons"]:
             for method, block in entry["readout"].items():
@@ -715,31 +859,32 @@ def assert_readout(page: Any, bundle: Mapping[str, Any]) -> dict[str, Any]:
                     continue
                 for layer in block["layers"]:
                     for target in layer["targets"]:
-                        cells = {}
                         for side in ("a", "b"):
-                            cells[f"raw_{side}"] = str(target[side]["raw_rank"])
-                            cells[f"filtered_{side}"] = str(target[side]["filtered_rank"])
+                            cells = {"raw": str(target[side]["raw_rank"]),
+                                     "filtered": str(target[side]["filtered_rank"])}
                             seen = [f"top-{k}" for k in sorted(target[side]["top_k"], key=int)
                                     if target[side]["top_k"][k] == "observed"]
                             missed = [f"top-{k}" for k in sorted(target[side]["top_k"], key=int)
                                       if target[side]["top_k"][k] == "not_observed_in_window"]
                             assert len(seen) + len(missed) == len(target[side]["top_k"]), "an unknown window value"
-                            misses += bool(missed)
                             window = (["observed in " + ", ".join(seen)] if seen else []) + (
                                 [f"{WINDOW_MISS}: " + ", ".join(missed)] if missed else [])
-                            cells[f"window_{side}"] = "\n".join(window)
-                        expected[(family["family_id"], method, entry["comparison_id"], str(layer["layer"]),
-                                  target["target_id"])] = cells
+                            cells["window"] = "\n".join(window)
+                            key = (family["family_id"], method, entry[side], str(layer["layer"]),
+                                   target["target_id"])
+                            assert expected.setdefault(key, cells) == cells, (
+                                f"{key}: two comparison blocks of the fixture bundle disagree")
+                            sides += 1
+                            misses += bool(missed) and expected[key] is cells
     assert expected and set(shown) == set(expected), "the readout rows do not match the bundle's computed blocks"
     for key, want in expected.items():
         got = {name: shown[key][name] for name in want}
         assert got == want, f"{key}: page shows {got}, the bundle holds {want}"
     order = page.evaluate("""() => Array.from(document.querySelector('tr[data-kind="readout"]').querySelectorAll(
         'td[data-col]')).map((td) => td.dataset.col)""")
-    for side in ("a", "b"):
-        assert order.index(f"filtered_{side}") == order.index(f"raw_{side}") + 1, "raw and filtered rank are apart"
+    assert order.index("filtered") == order.index("raw") + 1, "raw and filtered rank are apart"
     assert misses > 0, "the fixture no longer holds a top-k miss; the miss wording is unchecked"
-    return {"readout_rows": len(expected), "cells_wording_a_top_k_miss": misses,
+    return {"readout_rows": len(expected), "bundle_sides_compared": sides, "cells_wording_a_top_k_miss": misses,
             "oracle": "the bundle itself (rendering fidelity), not an independent computation"}
 
 
@@ -764,19 +909,39 @@ def assert_methods(page: Any, protocol: Mapping[str, Any], bundle: Mapping[str, 
             "not_completed": {m: s for m, s in EXPECTED_METHOD_STATE.items() if s != "completed"}}
 
 
-def assert_not_computed_blocks(page: Any, families: int) -> dict[str, Any]:
+def assert_not_computed_blocks(page: Any, families: int, bundle: Mapping[str, Any]) -> dict[str, Any]:
+    """Each case states the run status of a method that was not computed, and where its reason is.
+
+    The reason paragraph is printed once, in the Run status table. A case block points there with a link when
+    its reason is the single reason that table holds for the method, and prints the reason itself otherwise.
+    Either way the reason the bundle records must be readable: this check follows the link to the table row."""
     found = page.evaluate("""() => Array.from(document.querySelectorAll('[data-kind="not-computed"]')).map((p) => ({
         method: p.dataset.method, family: p.dataset.family, text: p.innerText,
         states: Array.from(p.querySelectorAll('[data-col="state"]')).map((s) => s.textContent),
+        reason: p.querySelector('[data-col="reason"]') ? p.querySelector('[data-col="reason"]').dataset.reason : null,
+        links: Array.from(p.querySelectorAll('a')).map((a) => a.getAttribute('href')),
     }))""")
+    table = method_rows(page)
+    reasons = {row["method"]: row["reasons"] for row in bundle["methods_not_run"]}
+    linked = 0
     for method, state in EXPECTED_METHOD_STATE.items():
         if state == "completed":
             continue
         mine = [b for b in found if b["method"] == method]
-        assert len({b["family"] for b in mine}) == families, f"{method}: not shown as not computed in every family"
+        assert len({b["family"] for b in mine}) == families, f"{method}: not shown as not computed in every case"
         assert all(b["states"] == [state] and "Reason: " in b["text"] for b in mine), (
-            f"{method}: a family block does not state {state} with its reason")
-    return {"not_computed_blocks": len(found)}
+            f"{method}: a case block does not state {state} with its reason")
+        for block in mine:
+            if block["reason"] == "in-run-status":
+                assert block["links"] == ["#methods"], f"{method}: the reason link goes to {block['links']}"
+                assert len(reasons[method]) == 1 and reasons[method][0] in table[method]["reason"], (
+                    f"{method}: the Run status row the case points to does not carry the bundle's reason")
+                linked += 1
+            else:
+                assert block["reason"] == "inline" and any(r in block["text"] for r in reasons[method]), (
+                    f"{method}: a case block neither prints its reason nor points to it")
+    assert page.evaluate("() => !!document.querySelector('#methods #exp-methods-body')"), "the link target is absent"
+    return {"not_computed_blocks": len(found), "reasons_read_from_the_run_status_table": linked}
 
 
 def assert_other_sections(page: Any, protocol: Mapping[str, Any], validated: Mapping[str, Any]) -> dict[str, Any]:
@@ -831,26 +996,44 @@ ADDED_FIELDS = """() => ({
 def shown_added_fields(page: Any) -> dict[str, Any]:
     """What the page prints for the fields added to bundle version 1 on 2026-11-10."""
     shown = page.evaluate(ADDED_FIELDS)
-    shown["variants"] = {key: {name: cells.get(name) for name in ("prompt_sha256", "token_sha256", "n_tokens",
-                                                                   "prompt")}
-                         for key, cells in keyed(table_rows(page).get("variant", []), "family", "variant").items()}
+    rows = table_rows(page)
+    # Hashes and the token count are in the input-identity table; the prompt text, or the statement that the
+    # bundle holds none, is in the paired-wording row of the same family and variant.
+    wording = keyed(rows.get("wording", []), "family", "variant")
+    shown["variants"] = {key: {**{name: cells.get(name) for name in ("prompt_sha256", "token_sha256", "n_tokens")},
+                               "prompt": wording.get(key, {}).get("prompt")}
+                         for key, cells in keyed(rows.get("variant", []), "family", "variant").items()}
     return shown
 
 
 def assert_added_fields(page: Any, protocol: Mapping[str, Any], variant_inputs: Mapping[tuple[str, str], Any],
                         preprocessing: str, counts: Mapping[str, int]) -> dict[str, Any]:
     """Prompt and token hashes, token counts, the ICA preprocessing mode and the executed and reused counts,
-    each against a value that was not read from the bundle. No prompt text may be on the page."""
+    each against a value that was not read from the bundle.
+
+    Prompt text: a family the protocol marks (``PROMPT_TEXT_MARKER``) shows exactly the protocol's text for each
+    variant. Every other family shows "prompt text is not in this bundle", and none of its prompt strings may
+    be anywhere on the page. Until 2026-11-10 no family could carry text and this check required that of all
+    of them; the rule is unchanged for a family without the marker, and ``detect_older_bundle`` still requires
+    it of every family for a bundle without the export."""
     shown = shown_added_fields(page)
     assert set(shown["variants"]) == set(variant_inputs), "the variant rows are not the protocol's variants"
+    wanted_text = expected_prompt_text(protocol)
     for key, want in variant_inputs.items():
         got = {name: shown["variants"][key][name] for name in ("prompt_sha256", "token_sha256", "n_tokens")}
         assert got == dict(want), f"{key}: page shows {got}, the fixture protocol gives {dict(want)}"
-        assert shown["variants"][key]["prompt"] == PROMPT_TEXT_ABSENT, (
-            f"{key}: the prompt cell reads {shown['variants'][key]['prompt']!r}")
-    prompts = [entry["prompt"] for family in protocol["case_families"] for entry in family["variants"].values()]
-    leaked = [number for number, prompt in enumerate(prompts) if prompt and prompt in shown["text"]]
-    assert prompts and not leaked, f"the page shows the text of {len(leaked)} fixture prompts"
+        wanted = PROMPT_TEXT_ABSENT if wanted_text[key] is None else wanted_text[key]
+        assert shown["variants"][key]["prompt"] == wanted, (
+            f"{key}: the prompt cell does not read what the protocol's marker allows "
+            f"({'no text' if wanted_text[key] is None else 'the protocol text'})")
+    withheld = [entry["prompt"] for family in protocol["case_families"]
+                for name, entry in family["variants"].items() if wanted_text[(family["family_id"], name)] is None]
+    exported = [text for text in wanted_text.values() if text is not None]
+    leaked = [number for number, prompt in enumerate(withheld) if prompt and prompt in shown["text"]]
+    assert withheld and exported, "the fixture run no longer has both a marked and an unmarked family"
+    assert not leaked, f"the page shows the text of {len(leaked)} prompts the protocol does not mark for publication"
+    targets = [target["text"] for family in protocol["case_families"] for target in family["targets"]]
+    assert targets and not [text for text in targets if text in shown["text"]], "the page shows target text"
     families = len(protocol["case_families"])
     assert shown["preprocessing"] == [preprocessing] * families, (
         f"preprocessing mode shown {shown['preprocessing']}, the protocol's ICA block declares {preprocessing!r}")
@@ -861,7 +1044,193 @@ def assert_added_fields(page: Any, protocol: Mapping[str, Any], variant_inputs: 
         f"{counts['executed']} executed attempts and {counts['reused']} reuse events")
     return {"variant_rows": len(variant_inputs), "preprocessing_mode": preprocessing,
             "executed_attempts": counts["executed"], "reused_events": counts["reused"],
-            "prompt_text_on_page": 0}
+            "prompt_text_on_page": 0, "prompt_text_exported_by_the_protocol_marker": len(exported),
+            "prompt_text_on_page_scope": "prompts of families the protocol does not mark"}
+
+
+DOTS = """() => Array.from(document.querySelectorAll('#exp-results [data-kind="dotplot"]')).map((panel) => {
+    const box = (node) => { const r = node.getBoundingClientRect(); return {left: r.left, width: r.width}; };
+    const rows = Array.from(panel.querySelectorAll('[data-kind="behavior-variant"]'));
+    const axis = panel.querySelector('.dp-axis .dp-t');
+    return {
+        family: panel.dataset.family, target: panel.dataset.target, title: panel.querySelector('h5').textContent,
+        label: panel.getAttribute('aria-label'),
+        axis: box(axis),
+        ticks: Array.from(axis.querySelectorAll('span')).map((t) => [t.textContent, t.style.left]),
+        rows: rows.map((row) => {
+            const track = row.querySelector('.dp-t'), dot = row.querySelector('[data-kind="dot"]');
+            const d = dot ? dot.getBoundingClientRect() : null;
+            return {
+                variant: row.dataset.variant, value: row.dataset.value === undefined ? null : row.dataset.value,
+                track: box(track), centre: d ? d.left + d.width / 2 : null, diameter: d ? d.width : null,
+                text: row.querySelector('[data-col="probability"]').innerText.trim(),
+                name: row.querySelector('[data-col="variant"]').innerText.trim(),
+            };
+        }),
+    };
+})"""
+
+
+def assert_dots(page: Any, expected: Mapping[str, Any], bundle: Mapping[str, Any]) -> dict[str, Any]:
+    """The directly labelled dot plot of the target-token probability: one row per wording on one 0 to 1 axis.
+
+    For every dot: the value it carries is the value the bundle records for that wording (every side of every
+    comparison block), and equals the softmax of the fixture logits; its centre sits at that fraction of its
+    track, to within one CSS pixel; its printed label is the value to four decimals; its row names the
+    wording. All tracks of one panel share the axis the tick labels 0, 0.5 and 1 are drawn on."""
+    recorded: dict[tuple[str, str, str], float] = {}
+    for family in bundle["comparisons"]:
+        for entry in family["comparisons"]:
+            for target in entry["behavior"]["targets"]:
+                for side in ("a", "b"):
+                    key = (family["family_id"], entry[side], target["target_id"])
+                    assert recorded.setdefault(key, target[side]) == target[side], f"{key}: the bundle disagrees"
+    panels = page.evaluate(DOTS)
+    seen: set[tuple[str, str, str]] = set()
+    worst = 0.0
+    for panel in panels:
+        assert ENDPOINT_LABEL in panel["title"] and ENDPOINT_LABEL in panel["label"], f"panel title {panel['title']!r}"
+        assert [tick[0] for tick in panel["ticks"]] == ["0", "0.5", "1"], f"axis labels {panel['ticks']}"
+        assert [tick[1] for tick in panel["ticks"]] == ["0px", "50%", "100%"], f"axis positions {panel['ticks']}"
+        for row in panel["rows"]:
+            key = (panel["family"], row["variant"], panel["target"])
+            assert key not in seen, f"{key}: the value is plotted twice"
+            seen.add(key)
+            assert row["value"] is not None and row["centre"] is not None, f"{key}: no dot is drawn"
+            value = float(row["value"])
+            assert value == recorded[key], f"{key}: the dot carries {value!r}, the bundle records {recorded[key]!r}"
+            assert abs(value - expected["variants"][key]) < TIE_TOLERANCE, (
+                f"{key}: the dot carries {value!r}, the fixture logits give {expected['variants'][key]!r}")
+            assert abs(row["track"]["left"] - panel["axis"]["left"]) < 0.01 and abs(
+                row["track"]["width"] - panel["axis"]["width"]) < 0.01, f"{key}: the row is not on the panel's axis"
+            offset = row["centre"] - (row["track"]["left"] + value * row["track"]["width"])
+            worst = max(worst, abs(offset))
+            assert abs(offset) <= 1.0, f"{key}: the dot is {offset:+.2f} px from its value on the axis"
+            assert row["diameter"] >= 8, f"{key}: the dot is {row['diameter']} px wide"
+            assert row["text"] == fmt_plain(value) and row["name"].startswith(row["variant"]), (
+                f"{key}: the dot is labelled {row['name']!r} {row['text']!r}")
+    assert seen == set(expected["variants"]), "the dots are not the fixture's family, wording and target set"
+    return {"panels": len(panels), "dots": len(seen), "largest_offset_px": round(worst, 3),
+            "axis": "0 to 1, tick labels 0, 0.5 and 1"}
+
+
+LABELS = """() => {
+    const visible = (node) => node.getClientRects().length > 0;
+    const text = (sel) => Array.from(document.querySelectorAll(sel)).filter(visible).map((n) => n.innerText.trim());
+    return {
+        h1: document.querySelector('h1').innerText.trim(),
+        title: document.title,
+        headings: text('main h2, main h3, main h4, main h5'),
+        heads: text('main th').concat(text('main .ctx-l'), text('main dt'), text('.toc a')),
+        context: Object.fromEntries(Array.from(document.querySelectorAll('#exp-evidence .ctx-i')).map((item) => [
+            item.querySelector('.ctx-l').innerText.trim(),
+            [item.querySelector('.ctx-v').innerText.trim(), item.querySelector('.ctx-l').getAttribute('title')]])),
+        recorded: Object.fromEntries(Array.from(document.querySelectorAll('#exp-protocol dt')).map((dt) => [
+            dt.innerText.trim(), dt.nextElementSibling.innerText.trim()])),
+        folds_in_context: document.querySelectorAll('#evidence details').length,
+        terms: Object.fromEntries(Array.from(document.querySelectorAll('#exp-terms dt')).map((dt) => [
+            dt.innerText.trim(), dt.nextElementSibling.innerText.trim()])),
+        run_status_head: document.querySelector('#methods th:nth-child(2)').innerText.trim(),
+        guide: document.getElementById('exp-guide').innerText,
+        page: document.querySelector('main').innerText,
+    };
+}"""
+
+
+def assert_reader_labels(page: Any, protocol: Mapping[str, Any]) -> dict[str, Any]:
+    """The reader-facing labels are what the page shows, and the schema term of each is still on the page."""
+    found = page.evaluate(LABELS)
+    assert found["h1"] == "Compare methods" and found["title"].startswith("Compare methods"), found["h1"]
+    upper = [heading.upper() for heading in found["headings"] + found["heads"]]
+    for label in ("Cases", "Run status", "Methods & source"):
+        assert label.upper() in upper, f"no heading reads {label!r}"
+    for retired in RETIRED_HEADINGS:
+        assert retired.upper() not in upper, f"the retired heading {retired!r} is still a heading or a column head"
+    assert found["run_status_head"].upper() == "RUN STATUS", f"the status column is headed {found['run_status_head']!r}"
+    context = {label.upper(): value for label, value in found["context"].items()}
+    included, schema = context["INCLUDED IN ANALYSIS"]
+    assert included == "no" and "evidence.analysis_memberships" in schema, (included, schema)
+    version, schema = context["STUDY VERSION"]
+    assert version == f"{protocol['protocol_id']} · version {protocol['version']}" and "protocol.sha256" in schema, (
+        version, schema)
+    assert context["CLINICAL REVIEW"][0] == protocol["evidence"]["clinical_review"], context["CLINICAL REVIEW"]
+    # One disclosure holds the shared context, with each schema field named and its recorded value.
+    assert found["folds_in_context"] == 1, f"{found['folds_in_context']} folds hold the shared context"
+    recorded = found["recorded"]
+    assert recorded["evidence.analysis_memberships (analysis membership)"] == "none", recorded
+    assert recorded["evidence.clinical_review"] == protocol["evidence"]["clinical_review"], recorded
+    assert recorded["evidence.visibility"] == "not_published" and recorded["evidence.restriction_reasons"] == "none"
+    for label, term in READER_LABELS.items():
+        assert label in found["terms"] and term.lower() in found["terms"][label].lower(), (
+            f"Methods & source does not give the schema term of {label!r} ({term!r})")
+    for term in SCHEMA_TERMS:
+        assert term in found["page"], f"the schema term {term!r} is no longer on the page"
+    # The endpoint: named "Target-token probability", explained once, never called accuracy, risk or understanding.
+    assert found["page"].count(ENDPOINT_FIRST_TOKEN) == 1 and ENDPOINT_FIRST_TOKEN in found["guide"], (
+        "the first-token explanation is absent or repeated")
+    assert ENDPOINT_LABEL in found["guide"] and "0 to 1" in found["guide"] and "Uncertainty: none computed" in found[
+        "guide"], "the endpoint's unit, denominator or uncertainty statement is absent"
+    labelled = [text for text in found["headings"] + found["heads"]
+                if any(word in text.lower() for word in FORBIDDEN_IN_LABELS)]
+    assert not labelled, f"a heading or column head uses a forbidden word: {labelled}"
+    return {"labels": sorted(READER_LABELS), "schema_terms_on_page": len(SCHEMA_TERMS),
+            "endpoint_explained": 1, "headings_checked": len(found["headings"]) + len(found["heads"])}
+
+
+def assert_prompt_text(page: Any, protocol: Mapping[str, Any]) -> dict[str, Any]:
+    """The explicit prompt-text path and the missing-text state, in one bundle.
+
+    A marked family shows the protocol's text in each paired-wording row and says on what basis it is shown; in
+    a synthetic bundle it also says the text is a placeholder. An unmarked family shows the missing-text
+    sentence and no basis line. The prompt hash of every row stays in the fold below the wording."""
+    wanted = expected_prompt_text(protocol)
+    rows = keyed(table_rows(page).get("wording", []), "family", "variant")
+    assert set(rows) == set(wanted), "the paired-wording rows are not the protocol's variants"
+    state = page.evaluate("""() => Array.from(document.querySelectorAll('section.fam')).map((fam) => ({
+        family: fam.dataset.family,
+        rows: Array.from(fam.querySelectorAll('[data-kind="wording"]')).map((r) => [r.dataset.variant, r.dataset.text]),
+        basis: Array.from(fam.querySelectorAll('[data-kind="text-basis"]')).map((p) => p.innerText),
+        hashes: fam.querySelectorAll('[data-kind="input-identity"] tr[data-kind="variant"]').length,
+        order: Array.from(fam.querySelectorAll('h4')).map((h) => h.innerText.trim().toUpperCase()),
+        banner: fam.querySelectorAll('[data-kind="synthetic-banner"]').length,
+    }))""")
+    exported = absent = 0
+    for family in state:
+        marked = family["family"] in TEXT_FAMILIES
+        for variant, flag in family["rows"]:
+            text = wanted[(family["family"], variant)]
+            shown = rows[(family["family"], variant)]["prompt"]
+            assert (flag, shown) == (("exported", text) if marked else ("absent", PROMPT_TEXT_ABSENT)), (
+                f"{family['family']} {variant}: the wording row is in state {flag!r}")
+            exported += marked
+            absent += not marked
+        if marked:
+            assert len(family["basis"]) == 1 and PROMPT_TEXT_MARKER in family["basis"][0] and (
+                "placeholder text of a synthetic fixture" in family["basis"][0]), (
+                f"{family['family']}: the basis of the shown text is not stated: {family['basis']}")
+        else:
+            assert family["basis"] == [], f"{family['family']}: a basis line is shown for text that is absent"
+        assert family["hashes"] == len(family["rows"]) and family["banner"] == 1, (
+            f"{family['family']}: the hash rows or the synthetic marker are missing")
+        # Reading order of one case: the paired wording, the recorded output, internal measurements, interventions.
+        assert [heading.split(" · ", 1)[1] for heading in family["order"]] == [
+            "PAIRED WORDING", "RECORDED MODEL OUTPUT", "INTERNAL MEASUREMENTS", "INTERVENTION EVIDENCE"], family["order"]
+    assert exported and absent, "the bundle no longer shows both states"
+    return {"wording_rows_with_exported_text": exported, "wording_rows_that_say_text_is_absent": absent,
+            "marker": PROMPT_TEXT_MARKER}
+
+
+def assert_stable_links(page: Any, base: str) -> dict[str, Any]:
+    """Ids that links and other tools use are on the page, and the loaded state offers a plain download link."""
+    missing = page.evaluate("(ids) => ids.filter((id) => !document.getElementById(id))", list(STABLE_IDS))
+    assert not missing, f"ids no longer on the page: {missing}"
+    state = page_state(page)
+    assert state["links"] == [[f"../data/{BUNDLE_PARAM}", "Download this comparison file (JSON)", True]], state["links"]
+    resolved = page.evaluate("() => document.querySelector('#exp-state a').href")
+    assert resolved == f"{base}/data/{BUNDLE_PARAM}", f"the download link resolves to {resolved}"
+    toc = page.evaluate("() => Array.from(document.querySelectorAll('.toc a')).map((a) => a.getAttribute('href'))")
+    assert toc == ["#evidence", "#families", "#methods", "#provenance", "#limitations"], f"section links: {toc}"
+    return {"ids": len(STABLE_IDS), "section_links": toc}
 
 
 def assert_no_overflow(page: Any) -> dict[str, Any]:
@@ -899,6 +1268,7 @@ def assert_keyboard(page: Any) -> dict[str, Any]:
 class Session:
     """What the browser checks share: the served copy, the two browser contexts and the expectations."""
     base: str
+    site: Path
     served: Path
     original: bytes
     bundle: dict[str, Any]
@@ -961,23 +1331,213 @@ class Session:
             page.close()
 
 
+IDLE = """() => ({
+    head: document.getElementById('exp-empty-head').innerText.trim(),
+    routes: Array.from(document.querySelectorAll('#exp-empty a.route')).map((a) => a.getAttribute('href')),
+    entries: Array.from(document.querySelectorAll('#exp-index-list [data-kind="index-entry"]')).map((li) => ({
+        bundle: li.dataset.bundle, href: li.querySelector('a').getAttribute('href'), text: li.innerText,
+    })),
+    count: document.getElementById('exp-index-count').innerText.trim(),
+    text: document.querySelector('main').innerText,
+    source: document.documentElement.outerHTML,
+})"""
+# Developer syntax that moved to docs/experiment_interface/preview.md. None may be in what a reader sees.
+DEVELOPER_SYNTAX = ("?bundle=", "bundle=<", "path under data/", "<path", "address parameter")
+
+
 def check_no_parameter(s: Session) -> dict[str, Any]:
-    url = page_url(s.base)
+    """With no address parameter the page reads the site's index, and today that index lists nothing: the
+    page shows the empty statement with routes to the results and the methods, and requests no bundle.
+
+    Until 2026-11-10 the page requested no data at all here. It now requests exactly one file, the index, so
+    that a reader is given a list and never has to write an address parameter."""
+    url, index_url = page_url(s.base), f"{s.base}/data/{INDEX_FILE}"
+    index = json.loads((s.site / "data" / INDEX_FILE).read_text(encoding="utf-8"))
+    assert index["schema_version"] == INDEX_SCHEMA and index["comparisons"] == [], (
+        "the site's index lists a comparison; this check expects today's empty list")
     page, log = s.open(url)
     try:
         state = page_state(page)
         assert state["state"] == "idle" and state["idle_visible"], f"state {state['state']!r}"
+        assert state["index"] == "empty" and state["empty_visible"] and not state["index_visible"], (
+            f"index state {state['index']!r}")
         assert not state["box_visible"] and not state["results_visible"], "a state box or results show"
         assert state["method_rows"] == 0, "the methods table has rows with no bundle"
-        shown = page.locator("#exp-idle").inner_text()
-        assert all(sentence in shown for sentence in IDLE_SENTENCES), f"statement reads {shown!r}"
-        assert log.requests == [url], f"requests made with no parameter: {log.requests}"
+        idle = page.evaluate(IDLE)
+        assert idle["head"] == EMPTY_HEAD, f"the empty statement reads {idle['head']!r}"
+        assert idle["routes"] == list(EMPTY_ROUTES), f"routes offered: {idle['routes']}"
+        assert idle["entries"] == [], f"an empty index is shown with entries: {idle['entries']}"
+        syntax = [needle for needle in DEVELOPER_SYNTAX if needle in idle["text"]]
+        assert not syntax, f"the page still shows developer syntax: {syntax}"
+        assert log.requests == [url, index_url], f"requests made with no parameter: {log.requests}"
+        assert log.data_requests() == [index_url], f"data requests: {log.data_requests()}"
         assert not log.console_errors and not log.page_errors and not log.http_errors, "browser errors"
         s.states["idle"] = {"label": "idle statement", "class": "idle", "border": "statement"}
         s.shot(page, "experiment_no_parameter_1280.png")
-        return {"requests": len(log.requests), "data_requests": len(log.data_requests())}
+        return {"requests": len(log.requests), "data_requests": len(log.data_requests()),
+                "bundle_requests": 0, "empty_statement": idle["head"], "routes": idle["routes"]}
     finally:
         page.close()
+
+
+class _Report:
+    """The two members of ``validate_frontend_contract.Report`` that ``check_experiment_index`` uses."""
+
+    def __init__(self) -> None:
+        self.errors: list[str] = []
+        self.notes: list[str] = []
+
+    def err(self, artifact: str, path: str, message: str) -> None:
+        self.errors.append(f"{artifact} :: {path} :: {message}")
+
+
+def contract_errors(site: Path) -> list[str]:
+    """What ``scripts/experiment_index_contract.check_experiment_index`` reports for the site at ``site``."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("_experiment_index_contract_for_preview", INDEX_CONTRACT)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    report = _Report()
+    module.check_experiment_index(report, site)
+    return report.errors
+
+
+def write_index(site: Path) -> dict[str, Any]:
+    """Run the real index writer on the site copy at ``site`` and return the document it wrote."""
+    env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
+    proc = subprocess.run([sys.executable, str(INDEX_WRITER), "--site", str(site)], cwd=ROOT, env=env,
+                          capture_output=True, text=True, timeout=300)
+    if proc.returncode != 0:
+        raise SetupProblem(f"the index writer exited {proc.returncode}:\n{proc.stdout[-800:]}\n{proc.stderr[-800:]}")
+    return json.loads((site / "data" / INDEX_FILE).read_text(encoding="utf-8"))
+
+
+def check_index_never_lists_the_synthetic_bundle(s: Session) -> dict[str, Any]:
+    """The real writer, run on the copy that holds the synthetic bundle, lists nothing and names the bundle
+    under ``not_listed``. The page then shows the empty statement and no link. The contract check reports the
+    synthetic bundle under ``data/`` as an error, which is what stops such a file reaching the real site."""
+    index_path = s.site / "data" / INDEX_FILE
+    original = index_path.read_bytes()
+    try:
+        index = write_index(s.site)
+        assert index["comparisons"] == [] and index["totals"]["listed"] == 0, f"listed: {index['comparisons']}"
+        named = {row["file"]: row["reasons"] for row in index["not_listed"]}
+        assert named.get(BUNDLE_PARAM) and "synthetic" in named[BUNDLE_PARAM], f"not_listed: {named}"
+        page, log = s.open(page_url(s.base))
+        try:
+            state, idle = page_state(page), page.evaluate(IDLE)
+            assert state["index"] == "empty" and idle["head"] == EMPTY_HEAD and idle["entries"] == [], (
+                f"with a synthetic bundle under data/ the page shows {idle['entries']}")
+            assert BUNDLE_PARAM not in idle["source"], "the page names the synthetic bundle"
+            assert log.data_requests() == [f"{s.base}/data/{INDEX_FILE}"], f"data requests: {log.data_requests()}"
+        finally:
+            page.close()
+        errors = contract_errors(s.site)
+        assert any(BUNDLE_PARAM in error and "may not be published" in error for error in errors), (
+            f"the contract check does not report the synthetic bundle: {errors}")
+        return {"listed": 0, "not_listed_reasons": named[BUNDLE_PARAM], "contract_errors_in_the_copy": len(errors)}
+    finally:
+        index_path.write_bytes(original)
+
+
+def check_forged_index_entries_are_not_linked(s: Session) -> dict[str, Any]:
+    """The page's own rule, apart from the writer's. A hand-made index in the temporary copy names the
+    synthetic bundle with its true labels, names it again under forged public labels at a path the address
+    rule refuses, and names a non-public entry. The page must link none of them and say that entries are
+    not shown. The page cannot open a forged public entry at a valid path without reading the bundle; that
+    case is what the writer and the contract check exist for."""
+    index_path = s.site / "data" / INDEX_FILE
+    original = index_path.read_bytes()
+    labels = {"protocol": {"id": "forged", "version": "1", "sha256": "0" * 64}, "model": {"study_id": None, "hf_id": None},
+              "clinical_review": "domain_review_pending", "analysis_memberships": [], "cases": 3, "methods": [],
+              "primary_endpoint": {"method": None, "metric": None, "target": None}, "prompt_text_cases": 0,
+              "bundle_sha256": "0" * 64}
+    forged = {"schema_version": INDEX_SCHEMA, "bundle_schema": BUNDLE_SCHEMA, "eligibility": "forged for a check",
+              "comparisons": [
+                  dict(labels, bundle=BUNDLE_PARAM, evidence_class="synthetic_fixture", visibility="not_published"),
+                  dict(labels, bundle=BUNDLE_PARAM, evidence_class="synthetic_fixture", visibility="public"),
+                  dict(labels, bundle="../data/" + BUNDLE_PARAM, evidence_class="unclassified", visibility="public"),
+                  dict(labels, bundle=BUNDLE_PARAM, evidence_class="unclassified", visibility="restricted")],
+              "not_listed": [], "totals": {"bundle_files": 4, "listed": 4, "not_listed": 0}}
+    index_path.write_text(json.dumps(forged), encoding="utf-8")
+    try:
+        page, log = s.open(page_url(s.base))
+        try:
+            state, idle = page_state(page), page.evaluate(IDLE)
+            assert state["index"] == "empty" and idle["entries"] == [], f"forged entries are linked: {idle['entries']}"
+            links = page.evaluate("() => Array.from(document.querySelectorAll('#exp-idle a')).map((a) => a.getAttribute('href'))")
+            assert links == list(EMPTY_ROUTES), f"links offered: {links}"
+            note = page.locator("#exp-index-note").inner_text()
+            assert note.startswith("4 index entries are not shown"), f"the note reads {note!r}"
+            assert log.data_requests() == [f"{s.base}/data/{INDEX_FILE}"], f"data requests: {log.data_requests()}"
+        finally:
+            page.close()
+        unreadable = dict(forged, schema_version="patientwords.experiment-index/2")
+        index_path.write_text(json.dumps(unreadable), encoding="utf-8")
+        page, _ = s.open(page_url(s.base))
+        try:
+            state, idle = page_state(page), page.evaluate(IDLE)
+            assert state["index"] == "unreadable" and idle["entries"] == [], state
+            assert idle["head"] == "The list of comparisons could not be read" and EMPTY_HEAD not in idle["text"], (
+                f"with an index it cannot read the page says {idle['head']!r}")
+        finally:
+            page.close()
+        return {"forged_entries": 4, "linked": 0, "unreadable_index_state": "stated, not shown as empty"}
+    finally:
+        index_path.write_bytes(original)
+
+
+def check_index_lists_a_publishable_bundle(s: Session) -> dict[str, Any]:
+    """The listing path. A copy of the fixture bundle relabelled as publishable is written into the temporary
+    site only. The real writer lists it and still does not list the synthetic bundle; the page shows one link;
+    the link, followed from the keyboard, opens that file and renders it without the synthetic marker.
+
+    The relabelled copy is hand-written fixture numbers under a public label. It is a test input for the
+    listing path and is never a study bundle; no screenshot is taken of it."""
+    index_path, extra = s.site / "data" / INDEX_FILE, s.site / "data" / RELABELLED_PARAM
+    original = index_path.read_bytes()
+    extra.write_text(json.dumps(relabelled_as_publishable(s.bundle)), encoding="utf-8")
+    try:
+        index = write_index(s.site)
+        assert [entry["bundle"] for entry in index["comparisons"]] == [RELABELLED_PARAM], index["comparisons"]
+        entry = index["comparisons"][0]
+        assert entry["bundle_sha256"] == sha256_file(extra) and entry["visibility"] == "public", entry
+        assert BUNDLE_PARAM in {row["file"] for row in index["not_listed"]}, "the synthetic bundle is not set aside"
+        page, log = s.open(page_url(s.base))
+        try:
+            state, idle = page_state(page), page.evaluate(IDLE)
+            assert state["index"] == "listed" and state["index_visible"] and not state["empty_visible"], state
+            assert [e["bundle"] for e in idle["entries"]] == [RELABELLED_PARAM], idle["entries"]
+            assert idle["entries"][0]["href"] == "?bundle=" + quote(RELABELLED_PARAM, safe=""), idle["entries"]
+            assert s.protocol["protocol_id"] in idle["entries"][0]["text"] and idle["count"].startswith("1 comparison")
+            assert EMPTY_HEAD not in idle["text"], "the empty statement shows beside a listed comparison"
+            page.focus("#exp-index-list a")
+            page.keyboard.press("Enter")
+            page.wait_for_function("() => document.body.dataset.expState === 'ready'", timeout=20_000)
+            page.wait_for_load_state("networkidle", timeout=20_000)
+            opened = page.evaluate("""() => ({
+                query: new URLSearchParams(location.search).get('bundle'),
+                synthetic: document.querySelector('#exp-evidence [data-synthetic]').dataset.synthetic,
+                banners: document.querySelectorAll('[data-kind="synthetic-banner"]').length,
+                evidence: document.querySelector('#exp-evidence [data-col="evidence_class"]').innerText.trim(),
+                wording: Array.from(document.querySelectorAll('[data-kind="wording"]')).map((r) => r.dataset.text),
+            })""")
+            assert opened["query"] == RELABELLED_PARAM and (opened["synthetic"], opened["banners"]) == ("false", 0), opened
+            assert opened["evidence"] == "unclassified" and set(opened["wording"]) == {"absent"}, opened
+            assert f"{s.base}/data/{RELABELLED_PARAM}" in log.data_requests(), log.data_requests()
+            assert not log.console_errors and not log.page_errors and not log.http_errors, "browser errors"
+        finally:
+            page.close()
+        errors = [error for error in contract_errors(s.site) if RELABELLED_PARAM in error or error.startswith(
+            INDEX_FILE)]
+        assert not errors, f"the contract check faults the index the writer wrote: {errors}"
+        return {"listed": 1, "link_followed_from_the_keyboard": True,
+                "input": "a relabelled copy of the fixture bundle, in the temporary tree only; not a study bundle"}
+    finally:
+        extra.unlink()
+        index_path.write_bytes(original)
 
 
 def check_rendered_bundle(s: Session, recorder: Recorder) -> None:
@@ -995,12 +1555,20 @@ def check_rendered_bundle(s: Session, recorder: Recorder) -> None:
         recorder.run("every_planned_method_listed_with_state_and_reason",
                      lambda: assert_methods(page, s.protocol, s.bundle))
         recorder.run("unsupported_and_unavailable_methods_stated_in_each_family",
-                     lambda: assert_not_computed_blocks(page, s.families))
+                     lambda: assert_not_computed_blocks(page, s.families, s.bundle))
         recorder.run("protocol_model_totals_links_limitations",
                      lambda: assert_other_sections(page, s.protocol, s.validated))
         recorder.run("prompt_hashes_token_counts_preprocessing_and_run_counts_equal_the_fixture",
                      lambda: assert_added_fields(page, s.protocol, s.variant_inputs, s.preprocessing,
                                                  s.journal_counts))
+        recorder.run("dot_plot_values_and_positions_equal_the_bundle_and_the_fixture_logits",
+                     lambda: assert_dots(page, s.behavior, s.bundle))
+        recorder.run("reader_labels_shown_schema_terms_kept_and_endpoint_explained_once",
+                     lambda: assert_reader_labels(page, s.protocol))
+        recorder.run("prompt_text_shown_only_for_marked_cases_and_absent_state_for_the_rest",
+                     lambda: assert_prompt_text(page, s.protocol))
+        recorder.run("section_ids_section_links_and_download_link_are_stable",
+                     lambda: assert_stable_links(page, s.base))
         recorder.run("no_horizontal_overflow_at_1280", lambda: assert_no_overflow(page))
         s.shot(page, "experiment_bundle_1280.png")
     finally:
@@ -1023,6 +1591,13 @@ FOLD_STATE = """() => ({
     banners: Array.from(document.querySelectorAll('#exp-families [data-kind="synthetic-banner"]'))
         .filter((p) => p.getClientRects().length > 0).length,
     button: document.getElementById('exp-fam-toggle').textContent,
+    reviews: Array.from(document.querySelectorAll('#exp-families details.fam-fold > summary [data-col="case-labels"]'))
+        .filter((n) => n.getClientRects().length > 0).map((n) => n.textContent),
+    context: Array.from(document.querySelectorAll('#exp-evidence .ctx-i')).filter((n) => n.getClientRects().length > 0)
+        .map((n) => n.innerText.split('\\n').join(' ').trim().toUpperCase()),
+    context_fold_open: document.getElementById('protocol').open,
+    first_case_top: document.querySelector('#exp-families section.fam').getBoundingClientRect().top + window.scrollY,
+    guide_folded: !document.getElementById('exp-guide-more').open,
 })"""
 
 
@@ -1034,18 +1609,27 @@ def check_family_folds(s: Session) -> dict[str, Any]:
         assert first["open"] == [True] + [False] * (s.families - 1), f"default folds: {first['open']}"
         assert first["headings"] == s.families and first["banners"] == s.families, (
             "a closed family hides its heading or its synthetic label")
-        assert first["button"] == "Open every family", f"button reads {first['button']!r}"
+        statuses = [family["review_status"] for family in s.protocol["case_families"]]
+        assert len(first["reviews"]) == s.families and all(
+            f"clinical review of this case: {status}" in text for status, text in zip(statuses, first["reviews"])), (
+            f"a closed case hides its clinical-review status: {first['reviews']}")
+        # With every fold as the page loads it: the labels a reader needs are visible without opening anything.
+        assert not first["context_fold_open"] and first["guide_folded"], "the shared-context fold is open on load"
+        wanted = [f"CLINICAL REVIEW {s.protocol['evidence']['clinical_review'].upper()}", "INCLUDED IN ANALYSIS NO",
+                  f"EVIDENCE CLASS {s.protocol['evidence']['evidence_class'].upper()}"]
+        assert all(any(item.startswith(label) for item in first["context"]) for label in wanted), first["context"]
+        assert first["button"] == OPEN_ALL, f"button reads {first['button']!r}"
         page.focus("#exp-fam-toggle")
         page.keyboard.press("Enter")
         opened = page.evaluate(FOLD_STATE)
         page.keyboard.press("Enter")
         closed = page.evaluate(FOLD_STATE)
-        assert all(opened["open"]) and opened["button"] == "Close every family", f"after one press: {opened}"
-        assert not any(closed["open"]) and closed["button"] == "Open every family", f"after two: {closed}"
+        assert all(opened["open"]) and opened["button"] == CLOSE_ALL, f"after one press: {opened}"
+        assert not any(closed["open"]) and closed["button"] == OPEN_ALL, f"after two: {closed}"
         page.focus("#exp-families details.fam-fold > summary")
         page.keyboard.press("Enter")
         assert page.evaluate(FOLD_STATE)["open"][0], "Enter on a family heading did not open it"
-        return {"families": s.families, "open_by_default": 1}
+        return {"families": s.families, "open_by_default": 1, "first_case_starts_at_css_px": round(first["first_case_top"])}
     finally:
         page.close()
 
@@ -1138,7 +1722,7 @@ STATELESS_BLOCKS = """() => ({
         '[data-kind="not-computed"][data-method="j_lens"] [data-col="state"]')).map((s) => s.textContent),
     behaviour: Array.from(document.querySelectorAll(
         '[data-kind="block-unrecorded"][data-method="behavior_next_token"]')).map((p) => p.innerText),
-    behaviour_rows: document.querySelectorAll('tr[data-kind^="behavior"]').length,
+    behaviour_rows: document.querySelectorAll('[data-kind^="behavior"], [data-kind="dotplot"]').length,
 })"""
 
 
@@ -1177,12 +1761,20 @@ def detect_older_bundle(s: Session) -> dict[str, Any]:
             assert (cells["prompt_sha256"], cells["token_sha256"], cells["n_tokens"]) == (missing,) * 3, (
                 f"{key}: without variant_inputs the cells read {cells}")
             assert cells["prompt"] == PROMPT_TEXT_ABSENT, f"{key}: the prompt cell reads {cells['prompt']!r}"
+        # A bundle without the export shows no prompt text of any family, as every bundle did before it.
+        prompts = [entry["prompt"] for family in s.protocol["case_families"] for entry in family["variants"].values()]
+        leaked = [number for number, prompt in enumerate(prompts) if prompt and prompt in shown["text"]]
+        assert prompts and not leaked, f"the page shows the text of {len(leaked)} fixture prompts"
+        assert page.evaluate("() => document.querySelectorAll('[data-kind=\"text-basis\"]').length") == 0, (
+            "a basis line is shown for text the bundle does not hold")
+        unit = page.evaluate("() => document.getElementById('exp-endpoint-unit').innerText")
+        assert f"its size is {NOT_IN_BUNDLE}" in unit, f"without vocabulary_size the unit line reads {unit!r}"
         assert shown["preprocessing"] == [missing] * s.families, f"preprocessing reads {shown['preprocessing']}"
         assert shown["preprocessing_source"] == [], "a source is shown for a mode the bundle does not carry"
         assert (shown["executed"], shown["reused"]) == (EXECUTED_ABSENT, REUSED_ABSENT), (
             f"executed and reused read ({shown['executed']!r}, {shown['reused']!r})")
         return {"synthetic_banners": banner, "variant_cells": missing, "executed": shown["executed"],
-                "reused": shown["reused"],
+                "reused": shown["reused"], "prompt_text_on_page": 0,
                 "added_fields_assertion_rejects": rejected(lambda: assert_added_fields(
                     page, s.protocol, s.variant_inputs, s.preprocessing, s.journal_counts))}
     finally:
@@ -1203,6 +1795,11 @@ def detect_traversal_refused(s: Session) -> dict[str, Any]:
             assert "No request was made." in " ".join(state["messages"]), f"{label}: {state['messages']}"
             assert log.requests == [url], f"{label}: requests were {log.requests}"
             assert not state["results_visible"] and state["method_rows"] == 0, f"{label}: results show"
+            # The refusal is short. The address syntax is in docs/experiment_interface/preview.md, not here.
+            shown = page.locator("main").inner_text()
+            syntax = [needle for needle in DEVELOPER_SYNTAX if needle in shown]
+            assert len(state["messages"]) == 2 and not syntax, f"{label}: refusal reads {state['messages']} {syntax}"
+            assert state["links"] == [["./", "See the published comparisons", False]], f"{label}: {state['links']}"
             s.note_state(state)
             seen[label] = state["messages"][0]
         finally:
@@ -1225,7 +1822,66 @@ def detect_wrong_numbers(s: Session) -> dict[str, Any]:
     page, _ = s.open()
     try:
         return {"behaviour_assertion_rejects": rejected(lambda: assert_behavior(page, s.behavior)),
+                "dot_assertion_rejects": rejected(lambda: assert_dots(page, s.behavior, s.bundle)),
                 "ica_assertion_rejects": rejected(lambda: assert_ica(page, s.ica, s.basis_sha256))}
+    finally:
+        page.close()
+
+
+def disagreeing_bundle(bundle: Mapping[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    """A copy in which two comparison blocks of the first family record different values for one wording: the
+    target-token probability, a readout rank and an ICA score of the wording that is ``b`` in the first
+    comparison and ``a`` in the second. Returns the copy and what was changed."""
+    doc = copy.deepcopy(dict(bundle))
+    first, second = doc["comparisons"][0]["comparisons"][:2]
+    if first["b"] != second["a"]:
+        raise ValueError("the fixture's first two comparisons no longer share a wording")
+    target = second["behavior"]["targets"][0]
+    target["a"] = target["a"] / 2 + 0.25
+    method = sorted(name for name, block in second["readout"].items() if block.get("status") == "computed")[0]
+    layer = second["readout"][method]["layers"][0]
+    layer["targets"][0]["a"]["raw_rank"] += 1
+    component = second["ica"]["layers"][0]["components"][0]
+    component["score_a"] += 1.0
+    return doc, {"family": doc["comparisons"][0]["family_id"], "wording": second["a"],
+                 "target": target["target_id"], "method": method, "layer": str(layer["layer"]),
+                 "readout_target": layer["targets"][0]["target_id"], "component": str(component["component"])}
+
+
+def detect_disagreeing_blocks(s: Session, changed: Mapping[str, str]) -> dict[str, Any]:
+    """A wording's value is printed once although two comparison blocks record it. When the two records differ
+    the page must print neither and say so; it must not pick one."""
+    page, _ = s.open()
+    try:
+        assert page_state(page)["state"] == "ready", "the page did not render the bundle"
+        rows = table_rows(page)
+        dot = keyed(rows["behavior-variant"], "family", "variant", "target")[
+            (changed["family"], changed["wording"], changed["target"])]
+        assert dot["probability"] == MISS + CONFLICT, f"the probability cell reads {dot['probability']!r}"
+        drawn = page.evaluate("""(key) => document.querySelectorAll('[data-kind="behavior-variant"][data-family="' +
+            key.family + '"][data-variant="' + key.wording + '"][data-target="' + key.target +
+            '"] [data-kind="dot"]').length""", dict(changed))
+        assert drawn == 0, "a dot is drawn for a value two blocks disagree on"
+        rank = keyed(rows["readout"], "family", "method", "variant", "layer", "target")[
+            (changed["family"], changed["method"], changed["wording"], changed["layer"], changed["readout_target"])]
+        assert rank["raw"] == MISS + CONFLICT, f"the raw rank cell reads {rank['raw']!r}"
+        score = keyed(rows["ica-wording"], "family", "layer", "component")[
+            (changed["family"], str(ICA_LAYER), changed["component"])]
+        assert score[f"score@{changed['wording']}"] == MISS + CONFLICT, f"the score cell reads {score}"
+        return {"cells_that_say_two_blocks_disagree": 3,
+                "behaviour_assertion_rejects": rejected(lambda: assert_behavior(page, s.behavior))}
+    finally:
+        page.close()
+
+
+def check_old_section_link_opens_its_fold(s: Session) -> dict[str, Any]:
+    """``#protocol`` was a section and is now inside a fold. A link to it must still show the protocol."""
+    page, _ = s.open(s.url + "#protocol", expand=False)
+    try:
+        opened = page.evaluate("""() => ({open: document.getElementById('protocol').open,
+            visible: document.querySelector('#exp-protocol dd[data-col="protocol_id"]').getClientRects().length > 0})""")
+        assert opened == {"open": True, "visible": True}, f"#protocol: {opened}"
+        return {"anchor": "#protocol", "fold_opened": True}
     finally:
         page.close()
 
@@ -1312,8 +1968,13 @@ def check_distinct_states(s: Session) -> dict[str, Any]:
 
 
 def run_browser_checks(s: Session, recorder: Recorder) -> None:
-    recorder.run("no_parameter_shows_the_statement_and_requests_no_data", lambda: check_no_parameter(s))
+    recorder.run("no_parameter_shows_the_empty_statement_and_requests_only_the_index", lambda: check_no_parameter(s))
+    recorder.run("index_writer_never_lists_the_synthetic_bundle", lambda: check_index_never_lists_the_synthetic_bundle(s))
+    recorder.run("index_lists_a_publishable_bundle_and_its_link_opens_it",
+                 lambda: check_index_lists_a_publishable_bundle(s))
+    recorder.run("forged_or_unreadable_index_links_nothing", lambda: check_forged_index_entries_are_not_linked(s))
     check_rendered_bundle(s, recorder)
+    recorder.run("old_section_link_opens_the_fold_it_now_sits_in", lambda: check_old_section_link_opens_its_fold(s))
     recorder.run("keyboard_reaches_section_links_and_folds", lambda: check_keyboard(s))
     recorder.run("family_folds_open_from_the_keyboard_and_keep_their_labels", lambda: check_family_folds(s))
     recorder.run("renders_at_390_px_without_horizontal_overflow", lambda: check_narrow(s))
@@ -1335,6 +1996,10 @@ def run_browser_checks(s: Session, recorder: Recorder) -> None:
                lambda: None, lambda: detect_traversal_refused(s))
     run_defect(recorder, s, "control_a_wrong_probability_and_a_flipped_score_fail_the_value_checks",
                lambda: s.write(wrong_number_bundle(s.bundle)), lambda: detect_wrong_numbers(s))
+
+    disagreeing, changed = disagreeing_bundle(s.bundle)
+    run_defect(recorder, s, "defect_two_blocks_that_disagree_on_one_wording_show_neither_value",
+               lambda: s.write(disagreeing), lambda: detect_disagreeing_blocks(s, changed))
 
     recorder.run("a_link_is_shown_only_for_a_verified_built_record", lambda: check_link_records(s))
     recorder.run("parameter_rule_matches_its_python_mirror", lambda: check_parameter_cases(s))
@@ -1379,11 +2044,16 @@ def run(site_source: Path, browser_path: str | None, shots: Path | None, receipt
         raise SetupProblem("the playwright package is not importable; this check is blocked, not passed: "
                            f"{exc}") from exc
 
-    protocol = json.loads(PROTOCOL.read_text(encoding="utf-8"))
+    protocol = marked_protocol(json.loads(PROTOCOL.read_text(encoding="utf-8")))
     behavior = expected_behavior(protocol, json.loads(LOGITS.read_text(encoding="utf-8")))
     basis_sha256 = json.loads(ICA_INDEX.read_text(encoding="utf-8"))["basis_manifest_sha256"]
     recorder = Recorder(receipt)
     real_preview = site_source / "data" / "experiment_preview"
+    real_index = site_source / "data" / INDEX_FILE
+    if not real_index.is_file():
+        raise SetupProblem(f"the site has no data/{INDEX_FILE}; write it with scripts/export_experiment_index.py "
+                           "--site SITE (the page requests it, so its absence is a failed request)")
+    index_before = sha256_file(real_index)
     blocked: list[str] = receipt["browser_external_requests"]
 
     with tempfile.TemporaryDirectory(prefix="pw-exp-preview-") as directory:
@@ -1391,7 +2061,7 @@ def run(site_source: Path, browser_path: str | None, shots: Path | None, receipt
         site, work = temp / "patientwords", temp / "experiment_work"
         work.mkdir()
         copy_site(site_source, site)
-        bundle_file = build_bundle(work, receipt)
+        bundle_file = build_bundle(work, receipt, protocol)
         validated = next(step for step in receipt["cli_steps"] if step["step"] == "validate")
         recorder.run("cli_synthetic_slice_with_interruption_and_resume", lambda: {"steps": len(receipt["cli_steps"])})
 
@@ -1422,7 +2092,7 @@ def run(site_source: Path, browser_path: str | None, shots: Path | None, receipt
                 browser = launch(playwright, browser_path)
                 receipt["versions"]["chromium"] = browser.version
                 session = Session(
-                    base=origin + "/patientwords", served=served, original=original, bundle=bundle,
+                    base=origin + "/patientwords", site=site, served=served, original=original, bundle=bundle,
                     protocol=protocol, validated=validated, behavior=behavior, ica=expected_ica(protocol),
                     basis_sha256=basis_sha256, desktop=new_context(browser, origin, blocked, 1280, 900),
                     phone=new_context(browser, origin, blocked, 390, 844), receipt=receipt, shots=shots,
@@ -1445,8 +2115,11 @@ def run(site_source: Path, browser_path: str | None, shots: Path | None, receipt
 
     def real_site_untouched() -> dict[str, Any]:
         assert not real_preview.exists(), "the real site holds data/experiment_preview; a fixture must never be there"
+        assert not (site_source / "data" / RELABELLED_PARAM).exists(), "the relabelled fixture reached the real site"
+        assert sha256_file(real_index) == index_before, "the real site's experiment index was changed"
         assert not temp.exists(), "the temporary tree was not removed"
-        return {"cleanup": "temporary server stopped; copied site, run store and bundle removed"}
+        return {"cleanup": "temporary server stopped; copied site, run store and bundles removed",
+                "real_index_sha256": index_before}
     recorder.run("real_site_untouched_and_temporary_tree_removed", real_site_untouched)
     return recorder.failed
 

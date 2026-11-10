@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "patientwords.experiment-bundle/1",
   "title": "Experiment preview bundle",
-  "description": "Structure only, in the keyword subset scripts/frontend_contract_schema.py executes. The top level is closed. Comparison blocks keep their own shapes (behavior, readout, ica) and are described in scripts/experiments/compare.py; this schema states where they sit, not their inner fields. A bundle holds no prompt text, no target text and no clock value. Added to version 1 on 2026-11-10, all optional so that an earlier bundle still validates: protocol.families[].variant_inputs (hashes and a token count per variant, never text), ica.preprocessing_mode and ica.preprocessing_read_from, execution.counts.executed_attempts and execution.counts.reused_events (counts of journal lines), and execution.completed_under_superseded_inputs.",
+  "description": "Structure only, in the keyword subset scripts/frontend_contract_schema.py executes. The top level is closed. Comparison blocks keep their own shapes (behavior, readout, ica) and are described in scripts/experiments/compare.py; this schema states where they sit, not their inner fields. A bundle holds no target text and no clock value. It holds prompt text only in protocol.families[].variant_text, which the writer adds for a family the protocol marks as approved for publication (scripts/experiments/bundle.py, PROMPT_TEXT_MARKER) and never for a family the holdout seal restricts; protocol.families[].prompt_text_export records the basis. Both are optional and were added on 2026-11-10 with behavior.vocabulary_size. Added to version 1 on 2026-11-10, all optional so that an earlier bundle still validates: protocol.families[].variant_inputs (hashes and a token count per variant, never text), ica.preprocessing_mode and ica.preprocessing_read_from, execution.counts.executed_attempts and execution.counts.reused_events (counts of journal lines), and execution.completed_under_superseded_inputs.",
   "type": "object",
   "required": [
     "schema_version", "protocol", "evidence", "plan_totals", "execution", "comparisons", "methods_not_run",
@@ -42,6 +42,28 @@
                   },
                   "additionalProperties": false
                 }
+              },
+              "variant_text": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "required": ["prompt", "prompt_sha256"],
+                  "properties": {
+                    "prompt": {"type": "string"},
+                    "prompt_sha256": {"type": "string"}
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "prompt_text_export": {
+                "type": "object",
+                "required": ["basis", "marker", "seal_check"],
+                "properties": {
+                  "basis": {"type": "string"},
+                  "marker": {"type": "string"},
+                  "seal_check": {"type": "string"}
+                },
+                "additionalProperties": false
               }
             }
           }

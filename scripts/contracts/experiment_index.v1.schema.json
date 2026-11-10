@@ -1,0 +1,95 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "patientwords.experiment-index/1",
+  "title": "Experiment comparison index",
+  "description": "Structure only, in the keyword subset scripts/frontend_contract_schema.py executes. The list of experiment comparison bundles the site's experiments page links to, written by scripts/export_experiment_index.py from the bundle files present under the site's data directory. A bundle is listed only when its own evidence block says it may be published: not synthetic, visibility public, no restriction reason. The eligibility rule, the path rule and the agreement of each entry with its bundle file are checked by scripts/experiment_index_contract.py, not by this schema. The index holds labels, counts and hashes; it holds no prompt text and no measurement.",
+  "type": "object",
+  "required": ["schema_version", "bundle_schema", "eligibility", "comparisons", "not_listed", "totals"],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "bundle_schema": {"type": "string"},
+    "eligibility": {"type": "string"},
+    "comparisons": {"type": "array", "items": {"$ref": "#/definitions/comparison"}},
+    "not_listed": {"type": "array", "items": {"$ref": "#/definitions/not_listed"}},
+    "totals": {
+      "type": "object",
+      "required": ["bundle_files", "listed", "not_listed"],
+      "properties": {
+        "bundle_files": {"type": "integer"},
+        "listed": {"type": "integer"},
+        "not_listed": {"type": "integer"}
+      },
+      "additionalProperties": false
+    },
+    "_provenance": {
+      "type": "object",
+      "required": ["generator", "engine_sha", "generated_utc"],
+      "properties": {
+        "generator": {"type": "string"},
+        "engine_sha": {"type": ["string", "null"]},
+        "generated_utc": {"type": "string"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "comparison": {
+      "type": "object",
+      "required": [
+        "bundle", "bundle_sha256", "protocol", "model", "evidence_class", "clinical_review", "visibility",
+        "analysis_memberships", "cases", "methods", "primary_endpoint", "prompt_text_cases"
+      ],
+      "properties": {
+        "bundle": {"type": "string"},
+        "bundle_sha256": {"type": "string"},
+        "protocol": {
+          "type": "object",
+          "required": ["id", "version", "sha256"],
+          "properties": {
+            "id": {"type": "string"},
+            "version": {"type": "string"},
+            "sha256": {"type": "string"}
+          },
+          "additionalProperties": false
+        },
+        "model": {
+          "type": "object",
+          "required": ["study_id", "hf_id"],
+          "properties": {
+            "study_id": {"type": ["string", "null"]},
+            "hf_id": {"type": ["string", "null"]}
+          },
+          "additionalProperties": false
+        },
+        "evidence_class": {"type": "string"},
+        "clinical_review": {"type": "string"},
+        "visibility": {"type": "string"},
+        "analysis_memberships": {"type": "array", "items": {"type": "string"}},
+        "cases": {"type": "integer"},
+        "methods": {"type": "array", "items": {"type": "string"}},
+        "primary_endpoint": {
+          "type": "object",
+          "required": ["method", "metric", "target"],
+          "properties": {
+            "method": {"type": ["string", "null"]},
+            "metric": {"type": ["string", "null"]},
+            "target": {"type": ["string", "null"]}
+          },
+          "additionalProperties": false
+        },
+        "prompt_text_cases": {"type": "integer"}
+      },
+      "additionalProperties": false
+    },
+    "not_listed": {
+      "type": "object",
+      "required": ["file", "reasons"],
+      "properties": {
+        "file": {"type": "string"},
+        "reasons": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    }
+  }
+}

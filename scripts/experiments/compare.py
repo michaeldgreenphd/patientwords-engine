@@ -3,7 +3,8 @@
 For each family, comparison (variant a against variant b) and replicate, each method contributes its own block:
 
 * ``behavior``: the difference in full-vocabulary probability of each target, a minus b, signed and raw, from
-  ``behavior_next_token/1`` payloads only.
+  ``behavior_next_token/1`` payloads only. The block records ``vocabulary_size``, the number of tokens the
+  probability is taken over. The value is for the first encoded token of the target; no sequence is scored.
 * ``readout``: per readout method and layer, the target's raw rank and filtered rank for a and for b, both kept,
   from ``lens_readout_report/1`` payloads. A top-k miss reads ``not_observed_in_window``.
 * ``ica``: signed score differences per component under one basis hash, and energy shares labelled
@@ -61,9 +62,11 @@ def behavior_block(payload_a: Mapping[str, Any], payload_b: Mapping[str, Any]) -
             "difference_a_minus_b": row["full_vocab_probability"] - other["full_vocab_probability"],
             "raw_rank_a": row["raw_rank"], "raw_rank_b": other["raw_rank"],
         })
+    # ``vocabulary_size`` (added 2026-11-10) is the number of tokens the probability is taken over: the
+    # denominator a reader needs beside "full-vocabulary probability". The two payloads agree on it (above).
     return {"status": "computed", "payload_kind": BEHAVIOR_KIND, "metric": "full_vocab_probability",
-            "probability_kind": payload_a["probability_kind"], "sign_convention": SIGN_CONVENTION,
-            "targets": targets}
+            "probability_kind": payload_a["probability_kind"], "vocabulary_size": payload_a["vocabulary_size"],
+            "sign_convention": SIGN_CONVENTION, "targets": targets}
 
 
 def _last_scores(payload: Mapping[str, Any]) -> dict[int, dict[str, Any]]:

@@ -397,6 +397,181 @@ def test_bundle_copies_no_prompt_or_target_text(finished: RunStore) -> None:
         assert not [phrase for phrase in PLACEHOLDER_TEXT if phrase in path.read_text(encoding="utf-8")]
 
 
+# ------------------------------------------------------------------------- explicit prompt-text export
+
+def _marked(protocol: dict, *family_ids: str) -> dict:
+    doc = copy.deepcopy(protocol)
+    for family in doc["case_families"]:
+        if family["family_id"] in family_ids:
+            family["facts"].append(bundle_module.PROMPT_TEXT_MARKER)
+    return doc
+
+
+def _finished(doc: dict, directory: Path) -> RunStore:
+    store = RunStore(directory)
+    store.run_fixture(planner.build_plan(doc, capabilities.load_matrix()), "w0", fixtures_dir=FIXTURES, protocol=doc)
+    store.collect()
+    return store
+
+
+def test_behaviour_block_records_the_vocabulary_size(finished: RunStore) -> None:
+    # Added 2026-11-10: the denominator of "full-vocabulary probability". The fixture rows hold 8 logits.
+    logits = json.loads((FIXTURES / "behavior_logits.json").read_text(encoding="utf-8"))
+    sizes = {len(row["logits"]) for row in logits["rows"]}
+    assert sizes == {8}
+    comparison = compare.compare_run(finished.run_dir)
+    blocks = [e["behavior"] for family in comparison["families"] for e in family["comparisons"]]
+    assert blocks and {block["vocabulary_size"] for block in blocks} == sizes
+
+
+def test_bundle_exports_prompt_text_only_for_a_family_the_protocol_marks(protocol: dict, tmp_path: Path) -> None:
+    marked = _marked(protocol, "fam-1")
+    store = _finished(marked, tmp_path / "run")
+    # Without the protocol document the bundle holds no text, marker or not.
+    silent = bundle_module.build_bundle(store.run_dir)
+    assert not [phrase for phrase in PLACEHOLDER_TEXT if phrase in json.dumps(silent)]
+    assert not [f for f in silent["protocol"]["families"] if "variant_text" in f or "prompt_text_export" in f]
+    built = bundle_module.build_bundle(store.run_dir, protocol=marked)
+    assert common.structural_errors(built, "bundle") == []
+    families = {f["family_id"]: f for f in built["protocol"]["families"]}
+    source = next(f for f in marked["case_families"] if f["family_id"] == "fam-1")
+    assert families["fam-1"]["variant_text"] == {
+        name: {"prompt": entry["prompt"], "prompt_sha256": entry["prompt_sha256"]}
+        for name, entry in source["variants"].items()}
+    assert families["fam-1"]["prompt_text_export"] == {
+        "basis": "protocol_marker", "marker": "publication:prompt_text_approved",
+        "seal_check": "not_applicable_synthetic"}
+    # The unmarked families carry no text anywhere in the bundle, and no target text is exported at all.
+    for family_id in ("fam-2", "fam-3"):
+        assert "variant_text" not in families[family_id] and "prompt_text_export" not in families[family_id]
+    stripped = copy.deepcopy(built)
+    for family in stripped["protocol"]["families"]:
+        family.pop("variant_text", None)
+    assert not [phrase for phrase in PLACEHOLDER_TEXT if phrase in json.dumps(stripped)]
+    assert not [t["text"] for f in marked["case_families"] for t in f["targets"] if t["text"] in json.dumps(built)]
+    # The hash entry stays closed and unchanged, and the bundle stays a synthetic, unpublished document.
+    assert families["fam-1"]["variant_inputs"] == silent["protocol"]["families"][0]["variant_inputs"]
+    assert built["evidence"]["synthetic"] is True and built["evidence"]["visibility"] == "not_published"
+    assert common.json_bytes(built) == common.json_bytes(bundle_module.build_bundle(store.run_dir, protocol=marked))
+
+
+def test_prompt_text_export_refuses_a_protocol_the_plan_was_not_built_from(protocol: dict, tmp_path: Path) -> None:
+    marked = _marked(protocol, "fam-1")
+    store = _finished(marked, tmp_path / "run")
+    with pytest.raises(Refusal) as refused:
+        bundle_module.build_bundle(store.run_dir, protocol=_marked(protocol, "fam-1", "fam-2"))
+    assert refused.value.code == "protocol_mismatch"
+    with pytest.raises(Refusal) as refused:
+        bundle_module.build_bundle(store.run_dir, protocol=protocol)          # the unmarked original
+    assert refused.value.code == "protocol_mismatch"
+
+
+def test_an_excluded_marked_family_exports_no_text(protocol: dict, tmp_path: Path) -> None:
+    marked = _marked(protocol, "fam-1", "fam-3")
+    marked["exclusions"] = [{"family_id": "fam-3", "reason": "placeholder exclusion"}]
+    store = _finished(marked, tmp_path / "run")
+    families = {f["family_id"]: f for f in bundle_module.build_bundle(store.run_dir, protocol=marked)[
+        "protocol"]["families"]}
+    assert "variant_text" in families["fam-1"] and "variant_text" not in families["fam-3"]
+
+
+def _real_labelled(protocol: dict, visibility: str = "public", reasons: tuple[str, ...] = ()) -> tuple[dict, dict, dict]:
+    """A non-synthetic protocol document, the plan fields ``approved_prompt_text`` reads and the hash entries
+    of its variants. No plan is built: the fixture backend runs synthetic protocols only."""
+    doc = _marked(protocol, "fam-1")
+    doc["synthetic"] = False
+    doc["evidence"] = {"evidence_class": "unclassified", "clinical_review": "domain_review_pending",
+                       "visibility": visibility, "restriction_reasons": list(reasons)}
+    doc["case_families"][0]["legacy_join"] = {"batch": "placeholder_batch", "batch_index": 3, "model": "toy-model"}
+    plan = {"protocol": {"sha256": common.digest(doc)}, "synthetic": False, "evidence": doc["evidence"]}
+    inputs = {f["family_id"]: {name: {"prompt_sha256": entry["prompt_sha256"]}
+                               for name, entry in f["variants"].items()} for f in doc["case_families"]}
+    return doc, plan, inputs
+
+
+def test_prompt_text_of_a_real_protocol_is_exported_only_after_the_seal_check_passes(protocol: dict) -> None:
+    doc, plan, inputs = _real_labelled(protocol)
+    asked: list[tuple] = []
+
+    def open_seal(batch, index, prompt):
+        asked.append((batch, index, prompt is not None))
+        return None
+
+    exported = bundle_module.approved_prompt_text(doc, plan, inputs, open_seal)
+    assert set(exported) == {"fam-1"} and set(exported["fam-1"]["variant_text"]) == {
+        "clinical", "colloquial", "normalized"}
+    assert exported["fam-1"]["prompt_text_export"]["seal_check"] == "passed_at_export"
+    # The legacy row is asked as a row, then every variant prompt as a bare phrase: protocol validation's order.
+    assert asked[0] == ("placeholder_batch", 3, True) and asked[1:] == [(None, None, True)] * 3
+
+    def sealed_phrase(batch, index, prompt):
+        return "sealed_holdout" if batch is None and prompt == doc["case_families"][0]["variants"]["colloquial"][
+            "prompt"] else None
+
+    with pytest.raises(Refusal) as refused:
+        bundle_module.approved_prompt_text(doc, plan, inputs, sealed_phrase)
+    assert refused.value.code == "holdout_refusal" and "fam-1:colloquial" in str(refused.value)
+    assert not [phrase for phrase in PLACEHOLDER_TEXT if phrase in str(refused.value)]   # no text in a refusal
+
+    with pytest.raises(Refusal) as refused:
+        bundle_module.approved_prompt_text(doc, plan, inputs, lambda batch, index, prompt: (
+            "sealed_holdout" if batch == "placeholder_batch" else None))
+    assert refused.value.code == "holdout_refusal" and "(placeholder_batch, 3)" in str(refused.value)
+
+    class SealError(RuntimeError):
+        pass
+
+    def broken(batch, index, prompt):
+        raise SealError("the seal's inputs are absent")
+
+    with pytest.raises(SealError):                    # a configuration error, never converted to "no restriction"
+        bundle_module.approved_prompt_text(doc, plan, inputs, broken)
+
+
+@pytest.mark.parametrize("visibility, reasons", [("restricted", ("redistribution_limited_text",)),
+                                                 ("not_published", ()), ("public", ("sealed_holdout",))])
+def test_prompt_text_of_a_restricted_or_unpublished_protocol_is_refused(protocol: dict, visibility: str,
+                                                                        reasons: tuple[str, ...]) -> None:
+    doc, plan, inputs = _real_labelled(protocol, visibility, reasons)
+    with pytest.raises(Refusal) as refused:
+        bundle_module.approved_prompt_text(doc, plan, inputs, lambda *row: None)
+    assert refused.value.code == "prompt_text_restricted"
+
+
+def test_prompt_text_export_refuses_a_prompt_the_plan_did_not_run(protocol: dict) -> None:
+    doc, plan, inputs = _real_labelled(protocol)
+    inputs["fam-1"]["clinical"]["prompt_sha256"] = "0" * 64
+    with pytest.raises(Refusal) as refused:
+        bundle_module.approved_prompt_text(doc, plan, inputs, lambda *row: None)
+    assert refused.value.code == "prompt_hash"
+    # No marker, or no protocol: nothing is exported and the seal is not consulted.
+    unmarked = copy.deepcopy(doc)
+    unmarked["case_families"][0]["facts"].remove(bundle_module.PROMPT_TEXT_MARKER)
+    plan["protocol"]["sha256"] = common.digest(unmarked)
+
+    def never(*row):
+        raise AssertionError("the seal was consulted for a protocol with no marked family")
+
+    assert bundle_module.approved_prompt_text(unmarked, plan, inputs, never) == {}
+    assert bundle_module.approved_prompt_text(None, plan, inputs, never) == {}
+
+
+def test_cli_bundle_exports_text_only_with_the_protocol_flag(protocol: dict, tmp_path: Path,
+                                                             capsys: pytest.CaptureFixture) -> None:
+    marked = _marked(protocol, "fam-2")
+    path = tmp_path / "marked.json"
+    path.write_text(json.dumps(marked), encoding="utf-8")
+    store = _finished(marked, tmp_path / "run")
+    code, plain = invoke(capsys, "bundle", "--run-dir", store.run_dir, "--out", tmp_path / "plain.json")
+    assert code == cli.EXIT_OK and plain["prompt_text_families"] == []
+    code, with_text = invoke(capsys, "bundle", "--run-dir", store.run_dir, "--out", tmp_path / "text.json",
+                             "--protocol", path)
+    assert code == cli.EXIT_OK and with_text["prompt_text_families"] == ["fam-2"]
+    code, refused = invoke(capsys, "bundle", "--run-dir", store.run_dir, "--out", tmp_path / "other.json",
+                           "--protocol", PROTOCOL)
+    assert code == cli.EXIT_REFUSED and refused["code"] == "protocol_mismatch" and not (tmp_path / "other.json").exists()
+
+
 def test_bundle_of_an_incomplete_run_says_so(protocol: dict, tmp_path: Path) -> None:
     store = RunStore(tmp_path / "run")
     store.run_fixture(planner.build_plan(protocol, capabilities.load_matrix()), "w0", fixtures_dir=FIXTURES,
