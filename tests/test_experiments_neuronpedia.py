@@ -2,9 +2,12 @@
 
 Offline. The fixture registry is synthetic: an invented toy model, invented ids and a host under the reserved
 ``.invalid`` domain. Label texts are abstract placeholders. These tests show that the registry rules and the
-link rules behave as written. They are not evidence that any Neuronpedia page exists, that any id in the real
-registry resolves on the site, or that a hosted checkpoint equals a study pin: no page was read and no request
-was made (the hosts were unreachable on 2026-11-10, and this module sends nothing in any case).
+link rules behave as written. They contact nothing. What the real registry says about the service rests on
+responses fetched on 2026-11-10, outside the module, with plain GET requests; their hashes, sizes, retrieval
+times and the fields read are in ``data/experiments/neuronpedia_evidence/20261110/index.v1.json``, with the
+small JSON bodies beside it. The tests compare the registry with those saved records. They are therefore
+evidence about what the service answered on that date, not about what it answers today, and nothing here shows
+that a hosted checkpoint equals a study pin: no record that was read names a revision.
 """
 from __future__ import annotations
 
@@ -14,6 +17,7 @@ import hashlib
 import importlib.util
 import inspect
 import json
+import re
 import socket
 import sys
 from pathlib import Path
@@ -32,7 +36,33 @@ ENGINE = Path(__file__).resolve().parents[1]
 FX = ENGINE / "tests" / "fixtures" / "experiments" / "neuronpedia"
 MODULE = ENGINE / "scripts" / "experiments" / "neuronpedia.py"
 
+EVIDENCE = ENGINE / "data" / "experiments" / "neuronpedia_evidence" / "20261110"
+EVIDENCE_INDEX = "data/experiments/neuronpedia_evidence/20261110/index.v1.json"
+EVIDENCE_DAY = "2026-11-10"
+# A response key that would name a revision, a commit or a content hash.
+REVISION_KEY = re.compile(r"revision|commit|checkpoint|sha256|sha1|hash", re.I)
+CITED_RECORD = re.compile(r"\(records? ([a-z0-9.-]+)(?: and ([a-z0-9.-]+))? in " + re.escape(EVIDENCE_INDEX) + r"\)")
+
 ALIAS = "qwen3.5-2b-base.ica-component.neuronpedia-alias"
+HOSTED_LENSES = ("gemma-2-2b.workspace-readout.hosted-jlens", "gemma-2-2b-it.workspace-readout.hosted-jlens")
+# The bases the ICA fork names, with the Neuronpedia model id and the repository the service's records name.
+FORK_BASES = {
+    "gemma-2-2b.ica-component.sida-icalens-gemma-2-2b-pile10k": ("gemma-2-2b", "neuronpedia/icalens-gemma-2-2b"),
+    "gpt2.ica-component.sida-icalens-gpt2-small-pile10k": ("gpt2-small", "neuronpedia/icalens-gpt2-small"),
+    "qwen3.5-9b-base.ica-component.sida-icalens-qwen3.5-9b-base-pile10k": ("qwen3.5-9b-pt",
+                                                                         "neuronpedia/icalens-qwen3.5-9b-pt"),
+}
+INSTRUCT_BASIS = "qwen3.5-2b-instruct.ica-component.sida-icalens-qwen3.5-2b-ultrachat-1m"
+# The fourteen pages listed as not read when the registry was written. All were read on 2026-11-10.
+FORMERLY_UNREAD = (
+    "https://www.neuronpedia.org/blog/neurons-ica", "https://www.neuronpedia.org/blog",
+    "https://arxiv.org/abs/2606.11722v2", "https://docs.neuronpedia.org/api-and-data/api",
+    "https://docs.neuronpedia.org/sparse-autoencoders/auto-interp", "https://www.neuronpedia.org/graph/validator",
+    "https://www.neuronpedia.org/blog/circuit-tracer", "https://www.neuronpedia.org/blog/interp-engine",
+    "https://www.neuronpedia.org/blog/headvis", "https://www.neuronpedia.org/blog/nlas",
+    "https://www.neuronpedia.org/blog/assistant-axis", "https://www.neuronpedia.org/blog/jpp-drift-ui",
+    "https://www.neuronpedia.org/blog/interp-explorer", "https://www.neuronpedia.org/blog/fall-update",
+)
 GEMMA_SET = "gemma-2-2b.transcoder-feature.gemmascope-transcoder-16k"
 QWEN_SET = "qwen3-4b.transcoder-feature.transcoder-hp"
 FX_VERIFIED = "toy-model.ica-component.fixture-verified"
@@ -63,6 +93,35 @@ def real() -> dict:
 @pytest.fixture
 def fixture_registry() -> dict:
     return nps.load_registry(FX / "representation_registry.fixture.json")
+
+
+@pytest.fixture(scope="module")
+def evidence() -> dict[str, dict]:
+    """The records fetched on 2026-11-10, by id."""
+    index = json.loads((EVIDENCE / "index.v1.json").read_text(encoding="utf-8"))
+    assert index["schema_version"] == "patientwords.neuronpedia-evidence/1"
+    assert index["retrieved_utc_date"] == EVIDENCE_DAY
+    by_id = {record["id"]: record for record in index["records"]}
+    assert len(by_id) == len(index["records"]) == 62
+    return by_id
+
+
+def body_of(record: dict) -> Any:
+    """The saved response body of a record that keeps one: a JSON document, or the first row of a JSONL export."""
+    raw = (EVIDENCE / record["body"]).read_text(encoding="utf-8")
+    return json.loads(raw) if record["kind"] == "api_json" else json.loads(raw.splitlines()[0])
+
+
+def keys_in(node: Any) -> set[str]:
+    if isinstance(node, dict):
+        return set(node) | {key for value in node.values() for key in keys_in(value)}
+    if isinstance(node, list):
+        return {key for value in node for key in keys_in(value)}
+    return set()
+
+
+def cited_records(text: str) -> list[str]:
+    return [name for found in CITED_RECORD.findall(text) for name in found if name]
 
 
 def entry(registry: dict, registry_id: str) -> dict:
@@ -102,9 +161,27 @@ def test_real_registry_validates_and_states_what_was_not_read(real: dict) -> Non
     assert len({e["registry_id"] for e in real["entries"]}) == len(real["entries"]) == 9
     assert {e["representation_type"] for e in real["entries"]} == {"transcoder_feature", "workspace_readout",
                                                                   "ica_component"}
-    # Every source page the registry could have been checked against is listed as not read, with the date.
-    assert len(real["sources_not_read"]) == 14
-    assert all(item["attempted_utc_date"] == "2026-11-10" for item in real["sources_not_read"])
+    # What is still unread after 2026-11-10: Hugging Face (the host was refused) and two POST routes that were
+    # not requested, one of them because it runs a model.
+    assert [item["url"] for item in real["sources_not_read"]] == [
+        "https://huggingface.co/api/models/neuronpedia/icalens-qwen3.5-2b-pt",
+        "https://www.neuronpedia.org/api/model/lookup",
+        "https://www.neuronpedia.org/api/lens/prompt",
+    ]
+    assert all(item["attempted_utc_date"] == EVIDENCE_DAY for item in real["sources_not_read"])
+    blocked, lookup, lens = (item["result"] for item in real["sources_not_read"])
+    assert blocked.startswith("not read:") and "403" in blocked
+    assert lookup.startswith("not requested:") and "POST" in lookup
+    assert lens.startswith("not requested:") and "runs a model" in lens
+
+
+def test_the_pages_once_listed_as_not_read_are_recorded_as_read(real: dict, evidence: dict[str, dict]) -> None:
+    read = {record["snapshot"]["source_url"]: record for record in evidence.values()}
+    still_unread = {item["url"] for item in real["sources_not_read"]}
+    for url in FORMERLY_UNREAD:
+        assert url not in still_unread, url
+        assert read[url]["http_status"] == 200 and read[url]["snapshot"]["bytes"] > 0, url
+        assert read[url]["snapshot"]["retrieved_utc"].startswith(EVIDENCE_DAY), url
 
 
 def test_real_entries_agree_with_the_engine_tables(real: dict) -> None:
@@ -136,63 +213,252 @@ def test_registry_artifact_ids_exist_in_the_capability_matrix(real: dict) -> Non
 
 def test_real_statuses_are_the_ones_the_evidence_supports(real: dict) -> None:
     statuses = {e["registry_id"]: e["verification"]["status"] for e in real["entries"]}
-    assert statuses[ALIAS] == "alias_unverified_checkpoint"
-    assert statuses[GEMMA_SET] == statuses[QWEN_SET] == "hosted_identity_unknown"
-    assert statuses["gemma-2-2b.workspace-readout.hosted-jlens"] == "hosted_identity_unknown"
-    assert statuses["gemma-2-2b-it.workspace-readout.hosted-jlens"] == "hosted_identity_unknown"
-    # No page was read on 2026-11-10, so nothing is verified_exact, no hosted revision is recorded and no URL
-    # pattern is recorded. An entry may change only together with its evidence.
+    assert statuses == {
+        GEMMA_SET: "hosted_identity_unknown", QWEN_SET: "hosted_identity_unknown",
+        HOSTED_LENSES[0]: "hosted_identity_unknown", HOSTED_LENSES[1]: "hosted_identity_unknown",
+        ALIAS: "alias_unverified_checkpoint",
+        **{registry_id: "unverified" for registry_id in (*FORK_BASES, INSTRUCT_BASIS)},
+    }
+    # The service's records were read on 2026-11-10 and none names a revision (the tests below), so nothing is
+    # verified_exact and no hosted revision is recorded. The documentation gives a feature page form; it is
+    # not entered as a URL pattern. An entry may change only together with its evidence.
     for item in real["entries"]:
         assert item["verification"]["status"] != "verified_exact", item["registry_id"]
         assert item["links_enabled"] is False
         assert item["verification"]["hosted_checkpoint_revision"] is None
+        assert "/verification/hosted_checkpoint_revision" in item["not_recorded"]
         assert item["url_pattern"] is None and "/url_pattern" in item["not_recorded"]
         assert item["verification"]["evidence"]
+        assert item["verification"]["checked_utc_date"] == EVIDENCE_DAY
 
 
-def test_alias_entry_records_the_pin_and_that_the_page_was_not_read(real: dict) -> None:
+def test_every_evidence_record_is_hashed_dated_and_sourced(evidence: dict[str, dict]) -> None:
+    """One record per response: SHA-256, size, URL and retrieval time, made by ``record_snapshot``. A body that
+    was kept still has the recorded hash and size; a request record validates and repeats the response hash."""
+    kept = 0
+    for record_id, record in evidence.items():
+        snapshot = record["snapshot"]
+        assert snapshot["schema_version"] == nps.SNAPSHOT_SCHEMA and snapshot["not_recorded"] == [], record_id
+        assert nps.HEX64.fullmatch(snapshot["sha256"]) and snapshot["bytes"] > 0, record_id
+        assert nps.PLAIN_URL.fullmatch(snapshot["source_url"]), record_id
+        assert re.fullmatch(EVIDENCE_DAY + r"T\d{2}:\d{2}:\d{2}Z", snapshot["retrieved_utc"]), record_id
+        assert record["kind"] in ("api_json", "export_jsonl", "html_page") and record["fields_read"], record_id
+        if record["body"] is None:
+            assert record["body_omitted_reason"], record_id
+        else:
+            kept += 1
+            assert record["body_omitted_reason"] is None and record["kind"] != "html_page", record_id
+            assert nps.verify_snapshot(EVIDENCE / record["body"], snapshot) == {
+                "status": "verified", "sha256": snapshot["sha256"], "bytes": snapshot["bytes"],
+                "provenance_complete": True, "not_recorded": []}, record_id
+        if "request" in record:
+            request = nps.validate_request_record(record["request"])
+            assert request["endpoint"]["method"] == "GET"
+            assert snapshot["source_url"] == f"https://{request['endpoint']['host']}{request['endpoint']['path']}"
+            assert request["response_sha256"] == snapshot["sha256"]
+            assert request["retrieved_utc"] == snapshot["retrieved_utc"]
+            assert request["effective_request_settings"] == {}
+    assert kept == 24 and sorted(p.name for p in (EVIDENCE / "bodies").iterdir()) == sorted(
+        Path(record["body"]).name for record in evidence.values() if record["body"])
+    # Feature records hold dataset text and user names, and pages are large: neither body is in the repository.
+    assert all(record["body"] is None for record_id, record in evidence.items()
+               if record["kind"] == "html_page" or record_id.startswith("api.feature."))
+    assert all("@" not in (EVIDENCE / record["body"]).read_text(encoding="utf-8")
+               for record in evidence.values() if record["body"])
+    # Every request was a GET of a plain URL. The only non-200 answer is the probe of a route that does not exist.
+    assert {record_id for record_id, record in evidence.items() if record["http_status"] != 200} == {
+        "probe.api.source.qwen3.5-2b-pt.0-icalens-res"}
+
+
+def test_no_record_of_the_service_names_a_revision(evidence: dict[str, dict]) -> None:
+    """The reason no entry is verified_exact, checked on the saved bytes and on the fields read.
+
+    ``sae_lens_training_version`` (null in every record) is a library version and is not a revision of a model
+    or of a dictionary. A request record lists its three revision fields as not recorded."""
+    for record_id, record in evidence.items():
+        if record["body"] is not None:
+            named = {key for key in keys_in(body_of(record)) if REVISION_KEY.search(key)}
+            assert named == set(), (record_id, named)
+        if "keys_naming_a_revision_commit_or_hash" in record["fields_read"]:
+            assert record["fields_read"]["keys_naming_a_revision_commit_or_hash"] == [], record_id
+        if "request" in record:
+            identity = record["request"]["service_identity"]
+            assert identity["service"] == "www.neuronpedia.org"
+            assert (identity["model_revision"], identity["dictionary_revision"], identity["instrument_revision"]) \
+                == (None, None, None)
+            assert record["request"]["not_recorded"] == ["/service_identity/dictionary_revision",
+                                                         "/service_identity/instrument_revision",
+                                                         "/service_identity/model_revision"]
+    with_request = {record_id for record_id, record in evidence.items() if "request" in record}
+    assert len(with_request) == 11 and all(record_id.startswith(("api.source-set.", "api.feature."))
+                                           for record_id in with_request)
+    # The documentation agrees for the two routes that were not called.
+    reference = evidence["page.api-doc"]["fields_read"]
+    assert not any(REVISION_KEY.search(field) for field in reference["model_lookup_response_fields"])
+    assert not any(REVISION_KEY.search(key) for key in reference["lens_prompt_meta_example_keys"])
+    assert reference["operations_under_model_source_or_source_set"] == ["POST /api/model/lookup",
+                                                                         "POST /api/model/new"]
+    assert evidence["page.available-resources"]["fields_read"]["keys_naming_a_revision_commit_or_hash"] == []
+
+
+def test_registry_evidence_about_the_service_cites_a_recorded_response(real: dict,
+                                                                       evidence: dict[str, dict]) -> None:
+    """An evidence item whose source is a URL names the record that holds its hash, and the URL is the one that
+    record was fetched from. A hosted entry's id_source cites such a record too."""
+    for item in real["entries"]:
+        from_service = [e for e in item["verification"]["evidence"] if e["source"].startswith("https://")]
+        for cited in from_service:
+            url = cited["source"].split(" ", 1)[0]
+            names = cited_records(cited["source"])
+            assert len(names) == 1, cited["source"]
+            assert evidence[names[0]]["snapshot"]["source_url"] == url, cited["source"]
+            assert cited["date"] == evidence[names[0]]["snapshot"]["retrieved_utc"][:10] == EVIDENCE_DAY
+        # Every real entry has at least one dated, hashed record of the service behind its status.
+        assert from_service, item["registry_id"]
+        if item["neuronpedia"] is not None:
+            url = item["neuronpedia"]["id_source"].split(",", 1)[0]
+            names = cited_records(item["neuronpedia"]["id_source"])
+            assert names and evidence[names[0]]["snapshot"]["source_url"] == url, item["registry_id"]
+            assert "read on 2026-11-10" in item["neuronpedia"]["id_source"]
+    for text in (real["description"], *(e["notes"] for e in real["entries"])):
+        assert "service reports no" not in text  # say which record was read, not what the service does in general
+
+
+def test_hosted_ids_layers_and_repositories_are_the_ones_in_the_saved_records(real: dict,
+                                                                             evidence: dict[str, dict]) -> None:
+    for registry_id in (GEMMA_SET, QWEN_SET, ALIAS):
+        item = entry(real, registry_id)
+        hosted = item["neuronpedia"]
+        body = body_of(evidence[f"api.source-set.{hosted['model_id']}.{hosted['source_set']}"])
+        assert (body["modelId"], body["name"]) == (hosted["model_id"], hosted["source_set"])
+        # The service names the repository the engine pins. It names no commit, so the pin is not compared.
+        assert body["model"]["hfRepoId"] == item["model"]["hf_id"] == logits_eval.HF_IDS[item["model"]["study_id"]]
+        layers = sorted(int(source["id"].split("-", 1)[0]) for source in body["sources"])
+        assert all(source["id"] == f"{layer}-{hosted['source_set']}" for source, layer in zip(
+            sorted(body["sources"], key=lambda s: int(s["id"].split("-", 1)[0])), layers))
+        assert item["site"]["layers"] == layers and item["site"]["layer_index_base"] == 0
+        assert hosted["source_id"] == "not_applicable"
+        feature = evidence[f"api.feature.{hosted['model_id']}.0-{hosted['source_set']}.0"]["fields_read"]
+        assert feature["model"]["hfRepoId"] == item["model"]["hf_id"]
+        assert feature["source"]["setName"] == hosted["source_set"]
+    assert entry(real, GEMMA_SET)["site"]["layers"] == list(range(26))
+    assert entry(real, QWEN_SET)["site"]["layers"] == list(range(36))
+
+    # qwen3-4b: the API record and the export name one weights repository, and the registry records it.
+    qwen_repositories = {source["hfRepoId"] for source in body_of(
+        evidence["api.source-set.qwen3-4b.transcoder-hp"])["sources"]}
+    qwen_export = body_of(evidence["export.qwen3-4b.0-transcoder-hp.source"])["hfRepoId"]
+    assert qwen_repositories == {qwen_export} == {entry(real, QWEN_SET)["artifact"]["repository"]}
+    # gemma-2-2b: the API record and the export disagree, so the registry records no repository and says so.
+    gemma = entry(real, GEMMA_SET)
+    gemma_api = {source["hfRepoId"] for source in body_of(
+        evidence["api.source-set.gemma-2-2b.gemmascope-transcoder-16k"])["sources"]}
+    gemma_export = body_of(evidence["export.gemma-2-2b.0-gemmascope-transcoder-16k.source"])["hfRepoId"]
+    assert gemma_api == {"google/gemma-scope-2b-pt-transcoders"} and gemma_export == "google/gemma-scope"
+    assert gemma["artifact"]["repository"] is None and "/artifact/repository" in gemma["not_recorded"]
+    assert "(google/gemma-scope-2b-pt-transcoders; google/gemma-scope)" in gemma["notes"]
+
+    # The hosted lens: a page per model id, with no lens identity in it.
+    for registry_id in HOSTED_LENSES:
+        item = entry(real, registry_id)
+        page = evidence[f"page.jlens.{item['neuronpedia']['model_id']}"]["fields_read"]
+        assert page["page_component_properties"] == {"modelId": item["neuronpedia"]["model_id"], "share": None,
+                                                     "inferenceAvailable": True}
+        listed = evidence["page.available-resources"]["fields_read"]["models"][item["neuronpedia"]["model_id"]]
+        assert listed["hfRepoId"] == item["model"]["hf_id"]
+        assert item["artifact"]["repository"] is None and item["site"]["layers"] is None
+
+
+def test_alias_entry_records_the_pin_and_what_the_service_reported(real: dict, evidence: dict[str, dict]) -> None:
     alias = entry(real, ALIAS)
     assert alias["model"] == {"study_id": "qwen3.5-2b-base", "hf_id": "Qwen/Qwen3.5-2B-Base",
                               "revision": logits_eval.HF_REVISIONS["qwen3.5-2b-base"]}
-    assert alias["neuronpedia"]["model_id"] == "qwen3.5-2b-pt"
-    assert alias["neuronpedia"]["source_set"] is None and "/neuronpedia/source_set" in alias["not_recorded"]
+    assert alias["neuronpedia"]["model_id"] == "qwen3.5-2b-pt" and alias["neuronpedia"]["source_set"] == "icalens-res"
+    body = body_of(evidence["api.source-set.qwen3.5-2b-pt.icalens-res"])
+    # The id exists and names the engine's repository; the basis repository and the hook are the service's.
+    assert body["model"]["id"] == "qwen3.5-2b-pt" and body["model"]["hfRepoId"] == "Qwen/Qwen3.5-2B-Base"
+    assert {source["hfRepoId"] for source in body["sources"]} == {alias["artifact"]["repository"]} \
+        == {"neuronpedia/icalens-qwen3.5-2b-pt"}
+    assert {source["hfFolderId"] for source in body["sources"]} == {
+        f"blocks.{layer}.hook_resid_post" for layer in alias["site"]["layers"]}
+    assert alias["site"] == {"capture_site": "resid_post", "layer_index_base": 0, "layers": [0, 4, 8, 12, 16, 20]}
+    # No commit: not of the model, not of the basis. The entry stays an alias with an unverified checkpoint.
+    assert alias["artifact"]["revision"] is None and alias["artifact"]["fit_model_revision"] is None
+    assert {"/artifact/revision", "/artifact/fit_model_revision", "/verification/hosted_checkpoint_revision"} \
+        <= set(alias["not_recorded"])
+    assert alias["verification"]["status"] == "alias_unverified_checkpoint" and alias["links_enabled"] is False
     sources = " ".join(e["source"] + " " + e["states"] for e in alias["verification"]["evidence"])
-    assert "scripts/logits_eval.py" in sources and "Not read" in sources
+    assert "scripts/logits_eval.py" in sources and "owner's task brief of 2026-11-10" in sources
+    assert "Not read" not in sources and "No key in the response names a model revision" in sources
+    assert "status stays alias_unverified_checkpoint" in alias["notes"]
+    # The export of the same model record has no repository id at all; the entry says where the two differ.
+    assert "hfRepoId" not in body_of(evidence["export.qwen3.5-2b-pt.0-icalens-res.model"])
+    assert "has no hfRepoId key" in sources
 
 
-def test_the_registry_states_only_what_is_sourced_about_hosted_identity_and_the_alias_id(real: dict) -> None:
-    """Two wording rules, checked on the committed files.
+def test_bases_named_in_the_ica_fork_keep_no_mapping_and_say_why(real: dict, evidence: dict[str, dict]) -> None:
+    """The service hosts an ICA set for three of the four models, from a repository under neuronpedia/. The
+    registry's entries are for repositories under sida/. Nothing read ties one to the other, so no mapping is
+    entered and the status is left at unverified, with the reason."""
+    for registry_id, (model_id, hosted_repository) in FORK_BASES.items():
+        item = entry(real, registry_id)
+        body = body_of(evidence[f"api.source-set.{model_id}.icalens-res"])
+        assert body["model"]["hfRepoId"] == item["model"]["hf_id"]
+        assert {source["hfRepoId"] for source in body["sources"]} == {hosted_repository}
+        assert item["artifact"]["repository"].startswith("sida/") and hosted_repository != item["artifact"]["repository"]
+        assert item["neuronpedia"] is None and "/neuronpedia" in item["not_recorded"]
+        assert hosted_repository in item["notes"] and "left at unverified" in item["notes"]
+    instruct = entry(real, INSTRUCT_BASIS)
+    listing = evidence["page.available-resources"]["fields_read"]
+    assert instruct["model"]["hf_id"] == "Qwen/Qwen3.5-2B"
+    assert listing["model_ids_with_hfRepoId_Qwen/Qwen3.5-2B"] == [] and listing["model_record_count"] == 43
+    assert evidence["page.model.qwen3.5-2b"]["fields_read"]["page_components"] == []
+    assert instruct["neuronpedia"] is None and "left at unverified" in instruct["notes"]
 
-    Hosted identity: the cited evidence shows what the engine records, so the sentence is about the engine.
-    The alias id qwen3.5-2b-pt: one origin, the owner's task brief of 2026-11-10, stated as having no
-    retrievable record, in the registry, in the capability matrix and in the doc; no wording that points at a
-    repository text, a design note or a recorded search result."""
-    sourced = ("The engine records no model, dictionary or instrument revision for these responses; whether the "
-               "service reports one was not read")
+
+def test_the_registry_the_matrix_and_the_doc_say_the_same_about_what_was_read(real: dict) -> None:
+    """Wording rules, checked on the committed files.
+
+    Hosted identity: the vocabulary sentence says where to look, and each entry's evidence says which records
+    were read. The alias id qwen3.5-2b-pt: its id_source is the service's record; the owner's task brief of
+    2026-11-10 is kept as where the id first came from; none of the three files still says that the service
+    was not read, and none points at a design note, a repository text or a search result."""
+    sourced = ("The entry's evidence names the records of the service that were read and says that none of them "
+               "carries a revision, or says that none was read")
     doc = " ".join((ENGINE / "docs" / "experiment_interface" / "neuronpedia.md").read_text(encoding="utf-8").split())
     fixture = nps.load_registry(FX / "representation_registry.fixture.json")
     for registry in (real, fixture):
         assert sourced in registry["verification_meaning"]["hosted_identity_unknown"]
-        assert "service reports no" not in json.dumps(registry)
-    assert sourced in doc and "service reports no" not in doc
+        assert "whether the service reports one was not read" not in json.dumps(registry)
+    assert sourced in doc and "whether the service reports one was not read" not in doc
+    # verified_exact keeps its definition, in the registry and in the doc.
+    assert real["verification_meaning"]["verified_exact"] == fixture["verification_meaning"]["verified_exact"] == (
+        "The Neuronpedia ids were read in a primary source and the hosted checkpoint revision is recorded and "
+        "equals the study revision. The only status that permits a link.")
 
-    origin, unsupported = "owner's task brief of 2026-11-10", ("design note", "repository text", "web-search",
-                                                               "search result", "are reported to name")
+    origin, stale = "owner's task brief of 2026-11-10", (
+        "design note", "repository text", "web-search", "search result", "are reported to name",
+        "blocked by this environment's network policy", "unverified against the service", "Not read:",
+        "no Neuronpedia page was read")
     alias = entry(real, ALIAS)
-    assert origin in alias["neuronpedia"]["id_source"] and "no retrievable record" in alias["neuronpedia"]["id_source"]
-    assert "blocked by this environment's network policy on 2026-11-10" in alias["neuronpedia"]["id_source"]
-    assert origin in alias["notes"] and all(phrase not in json.dumps(alias) for phrase in unsupported)
+    assert alias["neuronpedia"]["id_source"].startswith(
+        "https://www.neuronpedia.org/api/source-set/qwen3.5-2b-pt/icalens-res, read on 2026-11-10")
+    assert origin in alias["neuronpedia"]["id_source"]
+    assert all(phrase not in json.dumps(alias) for phrase in stale)
     assert [e["source"] for e in alias["verification"]["evidence"] if origin in e["source"]]
+    # The two prose lines of the matrix that name the id: the not_verified item and the row's status note.
     matrix_lines = [line for line in (ENGINE / "data" / "experiments" / "capability_matrix.v1.json").read_text(
-        encoding="utf-8").splitlines() if "qwen3.5-2b-pt" in line and '"id"' not in line]
+        encoding="utf-8").splitlines() if "qwen3.5-2b-pt" in line
+        and not line.lstrip().startswith(('"id"', '"repository"', '"source"'))]
     assert len(matrix_lines) == 2
     for line in matrix_lines:
-        assert origin in line and "no retrievable record" in line and "unverified" in line
-        assert all(phrase not in line for phrase in unsupported), line
+        assert "its model record names Qwen/Qwen3.5-2B-Base" in line and "2026-11-10" in line
+        assert "unverified" in line and all(phrase not in line for phrase in stale), line
     paragraph = doc[doc.index("**`qwen3.5-2b-base` and `qwen3.5-2b-pt`.**"):doc.index(
         "**`sida/icalens-gemma-2-2b-pile10k`.**")]
-    assert origin in paragraph and "no retrievable record" in paragraph
-    assert all(phrase not in paragraph for phrase in unsupported)
+    assert origin in paragraph and "Qwen/Qwen3.5-2B-Base" in paragraph and "reports no commit" in paragraph
+    assert all(phrase not in paragraph for phrase in stale)
+    assert EVIDENCE_INDEX in doc and EVIDENCE_INDEX in real["description"]
 
 
 @pytest.mark.parametrize("change,code", [
@@ -289,8 +555,16 @@ def test_resolve_layers_and_ambiguity(fixture_registry: dict) -> None:
 
 
 def test_resolve_says_when_layer_coverage_is_not_recorded(real: dict) -> None:
-    found = nps.resolve("qwen3-4b", "transcoder_feature", 7, registry=real)
+    # The hosted lens entries record no layer list: a live lens response was not read.
+    found = nps.resolve("gemma-2-2b", "workspace_readout", 7, registry=real)
     assert found.mapped and found.layer_coverage == "not_recorded"
+    # The transcoder set's layers are the service's source ids, read on 2026-11-10.
+    covered = nps.resolve("qwen3-4b", "transcoder_feature", 7, registry=real)
+    assert covered.mapped and covered.layer_coverage == "recorded"
+    assert nps.resolve("qwen3-4b", "transcoder_feature", 36, registry=real).status == "no_mapping"
+    # The hosted ICA set of qwen3.5-2b-pt has every fourth layer.
+    assert nps.resolve("qwen3.5-2b-base", "ica_component", 4, registry=real).mapped
+    assert nps.resolve("qwen3.5-2b-base", "ica_component", 1, registry=real).status == "no_mapping"
 
 
 # ------------------------------------------------------------------------------------------------ links
@@ -430,16 +704,17 @@ def test_a_hand_made_entry_cannot_switch_links_on(real: dict, fixture_registry: 
 
 def test_fallback_record_is_present_when_the_link_is_none(real: dict) -> None:
     record = {"signed_score": -0.5, "note_id": "row-7"}
-    result = nps.link_or_fallback(nps.resolve("qwen3.5-2b-base", "ica_component", registry=real), 3, layer=1,
+    result = nps.link_or_fallback(nps.resolve("qwen3.5-2b-base", "ica_component", 4, registry=real), 3, layer=4,
                                   record=record)
     assert result["link"] is None and result["reason"] == "mapping not verified"
     local = result["local"]
-    assert local["registry_id"] == ALIAS and local["component_id"] == 3 and local["layer"] == 1
+    assert local["registry_id"] == ALIAS and local["component_id"] == 3 and local["layer"] == 4
     assert local["representation_type"] == "ica_component" and local["method"] == "ica_lens"
     assert local["model"]["revision"] == logits_eval.HF_REVISIONS["qwen3.5-2b-base"]
     assert local["verification"] == {"status": "alias_unverified_checkpoint", "checked_utc_date": "2026-11-10"}
     assert local["record"] == record and local["inspectable_offline"] is True
-    assert "/neuronpedia/source_set" in local["not_recorded"]
+    assert local["neuronpedia"]["source_set"] == "icalens-res"
+    assert "/verification/hosted_checkpoint_revision" in local["not_recorded"]
     assert json.loads(json.dumps(result)) == result
 
 

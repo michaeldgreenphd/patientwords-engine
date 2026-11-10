@@ -26,7 +26,7 @@
   },
   "not_verified": [
     "No row was re-measured. Statuses restate committed records read on 2026-11-10.",
-    "Hugging Face and Neuronpedia were not contacted. Released ICA bases are recorded from the text of the ICA fork only. The Neuronpedia id qwen3.5-2b-pt is an id supplied in the owner's task brief of 2026-11-10 for this session; it has no retrievable record in the repository and is unverified against the service (www.neuronpedia.org was blocked by this environment's network policy on 2026-11-10).",
+    "Hugging Face was not read: the host is blocked from development containers and was refused again on 2026-11-10. Released ICA bases under sida/ are recorded from the text of the ICA fork only. Neuronpedia's own records were read on 2026-11-10 with plain GET requests (data/experiments/neuronpedia_evidence/20261110/index.v1.json). They name a Hugging Face repository for each hosted model and source and no revision, commit or hash, so no hosted row records a model revision. The Neuronpedia id qwen3.5-2b-pt exists on the service and its model record names Qwen/Qwen3.5-2B-Base; the commit behind the id is not reported, so the alias stays unverified as a checkpoint.",
     "Counts of landed runs in status notes are directory counts at engine head d8d0855d."
   ],
   "rows": [
@@ -488,9 +488,13 @@
         {
           "source": "docs/exploratory/method_readiness_20261024.md",
           "date": "2026-10-24"
+        },
+        {
+          "source": "data/experiments/neuronpedia_evidence/20261110/index.v1.json (record api.source-set.gemma-2-2b.gemmascope-transcoder-16k)",
+          "date": "2026-11-10"
         }
       ],
-      "status_note": "The study's landed tracing route. gemmascope-transcoder-16k is the only calibrated feature source. No landed summary attests the hosted server's model or transcoder commit, so model.revision is null. Hosted target reads before 2026-10-07 carry the limitation recorded in AGENTS.md."
+      "status_note": "The study's landed tracing route. gemmascope-transcoder-16k is the only calibrated feature source. No landed summary attests the hosted server's model or transcoder commit, so model.revision is null. Hosted target reads before 2026-10-07 carry the limitation recorded in AGENTS.md. The service's records were read on 2026-11-10: they name google/gemma-2-2b for the model and a transcoder weights repository for each source, and report no revision, commit or hash. The API record and the export record name the weights repository differently (google/gemma-scope-2b-pt-transcoders; google/gemma-scope), so artifact.repository stays null."
     },
     {
       "model": {
@@ -520,9 +524,13 @@
         {
           "source": "scripts/feature_models.py (CALIBRATED_FEATURE_SOURCES)",
           "date": "2026-11-10"
+        },
+        {
+          "source": "data/experiments/neuronpedia_evidence/20261110/index.v1.json (record api.source-set.qwen3-4b.transcoder-hp)",
+          "date": "2026-11-10"
         }
       ],
-      "status_note": "The host serves graphs for this model: a two-pair probe landed. Source set transcoder-hp was registered on 2026-10-09. It is not calibrated against the reference, so exporters keep its clinical_mass null until an owner decision. Scaling past the probe is an owner decision. The hosted model commit is not attested, so model.revision is null."
+      "status_note": "The host serves graphs for this model: a two-pair probe landed. Source set transcoder-hp was registered on 2026-10-09. It is not calibrated against the reference, so exporters keep its clinical_mass null until an owner decision. Scaling past the probe is an owner decision. The hosted model commit is not attested, so model.revision is null. The service's records were read on 2026-11-10: they name Qwen/Qwen3-4B for the model and mwhanna/qwen3-4b-transcoders for every source, and report no revision, commit or hash."
     },
     {
       "model": {
@@ -556,9 +564,17 @@
         {
           "source": "docs/exploratory/method_readiness_20261024.md",
           "date": "2026-10-24"
+        },
+        {
+          "source": "data/experiments/neuronpedia_evidence/20261110/index.v1.json (record page.jlens.gemma-2-2b)",
+          "date": "2026-11-10"
+        },
+        {
+          "source": "data/experiments/neuronpedia_evidence/20261110/index.v1.json (record page.api-doc)",
+          "date": "2026-11-10"
         }
       ],
-      "status_note": "Landed lens summaries record no lens artifact repository, revision or hash and no model or tokenizer revision. The host changed its readouts on 2026-07-31 and on 2026-08-14 under identical requests, so landed readouts span up to three instrument eras that no summary field separates. 99 run directories trace_out/*__jlens_gemma-2-2b exist at this head."
+      "status_note": "Landed lens summaries record no lens artifact repository, revision or hash and no model or tokenizer revision. The host changed its readouts on 2026-07-31 and on 2026-08-14 under identical requests, so landed readouts span up to three instrument eras that no summary field separates. 99 run directories trace_out/*__jlens_gemma-2-2b exist at this head. The service was read on 2026-11-10: the lens page exists for this model id and names no lens repository, file, revision or hash; the API reference has no route that describes a lens, and its example meta message has no identity field. A live lens response was not requested."
     },
     {
       "model": {
@@ -592,9 +608,17 @@
         {
           "source": "docs/exploratory/method_readiness_20261024.md",
           "date": "2026-10-24"
+        },
+        {
+          "source": "data/experiments/neuronpedia_evidence/20261110/index.v1.json (record page.jlens.gemma-2-2b-it)",
+          "date": "2026-11-10"
+        },
+        {
+          "source": "data/experiments/neuronpedia_evidence/20261110/index.v1.json (record page.api-doc)",
+          "date": "2026-11-10"
         }
       ],
-      "status_note": "Landed lens summaries record no lens artifact repository, revision or hash and no model or tokenizer revision. The host changed its readouts on 2026-07-31 and on 2026-08-14 under identical requests, so landed readouts span up to three instrument eras that no summary field separates. 39 run directories trace_out/*__jlens_gemma-2-2b-it exist at this head. The two host ids returned identical readouts until 2026-07-31; a summary's era is recoverable only from git history."
+      "status_note": "Landed lens summaries record no lens artifact repository, revision or hash and no model or tokenizer revision. The host changed its readouts on 2026-07-31 and on 2026-08-14 under identical requests, so landed readouts span up to three instrument eras that no summary field separates. 39 run directories trace_out/*__jlens_gemma-2-2b-it exist at this head. The two host ids returned identical readouts until 2026-07-31; a summary's era is recoverable only from git history. The service was read on 2026-11-10: the lens page exists for this model id and names no lens repository, file, revision or hash; the API reference has no route that describes a lens, and its example meta message has no identity field. A live lens response was not requested."
     },
     {
       "model": {
@@ -821,21 +845,34 @@
       "method": "ica_lens",
       "backend": "cpu_transformers",
       "dtype": null,
-      "artifact": null,
-      "status": "architecture_supported",
+      "artifact": {
+        "id": "neuronpedia/icalens-qwen3.5-2b-pt",
+        "repository": "neuronpedia/icalens-qwen3.5-2b-pt",
+        "revision": null,
+        "path": null,
+        "sha256": null,
+        "fit_model_revision": null,
+        "fit_tokenizer_revision": null,
+        "calibration": null
+      },
+      "status": "artifact_available_identity_unknown",
       "evidence": [
         {
           "source": "michaeldgreenphd/patientwords-ica-lens-paper@aa3b95c9e755e4374f8c9645a064e3f51d96066e: model_framing.json (models.Qwen/Qwen3.5-2B-Base)",
           "date": "2026-11-10"
+        },
+        {
+          "source": "data/experiments/neuronpedia_evidence/20261110/index.v1.json (record api.source-set.qwen3.5-2b-pt.icalens-res)",
+          "date": "2026-11-10"
         }
       ],
-      "status_note": "The ICA fork's framing registry names Qwen/Qwen3.5-2B-Base; the fork names no published basis for it. The id qwen3.5-2b-pt was supplied in the owner's task brief of 2026-11-10 for this session as the Neuronpedia id of this checkpoint. The brief has no retrievable record in the repository, and the id is unverified against the service (www.neuronpedia.org was blocked by this environment's network policy on 2026-11-10). It is recorded here as an unverified alias of engine id qwen3.5-2b-base. No checkpoint revision, basis hash or layer list was read, so the status is architecture_supported and not an artifact status.",
+      "status_note": "The ICA fork's framing registry names Qwen/Qwen3.5-2B-Base; the fork names no published basis for it. Neuronpedia's source-set record, read on 2026-11-10, does: the model id qwen3.5-2b-pt exists, its model record names Qwen/Qwen3.5-2B-Base, and its ICA sources (layers 0, 4, 8, 12, 16 and 20, hook blocks.{layer}.hook_resid_post) name the basis repository neuronpedia/icalens-qwen3.5-2b-pt. The status is artifact_available_identity_unknown for that reason, on the same footing as the bases named in the ICA fork. No record read reports the commit of the model behind the hosted set, the commit of the basis repository or a hash, and the repository itself was not read (huggingface.co is blocked from development containers), so its file format, its layer list and its fit model revision are unknown here and no local run is implied. The model revision in this row is the study pin, not a known fit revision. The id qwen3.5-2b-pt was first supplied in the owner's task brief of 2026-11-10 and is recorded as an alias of engine id qwen3.5-2b-base whose checkpoint commit is unverified.",
       "aliases": [
         {
           "namespace": "neuronpedia",
           "id": "qwen3.5-2b-pt",
           "verified": false,
-          "note": "alias only; the checkpoint behind the Neuronpedia id was not verified"
+          "note": "the id exists on the service and its model record names Qwen/Qwen3.5-2B-Base (read on 2026-11-10); the checkpoint commit behind the id is not reported"
         }
       ]
     }

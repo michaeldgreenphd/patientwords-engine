@@ -638,10 +638,19 @@ def test_matrix_holds_the_rows_the_design_names(matrix: dict) -> None:
     ica = find(matrix, method="ica_lens", backend="cpu_transformers")
     assert {r["artifact"]["id"] for r in ica if r["artifact"]} >= {"sida/icalens-gemma-2-2b-pile10k"}
     assert all(r["status"] != "parity_passed" and r["status"] != "artifact_available" for r in ica)
+    # Neuronpedia's source-set record, read on 2026-11-10, names a basis repository for this checkpoint and no
+    # commit: an artifact is named, its identity is not recorded, and the alias is not a verified checkpoint.
     alias = find(matrix, method="ica_lens", model_study_id="qwen3.5-2b-base")[0]
     assert alias["aliases"] == [{"namespace": "neuronpedia", "id": "qwen3.5-2b-pt", "verified": False,
-                                 "note": "alias only; the checkpoint behind the Neuronpedia id was not verified"}]
-    assert alias["status"] == "architecture_supported"
+                                 "note": "the id exists on the service and its model record names "
+                                         "Qwen/Qwen3.5-2B-Base (read on 2026-11-10); the checkpoint commit behind "
+                                         "the id is not reported"}]
+    assert alias["status"] == "artifact_available_identity_unknown"
+    assert alias["artifact"]["id"] == alias["artifact"]["repository"] == "neuronpedia/icalens-qwen3.5-2b-pt"
+    assert alias["artifact"]["revision"] is None and alias["artifact"]["fit_model_revision"] is None
+    assert alias["artifact"]["sha256"] is None
+    assert any(item["source"].startswith("data/experiments/neuronpedia_evidence/20261110/index.v1.json")
+               for item in alias["evidence"])
     toy = {r["method"]: r["status"] for r in find(matrix, model_hf_id="fixture/toy-model")}
     # The ica_lens row was written before the ICA adapter existed; it may be raised once that adapter's own
     # tests pass, and never above the offline-fixture status.
