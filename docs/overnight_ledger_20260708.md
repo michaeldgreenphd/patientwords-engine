@@ -823,3 +823,23 @@ patching smoke run 1 = failure; diagnosis below after log pull.
 - run_38434195912_1.rejudge_41167249634.judge.report.json · $0.2992 · alias · accepted — · —
 - run_41161443157_1.rejudge_41164150682.judge.report.json · $0.5349 · alias · accepted — · —
 - run_41162534624_1.rejudge_41164150682.judge.report.json · $0.6308 · alias · accepted — · —
+- agscen_20261108.report.json · $0.0000 · alias · accepted — · —
+- agscen_commas_20261109.report.json · $0.0000 · alias · accepted — · —
+- agscen_r5_20261108.report.json · $0.0000 · alias · accepted — · —
+- agscen_r6_20261109.report.json · $0.0000 · alias · accepted — · —
+- agscen_r7_20261109.report.json · $0.0000 · alias · accepted — · —
+- agscen_r7b_20261109.report.json · $0.0000 · alias · accepted — · —
+- agscen_scale_20261108.report.json · $0.0000 · alias · accepted — · —
+- judgments_stimuli_20261108T014809Z.judge_20261108T072034140997Z.report.json · $0.9692 · alias · accepted — · —
+- judgments_stimuli_20261108T014809Z.judge_20261108T073137539683Z.report.json · $0.1177 · alias · accepted — · —
+- judgments_stimuli_20261108T014809Z.judge_20261108T083049991883Z.report.json · $0.0046 · alias · accepted — · —
+- judgments_stimuli_20261108T014810Z.judge_20261108T080704106687Z.report.json · $0.9765 · alias · accepted — · —
+- judgments_stimuli_20261108T014810Z.judge_20261108T081816490094Z.report.json · $0.1178 · alias · accepted — · —
+- judgments_stimuli_20261108T014810Z.judge_20261108T083209703112Z.report.json · $0.0056 · alias · accepted — · —
+- responses_stimuli_20261108T014809Z.report.json · $4.1891 · alias · accepted — · —
+- responses_stimuli_20261108T014809Z.report.json · booked $1.0542 to 2026-11-08 (run_cost_usd); $3.1349 prior-runs balance folded to lifetime only (cost_basis=cumulative_from_records)
+- responses_stimuli_20261108T014810Z.report.json · $4.1015 · alias · accepted — · —
+- responses_stimuli_20261108T014810Z.report.json · booked $1.0494 to 2026-11-08 (run_cost_usd); $3.0520 prior-runs balance folded to lifetime only (cost_basis=cumulative_from_records)
+- rewrite_colloquial_20261106T134032Z.report.json · $0.2807 · openrouter:anthropic/claude-sonnet-5 · accepted — · —
+- rewrite_colloquial_20261107T121655Z.report.json · $0.0169 · openrouter:anthropic/claude-sonnet-5 · accepted — · —
+- rewrite_colloquial_v2_20261107T231002Z.report.json · $0.3294 · openrouter:anthropic/claude-sonnet-5 · accepted — · —
