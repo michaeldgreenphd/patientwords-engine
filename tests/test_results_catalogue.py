@@ -53,7 +53,8 @@ def _write(path: Path, obj) -> None:
 def _result(index: int, penalty: float = -0.3, **extra):
     return {"index": index, "prompts": {"clinical": CLINICAL[index - 1], "patient": PATIENT[index - 1]},
             "probabilities": {"clinical": 0.6, "patient": 0.6 + penalty}, "predictive_spread": _SPREAD,
-            "language_penalty": penalty, "target_token": 'Output " alpha"', "clinical_mass": 0.42, **extra}
+            "language_penalty": penalty, "target_token": 'Output " alpha"',
+            "clinical_mass": {"clinical": 0.42, "patient": 0.31}, **extra}      # an object per phrasing, as landed
 
 
 def _summary(results, graph_model, backend="logits", **extra):
@@ -408,3 +409,18 @@ def test_the_contract_gate_refuses_a_missing_row_file_an_orphan_and_edited_total
 
 def test_the_exporter_refuses_a_site_argument_that_is_not_a_site(engine, tmp_path):
     assert cat.main(["--engine", str(engine), "--site", str(tmp_path / "nowhere")]) == 2
+
+
+def test_calibrated_clinical_mass_is_written_per_phrasing_and_passes_the_contract(engine, tmp_path):
+    """Regression (2026-11-10): landed summaries carry clinical_mass as an object per phrasing; the first
+    schema declared a number, so the contract gate failed on every calibrated row of the real catalogue."""
+    calibrated = _summary([_result(1), _result(3)], "gemma-2-2b", "hosted")
+    calibrated["source_set"] = "gemmascope-transcoder-16k"
+    _part(engine, "repeatability_r9", calibrated)                 # an unclassified family: listed without rows
+    _part(engine, BATCH, calibrated, "batch_summary.part_09.json")
+    site = _published_site(engine, tmp_path)
+    doc = json.loads((site / "data" / "results_catalogue" / "rows" / f"{BATCH}.json").read_text(encoding="utf-8"))
+    part = next(p for p in doc["parts"] if p["name"] == "batch_summary.part_09.json")
+    assert part["clinical_mass"] == "per row"
+    assert all(row["clinical_mass"] == {"clinical": 0.42, "patient": 0.31} for row in part["rows"])
+    assert _gate(site) == []
