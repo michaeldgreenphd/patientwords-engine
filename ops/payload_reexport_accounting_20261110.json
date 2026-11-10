@@ -1,0 +1,1610 @@
+{
+ "schema": "patientwords.payload-reexport-accounting/1",
+ "recorded_utc": "2026-11-10",
+ "what_this_is": "Every difference between the published gallery payload and a full regeneration of it with the current producers, classified, with the cause of each. A record of a regeneration in a disposable copy. Nothing was published and no measurement was made.",
+ "explained_in": "docs/corrections/payload_summary_dedupe_20261110.md (the three kinds of change, the recommendation and the owner decisions)",
+ "evidence": {
+  "verified": "payload diff, row values, part hashes, gate reasons, the collector byte-identity, the reproduction of the published model_stats.json, and the two earlier versions of the part file (read at their commits through the GitHub API)",
+  "not_available_locally": "the engine clone is shallow (history starts at 09d726eb, 2026-11-10); commit dates of the three part versions come from the GitHub commits API, not from local git log",
+  "inferred": "that the 2 rows the 2026-10-07 target-read audit counts as published_stale are rows 1 and 2 of this batch (the compact audit file holds the count, not the keys)"
+ },
+ "inputs": {
+  "engine_commit_at_regeneration": "95bf61cc54245bf1d1c107e323d1d60d3fef09e2",
+  "engine_uncommitted_at_regeneration": [
+   " M data/protocols/instrument_validity_rubric.draft.json",
+   " M docs/experiment_interface/preview.md",
+   " M docs/protocols/instrument_validity_benchmark.md",
+   " M schemas/experiments/bundle.v1.schema.json",
+   " M schemas/protocols/instrument_validity.v1.schema.json",
+   " M scripts/check_experiment_preview.py",
+   " M scripts/experiments/bundle.py",
+   " M scripts/experiments/cli.py",
+   " M scripts/experiments/compare.py",
+   " M scripts/instrument_validity.py",
+   " M tests/fixtures/instrument_validity/synthetic_bundle.v1.json",
+   " M tests/test_check_experiment_preview.py",
+   " M tests/test_experiments_compare.py",
+   " M tests/test_experiments_slice.py",
+   " M tests/test_instrument_validity.py",
+   "?? scripts/contracts/experiment_index.v1.schema.json",
+   "?? scripts/experiment_index_contract.py",
+   "?? scripts/export_experiment_index.py",
+   "?? tests/fixtures/instrument_validity/synthetic_control_states.v1.json",
+   "?? tests/test_experiment_index.py"
+  ],
+  "engine_uncommitted_note": "other workers' files; none is imported by the exporter, the collector, the join step or the stamp step",
+  "site_commit": "13ece510019965db02fb631a4ffd8a8a67ff9166",
+  "site_uncommitted": [
+   " M experiments/index.html",
+   "?? data/experiments/"
+  ],
+  "published_payload_sha256": "5bcd3eac2bc347f181d92c0f33cf4a74390ec0ad36740e4c624199f0b3e01ef7",
+  "membership": "study-interim/1",
+  "policy_version": "open-results/1",
+  "pin_sha256": "540b58a36fbb003917a879ee33a4b435f0c97ab1fa83de96b9eeda150b4b553a"
+ },
+ "commands": [
+  "verify.md \"Temporary regeneration and consumer check\", copy step: site working tree copied once without .git to a scratch directory (full copy, modes/ included)",
+  "python scripts/export_frontend_simulated.py --engine . --frontend <copy> --stamps <the 27 published stamps> --models gemma-2-2b,gemma-3-4b-it,qwen3-4b,qwen3-1.7b --steered-stamps \"\" --archive-url https://github.com/michaeldgreenphd/patientwords-engine/releases  (once with --dry-run, once without)",
+  "python scripts/urgency_shift.py --frontend <copy> --out <scratch>/urgency_shift_regen.json --publish <copy>",
+  "python scripts/embed_scenario_joins.py --site <copy>",
+  "python scripts/export_traces_site.py --payload <copy>/data/simulated_scenarios.json --stamp-only",
+  "python scripts/validate_frontend_contract.py --site <copy> --engine . --strict ; python scripts/claim_check.py --site <copy> ; python scripts/seal_check.py --site <copy>",
+  "python scripts/paired_stats_rigor.py --rows <collector output> --out <scratch> --site <scratch site holding only the payload>  (three times: today's collector output; the same with two rows restored; the collector output after the re-export)",
+  "python scripts/urgency_shift.py --frontend ../patientwords --out <scratch file> [--fallback-keys-out <scratch file>]",
+  "gh api repos/michaeldgreenphd/patientwords-engine/commits?path=<part>  and  .../contents/<part>?ref=1162e92155  (read-only)",
+  "diff -rq <site> <copy>"
+ ],
+ "regeneration": {
+  "exporter_stdout": {
+   "scenarios": 1774,
+   "measured": 1499,
+   "batches": 27,
+   "holdout_pairs_withheld": 186,
+   "n_traced": {
+    "gemma-2-2b": 1774,
+    "gemma-3-4b-it": 1467,
+    "qwen3-4b": 1250,
+    "qwen3-1.7b": 1411
+   },
+   "parts_not_read": {
+    "logits part outside the pinned manifest": 1
+   },
+   "renders_published": 200,
+   "unlisted_renders_pruned": 235
+  },
+  "payload_sha256": {
+   "published": "5bcd3eac2bc347f181d92c0f33cf4a74390ec0ad36740e4c624199f0b3e01ef7",
+   "after_exporter": "9fc8728af669369853e28b76390af98f7187f79a0e316d349529db86fc18e911",
+   "after_joins": "a4c57efd3a89e35de722784537a2d6e31ede543f716cfce25af5406ed58a42d5",
+   "after_trace_stamps": "08b9dcac5d0adb93f70311477977bafbe916422f3216c7d94b6cdd56a1578d39"
+  },
+  "note": "the final sha256 contains traces_site._provenance (engine commit and time of the run), so another run gives another hash with the same content otherwise",
+  "join_step": "embedded: 4745 urgency joins, 421 depth classes, 6 gallery picks, 2 ladder pins, tap demo yes",
+  "stamp_step": "1509 stamped/unchanged, 265 without a render",
+  "gates_on_the_copy": {
+   "validate_frontend_contract --strict": "exit 0: 0 errors, 0 warnings; the legacy-summary note is gone",
+   "claim_check": "exit 0, all claims verified",
+   "seal_check": "exit 0, CLEAN, 183 sealed phrases, 1217 files scanned",
+   "check_pages": "not run (another worker was editing a site page at the time)"
+  },
+  "disposable_copy_deleted": true
+ },
+ "payload_diff": {
+  "differing_paths": 42,
+  "scenario_order_and_identity_unchanged": true,
+  "by_class": {
+   "metadata:models_meta": 2,
+   "metadata:traced_by_model": 1,
+   "metadata:traces_site": 2,
+   "metadata:urgency_meta": 3,
+   "row_object:removed": 11,
+   "row_object:values_changed": 19,
+   "summary_correction": 4
+  },
+  "rows_touched": 13,
+  "paths": [
+   {
+    "path": "/models_meta/2/graphs",
+    "class": "metadata:models_meta",
+    "kind": "value",
+    "published": false,
+    "regenerated": true
+   },
+   {
+    "path": "/models_meta/2/n_traced",
+    "class": "metadata:models_meta",
+    "kind": "value",
+    "published": 1261,
+    "regenerated": 1250
+   },
+   {
+    "path": "/scenarios[batch=pairs_20260706T201750Z,batch_index=1]/models/qwen3-4b/circuit_diff",
+    "class": "row_object:values_changed",
+    "kind": "type",
+    "published": null,
+    "regenerated": {
+     "omitted": "object or list",
+     "sha256": "de826f3d4a22a52f40412d82bd7e6065e8efd65ec17ce60cdba0f9483ee7adcc",
+     "n": 3
+    }
+   },
+   {
+    "path": "/scenarios[batch=pairs_20260706T201750Z,batch_index=1]/models/qwen3-4b/language_penalty",
+    "class": "row_object:values_changed",
+    "kind": "value",
+    "published": -0.0055,
+    "regenerated": 0.021000000000000005
+   },
+   {
+    "path": "/scenarios[batch=pairs_20260706T201750Z,batch_index=1]/models/qwen3-4b/prob_clinical",
+    "class": "row_object:values_changed",
+    "kind": "value",
+    "published": 0.0118,
+    "regenerated": 0.037
+   },
+   {
+    "path": "/scenarios[batch=pairs_20260706T201750Z,batch_index=1]/models/qwen3-4b/prob_patient",
+    "class": "row_object:values_changed",
+    "kind": "value",
+    "published": 0.0063,
+    "regenerated": 0.058
+   },
+   {
+    "path": "/scenarios[batch=pairs_20260706T201750Z,batch_index=1]/models/qwen3-4b/spread_clinical",
+    "class": "row_object:values_changed",
+    "kind": "list_len 9->5",
+    "published": {
+     "omitted": "object or list",
+     "sha256": "56d3e14f269c6a4ddc3068f47a09e732bce4754e6a7ec53f49d7100700809c90",
+     "n": 9
+    },
+    "regenerated": {
+     "omitted": "object or list",
+     "sha256": "570161a03b86beb6f54d725e0aa4d0fd8a6c3898b93bf9cc342d522a5059068e",
+     "n": 5
+    }
+   },
+   {
+    "path": "/scenarios[batch=pairs_20260706T201750Z,batch_index=1]/models/qwen3-4b/spread_patient",
+    "class": "row_object:values_changed",
+    "kind": "list_len 10->5",
+    "published": {
+     "omitted": "object or list",
+     "sha256": "426ef889026af6b6ffd708d088774cbe0426333a27f76629232d6b98eaa6b44a",
+     "n": 10
+    },
+    "regenerated": {
+     "omitted": "object or list",
+     "sha256": "4f43b519433c9725a7b020543334de8e639df04f6df4b97895186e34318c642a",
+     "n": 5
+    }
+   },
+   {
+    "path": "/scenarios[batch=pairs_20260706T201750Z,batch_index=1]/models/qwen3-4b/target_token",
+    "class": "row_object:values_changed",
+    "kind": "value",
+    "published": {
+     "omitted": "token string",
+     "sha256": "20c2ebf1c8eca28ca0ae6c262427a70544a0ae299e5554ad89c1bfb9fb94d6ac",
+     "chars": 8
+    },
+    "regenerated": {
+     "omitted": "token string",
+     "sha256": "0bb2388cc80f97389224c151242a99a577611ad28f4d960b6873487cfd5b9663",
+     "chars": 5
+    }
+   },
+   {
+    "path": "/scenarios[batch=pairs_20260706T201750Z,batch_index=1]/models/qwen3-4b/top_clinical/1",
+    "class": "row_object:values_changed",
+    "kind": "value",
+    "published": 0.2518,
+    "regenerated": 0.309
+   },
+   {
+    "path": "/scenarios[batch=pairs_20260706T201750Z,batch_index=1]/models/qwen3-4b/top_patient/1",
+    "class": "row_object:values_changed",
+    "kind": "value",
+    "published": 0.5314,
+    "regenerated": 0.432
+   },
+   {
+    "path": "/scenarios[batch=pairs_20260706T201750Z,batch_index=2]/models/qwen3-4b/circuit_diff",
+    "class": "row_object:values_changed",
+    "kind": "type",
+    "published": null,
+    "regenerated": {
+     "omitted": "object or list",
+     "sha256": "cea590fe1e58a8192b52dd6d95fca9b4969a602d117634a14668bf47b0777b90",
+     "n": 3
+    }
+   },
+   {
+    "path": "/scenarios[batch=pairs_20260706T201750Z,batch_index=2]/models/qwen3-4b/flipped",
+    "class": "row_object:values_changed",
+    "kind": "value",
+    "published": false,
+    "regenerated": true
+   },
+   {
+    "path": "/scenarios[batch=pairs_20260706T201750Z,batch_index=2]/models/qwen3-4b/language_penalty",
+    "class": "row_object:values_changed",
+    "kind": "value",
+    "published": -0.2435,
+    "regenerated": -0.115
+   },
+   {
+    "path": "/scenarios[batch=pairs_20260706T201750Z,batch_index=2]/models/qwen3-4b/prob_clinical",
+    "class": "row_object:values_changed",
+    "kind": "value",
+    "published": 0.4239,
+    "regenerated": 0.218
+   },
+   {
+    "path": "/scenarios[batch=pairs_20260706T201750Z,batch_index=2]/models/qwen3-4b/prob_patient",
+    "class": "row_object:values_changed",
+    "kind": "value",
+    "published": 0.1804,
+    "regenerated": 0.103
+   },
+   {
+    "path": "/scenarios[batch=pairs_20260706T201750Z,batch_index=2]/models/qwen3-4b/spread_clinical",
+    "class": "row_object:values_changed",
+    "kind": "list_len 10->5",
+    "published": {
+     "omitted": "object or list",
+     "sha256": "25ef835753629ccbf6e2f2e71fa3b762916464d08156ae4fa05ebf86aafb1b3a",
+     "n": 10
+    },
+    "regenerated": {
+     "omitted": "object or list",
+     "sha256": "daa3475f95182456a2576b6b2742fe79545ea1518f0300d4c206b1cebe510095",
+     "n": 5
+    }
+   },
+   {
+    "path": "/scenarios[batch=pairs_20260706T201750Z,batch_index=2]/models/qwen3-4b/spread_patient",
+    "class": "row_object:values_changed",
+    "kind": "list_len 10->5",
+    "published": {
+     "omitted": "object or list",
+     "sha256": "9c281c3dfecb5494ae9d357b1442886349ed6916756670f6e6dc0b24844cfa8d",
+     "n": 10
+    },
+    "regenerated": {
+     "omitted": "object or list",
+     "sha256": "6d2c5ed99765550d9d81f26a15df6df1095fa8ec69dddcdb8f4a9c01aa3c1b72",
+     "n": 5
+    }
+   },
+   {
+    "path": "/scenarios[batch=pairs_20260706T201750Z,batch_index=2]/models/qwen3-4b/top_clinical/1",
+    "class": "row_object:values_changed",
+    "kind": "value",
+    "published": 0.4239,
+    "regenerated": 0.218
+   },
+   {
+    "path": "/scenarios[batch=pairs_20260706T201750Z,batch_index=2]/models/qwen3-4b/top_patient/0",
+    "class": "row_object:values_changed",
+    "kind": "value",
+    "published": {
+     "omitted": "token string",
+     "sha256": "bc7dcc245394f42d1bce3c17b61148646e04f00806043615ab28a97de06d5ade",
+     "chars": 4
+    },
+    "regenerated": {
+     "omitted": "token string",
+     "sha256": "7d3f6d65885a14ef8fb5a0616eb4585c09df6bac609a26c2683c89e04818e7c4",
+     "chars": 4
+    }
+   },
+   {
+    "path": "/scenarios[batch=pairs_20260706T201750Z,batch_index=2]/models/qwen3-4b/top_patient/1",
+    "class": "row_object:values_changed",
+    "kind": "value",
+    "published": 0.1804,
+    "regenerated": 0.109
+   },
+   {
+    "path": "/scenarios[batch=pairs_20260706T201750Z,batch_index=3]/models/qwen3-4b",
+    "class": "row_object:removed",
+    "kind": "removed",
+    "published": {
+     "omitted": "object or list",
+     "sha256": "91cabf9c38bba98c5cd0418892f8d725b5d4415004b0e8462bb2264b8b561aee",
+     "n": 14
+    },
+    "regenerated": null
+   },
+   {
+    "path": "/scenarios[batch=pairs_20260706T201750Z,batch_index=4]/models/qwen3-4b",
+    "class": "row_object:removed",
+    "kind": "removed",
+    "published": {
+     "omitted": "object or list",
+     "sha256": "b1206fe54b609639d74a1f795c86b4e95595942865d68fca5486a0b2c4f20143",
+     "n": 14
+    },
+    "regenerated": null
+   },
+   {
+    "path": "/scenarios[batch=pairs_20260706T201750Z,batch_index=5]/models/qwen3-4b",
+    "class": "row_object:removed",
+    "kind": "removed",
+    "published": {
+     "omitted": "object or list",
+     "sha256": "cbb5d3f15b97f1c89df4f7cb96624a1b0c36e4126dd657d94fe2c85034ea7dad",
+     "n": 13
+    },
+    "regenerated": null
+   },
+   {
+    "path": "/scenarios[batch=pairs_20260706T201750Z,batch_index=6]/models/qwen3-4b",
+    "class": "row_object:removed",
+    "kind": "removed",
+    "published": {
+     "omitted": "object or list",
+     "sha256": "c2b9ac9664f78b96a743d246c298ff920d80e8b532f5a5a68cbcde63ad6aa73e",
+     "n": 14
+    },
+    "regenerated": null
+   },
+   {
+    "path": "/scenarios[batch=pairs_20260706T201750Z,batch_index=7]/models/qwen3-4b",
+    "class": "row_object:removed",
+    "kind": "removed",
+    "published": {
+     "omitted": "object or list",
+     "sha256": "1b23e79923f3f91806d2aea326d2eb358456bb3063f2fba34a6b6ee43e082ecc",
+     "n": 14
+    },
+    "regenerated": null
+   },
+   {
+    "path": "/scenarios[batch=pairs_20260706T201750Z,batch_index=8]/models/qwen3-4b",
+    "class": "row_object:removed",
+    "kind": "removed",
+    "published": {
+     "omitted": "object or list",
+     "sha256": "901f3cdaddaf938a76fdf8e944c609f2d9b60a24ec7dd0f0137c3ad0968fcb2e",
+     "n": 14
+    },
+    "regenerated": null
+   },
+   {
+    "path": "/scenarios[batch=pairs_20260706T201750Z,batch_index=9]/models/qwen3-4b",
+    "class": "row_object:removed",
+    "kind": "removed",
+    "published": {
+     "omitted": "object or list",
+     "sha256": "b92fc53f7dea49d182fff1376c72a87c2bfc18b3a73b6569a2c95256d238f31f",
+     "n": 14
+    },
+    "regenerated": null
+   },
+   {
+    "path": "/scenarios[batch=pairs_20260706T201750Z,batch_index=10]/models/qwen3-4b",
+    "class": "row_object:removed",
+    "kind": "removed",
+    "published": {
+     "omitted": "object or list",
+     "sha256": "08a469789a1f682cf8d9ba46375051960a22120c6d9a03ddf4a04eb3e5317944",
+     "n": 14
+    },
+    "regenerated": null
+   },
+   {
+    "path": "/scenarios[batch=pairs_20260706T201750Z,batch_index=11]/models/qwen3-4b",
+    "class": "row_object:removed",
+    "kind": "removed",
+    "published": {
+     "omitted": "object or list",
+     "sha256": "09d0008c460fc939a930efdc8839307e33cdc8adff7c653e2001dda633529d85",
+     "n": 14
+    },
+    "regenerated": null
+   },
+   {
+    "path": "/scenarios[batch=pairs_20260706T201750Z,batch_index=12]/models/qwen3-4b",
+    "class": "row_object:removed",
+    "kind": "removed",
+    "published": {
+     "omitted": "object or list",
+     "sha256": "7163565b88cbeb9ce8098b568edc4370156976803dd8543c380bd2df3ab8919d",
+     "n": 14
+    },
+    "regenerated": null
+   },
+   {
+    "path": "/scenarios[batch=pairs_20260706T201750Z,batch_index=13]/models/qwen3-4b",
+    "class": "row_object:removed",
+    "kind": "removed",
+    "published": {
+     "omitted": "object or list",
+     "sha256": "2009367a3c9a73f008e2033dbcc855475c447842a0a0e3e229eb8eb306baa7bf",
+     "n": 14
+    },
+    "regenerated": null
+   },
+   {
+    "path": "/summary/penalty/ci95/0",
+    "class": "summary_correction",
+    "kind": "value",
+    "published": -0.0477,
+    "regenerated": -0.046
+   },
+   {
+    "path": "/summary/penalty/ci95/1",
+    "class": "summary_correction",
+    "kind": "value",
+    "published": -0.0291,
+    "regenerated": -0.0267
+   },
+   {
+    "path": "/summary/penalty/mean_phrase_deduped",
+    "class": "summary_correction",
+    "kind": "value",
+    "published": -0.0387,
+    "regenerated": -0.0367
+   },
+   {
+    "path": "/summary/penalty/n_phrases",
+    "class": "summary_correction",
+    "kind": "value",
+    "published": 1163,
+    "regenerated": 1124
+   },
+   {
+    "path": "/traced_by_model/qwen3-4b/backend",
+    "class": "metadata:traced_by_model",
+    "kind": "value",
+    "published": "logits",
+    "regenerated": "hosted"
+   },
+   {
+    "path": "/traces_site/_provenance/engine_sha",
+    "class": "metadata:traces_site",
+    "kind": "value",
+    "published": "6884692f0a15+dirty",
+    "regenerated": "95bf61cc5424+dirty"
+   },
+   {
+    "path": "/traces_site/_provenance/generated_utc",
+    "class": "metadata:traces_site",
+    "kind": "value",
+    "published": "2026-08-29T12:58:44Z",
+    "regenerated": "2026-11-10T20:31:59Z"
+   },
+   {
+    "path": "/urgency_meta/per_model_deduped/qwen3-4b/flips",
+    "class": "metadata:urgency_meta",
+    "kind": "value",
+    "published": 548,
+    "regenerated": 541
+   },
+   {
+    "path": "/urgency_meta/per_model_deduped/qwen3-4b/mean_penalty",
+    "class": "metadata:urgency_meta",
+    "kind": "value",
+    "published": -0.0401,
+    "regenerated": -0.0405
+   },
+   {
+    "path": "/urgency_meta/per_model_deduped/qwen3-4b/n_phrases",
+    "class": "metadata:urgency_meta",
+    "kind": "value",
+    "published": 1255,
+    "regenerated": 1244
+   }
+  ]
+ },
+ "rows": [
+  {
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 1,
+   "display_index": 1,
+   "model": "qwen3-4b",
+   "published": {
+    "prob_clinical": 0.0118,
+    "prob_patient": 0.0063,
+    "language_penalty": -0.0055,
+    "flipped": false,
+    "anchor_fallback": false,
+    "screening": null,
+    "clinical_mass": null,
+    "circuit_diff_present": false,
+    "top_clinical_p": 0.2518,
+    "top_patient_p": 0.5314,
+    "spread_clinical_n": 9,
+    "spread_patient_n": 10,
+    "target_token_chars": 8,
+    "urgency": null
+   },
+   "published_row_sha256": "d389d2ea538a8d0cc5ef372889677b8705684347a9fa71d249a74797bc25fe08",
+   "published_values_measured_by": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_01.json@1162e921557a (logits, committed 2026-07-07T15:01:04Z; not on the branch since 2026-09-02T12:15:47Z)",
+   "published_value_was_correct_for_that_part": true,
+   "change": "values changed",
+   "fields_differing": [
+    "circuit_diff",
+    "language_penalty",
+    "prob_clinical",
+    "prob_patient",
+    "spread_clinical",
+    "spread_patient",
+    "target_token",
+    "top_clinical",
+    "top_patient"
+   ],
+   "regenerated": {
+    "prob_clinical": 0.037,
+    "prob_patient": 0.058,
+    "language_penalty": 0.021000000000000005,
+    "flipped": false,
+    "anchor_fallback": false,
+    "screening": null,
+    "clinical_mass": null,
+    "circuit_diff_present": true,
+    "top_clinical_p": 0.309,
+    "top_patient_p": 0.432,
+    "spread_clinical_n": 5,
+    "spread_patient_n": 5,
+    "target_token_chars": 5,
+    "urgency": null
+   },
+   "regenerated_row_sha256": "d5c3ec5c35afc27924b7e7f886fb1ffbaa59779d7f767ccc011511af4bd65789",
+   "cause": "the file trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_01.json was replaced on 2026-09-02T12:15:47Z (engine d0e47884939) by a hosted trace of pairs 1-2. Hosted parts are inside the membership without a pin, so the exporter now reads the hosted values.",
+   "engine_part_now": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_01.json",
+   "engine_part_in_membership": true,
+   "engine_part_backend": "hosted",
+   "engine_part_values": {
+    "prob_clinical": 0.037,
+    "prob_patient": 0.058,
+    "language_penalty": 0.021000000000000005
+   },
+   "note": "the two values are not readings of the same token: the published row measured the whole intended target (8 characters); the hosted part measured a 5-character leading piece of it and has no target_read field (it predates the exact-read change of 2026-10-07, AGENTS.md Known measurement limitations)"
+  },
+  {
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 2,
+   "display_index": 2,
+   "model": "qwen3-4b",
+   "published": {
+    "prob_clinical": 0.4239,
+    "prob_patient": 0.1804,
+    "language_penalty": -0.2435,
+    "flipped": false,
+    "anchor_fallback": false,
+    "screening": null,
+    "clinical_mass": null,
+    "circuit_diff_present": false,
+    "top_clinical_p": 0.4239,
+    "top_patient_p": 0.1804,
+    "spread_clinical_n": 10,
+    "spread_patient_n": 10,
+    "target_token_chars": 4,
+    "urgency": {
+     "flip_class": "uninformative",
+     "tier_top_clinical": 1,
+     "tier_top_patient": null,
+     "tier_shift": 0.131
+    }
+   },
+   "published_row_sha256": "5967260f0c4255b41d87f227fa0ab5db6a0898c115288bec9961d9f8094124b5",
+   "published_values_measured_by": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_01.json@1162e921557a (logits, committed 2026-07-07T15:01:04Z; not on the branch since 2026-09-02T12:15:47Z)",
+   "published_value_was_correct_for_that_part": true,
+   "change": "values changed",
+   "fields_differing": [
+    "circuit_diff",
+    "flipped",
+    "language_penalty",
+    "prob_clinical",
+    "prob_patient",
+    "spread_clinical",
+    "spread_patient",
+    "top_clinical",
+    "top_patient"
+   ],
+   "regenerated": {
+    "prob_clinical": 0.218,
+    "prob_patient": 0.103,
+    "language_penalty": -0.115,
+    "flipped": true,
+    "anchor_fallback": false,
+    "screening": null,
+    "clinical_mass": null,
+    "circuit_diff_present": true,
+    "top_clinical_p": 0.218,
+    "top_patient_p": 0.109,
+    "spread_clinical_n": 5,
+    "spread_patient_n": 5,
+    "target_token_chars": 4,
+    "urgency": {
+     "flip_class": "uninformative",
+     "tier_top_clinical": 1,
+     "tier_top_patient": null,
+     "tier_shift": 0.131
+    }
+   },
+   "regenerated_row_sha256": "ce4e80e0f5cbfa3403575ba1bfd66a7b35c30dc58638a8e2a59a07d9d3d14bef",
+   "cause": "the file trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_01.json was replaced on 2026-09-02T12:15:47Z (engine d0e47884939) by a hosted trace of pairs 1-2. Hosted parts are inside the membership without a pin, so the exporter now reads the hosted values.",
+   "engine_part_now": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_01.json",
+   "engine_part_in_membership": true,
+   "engine_part_backend": "hosted",
+   "engine_part_values": {
+    "prob_clinical": 0.218,
+    "prob_patient": 0.103,
+    "language_penalty": -0.115
+   }
+  },
+  {
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 3,
+   "display_index": 3,
+   "model": "qwen3-4b",
+   "published": {
+    "prob_clinical": 0.3228,
+    "prob_patient": 0.8118,
+    "language_penalty": 0.489,
+    "flipped": false,
+    "anchor_fallback": false,
+    "screening": null,
+    "clinical_mass": null,
+    "circuit_diff_present": false,
+    "top_clinical_p": 0.3228,
+    "top_patient_p": 0.8118,
+    "spread_clinical_n": 10,
+    "spread_patient_n": 9,
+    "target_token_chars": 3,
+    "urgency": {
+     "flip_class": null,
+     "tier_top_clinical": 1,
+     "tier_top_patient": 1,
+     "tier_shift": 0.048
+    }
+   },
+   "published_row_sha256": "91cabf9c38bba98c5cd0418892f8d725b5d4415004b0e8462bb2264b8b561aee",
+   "published_values_measured_by": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_01.json@1162e921557a (logits, committed 2026-07-07T15:01:04Z; not on the branch since 2026-09-02T12:15:47Z)",
+   "published_value_was_correct_for_that_part": true,
+   "change": "model object removed",
+   "regenerated": null,
+   "cause": "the only part at this key on the branch is trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_03.json (logits, committed 2026-10-31T05:18:04Z), which the membership does not read: logits part outside the pinned manifest. The exporter applies the membership, so the row has no qwen3-4b measurement after a re-export.",
+   "engine_part_now": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_03.json",
+   "engine_part_in_membership": false,
+   "engine_part_values": {
+    "prob_clinical": 0.3489,
+    "prob_patient": 0.8404,
+    "language_penalty": 0.4915
+   }
+  },
+  {
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 4,
+   "display_index": 4,
+   "model": "qwen3-4b",
+   "published": {
+    "prob_clinical": 0.0829,
+    "prob_patient": 0.0914,
+    "language_penalty": 0.0085,
+    "flipped": false,
+    "anchor_fallback": false,
+    "screening": null,
+    "clinical_mass": null,
+    "circuit_diff_present": false,
+    "top_clinical_p": 0.1549,
+    "top_patient_p": 0.1507,
+    "spread_clinical_n": 10,
+    "spread_patient_n": 10,
+    "target_token_chars": 8,
+    "urgency": {
+     "flip_class": null,
+     "tier_top_clinical": null,
+     "tier_top_patient": null,
+     "tier_shift": 0.123
+    }
+   },
+   "published_row_sha256": "b1206fe54b609639d74a1f795c86b4e95595942865d68fca5486a0b2c4f20143",
+   "published_values_measured_by": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_01.json@1162e921557a (logits, committed 2026-07-07T15:01:04Z; not on the branch since 2026-09-02T12:15:47Z)",
+   "published_value_was_correct_for_that_part": true,
+   "change": "model object removed",
+   "regenerated": null,
+   "cause": "the only part at this key on the branch is trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_03.json (logits, committed 2026-10-31T05:18:04Z), which the membership does not read: logits part outside the pinned manifest. The exporter applies the membership, so the row has no qwen3-4b measurement after a re-export.",
+   "engine_part_now": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_03.json",
+   "engine_part_in_membership": false,
+   "engine_part_values": {
+    "prob_clinical": 0.0857,
+    "prob_patient": 0.0997,
+    "language_penalty": 0.014
+   }
+  },
+  {
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 5,
+   "display_index": 5,
+   "model": "qwen3-4b",
+   "published": {
+    "prob_clinical": 0.0004,
+    "prob_patient": 0.0002,
+    "language_penalty": -0.0002,
+    "flipped": false,
+    "anchor_fallback": false,
+    "screening": null,
+    "clinical_mass": null,
+    "circuit_diff_present": false,
+    "top_clinical_p": 0.2679,
+    "top_patient_p": 0.3598,
+    "spread_clinical_n": 9,
+    "spread_patient_n": 9,
+    "target_token_chars": 4,
+    "urgency": null
+   },
+   "published_row_sha256": "cbb5d3f15b97f1c89df4f7cb96624a1b0c36e4126dd657d94fe2c85034ea7dad",
+   "published_values_measured_by": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_01.json@1162e921557a (logits, committed 2026-07-07T15:01:04Z; not on the branch since 2026-09-02T12:15:47Z)",
+   "published_value_was_correct_for_that_part": true,
+   "change": "model object removed",
+   "regenerated": null,
+   "cause": "the only part at this key on the branch is trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_03.json (logits, committed 2026-10-31T05:18:04Z), which the membership does not read: logits part outside the pinned manifest. The exporter applies the membership, so the row has no qwen3-4b measurement after a re-export.",
+   "engine_part_now": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_03.json",
+   "engine_part_in_membership": false,
+   "engine_part_values": {
+    "prob_clinical": 0.0003,
+    "prob_patient": 0.0002,
+    "language_penalty": -0.0001
+   }
+  },
+  {
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 6,
+   "display_index": 6,
+   "model": "qwen3-4b",
+   "published": {
+    "prob_clinical": 0.0295,
+    "prob_patient": 0.0139,
+    "language_penalty": -0.0156,
+    "flipped": true,
+    "anchor_fallback": false,
+    "screening": null,
+    "clinical_mass": null,
+    "circuit_diff_present": false,
+    "top_clinical_p": 0.3599,
+    "top_patient_p": 0.1803,
+    "spread_clinical_n": 9,
+    "spread_patient_n": 9,
+    "target_token_chars": 6,
+    "urgency": {
+     "flip_class": "uninformative",
+     "tier_top_clinical": null,
+     "tier_top_patient": null,
+     "tier_shift": null
+    }
+   },
+   "published_row_sha256": "c2b9ac9664f78b96a743d246c298ff920d80e8b532f5a5a68cbcde63ad6aa73e",
+   "published_values_measured_by": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_01.json@1162e921557a (logits, committed 2026-07-07T15:01:04Z; not on the branch since 2026-09-02T12:15:47Z)",
+   "published_value_was_correct_for_that_part": true,
+   "change": "model object removed",
+   "regenerated": null,
+   "cause": "the only part at this key on the branch is trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_03.json (logits, committed 2026-10-31T05:18:04Z), which the membership does not read: logits part outside the pinned manifest. The exporter applies the membership, so the row has no qwen3-4b measurement after a re-export.",
+   "engine_part_now": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_03.json",
+   "engine_part_in_membership": false,
+   "engine_part_values": {
+    "prob_clinical": 0.0304,
+    "prob_patient": 0.0144,
+    "language_penalty": -0.016
+   }
+  },
+  {
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 7,
+   "display_index": 7,
+   "model": "qwen3-4b",
+   "published": {
+    "prob_clinical": 0.0788,
+    "prob_patient": 0.5402,
+    "language_penalty": 0.4614,
+    "flipped": true,
+    "anchor_fallback": false,
+    "screening": null,
+    "clinical_mass": null,
+    "circuit_diff_present": false,
+    "top_clinical_p": 0.2426,
+    "top_patient_p": 0.5402,
+    "spread_clinical_n": 9,
+    "spread_patient_n": 9,
+    "target_token_chars": 4,
+    "urgency": {
+     "flip_class": "uninformative",
+     "tier_top_clinical": null,
+     "tier_top_patient": 1,
+     "tier_shift": 0.045
+    }
+   },
+   "published_row_sha256": "1b23e79923f3f91806d2aea326d2eb358456bb3063f2fba34a6b6ee43e082ecc",
+   "published_values_measured_by": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_01.json@1162e921557a (logits, committed 2026-07-07T15:01:04Z; not on the branch since 2026-09-02T12:15:47Z)",
+   "published_value_was_correct_for_that_part": true,
+   "change": "model object removed",
+   "regenerated": null,
+   "cause": "the only part at this key on the branch is trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_03.json (logits, committed 2026-10-31T05:18:04Z), which the membership does not read: logits part outside the pinned manifest. The exporter applies the membership, so the row has no qwen3-4b measurement after a re-export.",
+   "engine_part_now": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_03.json",
+   "engine_part_in_membership": false,
+   "engine_part_values": {
+    "prob_clinical": 0.0726,
+    "prob_patient": 0.5323,
+    "language_penalty": 0.4597
+   }
+  },
+  {
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 8,
+   "display_index": 8,
+   "model": "qwen3-4b",
+   "published": {
+    "prob_clinical": 0.0289,
+    "prob_patient": 0.0001,
+    "language_penalty": -0.0288,
+    "flipped": true,
+    "anchor_fallback": false,
+    "screening": null,
+    "clinical_mass": null,
+    "circuit_diff_present": false,
+    "top_clinical_p": 0.2419,
+    "top_patient_p": 0.3754,
+    "spread_clinical_n": 9,
+    "spread_patient_n": 9,
+    "target_token_chars": 3,
+    "urgency": {
+     "flip_class": "uninformative",
+     "tier_top_clinical": null,
+     "tier_top_patient": null,
+     "tier_shift": null
+    }
+   },
+   "published_row_sha256": "901f3cdaddaf938a76fdf8e944c609f2d9b60a24ec7dd0f0137c3ad0968fcb2e",
+   "published_values_measured_by": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_01.json@1162e921557a (logits, committed 2026-07-07T15:01:04Z; not on the branch since 2026-09-02T12:15:47Z)",
+   "published_value_was_correct_for_that_part": true,
+   "change": "model object removed",
+   "regenerated": null,
+   "cause": "the only part at this key on the branch is trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_03.json (logits, committed 2026-10-31T05:18:04Z), which the membership does not read: logits part outside the pinned manifest. The exporter applies the membership, so the row has no qwen3-4b measurement after a re-export.",
+   "engine_part_now": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_03.json",
+   "engine_part_in_membership": false,
+   "engine_part_values": {
+    "prob_clinical": 0.0297,
+    "prob_patient": 0.0001,
+    "language_penalty": -0.0296
+   }
+  },
+  {
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 9,
+   "display_index": 9,
+   "model": "qwen3-4b",
+   "published": {
+    "prob_clinical": 0.0,
+    "prob_patient": 0.0041,
+    "language_penalty": 0.0041,
+    "flipped": true,
+    "anchor_fallback": false,
+    "screening": null,
+    "clinical_mass": null,
+    "circuit_diff_present": false,
+    "top_clinical_p": 0.3835,
+    "top_patient_p": 0.2892,
+    "spread_clinical_n": 10,
+    "spread_patient_n": 10,
+    "target_token_chars": 5,
+    "urgency": {
+     "flip_class": "uninformative",
+     "tier_top_clinical": null,
+     "tier_top_patient": null,
+     "tier_shift": null
+    }
+   },
+   "published_row_sha256": "b92fc53f7dea49d182fff1376c72a87c2bfc18b3a73b6569a2c95256d238f31f",
+   "published_values_measured_by": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_01.json@1162e921557a (logits, committed 2026-07-07T15:01:04Z; not on the branch since 2026-09-02T12:15:47Z)",
+   "published_value_was_correct_for_that_part": true,
+   "change": "model object removed",
+   "regenerated": null,
+   "cause": "the only part at this key on the branch is trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_03.json (logits, committed 2026-10-31T05:18:04Z), which the membership does not read: logits part outside the pinned manifest. The exporter applies the membership, so the row has no qwen3-4b measurement after a re-export.",
+   "engine_part_now": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_03.json",
+   "engine_part_in_membership": false,
+   "engine_part_values": {
+    "prob_clinical": 0.0,
+    "prob_patient": 0.0041,
+    "language_penalty": 0.0041
+   }
+  },
+  {
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 10,
+   "display_index": 10,
+   "model": "qwen3-4b",
+   "published": {
+    "prob_clinical": 0.0725,
+    "prob_patient": 0.0034,
+    "language_penalty": -0.0691,
+    "flipped": true,
+    "anchor_fallback": false,
+    "screening": null,
+    "clinical_mass": null,
+    "circuit_diff_present": false,
+    "top_clinical_p": 0.0772,
+    "top_patient_p": 0.1656,
+    "spread_clinical_n": 10,
+    "spread_patient_n": 9,
+    "target_token_chars": 8,
+    "urgency": {
+     "flip_class": "uninformative",
+     "tier_top_clinical": 1,
+     "tier_top_patient": null,
+     "tier_shift": -0.852
+    }
+   },
+   "published_row_sha256": "08a469789a1f682cf8d9ba46375051960a22120c6d9a03ddf4a04eb3e5317944",
+   "published_values_measured_by": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_01.json@1162e921557a (logits, committed 2026-07-07T15:01:04Z; not on the branch since 2026-09-02T12:15:47Z)",
+   "published_value_was_correct_for_that_part": true,
+   "change": "model object removed",
+   "regenerated": null,
+   "cause": "the only part at this key on the branch is trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_03.json (logits, committed 2026-10-31T05:18:04Z), which the membership does not read: logits part outside the pinned manifest. The exporter applies the membership, so the row has no qwen3-4b measurement after a re-export.",
+   "engine_part_now": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_03.json",
+   "engine_part_in_membership": false,
+   "engine_part_values": {
+    "prob_clinical": 0.079,
+    "prob_patient": 0.0037,
+    "language_penalty": -0.0753
+   }
+  },
+  {
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 11,
+   "display_index": 11,
+   "model": "qwen3-4b",
+   "published": {
+    "prob_clinical": 0.409,
+    "prob_patient": 0.2271,
+    "language_penalty": -0.1819,
+    "flipped": false,
+    "anchor_fallback": false,
+    "screening": null,
+    "clinical_mass": null,
+    "circuit_diff_present": false,
+    "top_clinical_p": 0.5252,
+    "top_patient_p": 0.3744,
+    "spread_clinical_n": 10,
+    "spread_patient_n": 10,
+    "target_token_chars": 3,
+    "urgency": {
+     "flip_class": null,
+     "tier_top_clinical": 1,
+     "tier_top_patient": 1,
+     "tier_shift": 0.023
+    }
+   },
+   "published_row_sha256": "09d0008c460fc939a930efdc8839307e33cdc8adff7c653e2001dda633529d85",
+   "published_values_measured_by": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_01.json@1162e921557a (logits, committed 2026-07-07T15:01:04Z; not on the branch since 2026-09-02T12:15:47Z)",
+   "published_value_was_correct_for_that_part": true,
+   "change": "model object removed",
+   "regenerated": null,
+   "cause": "the only part at this key on the branch is trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_03.json (logits, committed 2026-10-31T05:18:04Z), which the membership does not read: logits part outside the pinned manifest. The exporter applies the membership, so the row has no qwen3-4b measurement after a re-export.",
+   "engine_part_now": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_03.json",
+   "engine_part_in_membership": false,
+   "engine_part_values": {
+    "prob_clinical": 0.4375,
+    "prob_patient": 0.2594,
+    "language_penalty": -0.1781
+   }
+  },
+  {
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 12,
+   "display_index": 12,
+   "model": "qwen3-4b",
+   "published": {
+    "prob_clinical": 0.0251,
+    "prob_patient": 0.0959,
+    "language_penalty": 0.0708,
+    "flipped": true,
+    "anchor_fallback": false,
+    "screening": null,
+    "clinical_mass": null,
+    "circuit_diff_present": false,
+    "top_clinical_p": 0.2384,
+    "top_patient_p": 0.1581,
+    "spread_clinical_n": 10,
+    "spread_patient_n": 10,
+    "target_token_chars": 4,
+    "urgency": {
+     "flip_class": "lateral",
+     "tier_top_clinical": 0,
+     "tier_top_patient": 0,
+     "tier_shift": 0.23
+    }
+   },
+   "published_row_sha256": "7163565b88cbeb9ce8098b568edc4370156976803dd8543c380bd2df3ab8919d",
+   "published_values_measured_by": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_01.json@1162e921557a (logits, committed 2026-07-07T15:01:04Z; not on the branch since 2026-09-02T12:15:47Z)",
+   "published_value_was_correct_for_that_part": true,
+   "change": "model object removed",
+   "regenerated": null,
+   "cause": "the only part at this key on the branch is trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_03.json (logits, committed 2026-10-31T05:18:04Z), which the membership does not read: logits part outside the pinned manifest. The exporter applies the membership, so the row has no qwen3-4b measurement after a re-export.",
+   "engine_part_now": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_03.json",
+   "engine_part_in_membership": false,
+   "engine_part_values": {
+    "prob_clinical": 0.0261,
+    "prob_patient": 0.0892,
+    "language_penalty": 0.0631
+   }
+  },
+  {
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 13,
+   "display_index": 13,
+   "model": "qwen3-4b",
+   "published": {
+    "prob_clinical": 0.6523,
+    "prob_patient": 0.0084,
+    "language_penalty": -0.6439,
+    "flipped": true,
+    "anchor_fallback": false,
+    "screening": null,
+    "clinical_mass": null,
+    "circuit_diff_present": false,
+    "top_clinical_p": 0.6523,
+    "top_patient_p": 0.5206,
+    "spread_clinical_n": 10,
+    "spread_patient_n": 10,
+    "target_token_chars": 3,
+    "urgency": {
+     "flip_class": "uninformative",
+     "tier_top_clinical": 1,
+     "tier_top_patient": null,
+     "tier_shift": null
+    }
+   },
+   "published_row_sha256": "2009367a3c9a73f008e2033dbcc855475c447842a0a0e3e229eb8eb306baa7bf",
+   "published_values_measured_by": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_01.json@1162e921557a (logits, committed 2026-07-07T15:01:04Z; not on the branch since 2026-09-02T12:15:47Z)",
+   "published_value_was_correct_for_that_part": true,
+   "change": "model object removed",
+   "regenerated": null,
+   "cause": "the only part at this key on the branch is trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_03.json (logits, committed 2026-10-31T05:18:04Z), which the membership does not read: logits part outside the pinned manifest. The exporter applies the membership, so the row has no qwen3-4b measurement after a re-export.",
+   "engine_part_now": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_03.json",
+   "engine_part_in_membership": false,
+   "engine_part_values": {
+    "prob_clinical": 0.6288,
+    "prob_patient": 0.0068,
+    "language_penalty": -0.622
+   }
+  }
+ ],
+ "metadata_blocks": {
+  "models_meta": {
+   "changes": {
+    "qwen3-4b.graphs": [
+     false,
+     true
+    ],
+    "qwen3-4b.n_traced": [
+     1261,
+     1250
+    ]
+   },
+   "derived_from": "n_traced counts scenarios that carry the model; graphs is true unless traced_by_model[model].backend is \"logits\"",
+   "why": "n_traced: 11 model objects removed. graphs: follows traced_by_model, below",
+   "pages_that_read_graphs": [
+    "technical/index.html",
+    "simulated-scenarios/index.html",
+    "simulated-scenarios/scenario.html"
+   ],
+   "finding": "after a re-export 2 of the 1,250 qwen3-4b rows come from a hosted part and 1,248 from logits parts, and the model-level flag says graphs: true",
+   "parts_read_in_the_27_stamps_by_backend": {
+    "gemma-2-2b": {
+     "hosted": 269
+    },
+    "gemma-3-4b-it": {
+     "logits": 25
+    },
+    "qwen3-4b": {
+     "hosted": 1,
+     "logits": 21
+    },
+    "qwen3-1.7b": {
+     "logits": 22
+    }
+   },
+   "qwen3-4b_rows_after_reexport_by_backend": {
+    "hosted": 2,
+    "logits": 1248
+   }
+  },
+  "traced_by_model": {
+   "changes": {
+    "qwen3-4b.backend": [
+     "logits",
+     "hosted"
+    ]
+   },
+   "derived_from": "the metadata of the first batch stamp in which the model has results; within that directory, the last part read that states the key",
+   "why": "the first stamp is pairs_20260706T201750Z. Its qwen3-4b directory held one logits part on 2026-08-29. It now holds a hosted part (read) and a logits part (not read)"
+  },
+  "traces_site": {
+   "changes": {
+    "_provenance.engine_sha": [
+     "6884692f0a15+dirty",
+     "the commit of the run"
+    ],
+    "_provenance.generated_utc": [
+     "2026-08-29T12:58:44Z",
+     "the time of the run"
+    ]
+   },
+   "derived_from": "scripts/export_traces_site.py --stamp-only writes its provenance stamp on every run",
+   "why": "run stamp only; the stamped trace_url of every scenario is unchanged"
+  },
+  "urgency_meta": {
+   "changes": {
+    "per_model_deduped.qwen3-4b.n_phrases": [
+     1255,
+     1244
+    ],
+    "per_model_deduped.qwen3-4b.flips": [
+     548,
+     541
+    ],
+    "per_model_deduped.qwen3-4b.mean_penalty": [
+     -0.0401,
+     -0.0405
+    ]
+   },
+   "derived_from": "scripts/embed_scenario_joins.py copies it from the site data/urgency_shift.json, which the collector writes",
+   "why": "the collector no longer takes the 11 rows from the payload, because the regenerated payload does not hold them"
+  }
+ },
+ "summary_correction": {
+  "path": "/summary/penalty",
+  "published": {
+   "population": "public_payload",
+   "mean_phrase_deduped": -0.0387,
+   "n_phrases": 1163,
+   "n_scored_rows": 1163,
+   "mean_rows_raw": -0.0387,
+   "ci95": [
+    -0.0477,
+    -0.0291
+   ]
+  },
+  "regenerated": {
+   "population": "public_payload",
+   "mean_phrase_deduped": -0.0367,
+   "n_phrases": 1124,
+   "n_scored_rows": 1163,
+   "mean_rows_raw": -0.0387,
+   "ci95": [
+    -0.046,
+    -0.0267
+   ]
+  },
+  "cause": "scripts/payload_summary.py grouped on a field the exporter rows do not carry (from its first commit 5c7ab99549, 2026-07-21, to c46db48f08, 2026-11-10); base model only, so the 13 qwen3-4b rows do not enter it"
+ },
+ "other_files_a_full_chain_changes": {
+  "data/urgency_shift.json": {
+   "sha256": {
+    "published": "7a6aad9dfb4a1fe0cdde94d467666bc9c57d2fc65d3462a7a74b76f4c454d31f",
+    "regenerated": "3dbfe11ab071918c951579a61883bfe38fe7281b0c16be90a2e050d19a3b0a22"
+   },
+   "rows": [
+    13692,
+    13684
+   ],
+   "rows_removed": [
+    [
+     "qwen3-4b",
+     "pairs_20260706T201750Z",
+     3
+    ],
+    [
+     "qwen3-4b",
+     "pairs_20260706T201750Z",
+     4
+    ],
+    [
+     "qwen3-4b",
+     "pairs_20260706T201750Z",
+     6
+    ],
+    [
+     "qwen3-4b",
+     "pairs_20260706T201750Z",
+     7
+    ],
+    [
+     "qwen3-4b",
+     "pairs_20260706T201750Z",
+     8
+    ],
+    [
+     "qwen3-4b",
+     "pairs_20260706T201750Z",
+     9
+    ],
+    [
+     "qwen3-4b",
+     "pairs_20260706T201750Z",
+     10
+    ],
+    [
+     "qwen3-4b",
+     "pairs_20260706T201750Z",
+     11
+    ],
+    [
+     "qwen3-4b",
+     "pairs_20260706T201750Z",
+     12
+    ],
+    [
+     "qwen3-4b",
+     "pairs_20260706T201750Z",
+     13
+    ]
+   ],
+   "rows_added": [
+    [
+     "gemma-2-2b",
+     "drift_sentinel_20261106",
+     2
+    ],
+    [
+     "gemma-2-2b",
+     "drift_sentinel_20261106",
+     3
+    ]
+   ],
+   "rows_changed_at_a_shared_key": 0,
+   "non_row_paths_differing": 40,
+   "causes": [
+    "the 11 payload rows are no longer taken (10 of them were in the trimmed row file; row 5 has no tier information and was never in it)",
+    "hosted part trace_out/drift_sentinel_20261106 (gemma-2-2b, 3 results) landed after the file was last published on 2026-11-06; 2 of its rows enter the trimmed file"
+   ]
+  },
+  "modes/simulated/": {
+   "files_deleted": 235,
+   "html": 193,
+   "png": 42,
+   "files_added_or_changed": 0,
+   "listed_by_the_published_payload": 0,
+   "rule": "scripts/render_prune.py, owner ruling 2 of 2026-09-23; the publish-site-data skill expects about 235 at the first export after that date"
+  },
+  "data/model_stats.json": {
+   "changed_by_the_chain": false,
+   "note": "scripts/paired_stats_rigor.py is not a step of the chain; the file keeps its 2026-08-29 bytes unless that script is run",
+   "if_regenerated_after_the_reexport": [
+    {
+     "path": "/models_meta/2/graphs",
+     "published": false,
+     "after_full_reexport": true
+    },
+    {
+     "path": "/models_meta/2/n_traced",
+     "published": 1261,
+     "after_full_reexport": 1250
+    },
+    {
+     "path": "/per_model/qwen3-4b/by_generation_tier/tier_a/mean",
+     "published": -0.0771,
+     "after_full_reexport": -0.0806
+    },
+    {
+     "path": "/per_model/qwen3-4b/by_generation_tier/tier_a/n_phrases",
+     "published": 235,
+     "after_full_reexport": 224
+    },
+    {
+     "path": "/per_model/qwen3-4b/flips/downgrade_rate",
+     "published": 0.1308,
+     "after_full_reexport": 0.1324
+    },
+    {
+     "path": "/per_model/qwen3-4b/flips/downgrade_rate_ci95/0",
+     "published": 0.1024,
+     "after_full_reexport": 0.1037
+    },
+    {
+     "path": "/per_model/qwen3-4b/flips/downgrade_rate_ci95/1",
+     "published": 0.1636,
+     "after_full_reexport": 0.1656
+    },
+    {
+     "path": "/per_model/qwen3-4b/flips/n_flips",
+     "published": 497,
+     "after_full_reexport": 491
+    },
+    {
+     "path": "/per_model/qwen3-4b/n_rows",
+     "published": 1152,
+     "after_full_reexport": 1141
+    },
+    {
+     "path": "/per_model/qwen3-4b/n_unique_phrases",
+     "published": 1121,
+     "after_full_reexport": 1110
+    },
+    {
+     "path": "/per_model/qwen3-4b/near_duplicates/n_phrases",
+     "published": 1121,
+     "after_full_reexport": 1110
+    },
+    {
+     "path": "/per_model/qwen3-4b/near_duplicates/rate",
+     "published": 0.0633,
+     "after_full_reexport": 0.064
+    },
+    {
+     "path": "/per_model/qwen3-4b/penalty/ci95/0",
+     "published": -0.0595,
+     "after_full_reexport": -0.0605
+    },
+    {
+     "path": "/per_model/qwen3-4b/penalty/ci95/1",
+     "published": -0.0334,
+     "after_full_reexport": -0.034
+    },
+    {
+     "path": "/per_model/qwen3-4b/penalty/ci95_batch_cluster/ci95/0",
+     "published": -0.0614,
+     "after_full_reexport": -0.0624
+    },
+    {
+     "path": "/per_model/qwen3-4b/penalty/ci95_batch_cluster/ci95/1",
+     "published": -0.0313,
+     "after_full_reexport": -0.0315
+    },
+    {
+     "path": "/per_model/qwen3-4b/penalty/ci95_simultaneous/0",
+     "published": -0.0661,
+     "after_full_reexport": -0.066
+    },
+    {
+     "path": "/per_model/qwen3-4b/penalty/ci95_simultaneous/1",
+     "published": -0.028,
+     "after_full_reexport": -0.0287
+    },
+    {
+     "path": "/per_model/qwen3-4b/penalty/ci95_topic_cluster/ci95/0",
+     "published": -0.0646,
+     "after_full_reexport": -0.0643
+    },
+    {
+     "path": "/per_model/qwen3-4b/penalty/ci95_topic_cluster/ci95/1",
+     "published": -0.0289,
+     "after_full_reexport": -0.0287
+    },
+    {
+     "path": "/per_model/qwen3-4b/penalty/mean",
+     "published": -0.0466,
+     "after_full_reexport": -0.047
+    },
+    {
+     "path": "/per_model/qwen3-4b/penalty/n_phrases",
+     "published": 1121,
+     "after_full_reexport": 1110
+    },
+    {
+     "path": "/per_model/qwen3-4b/penalty/n_phrases_with_penalty",
+     "published": 1121,
+     "after_full_reexport": 1110
+    },
+    {
+     "path": "/per_model/qwen3-4b/penalty/n_rows_with_penalty",
+     "published": 1152,
+     "after_full_reexport": 1141
+    },
+    {
+     "path": "/sensitivity_all_rows/per_model/qwen3-4b/mean_penalty",
+     "published": -0.0466,
+     "after_full_reexport": -0.047
+    },
+    {
+     "path": "/sensitivity_all_rows/per_model/qwen3-4b/n_unique_phrases",
+     "published": 1121,
+     "after_full_reexport": 1110
+    }
+   ],
+   "models_other_than_qwen3_4b_changed": []
+  }
+ },
+ "question_A_model_stats": {
+  "answer": "Two rows explain all ten fields: qwen3-4b at (pairs_20260706T201750Z, 1) and (pairs_20260706T201750Z, 2). They are 2 of the 13 rows.",
+  "rows": [
+   {
+    "batch": "pairs_20260706T201750Z",
+    "batch_index": 1,
+    "model": "qwen3-4b",
+    "value_on_20260829": {
+     "language_penalty": -0.0055,
+     "flipped": false
+    },
+    "value_today": {
+     "language_penalty": 0.021000000000000005,
+     "flipped": false
+    }
+   },
+   {
+    "batch": "pairs_20260706T201750Z",
+    "batch_index": 2,
+    "model": "qwen3-4b",
+    "value_on_20260829": {
+     "language_penalty": -0.2435,
+     "flipped": false
+    },
+    "value_today": {
+     "language_penalty": -0.115,
+     "flipped": true
+    }
+   }
+  ],
+  "cause": "the collector reads engine parts before the payload. On 2026-08-29 the part at these keys was the logits summary of 2026-07-07; since 2026-09-02 it is a hosted summary of pairs 1-2 at the same file name",
+  "arithmetic": "mean over 1,121 phrases moves by (0.0265 + 0.1285) / 1121 = +0.00014 (-0.0466 to -0.0465); row 2 becomes a flip (497 to 498)",
+  "verification": {
+   "method": "today's collector rows with these two rows set back to their 2026-08-29 values, then scripts/paired_stats_rigor.py with seed 7 and 5,000 resamples",
+   "result": "equal to the published data/model_stats.json in every field except _provenance and source",
+   "paths_differing": [
+    "_provenance/engine_sha",
+    "_provenance/generated_utc",
+    "source"
+   ]
+  },
+  "comparison_scope": "the 2026-08-29 payload (site 48fae78) against today's collector rows, all four payload models, 5,638 rows with spreads: 2 differ, both listed above. Rows of the six models outside the payload could not be compared row by row from the site history; the published file reproduces exactly without any change to them",
+  "also": "data/audits/target_reads_20261007.json records published_stale: 2"
+ },
+ "question_B_legacy_rows": {
+  "record": "data/results_policy/legacy_payload_rows.v1.json",
+  "test": "tests/test_legacy_payload_rows.py",
+  "count": 11,
+  "keys": [
+   [
+    "qwen3-4b",
+    "pairs_20260706T201750Z",
+    3
+   ],
+   [
+    "qwen3-4b",
+    "pairs_20260706T201750Z",
+    4
+   ],
+   [
+    "qwen3-4b",
+    "pairs_20260706T201750Z",
+    5
+   ],
+   [
+    "qwen3-4b",
+    "pairs_20260706T201750Z",
+    6
+   ],
+   [
+    "qwen3-4b",
+    "pairs_20260706T201750Z",
+    7
+   ],
+   [
+    "qwen3-4b",
+    "pairs_20260706T201750Z",
+    8
+   ],
+   [
+    "qwen3-4b",
+    "pairs_20260706T201750Z",
+    9
+   ],
+   [
+    "qwen3-4b",
+    "pairs_20260706T201750Z",
+    10
+   ],
+   [
+    "qwen3-4b",
+    "pairs_20260706T201750Z",
+    11
+   ],
+   [
+    "qwen3-4b",
+    "pairs_20260706T201750Z",
+    12
+   ],
+   [
+    "qwen3-4b",
+    "pairs_20260706T201750Z",
+    13
+   ]
+  ],
+  "collector_output_sha256_unchanged": "8b3068a5ffdeb1f8c9885a5e04674a1cd1fe7b5528bfa892418a158e93a42d70",
+  "max_abs_penalty_difference_between_payload_and_part_03": 0.0219,
+  "fails_when": "the collector takes a key with no active entry, or an active entry is no longer taken, or a declared row or its part has other bytes than recorded"
+ },
+ "qwen3_4b_statistics_in_three_states": {
+  "published_20260829": {
+   "n_rows": 1152,
+   "n_unique_phrases": 1121,
+   "mean_penalty": -0.0466,
+   "ci95": [
+    -0.0595,
+    -0.0334
+   ],
+   "ci95_simultaneous": [
+    -0.0661,
+    -0.028
+   ],
+   "n_flips": 497,
+   "downgrades": 65,
+   "upgrades": 14,
+   "downgrade_rate": 0.1308,
+   "downgrade_rate_ci95": [
+    0.1024,
+    0.1636
+   ],
+   "sign_test_p_raw": 5.194941262584352e-09,
+   "sign_test_p_bh": 2.0779765050337407e-08,
+   "tier_a_mean": -0.0771,
+   "tier_a_n_phrases": 235
+  },
+  "recomputed_today_payload_unchanged": {
+   "n_rows": 1152,
+   "n_unique_phrases": 1121,
+   "mean_penalty": -0.0465,
+   "ci95": [
+    -0.0594,
+    -0.0333
+   ],
+   "ci95_simultaneous": [
+    -0.066,
+    -0.0279
+   ],
+   "n_flips": 498,
+   "downgrades": 65,
+   "upgrades": 14,
+   "downgrade_rate": 0.1305,
+   "downgrade_rate_ci95": [
+    0.1022,
+    0.1633
+   ],
+   "sign_test_p_raw": 5.194941262584352e-09,
+   "sign_test_p_bh": 2.0779765050337407e-08,
+   "tier_a_mean": -0.0764,
+   "tier_a_n_phrases": 235
+  },
+  "after_full_reexport_pin_unchanged": {
+   "n_rows": 1141,
+   "n_unique_phrases": 1110,
+   "mean_penalty": -0.047,
+   "ci95": [
+    -0.0605,
+    -0.034
+   ],
+   "ci95_simultaneous": [
+    -0.066,
+    -0.0287
+   ],
+   "n_flips": 491,
+   "downgrades": 65,
+   "upgrades": 14,
+   "downgrade_rate": 0.1324,
+   "downgrade_rate_ci95": [
+    0.1037,
+    0.1656
+   ],
+   "sign_test_p_raw": 5.194941262584352e-09,
+   "sign_test_p_bh": 2.0779765050337407e-08,
+   "tier_a_mean": -0.0806,
+   "tier_a_n_phrases": 224
+  },
+  "seed": 7,
+  "boot": 5000,
+  "other_nine_models": "identical in all three states"
+ },
+ "divergence_log": {
+  "file": "docs/prereg_divergence_log.md",
+  "row_added": "one, for the summary correction, directly after the 2026-11-10 open-results row",
+  "merge_check": {
+   "base_d8d0855d_theirs_origin_main": "git merge-file exit 1 (one conflict) at this position and at the position one line earlier: origin/main (e7692171, and the remote head 5b3a5b5b) already holds the 2026-11-10 row, which d8d0855d does not",
+   "base_09d726eb_theirs_origin_main": "git merge-file exit 0 at this position; 09d726eb is git merge-base HEAD origin/main"
+  }
+ }
+}

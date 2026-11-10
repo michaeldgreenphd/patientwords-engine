@@ -207,6 +207,10 @@ of step 3, `data/translation_scale.json`, and the owner-run advice, Petri and Je
 payloads. A run of the whole chain normally changes at least the payload, so it
 normally needs a snapshot. When unsure, go to 9e: it names every changed statistics
 file the current snapshot does not cover.
+After a re-export that removes a row declared in
+`data/results_policy/legacy_payload_rows.v1.json`, set that entry's state to
+`"retired"` with `retired_by` naming the new snapshot, in the same engine commit as the
+snapshot; `tests/test_legacy_payload_rows.py` fails until then.
 ```
 python scripts/results_snapshot.py create --id study-interim-<UTC date> \
     --supersedes <the id `results_snapshot.py list` marks current> --site ../patientwords \
