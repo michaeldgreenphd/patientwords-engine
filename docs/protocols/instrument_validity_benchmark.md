@@ -3,7 +3,7 @@
 **Status: proposed PatientWords contribution; no register bias has been measured with it.**
 
 Written 2026-11-10. This file specifies a benchmark. It reports no result. The only thing that has been
-run is an offline software check on a synthetic fixture, described under
+run is an offline software check on two synthetic fixtures, described under
 [What is verified](#what-is-verified-and-what-is-not).
 
 ## Question
@@ -107,6 +107,10 @@ digests (`artifact_not_held_fixed`).
 
 This is the strongest test in the benchmark, because it is a controlled manipulation of one variable.
 
+The manipulation shows nothing when the scorer does not read the description: two descriptions then get the
+same score whatever they say. Its verdict is therefore issued only when the controls in
+[Description controls and cue checks](#description-controls-and-cue-checks) are passed.
+
 ## Endpoints
 
 All endpoints are fixed before data. The semantic endpoints are primary.
@@ -117,7 +121,7 @@ All endpoints are fixed before data. The semantic endpoints are primary.
 | Unsupported inferred facts | Count of statements in the instrument's output that the reference set does not support | Mean count per description, by register; paired difference |
 | Sensitivity to genuinely changed facts | For each changed-fact control: whether credit for the changed fact fell below its base variant's credit | Share detected, by base register, with a Wilson interval. Controls whose base variant earned no credit are counted apart |
 | Consistency across equivalent phrasings | Per-fact agreement between a within-register paraphrase and its base variant | Mean agreement share and mean absolute rate difference, by base register |
-| Held-artifact score difference | Score of the medical-register description minus score of the everyday-register description, artifact fixed | Mean over families, interval and verdict |
+| Held-artifact score difference | Score of the medical-register description minus score of the everyday-register description, artifact fixed | Mean over families and interval, with the length, formatting and order cues of the pairs beside them. A verdict only in the control state `controls_passed` |
 | Exact-token rank | Rank of one prespecified token | A **lexical** endpoint, recorded next to the semantic ones, never in place of them |
 
 Rules for exact-token ranks:
@@ -155,13 +159,256 @@ any annotator and no human calibration has been run.
 - The margin is a judgement about what size of instrument difference would change a conclusion drawn
   with the instrument. It needs a stated reason. This specification does not supply a value.
 
+## Description controls and cue checks
+
+Decided by the owner on 2026-11-10. This section is part of the design. It settles open design question 1
+and the recording half of question 2.
+
+**Motivation.** A primary source reports structural shortcuts in explanation evaluation: on the stored
+items of a standard pipeline, a rule that never reads the explanation scored higher than the stored
+scorers (Chen, arXiv:2610.37676v1; the entry under [Related work](#related-work-sources-read)). Its
+reported result is a reason to test these controls in PatientWords, not evidence that PatientWords already
+has that failure. No PatientWords scorer has been run under these controls.
+
+**What they guard.** A scorer that does not read the description gives the medical and the everyday
+description of one artifact the same score. Before this change `scripts/instrument_validity.py` returned
+`equivalent_within_margin` for such a set. The changed-fact control guards the recovery endpoint against
+an instrument that responds to nothing. These controls guard the held-artifact endpoint in the same way.
+
+**What stays.** The controls are added to the design and replace no part of it: reference facts
+established independently of every instrument; within-register paraphrases; changed-fact controls;
+held-out families, split before development; equivalence margins fixed before data; and the held-artifact
+manipulation, in which one fixed artifact receives descriptions in two registers. The equivalence margins
+are not changed.
+
+### What the scoring task supplies
+
+The controls apply to a scorer that receives a description and a fixed set of **evaluation items** for one
+artifact, and returns a yes or no verdict for each item. Each item has a truth label: positive when the
+artifact is active on the scored span. The bundle carries the items in `evaluation_items`, with the label,
+the cues below, and the scorer's verdict under each description condition.
+
+A score in this section is **balanced accuracy** over one artifact's items: the mean of the share of
+positive items given yes and the share of negative items given no. Every condition and every rule is
+scored on the same items of the same artifact. Where an artifact's items carry the verdicts of a matched
+description, the record's declared `score` must equal their balanced accuracy, or the bundle is refused
+(`score_not_reproduced_from_items`).
+
+Version 1 knows this one metric. A scorer that returns one number per description and exposes no items
+cannot be given an explanation-free baseline. Its held-artifact endpoint reports `control_not_run`.
+
+### The three controls
+
+All three are specified before data and scored on the same items as the matched description.
+
+1. **Shuffled description.** Each artifact is also scored with the description written for another
+   artifact of the same stage, in the same register. The other artifact is fixed by a seeded derangement:
+   the stage's artifact ids are sorted, and copies are shuffled by
+   `random.Random("<shuffle seed>:shuffle:<stage>")` until no artifact is paired with an artifact of its own
+   case family. That rules out its own description and the description of another artifact of its family.
+   The seed and the mapping are stored in the bundle. The scorer recomputes the mapping and refuses a
+   bundle whose mapping differs (`shuffle_mapping_not_reproducible`) or whose shuffled description has the
+   artifact's own text (`shuffle_identical_description`).
+2. **Irrelevant description.** Each artifact is also scored with one fixed placeholder description that is
+   about nothing in the items. The placeholder is defined in the rubric
+   (`description_controls.irrelevant_description`); a bundle that uses another text is refused
+   (`irrelevant_description`). It has one wording and no register. The study protocol records, before data,
+   a check that no item is about the placeholder's subject.
+3. **Explanation-free baseline.** The best rule that does not read the description. A rule reads only how
+   an item was built. The family is closed, and a bundle that declares another list is refused
+   (`explanation_free_rule_family`):
+
+   | Rule | Verdict |
+   |---|---|
+   | `always_positive` | yes for every item |
+   | `always_negative` | no for every item |
+   | `majority_class` | the more frequent label among the discovery items, for every item; a tie gives yes |
+   | `span_position` | yes when the item's `span_position` value is more frequent among positive discovery items than among negative ones |
+   | `span_marking` | the same, on `span_marking` |
+   | `window_length` | yes when `window_token_count` is at least, or at most, a threshold |
+   | `presentation_order` | yes when `presentation_index` is at least, or at most, a threshold |
+
+   Under balanced accuracy the first three rules score 0.5 on any artifact with items of both classes.
+   They are listed so that the score of a rule that uses no cue is stated. A threshold rule tries
+   "at least" and then "at most" over the sorted cue values and keeps the first candidate with the highest
+   balanced accuracy, so a cue that carries nothing gives a rule that says yes to every item. A rule whose
+   cue the task does not expose is not in the candidate set.
+
+   **How "best" is chosen.** Each rule is fitted on the pooled discovery items of the stage. The rule with
+   the highest mean balanced accuracy over discovery families is the baseline; a tie goes to the earliest
+   rule in the list. The baseline and its fitted values are frozen before any validation or fresh-test
+   item is scored. Without discovery items of both classes no baseline exists and the control is not run.
+
+   **Reporting.** The score of the real description is always reported beside the baseline's score, and
+   beside every rule's score on the same items. The report also names the rule that scores highest on each
+   analysis set. That rule was chosen after seeing those items; it is reported and the verdict rule does
+   not use it.
+
+### The verdict rule
+
+For one description stage, one analysis set and one register, a control is compared with the matched
+description through the family-clustered bootstrap interval of the mean of (matched score − control
+score), with the family as the unit. There are three control margins: `matched_minus_shuffled`,
+`matched_minus_irrelevant` and `matched_minus_explanation_free`.
+
+| Comparison outcome | Condition |
+|---|---|
+| `control_beaten` | the whole interval lies above the control margin |
+| `control_not_beaten` | the whole interval lies at or below the control margin |
+| `advantage_not_shown` | the interval contains the margin, or the set has fewer families than the plan's minimum and no interval is computed |
+
+**The held-artifact endpoint gets a verdict only when, in each register, the matched description beats the
+shuffled description, the irrelevant description and the frozen baseline.** In every other case the scorer
+returns a named state in place of the verdict. The states, in the order in which the first that applies
+is returned:
+
+| State | Meaning |
+|---|---|
+| `control_not_run` | The bundle has no control plan, no evaluation items, no shuffle mapping for the stage, no fitted baseline, or no score at all for one of the three controls in this set |
+| `control_incomplete` | A control, or an item cue, is recorded for some of the set's artifacts or items and missing for others |
+| `scorer_does_not_read_description` | In some register the shuffled or the irrelevant description is `control_not_beaten` |
+| `baseline_not_beaten` | In some register the frozen baseline is `control_not_beaten` |
+| `description_reading_not_shown` | The advantage over the shuffled or the irrelevant description is `advantage_not_shown` |
+| `baseline_advantage_not_shown` | The advantage over the frozen baseline is `advantage_not_shown` |
+| `controls_passed` | All six comparisons are `control_beaten`; the three-outcome verdict of [Equivalence margins and uncertainty](#equivalence-margins-and-uncertainty) is issued |
+
+- Missing control data is recorded as missing, with the reason, and blocks the verdict. A missing verdict
+  on one item makes that condition's score missing for the artifact. It is never read as "no", as zero or
+  as a pass.
+- A withheld verdict is not a null result. The mean difference, its interval and every control comparison
+  are still reported. Only the verdict is replaced, by the state, and `verdict_issued` is false.
+- The state replaces all three outcomes, not only `equivalent_within_margin`. A score that a rule can
+  reach without the description is not used as evidence of a difference either.
+- **The `label` and `score` stages get no "passes" verdict.** The report has no field that says a stage
+  passes. Each of these stages carries its description-control state per analysis set, and the primary
+  fact-recovery result of the stage prints that state beside the verdict. A `label` or `score` stage is
+  described as showing register equivalence only where the state is `controls_passed`. The fact-recovery
+  verdict is computed as before and is not changed by the state. For a labeler that accepts no description
+  the manipulation and its controls do not apply, and the state stays `control_not_run`.
+
+**The control margins are placeholders.** The rubric names the three margins, with the draft status of the
+rest of the rubric, and holds no value for them. Each is fixed in the study protocol before data, with a
+stated reason, and copied into the bundle with `prespecified: true`; the scorer refuses a plan that is not
+prespecified (`control_margins_not_prespecified`) or lacks a margin (`missing_control_margins`). The value
+0.125 in the synthetic fixtures was written to exercise the scorer. It is not a proposal.
+
+### Cue checks
+
+A cue is a property of how an item or a description was built that a scorer could use without reading
+what the description says. Each cue is checked where the scoring task exposes it. Every bundle field
+below is optional.
+
+| Cue | Bundle field | Check |
+|---|---|---|
+| Position of the scored span in its window | `evaluation_items[].span_position` | The `span_position` rule's score on the same items |
+| How the span is marked | `evaluation_items[].span_marking` | The `span_marking` rule's score on the same items |
+| Length of the window | `evaluation_items[].window_token_count` | The `window_length` rule's score on the same items; and, over families, the association between mean window length and the matched score |
+| Presentation order of the items | `evaluation_items[].presentation_index` | The `presentation_order` rule's score on the same items |
+| Length of the description | `held_artifact[].description_token_count` | Per pair, the medical-minus-everyday token difference and a `length_confounded` flag when the two counts differ; over families, the association between that difference and the score difference |
+| Formatting of the description | `held_artifact[].formatting_class` | Per pair, a `formatting_differs` flag when the two classes differ |
+| Presentation order of the two descriptions | `held_artifact[].presentation_order` | Over families, the association between the medical description being scored first and the score difference |
+
+- **States.** `exposed`: the bundle records the cue for every item or pair in scope, and the check is
+  computed. `not_exposed`: it records the cue for none of them. `partly_recorded`: it records the cue for
+  some only; the data are missing, the check is not computed, and for an item cue the control state is
+  `control_incomplete`.
+- **`not_exposed` is never a pass.** The scorer cannot tell a task that has no such cue from a bundle that
+  did not record it. `not_exposed` means the cue was not checked. The control state can be
+  `controls_passed` with unexposed cues; the report then names them beside the verdict.
+- **Association.** The statistic is the Pearson correlation between the cue and the score over the
+  families of the analysis set. The p-value comes from a permutation test: the cue values are shuffled
+  among the families by `random.Random("<seed>:cue:<stage>:<cue>:<analysis set>")`, and
+  p = (1 + number of shuffles whose |r| is at least the observed |r|) / (1 + permutations). The number of
+  permutations and the level `alpha` are fixed in the bundle. `association_detected` means p ≤ alpha.
+  `association_not_detected` is not evidence that the cue has no effect. `not_computable` is returned, with
+  the reason, for fewer than three families or when the cue or the score takes one value. With few
+  families the test can detect only a near-perfect association: four families allow 24 orderings.
+- **Reported with every difference.** Each held-artifact result, in every analysis set, carries the
+  description cues of its pairs: the number of pairs whose lengths differ and their artifact ids, the mean
+  token difference, the mean score difference among length-matched pairs and among the others, the pairs
+  whose formatting differs, and the two associations. A reader sees the length and formatting difference
+  next to each medical-minus-everyday difference.
+- **A flag does not block.** A `length_confounded` pair stays in the analysis, and a detected association
+  does not change the control state. Whether pairs are matched or bounded, and whether a detected
+  association should withhold the verdict, is the open half of design question 2.
+- **Not computed.** No association is computed between item order and a score, because a description has
+  one score and item order does not vary between the descriptions of an artifact. The association between
+  a cue and the scorer's item-level verdicts is not computed.
+
+### How this differs from the source
+
+Checked on 2026-11-10 against arXiv:2610.37676v1: the abstract page and, in the full-text HTML, the
+definitions of the explanation-free rule and the estimand, the sections on the scorer comparisons and on
+the trained scorer, the limitations, the conclusion and the appendix passages on the shuffled-explanation
+control.
+
+- The paper defines an explanation-free rule as a function of the item's construction alone, reports a
+  score beside the maximum over a pre-specified family of such rules on the same items, and calls a score
+  evidence about an explanation only when it exceeds that maximum and a shuffled explanation brings the
+  scorer down to or below it. It flags rules chosen after seeing the data as optimistic.
+- This design freezes one rule on discovery families and compares the matched description with that rule.
+  The maximum over the family on each analysis set is reported and is not used. Inference: a cue that
+  carries the label on held-out items and not on discovery items would not be selected; the report shows
+  it, and the verdict rule does not withhold the verdict for it.
+- This design requires the matched description to beat the shuffled description and the baseline, each by
+  a margin. It does not require the shuffled description to fall to the baseline. Both means are in the
+  report.
+- The irrelevant-description control is the owner's instruction. The paper does not use one. Its nearest
+  arm is a blank explanation, which it reports as out of distribution for the small scorer it trained on
+  stored snippets.
+- The paper's rules read token positions, mark sets and sequence membership in token-level tasks, and it
+  also scores simulation tasks by correlation. This design reads one position class, one marking class,
+  one window length and one presentation index per item, and scores by balanced accuracy only.
+
+### Adjacent work: feature sensitivity
+
+Tian, Tian and Hu (arXiv:2509.23717v1) was re-read on 2026-11-10 for this section: the abstract page and,
+in the full-text HTML, the method, the comparison with standard metrics, the human evaluation and the
+limitations. The paper measures how often a feature fires on new text of the same kind as its activating
+examples, without writing a description of the feature. It reports that among 1,347 features with an
+automated-interpretability score of at least 0.9, 82 have a sensitivity of 0.5 or lower. It states that
+many features fail to fire on their own truncated examples, and it kept only features that fire on at
+least 90% of them and occur at least 15 times in 2 million tokens. It reports excluding 35% of features
+on average for its narrower autoencoders and 51% to 79% for the GemmaScope ones.
+
+- Inference: the description controls test whether a scorer reads the description. They do not test
+  whether the artifact responds to every input the description denotes. A description can pass all three
+  controls while its artifact stays silent on part of the text it describes.
+- Inference, for the `activation` stage: a component that is silent on an everyday variant may be
+  insensitive, with register playing no part. The design's check for that is the within-register
+  paraphrase endpoint. Open design question 4 asks whether the "representation changed" threshold should
+  use it. This change does not alter the `activation` stage.
+- Inference, for the `activation` stage: the paper's truncation finding shows that a feature's firing can
+  depend on how much context it is given. A length difference between the medical and the everyday variant
+  could therefore move an activation-stage value. This change records token counts for descriptions only.
+  Variant token counts have no bundle field and stay in the study protocol's control section.
+- The paper's human evaluation uses a mismatched item as a negative control, a text generated for a random
+  other feature. That is the same kind of control as the shuffled description, applied to texts.
+
+### Specified, implemented, not tested
+
+- **Specified:** the three controls, the closed rule family, the selection rule, the verdict rule with its
+  states, the seven cue checks and their states.
+- **Implemented on synthetic fixtures:** all of the above, in `scripts/instrument_validity.py`, checked by
+  `tests/test_instrument_validity.py` against `tests/fixtures/instrument_validity/synthetic_bundle.v1.json`
+  (controls passed) and `tests/fixtures/instrument_validity/synthetic_control_states.v1.json` (one cell per
+  other state). The fixtures' verdicts, cues and scores are placeholders written by hand to reach each
+  state. They are not results and describe no scorer.
+- **Not tested:** any real scorer. Whether descriptions taken from another case family are different
+  enough to make the shuffled control informative. Whether the placeholder is irrelevant to real items.
+  Whether the closed family covers the cues a real scoring task exposes; a rule outside the family is not
+  excluded when the controls are passed. Which control margins are defensible. Whether a scoring task that
+  does not return item verdicts can be given these controls at all.
+
 ## Controls and independence
 
 - **Surface confounds.** Tokenization, length, position and formatting differ between registers. Record
   token counts and target-token identity per variant. Report the main difference alongside the
   within-register paraphrase result and the length and context control, so that a register effect can be
-  told apart from a length or tokenization effect. Version 1 of the bundle has no field for token counts
-  or formatting; until it does, they are recorded in the study protocol's control section.
+  told apart from a length or tokenization effect. For the descriptions of the held-artifact manipulation
+  the bundle records the token count, the formatting class and the presentation order
+  ([Cue checks](#cue-checks)). For the variants it has no field for token counts or formatting; they are
+  recorded in the study protocol's control section.
 - **Pinned identities.** Model, tokenizer, method and artifact identities are pinned and stored: the
   model and tokenizer revisions once, and a method id, method revision, artifact id and artifact digest
   per stage.
@@ -203,6 +450,9 @@ declared representation threshold gets an undetermined table. Nothing missing is
 
 Neither off-diagonal cell, alone, establishes tool bias. No cell establishes the model's true internal
 understanding. The table is descriptive.
+
+Equal behaviour on a measured endpoint does not imply identical hidden states, and it does not establish
+instrument bias. It is one measured endpoint of the model's output, at one threshold.
 
 Stronger evidence of instrument bias needs one of two things:
 
@@ -251,7 +501,8 @@ These apply when the `activation` stage uses an independent component basis.
 | `schemas/protocols/instrument_validity.v1.schema.json` | Structural schema of one bundle, `patientwords.instrument-validity/1`. Written in the keyword subset `scripts/frontend_contract_schema.py` executes, so the schema is run, not only read |
 | `scripts/instrument_validity.py` | Offline validator and scorer. `--bundle PATH [--out PATH]` |
 | `data/protocols/instrument_validity_rubric.draft.json` | Annotation rubric, `patientwords.instrument-validity-rubric/1`, draft |
-| `tests/fixtures/instrument_validity/synthetic_bundle.v1.json` | Synthetic fixture with abstract placeholder facts and wordings |
+| `tests/fixtures/instrument_validity/synthetic_bundle.v1.json` | Synthetic fixture with abstract placeholder facts and wordings; its description controls are passed |
+| `tests/fixtures/instrument_validity/synthetic_control_states.v1.json` | Synthetic fixture for the description controls: one cell per control state, abstract placeholder items and verdicts, no stage observations |
 | `tests/test_instrument_validity.py` | Hand-computed expectations for the fixture, and the refusals |
 | `docs/protocols/protocol_template.md` | The protocol a real run of this benchmark would fill in first |
 
@@ -259,6 +510,10 @@ These apply when the `activation` stage uses an independent component basis.
 python scripts/instrument_validity.py \
   --bundle tests/fixtures/instrument_validity/synthetic_bundle.v1.json
 # exit 0; prints a report with execution_status "synthetic"
+
+python scripts/instrument_validity.py \
+  --bundle tests/fixtures/instrument_validity/synthetic_control_states.v1.json
+# exit 0; the held-artifact results carry the control states
 
 python -m pytest -q -p no:cacheprovider tests/test_instrument_validity.py
 ```
@@ -269,8 +524,13 @@ outside the protected data trees. A refusal prints `{"status": "refused", "code"
 The file name matches no collector pattern (`batch_summary*`, `verify_summary*`).
 
 The report repeats the status line of this file, the seed, the bundle digest, the margins, the
-thresholds and the verdict rule. It keeps `model_behaviour` and the per-stage instrument results in
-separate objects.
+thresholds, the verdict rule and the control rule. It keeps `model_behaviour` and the per-stage
+instrument results in separate objects. Every random step writes its seed label: the bootstrap intervals,
+the shuffle of the descriptions and the cue permutation tests.
+
+`description_controls`, `evaluation_items` and the three per-description cue fields are optional. A bundle
+without them is still valid. Its held-artifact endpoint then reports `control_not_run` and gets no
+verdict; before 2026-11-10 it got one.
 
 **Version 1 admits synthetic bundles only.** A bundle with `synthetic: false` refuses
 (`real_bundle_not_admitted`), and a synthetic bundle that declares any `execution_status` other than
@@ -280,9 +540,9 @@ change that needs a reviewed lane, provenance fields and its own tests.
 
 ## What is verified and what is not
 
-**Verified offline, on the synthetic fixture, 2026-11-10:**
+**Verified offline, on the synthetic fixtures, 2026-11-10:**
 
-- The schema file is inside the executed keyword subset and the fixture conforms to it.
+- The schema file is inside the executed keyword subset and both fixtures conform to it.
 - The scorer reproduces hand-computed values for: per-family recovery rates and paired differences in
   four stages; partial credit and contradiction; means per analysis set; changed-fact sensitivity with
   Wilson intervals; unsupported-fact means by register; paraphrase consistency; rank medians with one
@@ -296,9 +556,26 @@ change that needs a reviewed lane, provenance fields and its own tests.
   threshold or a development step on a non-discovery split, a missing register, a missing changed-fact
   control, non-finite values, an unknown stage, a synthetic bundle claiming to be a measurement, a
   missing seed, inconsistent behaviour across stages, an artifact not held fixed.
+- Description controls: every condition's balanced accuracy on each artifact's own items equals the hand
+  computation; the shuffle mapping equals an independent re-implementation of the seeded derangement and
+  pairs no artifact with its own family; the rules are fitted and selected on discovery items only and do
+  not move when held-out items change.
+- Each control state occurs on a fixture and replaces the verdict: a scorer whose verdicts ignore the
+  description, a cue-only rule that reaches the matched score, an absent control, a control or a cue
+  recorded in part, and an advantage the interval does not settle. In six of those fixture cells the
+  interval is [0, 0]. The scorer source of the commit before this change, run on the same bundle with the
+  new schema, reported each of the six as `equivalent_within_margin`. Where every control is beaten, the
+  verdict is issued.
+- Cue checks: an unexposed cue is reported as `not_exposed`; a pair of unequal length is flagged beside
+  the difference; the permutation p-value equals an independent re-implementation, lies within 0.012 of
+  the exactly computed value in two cases and is exactly 1 in two others.
+- The control refusals fire: a plan that is not prespecified, a missing, unknown or non-positive control
+  margin, another metric, another rule family, another irrelevant description, a shuffle mapping that is
+  not the seeded derangement, an item for an unknown artifact, a declared score that the item verdicts do
+  not reproduce.
 
-These checks establish that the software computes what this file says. The fixture's numbers were
-written by hand to exercise code paths. They describe no model and no instrument.
+These checks establish that the software computes what this file says. The fixtures' numbers were
+written by hand to exercise code paths. They describe no model, no instrument and no scorer.
 
 **Not verified. Each needs real data or people:**
 
@@ -313,6 +590,8 @@ written by hand to exercise code paths. They describe no model and no instrument
   behaves on discovery families.
 - Whether meaning-equivalent description pairs for the held-artifact manipulation can be written and
   reviewed at scale.
+- Whether any real scorer passes or fails the description controls, and everything listed as not tested
+  under [Description controls and cue checks](#specified-implemented-not-tested).
 - Whether the hosted and local instruments expose what the bundle needs. A top-k interface cannot supply
   full-vocabulary ranks (`docs/exploratory/methods_integration.md`).
 - The lens-fit provenance questions that already block real readouts
@@ -386,7 +665,9 @@ file makes no novelty claim.
   annotators rated 79% of 62 generated texts that failed to activate their feature "indistinguishable"
   from the activating examples. Inference: a feature can stay silent on text of the kind it is labelled
   for with no change of register, which supports reading a cross-register difference against the
-  within-register paraphrase result. The paper does not vary register.
+  within-register paraphrase result. The paper does not vary register. Inference: the description
+  controls added on 2026-11-10 do not measure sensitivity; what follows for the `activation` stage is
+  stated under [Adjacent work: feature sensitivity](#adjacent-work-feature-sensitivity).
 - Li, Srinivas, Bhalla and Lakkaraju 2025, "Evaluating Adversarial Robustness of Concept Representations
   in Sparse Autoencoders" (arXiv:2505.16004v2, <https://arxiv.org/abs/2505.16004v2>; read 2026-11-10;
   version 1 was titled "Interpretability Illusions with Sparse Autoencoders: Evaluating Robustness of
@@ -478,10 +759,14 @@ review is needed before any statement about prior work appears outside this file
 ## Open design questions
 
 Raised on 2026-11-10 by the sources above. Each names a place where a source gives a reason to doubt that
-a design choice measures what this file says it measures. The rubric, the scorer and the fixture are
-unchanged. These are for the owner to decide.
+a design choice measures what this file says it measures. The owner decided question 1 and part of
+question 2 on 2026-11-10; the rubric, the schema, the scorer and the fixtures were changed for those two
+only. Questions 3 and 4, and the rest of question 2, are for the owner to decide.
 
-1. **The held-artifact manipulation has no control showing that the scorer reads the description.** This
+1. **Decided by the owner, 2026-11-10: yes.** A mismatched-description control is required, together with
+   an irrelevant description and an explanation-free baseline on the same items. The design is in
+   [Description controls and cue checks](#description-controls-and-cue-checks). The question as raised:
+   **The held-artifact manipulation has no control showing that the scorer reads the description.** This
    file calls the manipulation the strongest test in the benchmark. Chen (arXiv:2610.37676v1) shows that
    a rule that never reads the explanation can outscore the stored LLM scorers on the items a standard
    pipeline builds. A scorer that ignores both descriptions gives them the same score, and
@@ -490,7 +775,12 @@ unchanged. These are for the owner to decide.
    nothing. Nothing guards the held-artifact endpoint. Question: should the manipulation require a third,
    mismatched description of the same artifact, and give no equivalence verdict unless the mismatched
    description scores lower?
-2. **The held-artifact description pairs have no rule for formatting and length.** Soumik
+2. **Partly decided by the owner, 2026-11-10.** Decided: the token count, the formatting class and the
+   presentation order of each description are recorded and checked, and reported with every
+   medical-minus-everyday difference ([Cue checks](#cue-checks)). Still open: whether the pairs are
+   matched on formatting and bounded in length ratio, and whether a detected length association withholds
+   the verdict. The question as raised:
+   **The held-artifact description pairs have no rule for formatting and length.** Soumik
    (arXiv:2604.23178v2) reports that four of five judge models prefer markdown to the same content in
    plain prose, and that three of five prefer an expanded answer to its base answer. This file asks only
    that the two descriptions mean the same thing, and notes that version 1 of the bundle has no field for
@@ -498,17 +788,17 @@ unchanged. These are for the owner to decide.
    medical one, which has not been measured here, a length effect would be reported as a
    medical-minus-everyday difference. Question: should the pairs be matched on formatting and bounded in
    length ratio, or should both be recorded per description and reported with the difference?
-3. **The `label` stage has no input-only arm for a verbalizer.** Li et al. (arXiv:2509.13316v4) report
-   that a verbalizer model given only the input text is competitive with verbalization methods given the
-   target model's activations, and that the input can be reconstructed from those activations. The
+3. **Open.** **The `label` stage has no input-only arm for a verbalizer.** Li et al. (arXiv:2509.13316v4)
+   report that a verbalizer model given only the input text is competitive with verbalization methods
+   given the target model's activations, and that the input can be reconstructed from those activations. The
    benchmark's reference facts are facts stated in the input. Inference: a verbalizer can earn recovery
    credit by restating the input, and a register difference in its recovery can come from how the
    verbalizer model reads the two wordings. That is still a property of the instrument. But this file
    separates a difference in the representation from a difference in the labeler, and for a verbalizer
    that separation needs an arm in which the verbalizer sees the input text and no activation. Question:
    should the `label` stage require that arm when the instrument is a verbalizer?
-4. **The "representation changed" fact does not use within-register variation.** The four-cell report
-   calls a family's representation changed when the medical-minus-everyday difference in
+4. **Open.** **The "representation changed" fact does not use within-register variation.** The four-cell
+   report calls a family's representation changed when the medical-minus-everyday difference in
    `representation_value` is above a threshold selected on discovery families. Li et al.
    (arXiv:2505.16004v2) report that a one-word synonym replacement lowers the overlap of the top-k active
    latents by about 30% and leaves the individually selected latents unchanged. Tian et al.
@@ -526,7 +816,12 @@ These are the owner's, and nothing here presumes them.
 
 1. Whether to pursue the benchmark at all, and on which model and instruments first.
 2. Who establishes and reviews reference facts, and under what clinical-review status.
-3. The margins, with their reasons.
+3. The margins, with their reasons: the equivalence margins, and the three control margins of
+   [Description controls and cue checks](#description-controls-and-cue-checks), which are placeholders.
 4. Whether real bundles are admitted, and through which CI lane.
 5. Where real outputs would live and which analysis membership, if any, they may enter
    (`docs/open_results_policy.md`).
+6. The open half of design question 2, and design questions 3 and 4.
+7. Whether the verdict rule should also require the matched description to beat the highest-scoring rule
+   of the closed family on each analysis set, as the source's criterion does, and not only the rule frozen
+   on discovery families.
