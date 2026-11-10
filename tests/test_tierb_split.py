@@ -303,3 +303,27 @@ def test_site_copy_floors_probe_models():
     src = _RIGOR_PATH.read_text(encoding="utf-8")
     assert "MIN_SITE_PHRASES = 30" in src
     assert 'v["penalty"]["n_phrases"] >= MIN_SITE_PHRASES' in src
+
+
+def test_drop_holdout_phrase_rows_is_phrase_keyed_and_counts():
+    # Abstract placeholder phrases. One flagged row seals every row of its phrase,
+    # including a re-run that carries no flag; other rows are kept in order.
+    rows = [
+        {"clinical_prompt": "PHRASE-K1", "tierb_split": "explore", "batch": "b1"},
+        {"clinical_prompt": "PHRASE-H", "tierb_split": "holdout", "batch": "b1"},
+        {"clinical_prompt": "PHRASE-H", "batch": "repeatability_r1"},
+        {"clinical_prompt": "PHRASE-K2", "batch": "b0"},
+    ]
+    before = json.dumps(rows)
+    kept, n_rows, n_phrases = tierb_split.drop_holdout_phrase_rows(rows)
+    assert [r["clinical_prompt"] for r in kept] == ["PHRASE-K1", "PHRASE-K2"]
+    assert (n_rows, n_phrases) == (2, 1)
+    assert json.dumps(rows) == before  # the input is not modified
+    assert tierb_split.drop_holdout_phrase_rows([]) == ([], 0, 0)
+    assert tierb_split.drop_holdout_phrase_rows(rows[:1]) == (rows[:1], 0, 0)
+
+
+def test_drop_holdout_phrase_rows_refuses_a_row_it_cannot_key():
+    rows = [{"clinical_prompt": "PHRASE-K1"}, {"batch": "b1", "tierb_split": "holdout"}]
+    with pytest.raises(tierb_split.SealError, match="1 of 2 rows carry no clinical_prompt"):
+        tierb_split.drop_holdout_phrase_rows(rows)

@@ -161,6 +161,34 @@ class SealError(RuntimeError):
     """
 
 
+def drop_holdout_phrase_rows(rows: list[dict]) -> tuple[list[dict], int, int]:
+    """Collector rows with every holdout phrase removed, for an interim aggregate.
+
+    Returns ``(kept, n_rows_excluded, n_holdout_phrases)``. The rule is
+    phrase-keyed (2026-07-14, Amendment 3): a clinical prompt that carries
+    ``tierb_split == "holdout"`` on any row is excluded on every row, so a
+    re-run of a holdout phrase in a batch that carries no split flag cannot
+    enter an interim number. This reads the flags ``stamp_rows`` wrote into the
+    row file; it does not recompute the hash, so it removes nothing from rows
+    that were never stamped (both counts are then 0, and the caller reports it).
+
+    This is the exclusion ``paired_stats_rigor.load_rows`` has applied since
+    2026-07-14, moved here so ``tier_sensitivity.py`` and ``paired_stats.py``
+    call the same code. The input list and its rows are not modified.
+
+    A row without a ``clinical_prompt`` key cannot be matched to a phrase, so
+    the function raises SealError (count only, no row content) instead of
+    keeping a row it could not check.
+    """
+    unkeyed = sum(1 for r in rows if "clinical_prompt" not in r)
+    if unkeyed:
+        raise SealError(f"{unkeyed} of {len(rows)} rows carry no clinical_prompt; "
+                        "the phrase-keyed holdout exclusion cannot be applied")
+    sealed = {r["clinical_prompt"] for r in rows if r.get("tierb_split") == "holdout"}
+    kept = [r for r in rows if r["clinical_prompt"] not in sealed]
+    return kept, len(rows) - len(kept), len(sealed)
+
+
 # The exit status of every script that calls sealed_pair when the seal cannot be
 # evaluated. It is the status export_pair_swaps.py and seal_check.py already return
 # when they cannot apply the holdout rule, and the publish chain stops on it
