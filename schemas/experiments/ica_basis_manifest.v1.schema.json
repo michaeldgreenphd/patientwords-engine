@@ -1,0 +1,650 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "patientwords.ica-basis-manifest/1",
+  "title": "ICA basis manifest",
+  "description": "Identity of one saved ICA Lens basis: model and tokenizer, fit corpus and split, capture site, layers, preprocessing as read from the saved artifact, fit settings and diagnostics copied from the artifact, and the SHA-256 of every artifact file. Structure only, in the keyword subset scripts/frontend_contract_schema.py executes. Vocabularies, the fixed sign-convention and diagnostics statements, the discovery-split rule, hash formats, the annotation rule (status 'hypothesis' with a source) and the not_recorded rule are enforced by scripts/experiments/adapters/ica.py. A field may be null only when its JSON pointer is in not_recorded; the string not_applicable is a recorded value.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "basis_id",
+    "synthetic",
+    "description",
+    "model",
+    "fit",
+    "profile",
+    "selection",
+    "capture",
+    "seed",
+    "preprocessing",
+    "artifact",
+    "layers",
+    "sign_convention",
+    "fit_diagnostics_statement",
+    "annotation_statement",
+    "component_annotations",
+    "limitations",
+    "not_recorded"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "basis_id": {
+      "type": "string"
+    },
+    "synthetic": {
+      "type": "boolean"
+    },
+    "description": {
+      "type": "string"
+    },
+    "model": {
+      "type": "object",
+      "required": [
+        "hf_id",
+        "revision",
+        "type",
+        "tokenizer_id",
+        "tokenizer_revision",
+        "hidden_size"
+      ],
+      "properties": {
+        "hf_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "revision": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "type": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tokenizer_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tokenizer_revision": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "hidden_size": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false
+    },
+    "fit": {
+      "type": "object",
+      "required": [
+        "corpus_id",
+        "split",
+        "description",
+        "family_ids",
+        "corpus_ids",
+        "document_token_sha256",
+        "activation_manifest_sha256",
+        "n_samples"
+      ],
+      "properties": {
+        "corpus_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "split": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "family_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "corpus_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "document_token_sha256": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "activation_manifest_sha256": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "n_samples": {
+          "type": [
+            "integer",
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "profile": {
+      "$ref": "#/definitions/stage"
+    },
+    "selection": {
+      "$ref": "#/definitions/stage"
+    },
+    "capture": {
+      "type": "object",
+      "required": [
+        "site",
+        "artifact_activation_site",
+        "layer_index_base",
+        "artifact_layer_indexing",
+        "layers",
+        "precision",
+        "model_load_precision"
+      ],
+      "properties": {
+        "site": {
+          "type": "string"
+        },
+        "artifact_activation_site": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "layer_index_base": {
+          "type": "integer"
+        },
+        "artifact_layer_indexing": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "layers": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "precision": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "model_load_precision": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "seed": {
+      "type": [
+        "integer",
+        "string",
+        "null"
+      ]
+    },
+    "preprocessing": {
+      "type": "object",
+      "required": [
+        "mode",
+        "read_from",
+        "row_normalization",
+        "pre_normalization_center",
+        "norm_eps",
+        "centering",
+        "whitening"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string"
+        },
+        "read_from": {
+          "type": "string"
+        },
+        "row_normalization": {
+          "type": "string"
+        },
+        "pre_normalization_center": {
+          "type": "string"
+        },
+        "norm_eps": {
+          "type": "number"
+        },
+        "centering": {
+          "type": "string"
+        },
+        "whitening": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "artifact": {
+      "type": "object",
+      "required": [
+        "root",
+        "format",
+        "format_version",
+        "package_version",
+        "files"
+      ],
+      "properties": {
+        "root": {
+          "type": "string"
+        },
+        "format": {
+          "type": "string"
+        },
+        "format_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "package_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "path",
+              "sha256",
+              "bytes"
+            ],
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "sha256": {
+                "type": "string"
+              },
+              "bytes": {
+                "type": "integer"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "layers": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/layer"
+      }
+    },
+    "sign_convention": {
+      "type": "string"
+    },
+    "fit_diagnostics_statement": {
+      "type": "string"
+    },
+    "annotation_statement": {
+      "type": "string"
+    },
+    "component_annotations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/annotation"
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "not_recorded": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "stage": {
+      "type": "object",
+      "required": [
+        "performed",
+        "family_ids",
+        "corpus_ids",
+        "description"
+      ],
+      "properties": {
+        "performed": {
+          "type": "boolean"
+        },
+        "family_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "corpus_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "layer": {
+      "type": "object",
+      "required": [
+        "file",
+        "sha256",
+        "n_components",
+        "tensors",
+        "fit_settings",
+        "fit_diagnostics",
+        "component_id_convention"
+      ],
+      "properties": {
+        "file": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": "string"
+        },
+        "n_components": {
+          "type": "integer"
+        },
+        "tensors": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          }
+        },
+        "fit_settings": {
+          "type": "object",
+          "required": [
+            "algorithm",
+            "ica_algorithm",
+            "fun",
+            "max_iter",
+            "n_iter",
+            "n_components",
+            "n_samples",
+            "stopping_criterion",
+            "seed",
+            "implementation",
+            "implementation_version",
+            "torch_version",
+            "fit_device",
+            "input_dtype",
+            "whiten",
+            "whiten_solver",
+            "batch_size"
+          ],
+          "properties": {
+            "algorithm": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "ica_algorithm": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "fun": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "max_iter": {
+              "type": [
+                "integer",
+                "string",
+                "null"
+              ]
+            },
+            "n_iter": {
+              "type": [
+                "integer",
+                "string",
+                "null"
+              ]
+            },
+            "n_components": {
+              "type": "integer"
+            },
+            "n_samples": {
+              "type": [
+                "integer",
+                "string",
+                "null"
+              ]
+            },
+            "stopping_criterion": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "seed": {
+              "type": [
+                "integer",
+                "string",
+                "null"
+              ]
+            },
+            "implementation": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "implementation_version": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "torch_version": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "fit_device": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "input_dtype": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "whiten": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "whiten_solver": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "batch_size": {
+              "type": [
+                "integer",
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "fit_diagnostics": {
+          "type": "object",
+          "required": [
+            "objective_history",
+            "component_strengths",
+            "component_objectives",
+            "gaussian_objective"
+          ],
+          "properties": {
+            "objective_history": {
+              "type": [
+                "object",
+                "string",
+                "null"
+              ]
+            },
+            "component_strengths": {
+              "type": [
+                "array",
+                "string",
+                "null"
+              ],
+              "items": {
+                "type": "number"
+              }
+            },
+            "component_objectives": {
+              "type": [
+                "array",
+                "string",
+                "null"
+              ],
+              "items": {
+                "type": "number"
+              }
+            },
+            "gaussian_objective": {
+              "type": [
+                "number",
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "component_id_convention": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "annotation": {
+      "type": "object",
+      "required": [
+        "layer",
+        "component",
+        "status",
+        "source"
+      ],
+      "properties": {
+        "layer": {
+          "type": "integer"
+        },
+        "component": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "label": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "vocabulary_readout": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "method",
+            "source",
+            "tokens"
+          ],
+          "properties": {
+            "method": {
+              "type": "string"
+            },
+            "source": {
+              "type": "string"
+            },
+            "tokens": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
