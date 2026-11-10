@@ -242,7 +242,10 @@ the platforms the project runs on (Linux).
 | Any measurement validity | not verified. Toy values are chosen by hand so that expected results are computable |
 
 The next step that involves a model is described in
-[first_model_run_packet_20261110.md](../exploratory/first_model_run_packet_20261110.md). It
+[first_model_run_packet_20261110.md](../exploratory/first_model_run_packet_20261110.md).
+One non-synthetic protocol is committed,
+`data/experiments/protocols/first_run_stage_a.protocol.v1.json`: 3 rows, 6 planned tasks, all
+`unavailable`, none executed. It
 needs a declared model, reviewed case families, verified artifact identity, a resource
 plan, an admission route and a fresh parity result. None of those is supplied by this
 package.
