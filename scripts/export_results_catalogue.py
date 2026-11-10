@@ -72,7 +72,8 @@ RUN_DIR_RE = re.compile(r"[A-Za-z0-9._-]+(__[A-Za-z0-9._-]+)?\Z")
 STIMULI_SCHEMA = "patientwords.results-catalogue-stimuli/1"
 CSV_COLUMNS = ("run_dir", "stem", "model", "index", "part", "evidence_class", "clinical_review", "sampling",
                "analysis_memberships", "part_state", "prob_clinical", "prob_patient", "language_penalty",
-               "target_token", "top_clinical", "top_patient", "flipped", "screening_status", "own_prompts")
+               "target_token", "top_clinical", "top_patient", "flipped", "screening_status", "own_prompts",
+               "own_clinical_prompt", "own_patient_prompt")
 STIMULI_COLUMNS = ("stem", "index", "stimulus_class", "clinical_review", "sampling", "clinical_prompt",
                    "patient_prompt")
 
@@ -481,6 +482,11 @@ def rows_csv(rows_docs: dict[str, dict[str, Any]]) -> str:
                     "top_patient": (row["spread_patient"] or [[None]])[0][0],
                     "screening_status": (row.get("screening") or {}).get("status"),
                     "own_prompts": "yes" if "prompts" in row else "", **row,
+                    # A row traced with text that differs from the stimulus-set entry carries that text here,
+                    # so a join of rows.csv to stimuli.csv on (stem, index) cannot attach the wrong prompt to
+                    # its probabilities (Codex, site PR 29).
+                    "own_clinical_prompt": (row.get("prompts") or {}).get("clinical_prompt"),
+                    "own_patient_prompt": (row.get("prompts") or {}).get("patient_prompt"),
                     "analysis_memberships": ";".join(part["analysis_memberships"]),
                 }
                 writer.writerow(["" if flat.get(c) is None else flat[c] for c in CSV_COLUMNS])

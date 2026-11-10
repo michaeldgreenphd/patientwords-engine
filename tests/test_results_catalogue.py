@@ -647,6 +647,31 @@ def test_a_snapshot_records_whether_the_published_statistics_equal_a_recomputati
         snap.reproduction_check(site, moved)
 
 
+def test_a_recomputation_that_dropped_a_model_or_a_statistic_is_not_reported_identical(tmp_path):
+    """Regression (Codex, PR 167): the comparison walked only the keys both files carry, so a recomputed file
+    with a model or a nested statistic missing compared as identical."""
+    site = tmp_path / "site"
+    published = {"seed": 7, "boot": 100, "claims": ["site only"],
+                 "per_model": {"m-a": {"penalty": {"mean": -0.1, "ci95": [-0.2, 0.0]}},
+                               "m-b": {"penalty": {"mean": -0.3}}}}
+    _write(site / "data" / "model_stats.json", published)
+    dropped_model, dropped_field, extra = (tmp_path / n for n in ("a.json", "b.json", "c.json"))
+    _write(dropped_model, {"seed": 7, "boot": 100, "per_model": {"m-a": published["per_model"]["m-a"]}})
+    _write(dropped_field, {"seed": 7, "boot": 100, "per_model": {"m-a": {"penalty": {"mean": -0.1}},
+                                                                 "m-b": {"penalty": {"mean": -0.3}}}})
+    _write(extra, {"seed": 7, "boot": 100, "new_block": 1, "per_model": published["per_model"]})
+    check = snap.reproduction_check(site, dropped_model)
+    assert check["identical"] is False and check["differing_fields"] == ["/per_model/m-b (only in the published file)"]
+    check = snap.reproduction_check(site, dropped_field)
+    assert check["differing_fields"] == ["/per_model/m-a/penalty/ci95 (only in the published file)"]
+    check = snap.reproduction_check(site, extra)
+    assert check["differing_fields"] == ["/new_block (only in the recomputed file)"]
+    assert check["keys_only_in_published"] == ["claims"]              # the site-only keys, and only those, are set aside
+    _write(site / "data" / "model_stats.json", {**published, "unlisted_site_key": 1})
+    assert snap.reproduction_check(site, dropped_model)["differing_fields"] == [
+        "/per_model/m-b (only in the published file)", "/unlisted_site_key (only in the published file)"]
+
+
 def test_every_committed_snapshot_verifies_and_the_directory_holds_nothing_unindexed():
     """The committed snapshots are checked by the suite, not only when someone runs verify."""
     index = snap.load_index(rp.ENGINE)
@@ -673,3 +698,24 @@ def test_record_does_not_store_the_hash_of_a_part_that_already_fails_its_pin(eng
     assert rp.load_ledger(engine)[rel] == hashlib.sha256(original).hexdigest()
     part = next(p for p in _runs(out)[f"{BATCH}__qwen3-4b"]["parts"] if p["name"].endswith("part_01.json"))
     assert part["artifact_integrity"] == "recorded_match"
+
+
+def test_a_row_traced_with_its_own_prompt_text_carries_that_text_in_rows_csv(engine, tmp_path):
+    """Regression (Codex, site PR 29): rows.csv marked such a row own_prompts=yes and carried no text, so the
+    advertised join to stimuli.csv on (stem, index) attached the set's canonical prompt to probabilities that
+    were measured on other text."""
+    own = _result(1)
+    extended = next(f"{OPEN[0]} ext{i}" for i in range(1, 500) if not tierb_split.is_holdout(f"{OPEN[0]} ext{i}"))
+    own["prompts"] = {"clinical": extended, "patient": f"{PATIENT[0]} and"}
+    _part(engine, f"{BATCH}__olmo-2-1b", _summary([own], "olmo-2-1b"))
+    out = tmp_path / "out"
+    assert _export(engine, out) == 0
+    rows = list(csv.DictReader(io.StringIO((out / "rows.csv").read_text(encoding="utf-8"))))
+    marked = [r for r in rows if r["own_prompts"] == "yes"]
+    assert [(r["run_dir"], r["index"]) for r in marked] == [(f"{BATCH}__olmo-2-1b", "1")]
+    assert marked[0]["own_clinical_prompt"] == extended
+    assert marked[0]["own_patient_prompt"] == f"{PATIENT[0]} and"
+    assert all(r["own_clinical_prompt"] == "" and r["own_patient_prompt"] == "" for r in rows if not r["own_prompts"])
+    stimuli = {(r["stem"], r["index"]): r for r in csv.DictReader(
+        io.StringIO((out / "stimuli.csv").read_text(encoding="utf-8")))}
+    assert stimuli[(BATCH, "1")]["clinical_prompt"] == OPEN[0]            # the set's entry is unchanged

@@ -309,13 +309,26 @@ def load_snapshot(engine: Path, snapshot_id: str) -> dict[str, Any]:
     return doc
 
 
+_ABSENT = object()
+
+# Top-level keys that only the site copy of the statistics file carries: paired_stats_rigor.py adds them when
+# it writes into a site checkout, so a recomputation made with --site '' never has them. They are reported as
+# keys_only_in_published and are the only one-sided keys that do not count as a difference.
+SITE_ONLY_STATISTICS_KEYS = frozenset({"below_floor", "claims", "models_meta", "site_floor_n_phrases"})
+
+
 def _differences(published: Any, recomputed: Any, prefix: str = "") -> list[str]:
-    """JSON-pointer-like paths at which two documents differ, over keys both carry."""
+    """JSON-pointer-like paths at which two documents differ. A key present on one side only is a difference
+    at every nesting level: a recomputation that dropped a model or a statistic must not read as identical."""
     if isinstance(published, dict) and isinstance(recomputed, dict):
         out: list[str] = []
-        for key in sorted(set(published) & set(recomputed)):
-            out.extend(_differences(published[key], recomputed[key], f"{prefix}/{key}"))
+        for key in sorted(set(published) | set(recomputed), key=str):
+            out.extend(_differences(published.get(key, _ABSENT), recomputed.get(key, _ABSENT), f"{prefix}/{key}"))
         return out
+    if published is _ABSENT:
+        return [f"{prefix} (only in the recomputed file)"]
+    if recomputed is _ABSENT:
+        return [f"{prefix} (only in the published file)"]
     return [] if published == recomputed else [prefix or "/"]
 
 
@@ -331,14 +344,20 @@ def reproduction_check(site: Path, recomputed: Path) -> dict[str, Any]:
         if published_doc.get(key) != recomputed_doc.get(key):
             raise SnapshotError(f"the recomputed statistics use {key} {recomputed_doc.get(key)!r}, the published "
                                 f"file {published_doc.get(key)!r}; the comparison would not be like for like")
+    if not isinstance(published_doc, dict) or not isinstance(recomputed_doc, dict):
+        raise SnapshotError("the reproduction check compares two JSON objects")
     ignore = {"_provenance", "source"}
-    differing = _differences({k: v for k, v in published_doc.items() if k not in ignore},
+    site_only = sorted((set(published_doc) - set(recomputed_doc)) & SITE_ONLY_STATISTICS_KEYS)
+    skip = ignore | set(site_only)
+    differing = _differences({k: v for k, v in published_doc.items() if k not in skip},
                              {k: v for k, v in recomputed_doc.items() if k not in ignore})
     return {"checked": True, "file": "data/model_stats.json", "identical": not differing,
             "differing_fields": differing, "recomputed_sha256": _sha(recomputed),
-            "keys_only_in_published": sorted(set(published_doc) - set(recomputed_doc) - ignore),
+            "keys_only_in_published": site_only,
             "method": "scripts/urgency_shift.py then scripts/paired_stats_rigor.py --site '' on this checkout "
-                      "with the published seed and resample count; fields compared over keys both files carry"}
+                      "with the published seed and resample count; every field of both files compared, a "
+                      "field on one side only counted as a difference, except the generation stamp and the "
+                      "listed top-level keys that only the site copy carries"}
 
 
 def create(engine: Path, snapshot_id: str, membership: str, change: str, *, site: Path | None = None,
