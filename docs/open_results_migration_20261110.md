@@ -216,4 +216,11 @@ is unchanged from before and still open.
   membership decision, because the joins and the statistics read that payload.
 - `paired_stats_rigor.py --site` is not a step of the publish chain documents, although
   the 2026-08-15 owner decision automated it; `data/model_stats.json` on the site dates
-  from 2026-08-29. Found during this work, not changed by it.
+  from 2026-08-29. Found during this work, not changed by it. A recomputation on
+  2026-11-10 (collector, then `paired_stats_rigor.py --site ''`, seed 7, 5,000 resamples)
+  equals the published file for nine models and differs for `qwen3-4b` in 10 fields, each
+  in the fourth decimal (mean penalty -0.0466 published, -0.0465 recomputed; 497 and 498
+  flips; the same 1,152 rows and 1,121 unique phrases). Row values at existing keys
+  changed after 2026-08-29; which landing changed them was not traced. Snapshot
+  `study-interim-20261110` lists the fields under `outputs.reproduces_from_inputs`.
+  Regenerating the file is a publish the owner decides.
