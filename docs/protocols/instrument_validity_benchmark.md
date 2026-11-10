@@ -318,93 +318,207 @@ written by hand to exercise code paths. They describe no model and no instrument
 - The lens-fit provenance questions that already block real readouts
   (`docs/exploratory/lens_fit_provenance_question.md`).
 
-## Related work: search leads, not yet read
+## Related work: sources read
 
-Checked on 2026-11-10 with fourteen web-search queries from a session whose network could not reach
-arxiv.org. The entries below come from search-result titles and summaries. **The papers themselves were
-not opened or read**, so each one-sentence description is the search summary's account, not a verified
-reading. arXiv links are given in their canonical `abs` form; the search returned `pdf`, `html` or
-versioned forms of the same identifiers. This is a short check, not a literature review, and this file
-makes no novelty claim.
+Read on 2026-11-10 from arxiv.org. For each paper below, the abstract page and the full-text HTML of the
+latest arXiv version were opened. The abstract and the sections on method, validation, text sources and
+limitations were read. An appendix was read only where an entry reports something from it. Each entry
+gives the arXiv identifier with the version read and the date read. A sentence that begins "Inference:"
+is this file's reading of how the paper bears on the benchmark. It is not a claim the paper makes. The
+twelve papers are the arXiv leads of an earlier web search. This is not a literature review, and this
+file makes no novelty claim.
 
-Found, and relevant to a stage of this benchmark:
+### Explanations and their scores: the `label` and `score` stages
 
-- Bills et al. 2023, "Language models can explain neurons in language models"
-  (<https://openai.com/index/language-models-can-explain-neurons-in-language-models/>). Introduces
-  simulation scoring of generated neuron explanations and notes that a high-scoring explanation
-  describes a correlation and may fail on out-of-distribution text. Relevant to the `label` and `score`
-  stages.
-- Huang et al. 2023, "Rigorously Assessing Natural Language Explanations of Neurons"
-  (<https://aclanthology.org/2023.blackboxnlp-1.24>). Evaluates such explanations in an observational and
-  an intervention mode and reports high error rates even for confident explanations. Relevant to scoring
-  validity.
-- Paulo et al. 2024, "Automatically Interpreting Millions of Features in Large Language Models"
-  (<https://arxiv.org/abs/2410.13928>). An open pipeline for generating and scoring feature explanations,
-  with several scoring techniques and a discussion of pitfalls in existing scoring. Relevant to the
-  `score` stage.
+- Huang, Geiger, D'Oosterlinck, Wu and Potts 2023, "Rigorously Assessing Natural Language Explanations of
+  Neurons" (arXiv:2309.10312v1, <https://arxiv.org/abs/2309.10312v1>; read 2026-11-10). The paper tests
+  whether a neuron activates on all and only the strings its explanation denotes. For 300 GPT-2 XL
+  neurons whose GPT-4 explanations had a simulation score of at least 0.8, it reports an F1 "around 0.6"
+  and a causal effect similar to a random baseline on most tasks. Inference: a high score for a label
+  does not show the label is right, which supports assessing outputs against reference facts established
+  without the instrument and scoring the `label` and `score` stages apart. The paper also reports that
+  more than 30% of the explanations in its source set contain "related to"; that bears on the rubric's
+  open question about applying `partially` consistently.
+- Paulo, Mallen, Juang and Belrose 2024, "Automatically Interpreting Millions of Features in Large
+  Language Models" (arXiv:2410.13928v3, <https://arxiv.org/abs/2410.13928v3>; read 2026-11-10). The paper
+  builds an open pipeline that writes and scores explanations of sparse-autoencoder features. It finds
+  that explanations written from top-activating examples have higher specificity and lower sensitivity,
+  and that this "would not be seen" if scoring used only the most activating examples. Inference: a
+  `score`-stage number depends on which contexts the scorer is shown, so the held-artifact manipulation's
+  rule of one activation set per artifact is necessary for two descriptions to be comparable.
 - Chen 2026, "Scoring Explanations Without Reading Them: Structural Shortcuts in
-  Automated-Interpretability Evaluation Data" (<https://papers.cool/arxiv/2610.37676>). Argues that
-  standard evaluation data for explanation scoring can be scored without reading the explanation.
-  Relevant to whether a `score`-stage number reflects the description at all. The search summary names a
-  scorer called Jev; whether it is the classifier this repository audits was not checked.
-- Tian, Tian and Hu 2025, "Measuring Sparse Autoencoder Feature Sensitivity"
-  (<https://arxiv.org/abs/2509.23717>). Tests whether a feature activates on generated text with the same
-  semantic properties as its top examples and reports that many interpretable features do not. Closest
-  found work to the consistency-across-phrasings endpoint at the `activation` stage; the search summary
-  does not mention register or dialect.
-- Li, Srinivas, Bhalla and Lakkaraju 2025, "Interpretability Illusions with Sparse Autoencoders:
-  Evaluating Robustness of Concept Representations" (<https://arxiv.org/abs/2505.16004>). Reports that
-  crafted input perturbations can change sparse-autoencoder concept labels. Adversarial perturbation, not
-  natural register variation.
-- "Are Sparse Autoencoders Useful? A Case Study in Sparse Probing" (<https://arxiv.org/abs/2502.16681>).
-  Reports that probes built on sparse-autoencoder latents generalize poorly under covariate shift.
-- Belrose et al. 2023, "Eliciting Latent Predictions from Transformers with the Tuned Lens"
-  (<https://arxiv.org/abs/2303.08112>). Describes the logit lens as brittle and biased toward some
-  vocabulary items, and uses causal experiments to argue the tuned lens uses features the model uses.
-  Relevant to the `readout` stage and to the vocabulary dependence of exact-token ranks.
-- "How Do LLMs Use Their Depth?" (<https://arxiv.org/abs/2510.18871>). Per the search summary, evaluates
-  tuned-lens faithfulness in early layers and notes its outputs are dominated by high-frequency tokens.
-  Relevant to the tokenization and frequency confound.
-- "Do Natural Language Descriptions of Model Activations Convey Privileged Information?"
-  (<https://arxiv.org/abs/2509.13316>). Reports that activation verbalizers often reflect the
-  verbalizer's own knowledge, not the target model's activations, and that earlier verbalizer benchmarks
-  can be solved without the activations. Relevant to the `label` stage and a reason for the
-  held-artifact manipulation.
-- Sadanandan and Behzadan 2026, "PSF-Med: Measuring and Explaining Paraphrase Sensitivity in Medical
-  Vision Language Models" (<https://arxiv.org/abs/2602.21428>). Measures answer flips under
-  meaning-preserving paraphrases and uses sparse autoencoders to explain them. It studies the model's
-  paraphrase sensitivity, with the instrument as the explaining tool, not the instrument's own
-  sensitivity.
+  Automated-Interpretability Evaluation Data" (arXiv:2610.37676v1, <https://arxiv.org/abs/2610.37676v1>;
+  read 2026-11-10). On Neuronpedia's stored fuzzing runs for 500 random GPT-2 small features, a rule that
+  never reads the explanation reaches balanced accuracy 0.979, against 0.838 for the stored LLM scorers,
+  on marks rebuilt from the pipeline's code. The paper recommends reporting each score beside the best
+  explanation-free rule on the same items. This bears on the held-artifact manipulation: open design
+  question 1. The paper's scorer on cue-free windows is Jev, requested as `jev-1.13.0`; this repository
+  records its Jev classifier as `typesafe/jev-1.13` (`docs/triggers.md`). Inference: the name and version
+  match, so it is the same product. The paper uses it to predict feature activations from an explanation,
+  not for the decisions classification this repository audits, and its result says nothing about that
+  use.
 - Soumik 2026, "Judging the Judges: A Systematic Evaluation of Bias Mitigation Strategies in
-  LLM-as-a-Judge Pipelines" (<https://arxiv.org/abs/2604.23178>). Reports style bias as the largest bias
-  among those it tests in controlled pairs. Relevant to the `score` stage when the scorer is a model
-  judge. This repository's own check of a behavioural judge is
+  LLM-as-a-Judge Pipelines" (arXiv:2604.23178v2, <https://arxiv.org/abs/2604.23178v2>; read 2026-11-10).
+  The paper's "style bias" is a preference for markdown over the same content in plain prose. On pairs
+  built so that an unbiased judge should say "tie", four of five judge models prefer markdown (signed
+  bias 0.40 to 0.76), and three of five prefer an expanded answer to its base answer. The paper states
+  that formal against casual register was not measured. Inference: it is evidence that a model judge's
+  verdict moves with presentation when content is fixed, which is the logic of the held-artifact
+  manipulation and a reason to control formatting and length in it (open design question 2). It is not
+  evidence about register. This repository's own check of a behavioural judge is
   `docs/exploratory/judge_register_sensitivity_20261106.md`.
-- "ICA Lens: Interpreting Language Models Without Training Another Dictionary"
-  (<https://arxiv.org/abs/2606.11722>). Describes independent component analysis as a training-free way
-  to find interpretable directions. The search found no evaluation of it across registers.
-- An informal post, "J-Lens: a failed replication on GPT-2"
-  (<https://www.lesswrong.com/posts/tgn3pD2gLpZvepkWk/j-lens-a-failed-replication-on-gpt-2>). Reports a
-  Jacobian lens underperforming the logit lens on GPT-2. Not peer reviewed; relevant only as a reminder
-  that lens faithfulness is contested.
+- Li, Ceballos Arroyo, Rogers, Saphra and Wallace 2025, "Do Activation Verbalization Methods Convey
+  Privileged Information?" (arXiv:2509.13316v4, <https://arxiv.org/abs/2509.13316v4>; read 2026-11-10;
+  version 1 was titled "Do Natural Language Descriptions of Model Activations Convey Privileged
+  Information?"). On tasks used in earlier verbalizer evaluations, the verbalizer model given only the
+  input text is "competitive" with two verbalization methods given the target model's activations. With a
+  target model fine-tuned on fabricated personas, neither method exceeds zero accuracy on the fully
+  fabricated set. This bears on the `label` stage when the instrument is a verbalizer: open design
+  question 3. The held-artifact manipulation does not address it, because a verbalizer's output is the
+  description.
 
-Searches that returned nothing relevant to the direct question (does an interpretability instrument read
-matched information differently by register or dialect):
+### Component activations: the `activation` stage
 
-- register or dialect sensitivity of interpretability methods and sparse-autoencoder features, with
-  African American English and lay language as terms: results were dialect detection in speech and text,
-  not interpretability instruments;
-- mechanistic interpretability and African American English dialect: no dialect study; one adjacent
-  result on sparse-autoencoder latents associated with demographic terms;
-- sparse autoencoders, medical concepts, lay or patient language against clinical terminology: medical
-  sparse-autoencoder papers, none comparing lay with clinical wording;
-- robustness of interpretability tools to non-standard English, informal text or typos: adversarial and
-  covariate-shift robustness only;
-- independent component analysis of language-model activations with register, dialect or lay language:
-  the ICA Lens paper only.
+- Tian, Tian and Hu 2025, "Measuring Sparse Autoencoder Feature Sensitivity" (arXiv:2509.23717v1,
+  <https://arxiv.org/abs/2509.23717v1>; read 2026-11-10). A language model writes new text of the same
+  kind as a feature's activating examples, and the paper measures how often the feature fires on it: on
+  average 0.92 to 0.94 for 65K-width GemmaScope autoencoders and 0.85 to 0.87 for 1M-width ones. Blinded
+  annotators rated 79% of 62 generated texts that failed to activate their feature "indistinguishable"
+  from the activating examples. Inference: a feature can stay silent on text of the kind it is labelled
+  for with no change of register, which supports reading a cross-register difference against the
+  within-register paraphrase result. The paper does not vary register.
+- Li, Srinivas, Bhalla and Lakkaraju 2025, "Evaluating Adversarial Robustness of Concept Representations
+  in Sparse Autoencoders" (arXiv:2505.16004v2, <https://arxiv.org/abs/2505.16004v2>; read 2026-11-10;
+  version 1 was titled "Interpretability Illusions with Sparse Autoencoders: Evaluating Robustness of
+  Concept Representations"). The paper searches for one-token input changes that alter a sparse
+  autoencoder's active latents. In a test without adversarial search, replacing one word with a synonym
+  lowers the overlap of the top-k active latents by "roughly 30%" and does not change whether the
+  individually selected latents are active. Inference: a same-meaning rewording inside one register
+  already moves a set-level summary, and a set-level and a single-latent summary give different answers.
+  This bears on the four-cell report: open design question 4.
+- Kantamneni, Engels, Rajamanoharan, Tegmark and Nanda 2025, "Are Sparse Autoencoders Useful? A Case
+  Study in Sparse Probing" (arXiv:2502.16681v1, <https://arxiv.org/abs/2502.16681v1>; read 2026-11-10).
+  On eight test sets with a covariate shift, logistic regression on activations often generalizes better
+  than a probe on sparse-autoencoder latents. In one case a latent that detects "living room" has a test
+  AUC of 0.99 on English prompts and 0.64 on prompts translated to French, and does not fire on the
+  French phrase. Inference: this is a measured case of what the benchmark's hypothesis describes, an
+  instrument component that reads a concept in one surface form and not in another. The shift is
+  language, not register.
+- Sadanandan and Behzadan 2026, "PSF-Med: Measuring and Explaining Paraphrase Sensitivity in Medical
+  Vision Language Models" (arXiv:2602.21428v2, <https://arxiv.org/abs/2602.21428v2>; read 2026-11-10).
+  Across nine models, 3% to 37% of yes/no answers to chest X-ray questions flip under meaning-preserving
+  paraphrase. For one model, a sparse-autoencoder feature is high for formal clinical phrasing and low
+  for casual phrasing of the same question, and removing its contribution recovers 44.8% of the answer
+  margin on average over 158 flip cases. Of the twelve papers this is the closest to the benchmark's
+  subject. It reports a property of the model, read through the autoencoder; it does not test whether the
+  autoencoder reads the two registers equally well. Its register comparison is a small grid of phrasings,
+  and its paraphrases were validated by a model judge without human adjudication. Inference: its flip
+  cases belong in the "behaviour changed, representation changed" cell of the four-cell report.
+- Liu, Han, Wiegreffe and Huang 2026, "Non-Gaussianity Reveals Interpretable Directions in Language
+  Models" (arXiv:2606.11722v2, <https://arxiv.org/abs/2606.11722v2>; read 2026-11-10; version 1 was
+  titled "ICA Lens: Interpreting Language Models Without Training Another Dictionary"). The paper fits
+  FastICA per layer to one million token activations collected on Pile-10k. It states that a component is
+  fixed only up to sign and that a coherent pattern is "often concentrated in one tail", and it labels
+  the tail selected by skewness. Across five seeds on one layer of GPT-2 Small, the median cosine between
+  matched components is about 0.82 to 0.85 at the iteration budget its main experiments use. Inference:
+  this supports the cautions that scores are signed and that a comparison across fits needs a matching
+  step with its own error. Two points are not in the cautions: a label describes one tail of a component,
+  and the paper's error analysis shows a label written from unrelated contexts when the corpus did not
+  reach the tail. Whether Pile-10k holds enough everyday health wording for that is not known. The paper
+  does not vary register.
 
-Not done: opening any paper; citation chasing; searching venues or preprint servers directly. A proper
+### Lens readouts: the `readout` stage
+
+- Belrose, Ostrovsky, McKinney, Furman, Smith, Halawi, Biderman and Steinhardt 2023, "Eliciting Latent
+  Predictions from Transformers with the Tuned Lens" (arXiv:2303.08112v6,
+  <https://arxiv.org/abs/2303.08112v6>; read 2026-11-10). The paper reports that the logit lens
+  "systematically puts more probability mass on certain vocabulary items than the final layer does", by
+  about 4 to 5 bits at most layers of GPT-Neo-2.7B. Its tuned lens is an affine map per layer, trained on
+  a validation corpus (the model's pretraining validation set where available, otherwise the Pile's), and
+  causal experiments show that the directions that most influence the tuned lens also influence the
+  model's output. Inference: a full-vocabulary rank read through a logit lens partly measures the lens's
+  own preference among vocabulary items, which supports keeping the exact-token rank as a lexical
+  endpoint beside the semantic ones. A trained lens has a fitting corpus, one of the shared dependencies
+  named under "Agreement is not replication". The paper does not test whether the bias differs between
+  medical and everyday tokens.
+- Gupta, Yeung, Anumanchipalli and Ivanova 2025, "How Do LLMs Use Their Depth?" (arXiv:2510.18871v2,
+  <https://arxiv.org/abs/2510.18871v2>; read 2026-11-10). Read through the tuned lens on English
+  Wikipedia prefixes, the top-ranked token at the first layer of Pythia-6.9B is one of the ten most
+  frequent tokens more than 75% of the time, against 33% of the model's final predictions. The paper
+  tests whether the lens produces this and concludes that it reflects the early-layer representations;
+  with the logit lens the pattern reverses. Inference: at early layers an exact-token rank depends on the
+  target token's corpus frequency and on which lens is used. The surface-confound list in this file names
+  tokenization, length, position and formatting. It does not name token frequency.
+
+### Leads dropped
+
+- Bills et al. 2023, "Language models can explain neurons in language models": dropped. An arXiv title
+  search on 2026-11-10 returned no result, and openai.com was not reachable from the session. What Huang
+  et al. report about its simulation score is given under that entry as their account.
+- The informal post "J-Lens: a failed replication on GPT-2": dropped. It is not on arXiv, and
+  lesswrong.com was not reachable from the session.
+
+### What these sources do not cover
+
+None of the twelve papers tests whether an interpretability instrument recovers matched information
+equally well from two registers. PSF-Med is the only one that varies register, and it reports a property
+of the model. Soumik names formal against casual register as a dimension it did not measure. The other
+ten do not study register or dialect; the word "dialect" occurs in none of the twelve full texts. This is
+a statement about twelve papers. It is not a statement that no such work exists.
+
+The earlier version of this section listed five searches that returned nothing relevant. That list is
+removed, because a search result is not a source that was read. One of its lines said that no medical
+sparse-autoencoder paper compared lay with clinical wording. PSF-Med, which was already among the leads,
+compares formal clinical and casual phrasings of one question for one feature.
+
+Not done: citation chasing; searching venues; reading the two dropped leads; reading every appendix. An
+arXiv title search for "Jacobian lens" on 2026-11-10 returned five papers, and none was opened. A proper
 review is needed before any statement about prior work appears outside this file.
+
+## Open design questions
+
+Raised on 2026-11-10 by the sources above. Each names a place where a source gives a reason to doubt that
+a design choice measures what this file says it measures. The rubric, the scorer and the fixture are
+unchanged. These are for the owner to decide.
+
+1. **The held-artifact manipulation has no control showing that the scorer reads the description.** This
+   file calls the manipulation the strongest test in the benchmark. Chen (arXiv:2610.37676v1) shows that
+   a rule that never reads the explanation can outscore the stored LLM scorers on the items a standard
+   pipeline builds. A scorer that ignores both descriptions gives them the same score, and
+   `scripts/instrument_validity.py` then returns `equivalent_within_margin` for a set with enough
+   families. The changed-fact control guards the recovery endpoint against an instrument that responds to
+   nothing. Nothing guards the held-artifact endpoint. Question: should the manipulation require a third,
+   mismatched description of the same artifact, and give no equivalence verdict unless the mismatched
+   description scores lower?
+2. **The held-artifact description pairs have no rule for formatting and length.** Soumik
+   (arXiv:2604.23178v2) reports that four of five judge models prefer markdown to the same content in
+   plain prose, and that three of five prefer an expanded answer to its base answer. This file asks only
+   that the two descriptions mean the same thing, and notes that version 1 of the bundle has no field for
+   token counts or formatting. Inference: if the everyday description of a fact is longer than the
+   medical one, which has not been measured here, a length effect would be reported as a
+   medical-minus-everyday difference. Question: should the pairs be matched on formatting and bounded in
+   length ratio, or should both be recorded per description and reported with the difference?
+3. **The `label` stage has no input-only arm for a verbalizer.** Li et al. (arXiv:2509.13316v4) report
+   that a verbalizer model given only the input text is competitive with verbalization methods given the
+   target model's activations, and that the input can be reconstructed from those activations. The
+   benchmark's reference facts are facts stated in the input. Inference: a verbalizer can earn recovery
+   credit by restating the input, and a register difference in its recovery can come from how the
+   verbalizer model reads the two wordings. That is still a property of the instrument. But this file
+   separates a difference in the representation from a difference in the labeler, and for a verbalizer
+   that separation needs an arm in which the verbalizer sees the input text and no activation. Question:
+   should the `label` stage require that arm when the instrument is a verbalizer?
+4. **The "representation changed" fact does not use within-register variation.** The four-cell report
+   calls a family's representation changed when the medical-minus-everyday difference in
+   `representation_value` is above a threshold selected on discovery families. Li et al.
+   (arXiv:2505.16004v2) report that a one-word synonym replacement lowers the overlap of the top-k active
+   latents by about 30% and leaves the individually selected latents unchanged. Tian et al.
+   (arXiv:2509.23717v1) report that features fail to fire on some text that blinded annotators rate
+   indistinguishable from their activating examples. Inference: a threshold that takes no account of
+   same-meaning variation inside a register can place most families in a "representation changed" cell
+   for one summary and few for another. This file says a cross-register difference is read against
+   within-register variation, and the four-cell definition does not apply that. Question: should the
+   representation threshold be set relative to the family's within-register paraphrase difference, and
+   should the plan name each stage's scalar summary before data?
 
 ## Open decisions
 
