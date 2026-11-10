@@ -7,7 +7,8 @@ Exploratory tooling. Reads a candidates file in the hand-authored format (a JSON
 It changes nothing and calls nothing; it writes a report.
 
 Errors: the pair cannot be used as written.
-  shape            a required field is missing or empty, the id repeats, or the target lacks its leading space
+  shape            a required field is missing or empty, the id repeats, the target lacks its leading space, or
+                   clinical_tier_expected (tier_given in a pairs file) is not a tier 0-4
   boundary         a side does not end mid-sentence (scenario_gen.ends_at_probe_boundary) or not with carrier_frame
   single_swap      swap_spans is missing, or the edits it declares do not turn the clinical side into the
                    everyday side. Edits: a clinical_span/patient_span swap (the clinical span occurs once), then
@@ -30,7 +31,9 @@ Warnings: a person should look before the pair is kept.
   target_vocab     the target has no tier in the vocabulary, or is more than one word (penalty is read from a
                    piece of it; the class is read from the top token and is unaffected)
   lexicon          a lexicon_entries item is not in the --lexicon file
-  prediction       an expected_patient_continuations token has no tier, or a tier not below the expected tier
+  prediction       an expected_patient_continuations token has a tier not below the expected tier. A token with
+                   no tier is not flagged: most everyday destinations (" bathroom", " pharmacy") have none, and
+                   the predictions feed no measurement.
 
     python scripts/check_candidate_pairs.py CANDIDATES.json [--lexicon LEXICON.json] [--forbid ",;"]
                                             [--out report.json]
@@ -178,6 +181,10 @@ def check(candidates: list[dict[str, Any]], *, root: Path = ROOT, exclude: Path 
         top, bottom, target = c["top_prompt"], c["bottom_prompt"], c["target_clinical_token"]
         if not target.startswith(" ") or not target.strip():
             errors.append("shape: target_clinical_token needs a leading space and a word")
+        expected = c.get("clinical_tier_expected")
+        if isinstance(expected, bool) or not isinstance(expected, int) or not 0 <= expected <= 4:
+            errors.append(f"shape: clinical_tier_expected must be a tier 0-4, got {expected!r}")
+            expected = None
         if top == bottom:
             errors.append("shape: the two sides are identical")
 
@@ -220,7 +227,6 @@ def check(candidates: list[dict[str, Any]], *, root: Path = ROOT, exclude: Path 
         if sealed(top) or sealed(bottom):
             errors.append("holdout: a prompt is a Tier B holdout phrase")
 
-        expected = c.get("clinical_tier_expected")
         t_tier = vocab_tier(vocab, target)
         if t_tier is not None and expected is not None and t_tier != expected:
             errors.append(f"tier: target tier {t_tier} in the vocabulary, expected {expected}")

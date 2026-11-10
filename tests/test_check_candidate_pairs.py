@@ -56,6 +56,11 @@ def _warnings(cand, **kw) -> list[str]:
 
 def test_shape_and_boundary_errors() -> None:
     assert _errors(_with(carrier_frame="")) == ["shape"]
+    for tier in (None, "4", True, 5):                      # a missing or invalid tier is never skipped silently
+        assert _errors(_with(clinical_tier_expected=tier)) == ["shape"], tier
+    no_tier = copy.deepcopy(GOOD)
+    del no_tier["clinical_tier_expected"]
+    assert _errors(no_tier) == ["shape"]
     assert "shape" in _errors(_with(target_clinical_token="ER"))
     ended = _with(top_prompt=GOOD["top_prompt"] + ".", bottom_prompt=GOOD["bottom_prompt"] + ".")
     assert _errors(ended).count("boundary") == 4          # terminal punctuation and carrier frame, both sides
@@ -139,6 +144,7 @@ def test_warnings_name_what_to_look_at() -> None:
         == ["target_vocab", "target_vocab"]
     assert _warnings(_with(lexicon_entries=["fell out"]), lexicon={"spell"}) == ["lexicon"]
     assert _warnings(_with(expected_patient_continuations=[" hospital"])) == ["prediction"]
+    assert _warnings(_with(expected_patient_continuations=[" bathroom"])) == []   # untiered: not flagged (docstring)
 
 
 def test_every_committed_agscen_file_passes_except_the_comma_twins_stale_spans() -> None:
