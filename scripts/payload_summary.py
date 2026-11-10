@@ -13,14 +13,28 @@ explicitly so the two figures can never be conflated again.
 Emitted by export_frontend_simulated.py as payload["summary"]; the pages'
 JS switch to reading it is a separate owner-side change. No medical
 vocabulary lives in this file.
+
+Correction, 2026-11-10: until that date ``phrase_key`` read a nested
+``prompts.clinical``, which the exporter's rows do not carry (they hold the
+text as the top-level ``clinical_prompt``). Every row therefore took the
+batch#index fallback and nothing was deduplicated: a payload exported before
+the fix has ``n_phrases == n_scored_rows`` and ``mean_phrase_deduped ==
+mean_rows_raw``, and its ``ci95`` resampled rows. Such a payload keeps those
+values until it is exported again.
 """
 from __future__ import annotations
 
 import random
 
+# The scenario-row field that holds the traced clinical prompt. The exporter
+# (the only caller of build_summary) writes it as entry["clinical_prompt"];
+# scripts/paired_stats_rigor.py dedupes on the same field.
+# tests/test_payload_summary.py pins this name against the exporter's source.
+PHRASE_FIELD = "clinical_prompt"
+
 
 def phrase_key(scenario: dict) -> str:
-    prompt = (scenario.get("prompts") or {}).get("clinical")
+    prompt = scenario.get(PHRASE_FIELD)
     return prompt or f"{scenario.get('batch')}#{scenario.get('batch_index')}"
 
 

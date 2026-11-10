@@ -662,8 +662,8 @@ def urgency_reads(root: Path, loaded: dict[Path, list[tuple[Path, dict]]]) -> se
     patient spread."""
     seen: set[tuple[str, str, Any]] = set()
     chosen: set[tuple[str, Any]] = set()
-    # urgency_shift does not read held models or unreleased logits parts (publication_hold.py); a root with no
-    # release manifest (a synthetic one) is read as before the gate, since this audit publishes nothing
+    # urgency_shift does not read parts outside the default analysis membership (results_policy.py); a root
+    # with no pinned manifest (a synthetic one) is read as before the gate, since this audit publishes nothing
     gate = Gate(root, manifest_optional=True)
     parts = sorted(((part, summary) for parts in loaded.values() for part, summary in parts
                     if part.parent.parent == root / "trace_out" and part.name.startswith("batch_summary.part_")),

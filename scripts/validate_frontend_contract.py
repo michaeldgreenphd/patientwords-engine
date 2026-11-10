@@ -43,6 +43,10 @@ _SCHEMA_SPEC.loader.exec_module(_SCHEMA_ADAPTER)
 # One structural authority for this artifact, also referenced by the HTTP contract.
 SIMULATED_SCHEMA_PATH = Path(__file__).resolve().parent / "contracts" / "simulated_scenarios.v1.schema.json"
 SIMULATED_SCHEMA = json.loads(SIMULATED_SCHEMA_PATH.read_text(encoding="utf-8"))
+# The results catalogue (scripts/export_results_catalogue.py). Kept beside the other contract because site CI
+# checks out scripts/, data/, ops/ and docs/ of the engine and nothing else.
+CATALOGUE_SCHEMA_PATH = Path(__file__).resolve().parent / "contracts" / "results_catalogue.v1.schema.json"
+CATALOGUE_DIR = "results_catalogue"
 BASE_MODEL = "gemma-2-2b"
 # The exporter mirrors exactly these fields for legacy readers. Equality itself
 # is a semantic check below, not an assertion made by the structural schema.
@@ -1521,6 +1525,73 @@ def check_engine_copies(rep: Report, site: Path, engine: Path):
 
 # --------------------------------------------------------------------------- driver
 
+def check_results_catalogue(rep: Report, site: Path) -> None:
+    """The results catalogue: structure of every file, and the facts the catalogue page relies on.
+
+    The directory is optional (a site published before 2026-11-10 has none; the page then shows its own
+    missing-data state). When it exists it must be whole: an index that names a row or stimulus file that is
+    not there is a failed request on the public page, and a row file the index does not name is a file the
+    exporter should have removed. A restricted run must carry no rows, and the totals must equal the sums of
+    the per-run counts, so a hand-edited index cannot pass."""
+    root = site / "data" / CATALOGUE_DIR
+    name = f"{CATALOGUE_DIR}/index.json"
+    if not root.is_dir():
+        rep.notes.append(f"{name} :: - :: no results catalogue published yet")
+        return
+    index = load(site, name, rep, required=True)
+    if not isinstance(index, dict):
+        return
+    schema = json.loads(CATALOGUE_SCHEMA_PATH.read_text(encoding="utf-8"))
+    definitions = schema["definitions"]
+
+    def structural(artifact: str, value: object, definition: str) -> None:
+        check_schema_subset(rep, artifact, value, {**definitions[definition], "definitions": definitions})
+
+    structural(name, index, "index")
+    runs = index.get("runs") if isinstance(index.get("runs"), list) else []
+    named: dict[str, set[str]] = {"rows": set(), "stimuli": set()}
+    sums = {"rows_public": 0, "rows_withheld_sealed": 0}
+    for i, run in enumerate(runs):
+        if not isinstance(run, dict):
+            continue
+        counts = run.get("counts") if isinstance(run.get("counts"), dict) else {}
+        for key in sums:
+            if _is(counts.get(key), int):
+                sums[key] += counts[key]
+        rows_file = run.get("rows_file")
+        if run.get("visibility") != "public" and rows_file is not None:
+            rep.err(name, f"$.runs[{i}]", "a restricted run lists a rows file")
+        if rows_file is None:
+            if not run.get("rows_reason"):
+                rep.err(name, f"$.runs[{i}]", "a run without rows must say why (rows_reason)")
+            continue
+        for kind, rel in (("rows", rows_file), ("stimuli", run.get("stimuli_file"))):
+            if not isinstance(rel, str) or PurePosixPath(rel).parent.as_posix() != kind or ".." in rel:
+                rep.err(name, f"$.runs[{i}].{kind}_file", f"expected {kind}/<name>.json, got {rel!r}")
+                continue
+            named[kind].add(PurePosixPath(rel).name)
+    totals = index.get("totals") if isinstance(index.get("totals"), dict) else {}
+    for key, total in sums.items():
+        if totals.get(key) != total:
+            rep.err(name, f"$.totals.{key}", f"{totals.get(key)!r} does not equal the per-run sum {total}")
+    if _is(totals.get("runs"), int) and totals["runs"] != len(runs):
+        rep.err(name, "$.totals.runs", f"{totals['runs']} does not equal the {len(runs)} runs listed")
+    for kind, definition in (("rows", "rows"), ("stimuli", "stimuli")):
+        directory = root / kind
+        on_disk = {p.name for p in directory.glob("*.json")} if directory.is_dir() else set()
+        for missing in sorted(named[kind] - on_disk):
+            rep.err(name, f"{kind}/{missing}", "named by the index but not published (a failed page request)")
+        for orphan in sorted(on_disk - named[kind]):
+            rep.err(f"{CATALOGUE_DIR}/{kind}/{orphan}", "-", "published but not named by the index")
+        for file_name in sorted(named[kind] & on_disk):
+            doc = load(site, f"{CATALOGUE_DIR}/{kind}/{file_name}", rep, required=True)
+            if isinstance(doc, dict):
+                structural(f"{CATALOGUE_DIR}/{kind}/{file_name}", doc, definition)
+    for csv_name in ("rows.csv", "stimuli.csv"):
+        if not (root / csv_name).is_file():
+            rep.err(f"{CATALOGUE_DIR}/{csv_name}", "-", "download named on the catalogue page is missing")
+
+
 def validate(site: Path, engine: Path | None, strict: bool = False, send_waivers: dict | None = None) -> Report:
     rep = Report()
     payload = load(site, "simulated_scenarios.json", rep, required=True)
@@ -1533,6 +1604,7 @@ def validate(site: Path, engine: Path | None, strict: bool = False, send_waivers
     check_shapes(rep, site, joins)
     check_owner_run(rep, site, send_waivers)
     check_jev_payloads(rep, site)
+    check_results_catalogue(rep, site)
     if engine is not None and engine.is_dir():
         check_engine_copies(rep, site, engine)
     if strict:

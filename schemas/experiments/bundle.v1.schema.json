@@ -1,0 +1,197 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "patientwords.experiment-bundle/1",
+  "title": "Experiment preview bundle",
+  "description": "Structure only, in the keyword subset scripts/frontend_contract_schema.py executes. The top level is closed. Comparison blocks keep their own shapes (behavior, readout, ica) and are described in scripts/experiments/compare.py; this schema states where they sit, not their inner fields. A bundle holds no prompt text, no target text and no clock value. Added to version 1 on 2026-11-10, all optional so that an earlier bundle still validates: protocol.families[].variant_inputs (hashes and a token count per variant, never text), ica.preprocessing_mode and ica.preprocessing_read_from, execution.counts.executed_attempts and execution.counts.reused_events (counts of journal lines), and execution.completed_under_superseded_inputs.",
+  "type": "object",
+  "required": [
+    "schema_version", "protocol", "evidence", "plan_totals", "execution", "comparisons", "methods_not_run",
+    "sign_convention", "block_rule", "statistics", "capability_rows", "provenance", "limitations"
+  ],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "protocol": {
+      "type": "object",
+      "required": [
+        "id", "version", "sha256", "synthetic", "seed", "replicates", "model", "input_settings", "families",
+        "methods", "comparisons", "primary_endpoint", "excluded"
+      ],
+      "properties": {
+        "id": {"type": "string"},
+        "version": {"type": "string"},
+        "sha256": {"type": "string"},
+        "synthetic": {"type": "boolean"},
+        "seed": {"type": "integer"},
+        "replicates": {"type": "integer"},
+        "model": {"type": "object"},
+        "input_settings": {"type": "object"},
+        "families": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "variant_inputs": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "required": ["prompt_sha256", "token_sha256", "n_tokens"],
+                  "properties": {
+                    "prompt_sha256": {"type": "string"},
+                    "token_sha256": {"type": "string"},
+                    "n_tokens": {"type": "integer"}
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "methods": {"type": "array", "items": {"type": "string"}},
+        "comparisons": {"type": "array", "items": {"type": "object"}},
+        "primary_endpoint": {"type": "object"},
+        "excluded": {"type": "array", "items": {"type": "object"}}
+      },
+      "additionalProperties": false
+    },
+    "evidence": {
+      "type": "object",
+      "required": [
+        "evidence_class", "clinical_review", "visibility", "restriction_reasons", "analysis_memberships",
+        "synthetic"
+      ],
+      "properties": {
+        "evidence_class": {"type": "string"},
+        "clinical_review": {"type": "string"},
+        "visibility": {"type": ["string", "null"]},
+        "restriction_reasons": {"type": "array", "items": {"type": "string"}},
+        "analysis_memberships": {"type": "array", "items": {"type": "string"}},
+        "synthetic": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "plan_totals": {"type": "object"},
+    "execution": {
+      "type": "object",
+      "required": [
+        "by_state", "counts", "complete", "ready_complete", "missing", "uncertain", "ended_line_missing",
+        "duplicate_identical", "attempt_outcomes_differ", "execution_guarantee", "timing_caveat"
+      ],
+      "properties": {
+        "by_state": {"type": "object", "additionalProperties": {"type": "integer"}},
+        "counts": {"type": "object", "additionalProperties": {"type": "integer"}},
+        "complete": {"type": "boolean"},
+        "ready_complete": {"type": "boolean"},
+        "missing": {"type": "array", "items": {"type": "object"}},
+        "uncertain": {"type": "array", "items": {"type": "object"}},
+        "ended_line_missing": {"type": "array", "items": {"type": "object"}},
+        "duplicate_identical": {"type": "array", "items": {"type": "object"}},
+        "attempt_outcomes_differ": {"type": "array", "items": {"type": "object"}},
+        "completed_under_superseded_inputs": {"type": "array", "items": {"type": "object"}},
+        "execution_guarantee": {"type": "string"},
+        "timing_caveat": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "comparisons": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["family_id", "split", "review_status", "comparisons"],
+        "properties": {
+          "family_id": {"type": "string"},
+          "split": {"type": "string"},
+          "review_status": {"type": "string"},
+          "comparisons": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["comparison_id", "a", "b", "replicate", "readout", "references", "methods_not_run"],
+              "properties": {
+                "comparison_id": {"type": "string"},
+                "a": {"type": "string"},
+                "b": {"type": "string"},
+                "replicate": {"type": "integer"},
+                "behavior": {"type": "object"},
+                "readout": {"type": "object", "additionalProperties": {"type": "object"}},
+                "ica": {
+                  "type": "object",
+                  "properties": {
+                    "preprocessing_mode": {"type": ["string", "null"]},
+                    "preprocessing_read_from": {"type": ["string", "null"]}
+                  }
+                },
+                "references": {"type": "object", "additionalProperties": {"type": "object"}},
+                "methods_not_run": {"type": "array", "items": {"type": "object"}}
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "methods_not_run": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["method", "states", "reasons"],
+        "properties": {
+          "method": {"type": "string"},
+          "states": {"type": "object", "additionalProperties": {"type": "integer"}},
+          "reasons": {"type": "array", "items": {"type": "string"}}
+        },
+        "additionalProperties": false
+      }
+    },
+    "sign_convention": {"type": "string"},
+    "block_rule": {"type": "string"},
+    "statistics": {"type": "object"},
+    "capability_rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "method", "backend", "status", "evidence", "status_note", "declared_by", "revision_match",
+          "planned_state", "reason", "tasks"
+        ],
+        "properties": {
+          "method": {"type": "string"},
+          "backend": {"type": "string"},
+          "status": {"type": "string"},
+          "evidence": {"type": "string"},
+          "status_note": {"type": "string"},
+          "declared_by": {"type": ["string", "null"]},
+          "revision_match": {"type": ["string", "null"]},
+          "planned_state": {"type": "string"},
+          "reason": {"type": ["string", "null"]},
+          "tasks": {"type": "integer"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": [
+        "digest_convention", "protocol_sha256", "plan_sha256", "assembly_sha256", "comparison_sha256",
+        "capability_matrix", "engine_commits", "engine_commit_not_recorded", "source_files_sha256",
+        "packages", "payloads"
+      ],
+      "properties": {
+        "digest_convention": {"type": "string"},
+        "protocol_sha256": {"type": "string"},
+        "plan_sha256": {"type": "string"},
+        "assembly_sha256": {"type": "string"},
+        "comparison_sha256": {"type": "string"},
+        "capability_matrix": {"type": "object"},
+        "engine_commits": {"type": "array", "items": {"type": "string"}},
+        "engine_commit_not_recorded": {"type": "boolean"},
+        "source_files_sha256": {"type": "object", "additionalProperties": {"type": "string"}},
+        "packages": {"type": "object", "additionalProperties": {"type": "string"}},
+        "payloads": {"type": "array", "items": {"type": "object"}}
+      },
+      "additionalProperties": false
+    },
+    "limitations": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": false
+}

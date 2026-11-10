@@ -1,0 +1,210 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "patientwords.ecosystem/1",
+  "title": "PatientWords ecosystem manifest",
+  "description": "Structure only, in the keyword subset scripts/frontend_contract_schema.py executes. The vocabularies (group, consumption type, pointer kind, head-versus-pin relation, adapter state), the 40-hex commit format, the rule that a pin's value equals what its pointer file says, and the rule that every entry keeps its latest source head apart from its tested execution pin are enforced by scripts/ecosystem_status.py (validate_manifest) and tests/test_ecosystem_manifest.py.",
+  "type": "object",
+  "required": ["schema_version", "as_of", "description", "vocabularies", "owner_preparation_note", "repositories", "external_services"],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "as_of": {"type": "string"},
+    "description": {"type": "string"},
+    "vocabularies": {
+      "type": "object",
+      "required": ["group", "consumption_type", "pointer_kind", "head_vs_pin_relation", "adapter_state"],
+      "properties": {
+        "group": {"type": "array", "items": {"type": "string"}},
+        "consumption_type": {"type": "array", "items": {"type": "string"}},
+        "pointer_kind": {"type": "array", "items": {"type": "string"}},
+        "head_vs_pin_relation": {"type": "array", "items": {"type": "string"}},
+        "adapter_state": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "owner_preparation_note": {
+      "type": "object",
+      "required": ["date", "status", "statement", "scope"],
+      "properties": {
+        "date": {"type": "string"},
+        "status": {"type": "string"},
+        "statement": {"type": "string"},
+        "scope": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "repositories": {"type": "array", "items": {"$ref": "#/definitions/repository"}},
+    "external_services": {"type": "array", "items": {"$ref": "#/definitions/service"}}
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "repository": {
+      "type": "object",
+      "required": ["id", "group", "url", "role", "visibility", "fork_of", "holds_this_manifest", "default_sibling_path", "path_override", "recorded_head", "upstream_relation", "licence", "maintenance", "entry_points", "environment", "tests_and_ci", "consumed_by_engine", "engine_writes", "head_vs_pin", "source_facts", "adapters", "active_vs_historical", "dependencies"],
+      "properties": {
+        "id": {"type": "string"},
+        "group": {"type": "string"},
+        "url": {"type": "string"},
+        "role": {"type": "string"},
+        "visibility": {
+          "type": "object",
+          "required": ["value", "basis"],
+          "properties": {"value": {"type": "string"}, "basis": {"type": "string"}},
+          "additionalProperties": false
+        },
+        "fork_of": {"type": ["string", "null"]},
+        "holds_this_manifest": {"type": "boolean"},
+        "head_moves_with_operations": {"type": "boolean"},
+        "default_sibling_path": {"type": ["string", "null"]},
+        "path_override": {
+          "type": "object",
+          "required": ["cli_flags", "environment_variables", "note"],
+          "properties": {
+            "cli_flags": {"type": "array", "items": {"type": "string"}},
+            "environment_variables": {"type": "array", "items": {"type": "string"}},
+            "note": {"type": "string"}
+          },
+          "additionalProperties": false
+        },
+        "recorded_head": {
+          "type": "object",
+          "required": ["commit", "recorded_utc_date", "source"],
+          "properties": {
+            "commit": {"type": ["string", "null"]},
+            "recorded_utc_date": {"type": "string"},
+            "source": {"type": "string"},
+            "note": {"type": "string"}
+          },
+          "additionalProperties": false
+        },
+        "upstream_relation": {
+          "type": ["object", "null"],
+          "required": ["upstream_url", "ahead", "behind", "as_of", "basis", "note"],
+          "properties": {
+            "upstream_url": {"type": "string"},
+            "ahead": {"type": ["integer", "null"]},
+            "behind": {"type": ["integer", "null"]},
+            "as_of": {"type": "string"},
+            "basis": {"type": "string"},
+            "note": {"type": "string"}
+          },
+          "additionalProperties": false
+        },
+        "licence": {
+          "type": "object",
+          "required": ["code", "data", "notice_obligations"],
+          "properties": {
+            "code": {"type": "string"},
+            "data": {"type": "string"},
+            "notice_obligations": {"type": "string"}
+          },
+          "additionalProperties": false
+        },
+        "maintenance": {"type": "string"},
+        "entry_points": {"type": "array", "items": {"type": "string"}},
+        "environment": {
+          "type": "object",
+          "required": ["python", "lock_or_constraints"],
+          "properties": {
+            "python": {"type": "string"},
+            "lock_or_constraints": {"type": "array", "items": {"type": "string"}}
+          },
+          "additionalProperties": false
+        },
+        "tests_and_ci": {
+          "type": "object",
+          "required": ["tests", "ci", "lint"],
+          "properties": {
+            "tests": {"type": "string"},
+            "ci": {"type": "string"},
+            "lint": {"type": "string"}
+          },
+          "additionalProperties": false
+        },
+        "consumed_by_engine": {"type": "array", "items": {"$ref": "#/definitions/consumed"}},
+        "engine_writes": {"type": "array", "items": {"type": "string"}},
+        "head_vs_pin": {
+          "type": "object",
+          "required": ["latest_source_head", "tested_execution_pin", "relation", "note"],
+          "properties": {
+            "latest_source_head": {"type": ["string", "null"]},
+            "tested_execution_pin": {"type": ["string", "null"]},
+            "relation": {"type": "string"},
+            "note": {"type": "string"}
+          },
+          "additionalProperties": false
+        },
+        "source_facts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "value", "file", "text"],
+            "properties": {
+              "name": {"type": "string"},
+              "value": {"type": "string"},
+              "file": {"type": "string"},
+              "text": {"type": "string"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "adapters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path", "state"],
+            "properties": {"path": {"type": "string"}, "state": {"type": "string"}},
+            "additionalProperties": false
+          }
+        },
+        "active_vs_historical": {"type": "string"},
+        "dependencies": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "service": {
+      "type": "object",
+      "required": ["id", "name", "role", "consumed_by_engine", "base_url_override"],
+      "properties": {
+        "id": {"type": "string"},
+        "name": {"type": "string"},
+        "role": {"type": "string"},
+        "consumed_by_engine": {"type": "array", "items": {"$ref": "#/definitions/consumed"}},
+        "base_url_override": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "consumed": {
+      "type": "object",
+      "required": ["type", "artifact", "pins", "note"],
+      "properties": {
+        "type": {"type": "string"},
+        "artifact": {"type": "string"},
+        "pins": {"type": "array", "items": {"$ref": "#/definitions/pin"}},
+        "note": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "pin": {
+      "type": "object",
+      "required": ["name", "value", "pointer_file", "pointer", "how_to_read"],
+      "properties": {
+        "name": {"type": "string"},
+        "value": {"type": ["string", "boolean", "null"]},
+        "pointer_file": {"type": "string"},
+        "pointer": {
+          "type": "object",
+          "required": ["kind"],
+          "properties": {
+            "kind": {"type": "string"},
+            "package": {"type": "string"},
+            "pointer": {"type": "string"},
+            "text": {"type": "string"}
+          },
+          "additionalProperties": false
+        },
+        "how_to_read": {"type": "string"}
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -190,7 +190,8 @@ def engine_root(tmp_path):
                [{"top_prompt": f"alpha prompt {i}", "generation": {"topic": "topic-a"}} for i in range(1, n + 1)])
     trace = root / "trace_out"
     _write(trace / BATCH / "batch_summary.part_01.json", _summary([1, 3]))                 # joins; pair unpublished
-    _write(trace / f"{BATCH}__m2" / "batch_summary.part_01.json", _summary([2], "m2"))    # joins
+    # a model the results policy declares: a part whose graph_model no cohort declares enters no analysis
+    _write(trace / f"{BATCH}__olmo-2-1b" / "batch_summary.part_01.json", _summary([2], "olmo-2-1b"))    # joins
     _write(trace / UNPUBLISHED / "batch_summary.part_01.json", _summary([1]))             # batch unpublished
     _write(trace / "repeat_r1" / "batch_summary.part_01.json", _summary([1, 2]))          # not a generation batch
     _write(trace / f"{BATCH}_txsuffix" / "batch_summary.part_01.json", _summary([1]))     # not a generation batch
@@ -286,7 +287,7 @@ def test_publish_writes_the_observational_headline_over_every_measured_row(engin
     data = json.loads(published.read_text(encoding="utf-8"))
     head = data["summary"]["headline_observational"]
     assert len(data["rows"]) == 8
-    # BATCH#1, BATCH#2 (m2 and the payload's gemma-2-2b row), BATCH#3 and UNPUBLISHED#1 are generation-batch pairs;
+    # BATCH#1, BATCH#2 (olmo-2-1b and the payload's gemma-2-2b row), BATCH#3 and UNPUBLISHED#1 are generation-batch pairs;
     # repeat_r1 (2 rows) and the _txsuffix stem (1 row) are not
     assert head["matched_pairs"] == 4
     assert head["rows_excluded"] == {"outcome_selected": 0, "other": 3, "holdout": 0}

@@ -1,0 +1,170 @@
+{
+  "schema": "patientwords.instrument-validity-rubric/1",
+  "status": "draft - not validated; no human calibration has been run",
+  "_readme": "Annotation rubric for the interpretability-instrument validity benchmark (docs/protocols/instrument_validity_benchmark.md). It tells an annotator how to compare one instrument output (a readout summary, a generated label, a verbalization, or the description an explanation scorer accepted) with a reference set of facts that was established without the instrument. The value names under items.fact_recovery.values and items.description_register.values are the ones scripts/instrument_validity.py accepts; tests/test_instrument_validity.py keeps the two in step. Nothing here has been tested with annotators. Agreement, completion time and the wording of every definition are unmeasured.",
+  "applies_to": {
+    "benchmark": "docs/protocols/instrument_validity_benchmark.md",
+    "bundle_schema": "schemas/protocols/instrument_validity.v1.schema.json",
+    "scorer": "scripts/instrument_validity.py"
+  },
+  "unit_of_annotation": "one instrument output for one variant of one case family at one stage, read against that family's reference facts",
+  "general_instructions": [
+    "The reference facts are the answer key. Clinical wording is not the answer key. An output earns credit for a fact when it conveys that fact, in any register.",
+    "A fluent medical label is not credit by itself. A technical term earns credit only for the reference fact it actually conveys. A technical term that names something the reference set does not state is an unsupported inferred fact.",
+    "An everyday description that conveys a reference fact earns the same credit as a technical description that conveys it. Do not lower a rating because the wording is informal, misspelled or indirect.",
+    "Rate what the output says. Do not rate what the model probably knows, what the case probably is, or what a clinician would infer.",
+    "Uncertainty, negation, timing and severity are part of a fact. An output that drops a negation or turns a possibility into a certainty has not recovered the fact; if it states the opposite, rate it contradicted.",
+    "Rate every reference fact for every output, including outputs that look empty or wrong. If an output cannot be read at all, leave the fact ratings empty and record the reason under not_assessed_reason. An empty rating is missing data. It is never entered as not_recovered.",
+    "You are not told which variant produced an output, which variants are controls, which method produced it, or how the model answered. If you believe you can tell, record it under annotator_blinding.unblinding_events and continue."
+  ],
+  "items": {
+    "fact_recovery": {
+      "question": "For each reference fact, does the output convey it?",
+      "recorded_per": "reference fact",
+      "values": [
+        {
+          "value": "recovered",
+          "definition": "The output conveys the whole fact, with its negation, timing, severity and certainty intact. The wording may be technical or everyday."
+        },
+        {
+          "value": "partially",
+          "definition": "The output conveys part of the fact, or conveys it with a qualifier missing (for example the fact without its timing). The scorer gives this the partial credit fixed in the bundle's analysis plan."
+        },
+        {
+          "value": "not_recovered",
+          "definition": "The output does not mention the fact."
+        },
+        {
+          "value": "contradicted",
+          "definition": "The output states something that cannot be true if the fact is true. Scored as no credit and counted separately from not_recovered."
+        }
+      ],
+      "missing_value": {
+        "recorded_as": null,
+        "requires": "not_assessed_reason",
+        "meaning": "The rating was not made. The scorer excludes the family from that stage and reports the reason. It does not score the fact as zero."
+      }
+    },
+    "unsupported_inferred_facts": {
+      "question": "Which statements in the output assert something the reference set does not support?",
+      "recorded_as": {
+        "count": "non-negative integer",
+        "list": "one entry per statement: the statement copied from the output, and one sentence saying why the reference set does not support it"
+      },
+      "instructions": [
+        "Count a statement once, even if the output repeats it.",
+        "A named diagnosis, cause or risk level that the reference set does not state is unsupported, even when it is plausible. Plausibility is not support.",
+        "A restatement of a reference fact in other words is not unsupported.",
+        "Generic filler that asserts nothing about the case (for example a statement that the text is about health) is not counted. Record it under notes if it is the whole output."
+      ]
+    },
+    "changed_fact_sensitivity": {
+      "question": "When one reference fact was genuinely changed in the input, does the output stop conveying the original fact?",
+      "how_it_is_annotated": "The annotator does not answer this directly and is not told which variant is a control. The annotator rates fact_recovery for the control variant against the family's original reference facts, exactly as for any other variant. The scorer then compares the rating of the changed fact in the control with its rating in the variant the control was derived from.",
+      "derived_outcomes": [
+        {
+          "value": "detected",
+          "definition": "Credit for the changed fact is lower in the control than in its base variant."
+        },
+        {
+          "value": "not_detected",
+          "definition": "Credit for the changed fact is not lower in the control, although the base variant earned credit for it."
+        },
+        {
+          "value": "base_not_recovered",
+          "definition": "The base variant earned no credit for the fact, so a drop cannot be observed. Counted apart; not part of the sensitivity denominator."
+        },
+        {
+          "value": "undetermined",
+          "definition": "A rating needed for the comparison is missing."
+        }
+      ]
+    },
+    "description_register": {
+      "question": "In what register is the description being scored written?",
+      "when": "Recorded after the fact_recovery and unsupported_inferred_facts ratings for that output are locked, so that noticing the register cannot change them.",
+      "values": [
+        {
+          "value": "medical",
+          "definition": "Mostly technical clinical terms."
+        },
+        {
+          "value": "everyday",
+          "definition": "Mostly words a person without clinical training would use."
+        },
+        {
+          "value": "mixed",
+          "definition": "Both in comparable amounts."
+        },
+        {
+          "value": "cannot_tell",
+          "definition": "Too short or too generic to judge."
+        }
+      ],
+      "note": "In the held-artifact manipulation the intended register of each description is fixed by design and stored in the bundle as medical or everyday. This item is the annotator's independent reading of it, used to check that the manipulation produced the register it intended. A description rated mixed or cannot_tell is reported; it is not silently reassigned."
+    }
+  },
+  "annotator_blinding": {
+    "recorded_per": "annotator and annotation session",
+    "fields": [
+      {
+        "field": "annotator_id",
+        "definition": "Stable pseudonymous id. No name."
+      },
+      {
+        "field": "blinded_to_method",
+        "definition": "true when the annotator was not told which instrument or stage produced the output."
+      },
+      {
+        "field": "blinded_to_source_register",
+        "definition": "true when the annotator was not told whether the input variant was medical, everyday, a paraphrase or a control."
+      },
+      {
+        "field": "blinded_to_model_behaviour",
+        "definition": "true when the annotator did not see the model's answer or any behavioural score for the case."
+      },
+      {
+        "field": "blinded_to_other_annotators",
+        "definition": "true when the annotator rated without seeing another annotator's ratings."
+      },
+      {
+        "field": "presentation_order_seed",
+        "definition": "The integer seed that fixed the order in which outputs were shown."
+      },
+      {
+        "field": "unblinding_events",
+        "definition": "List of outputs for which the annotator believes a blinded property was evident, with the property and the reason."
+      },
+      {
+        "field": "rubric_version",
+        "definition": "The schema string of this file and the commit it was read at."
+      }
+    ]
+  },
+  "disagreement": {
+    "rules": [
+      "Every annotator's rating of every item is kept as entered. A later rating never overwrites an earlier one.",
+      "Where two annotators differ on an item, both ratings are stored and the item is marked disagreed.",
+      "An adjudicated value, if the protocol calls for one, is stored in a separate field with the adjudicator's id and one sentence of reasoning. The adjudicator sees the ratings and the output but stays blind to method, source register and model behaviour.",
+      "An item that stays unresolved is recorded as unresolved and reported with the disagreement count. It is not dropped.",
+      "The reliability statistic, the pairs of annotators it is computed over and the level below which the rubric is revised are fixed in the study protocol before annotation starts."
+    ],
+    "recorded_fields": [
+      "item_id",
+      "annotator_ids",
+      "ratings",
+      "disagreed",
+      "adjudicated_value",
+      "adjudicator_id",
+      "adjudication_reason",
+      "resolution_status"
+    ],
+    "report_separately": "Agreement computed within outputs from medical-register inputs and within outputs from everyday-register inputs. If annotators agree less on one register, the rubric itself is register-sensitive and the benchmark's estimates inherit that."
+  },
+  "open_questions": [
+    "Whether partially can be applied consistently, or should be split into named sub-cases.",
+    "Whether annotators can stay blind to source register when the output echoes the input wording.",
+    "How many reference facts per family an annotator can rate reliably in one pass.",
+    "Whether a clinician and a non-clinician annotator read everyday descriptions the same way."
+  ]
+}

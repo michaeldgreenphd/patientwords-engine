@@ -167,8 +167,16 @@ for bf in glob.glob("data/simulated/pairs_*.json"):
 from publication_hold import Gate, ReleaseError  # noqa: E402  (script-style module)
 
 seen = set()
-# held models and unreleased logits parts are not read (scripts/publication_hold.py); counted on stdout
+# (model, batch stem, index) of every result in a part the gate did not read. The payload fill below COUNTS the
+# rows it adds at these keys and still adds them: on 2026-11-10 the published payload carries 11 qwen3-4b rows
+# whose engine parts are outside the pin, and they have been in the published statistics since the pin was set.
+# Dropping them here would move a published number without a version (docs/open_results_migration_20261110.md,
+# section 6); whether to drop them is a decision for a new snapshot.
+_skipped_rows = set()
+# Parts outside the analysis membership in force (scripts/results_policy.py; default study-interim/1) are not
+# read here and are counted on stdout. They are not hidden: the results catalogue lists them.
 gate = Gate(".")
+print(gate.describe())
 # all 2panel-schema runs: generated batches AND curated subsets (mitigation etc.);
 # non-2panel dirs are skipped harmlessly because add() requires clinical+patient spreads
 for part in sorted(glob.glob("trace_out/*/batch_summary.part_*.json")):
@@ -181,16 +189,18 @@ for part in sorted(glob.glob("trace_out/*/batch_summary.part_*.json")):
         # translated sentences masquerade as patient measurements in the
         # all-rows sensitivity and the urgency aggregates (2026-07-14).
         continue
-    # Exploratory stimulus sets (agscen_: hand-authored pairs, owner-read 2026-11-08, never through the
-    # generator's validators or the Tier B split) are traced for inspection only. gate.admit below refuses
-    # them by stem and counts them on stdout (scripts/publication_hold.py, rule 3), so none of their rows
-    # reaches the aggregates, the headline pick or the row file that paired_stats_rigor.py reads.
+    # Hand-authored exploratory sets (agscen_: owner-read 2026-11-08, never through the generator's
+    # validators or the Tier B split) are shown as examples in the results catalogue. No study membership
+    # includes them: gate.admit below skips them by stimulus class and counts them on stdout, so none of their
+    # rows reaches the aggregates, the headline pick or the row file that paired_stats_rigor.py reads.
     summary = json.loads(Path(part).read_text(encoding="utf-8"))
     model = summary.get("graph_model") or model_suffix or "gemma-2-2b"
     try:
-        # a held model's or an unreleased logits part's rows would otherwise pool into every aggregate below,
-        # the headline pick, and the rows the stats read (scripts/publication_hold.py)
+        # rows of a part outside the membership would otherwise pool into every aggregate below, the headline
+        # pick, and the rows the stats read (scripts/results_policy.py)
         if not gate.admit(part, summary, model):
+            _skipped_rows.update((model, stem, r.get("index")) for r in summary.get("results", [])
+                                 if isinstance(r, dict))
             continue
     except ReleaseError as exc:
         raise SystemExit(f"urgency_shift: refusing, nothing written: {exc}")
@@ -228,8 +238,26 @@ if args.publish:
 elif site.is_file():
     payload = json.loads(site.read_text(encoding="utf-8"))
 if payload is not None:
+    # The payload is not gated part by part, so the membership's model rule is applied to it here: a model the
+    # membership excludes must not re-enter the aggregates through a payload that displays it (found 2026-11-10;
+    # tests/test_results_policy.py::test_a_payload_model_outside_the_membership_never_reaches_the_rows).
+    _outside = gate.policy.excluded_models(gate.membership)
+    _excluded_classes = gate.rule["exclude_stimulus_classes"]
+    _payload_rows_of_skipped_parts = {}
     for s in payload.get("scenarios", []):
+        _batch = s.get("batch")
+        if isinstance(_batch, str) and gate.policy.stimulus_class(_batch.partition("__")[0]) in _excluded_classes:
+            gate.held["site payload scenario of a stimulus class outside this membership"] += 1
+            continue
         for mid, m in (s.get("models") or {}).items():
+            if mid in _outside:
+                gate.held[f"site payload row of model {mid} (outside this membership)"] += 1
+                continue
+            if gate.policy.cohort_of(mid) is None:
+                gate.held[f"site payload row of model {mid} (in no declared cohort)"] += 1
+                continue
+            if (mid, _batch, s.get("batch_index")) in _skipped_rows and (mid, _batch, s.get("batch_index")) not in seen:
+                _payload_rows_of_skipped_parts[mid] = _payload_rows_of_skipped_parts.get(mid, 0) + 1
             if (mid, s.get("batch"), s.get("batch_index")) in seen:
                 continue
             add(mid, s.get("batch"), s.get("batch_index"),
@@ -505,3 +533,7 @@ for r in sorted(down, key=lambda r: -(r["p_top_patient"] or 0))[:20]:
 print(f"-> {args.out}")
 if gate.report():
     print(gate.report())
+if payload is not None and _payload_rows_of_skipped_parts:
+    print("note: rows taken from the site payload at keys whose engine part this membership did not read "
+          "(kept, as before 2026-11-10; see docs/open_results_migration_20261110.md): "
+          + ", ".join(f"{m} {n}" for m, n in sorted(_payload_rows_of_skipped_parts.items())))

@@ -73,7 +73,7 @@ from urllib.request import urlopen
 # breakage this script exists for; the id list is the frontend's, so a page that
 # adds a table adds its id here.
 JS_TABLE_BODIES = (
-    "dlc-body", "dlf-body", "dlm-body", "ev-body", "ja-body", "me-body",
+    "cat-body", "dlc-body", "dlf-body", "dlm-body", "ev-body", "exp-methods-body", "ja-body", "me-body",
     "mx-body", "rep-body", "router-body", "sim-sum-body", "sp-body", "tier-body",
     "tx-scale-body",
 )

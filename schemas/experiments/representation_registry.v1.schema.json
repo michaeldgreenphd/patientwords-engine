@@ -1,0 +1,150 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "patientwords.representation-registry/1",
+  "title": "Representation registry",
+  "description": "Structure only, in the keyword subset scripts/frontend_contract_schema.py executes. The verification-status, representation-type and method vocabularies, the rule that links_enabled needs verified_exact, the rule that a null is listed in not_recorded, the hash and date formats and the URL-template rule are enforced by scripts/experiments/neuronpedia.py.",
+  "type": "object",
+  "required": ["schema_version", "as_of", "synthetic", "description", "verification_statuses", "entries"],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "as_of": {"type": "string"},
+    "synthetic": {"type": "boolean"},
+    "description": {"type": "string"},
+    "verification_statuses": {"type": "array", "items": {"type": "string"}},
+    "verification_meaning": {"type": "object", "additionalProperties": {"type": "string"}},
+    "sources_not_read": {"type": "array", "items": {"$ref": "#/definitions/source_not_read"}},
+    "entries": {"type": "array", "items": {"$ref": "#/definitions/entry"}}
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "source_not_read": {
+      "type": "object",
+      "required": ["url", "attempted_utc_date", "result"],
+      "properties": {
+        "url": {"type": "string"},
+        "attempted_utc_date": {"type": "string"},
+        "result": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["source", "date", "states"],
+      "properties": {
+        "source": {"type": "string"},
+        "date": {"type": "string"},
+        "states": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "entry": {
+      "type": "object",
+      "required": [
+        "registry_id", "representation_type", "method", "model", "neuronpedia", "site", "component_id",
+        "fitted_artifact_sha256", "artifact", "calibration", "use", "label_source", "url_pattern",
+        "verification", "links_enabled", "not_recorded", "notes"
+      ],
+      "properties": {
+        "registry_id": {"type": "string"},
+        "representation_type": {"type": "string"},
+        "method": {"type": "string"},
+        "model": {
+          "type": "object",
+          "required": ["study_id", "hf_id", "revision"],
+          "properties": {
+            "study_id": {"type": ["string", "null"]},
+            "hf_id": {"type": "string"},
+            "revision": {"type": ["string", "null"]}
+          },
+          "additionalProperties": false
+        },
+        "neuronpedia": {
+          "type": ["object", "null"],
+          "required": ["model_id", "source_set", "source_id", "id_source"],
+          "properties": {
+            "model_id": {"type": "string"},
+            "source_set": {"type": ["string", "null"]},
+            "source_id": {"type": ["string", "null"]},
+            "id_source": {"type": "string"}
+          },
+          "additionalProperties": false
+        },
+        "site": {
+          "type": "object",
+          "required": ["capture_site", "layer_index_base", "layers"],
+          "properties": {
+            "capture_site": {"type": ["string", "null"]},
+            "layer_index_base": {"type": ["integer", "null"]},
+            "layers": {"type": ["array", "null"], "items": {"type": "integer"}}
+          },
+          "additionalProperties": false
+        },
+        "component_id": {
+          "type": ["object", "string", "null"],
+          "required": ["form", "index_kind", "source"],
+          "properties": {
+            "form": {"type": "string"},
+            "index_kind": {"type": "string"},
+            "source": {"type": "string"},
+            "count": {"type": "integer"}
+          },
+          "additionalProperties": false
+        },
+        "fitted_artifact_sha256": {"type": ["string", "null"]},
+        "artifact": {
+          "type": ["object", "null"],
+          "required": ["id", "repository", "revision", "fit_model_hf_id", "fit_model_revision"],
+          "properties": {
+            "id": {"type": "string"},
+            "repository": {"type": ["string", "null"]},
+            "revision": {"type": ["string", "null"]},
+            "fit_model_hf_id": {"type": ["string", "null"]},
+            "fit_model_revision": {"type": ["string", "null"]}
+          },
+          "additionalProperties": false
+        },
+        "calibration": {"type": "string"},
+        "use": {"type": "string"},
+        "label_source": {
+          "type": "object",
+          "required": ["name", "version", "explanation_type", "explanation_model", "scorer", "retrieved_utc"],
+          "properties": {
+            "name": {"type": ["string", "null"]},
+            "version": {"type": ["string", "null"]},
+            "explanation_type": {"type": ["string", "null"]},
+            "explanation_model": {"type": ["string", "null"]},
+            "scorer": {"type": ["string", "null"]},
+            "retrieved_utc": {"type": ["string", "null"]}
+          },
+          "additionalProperties": false
+        },
+        "url_pattern": {
+          "type": ["object", "null"],
+          "required": ["kind", "template", "source", "read_utc_date"],
+          "properties": {
+            "kind": {"type": "string"},
+            "template": {"type": "string"},
+            "source": {"type": "string"},
+            "read_utc_date": {"type": "string"}
+          },
+          "additionalProperties": false
+        },
+        "verification": {
+          "type": "object",
+          "required": ["status", "hosted_checkpoint_revision", "evidence", "checked_utc_date"],
+          "properties": {
+            "status": {"type": "string"},
+            "hosted_checkpoint_revision": {"type": ["string", "null"]},
+            "evidence": {"type": "array", "items": {"$ref": "#/definitions/evidence"}},
+            "checked_utc_date": {"type": "string"}
+          },
+          "additionalProperties": false
+        },
+        "links_enabled": {"type": "boolean"},
+        "not_recorded": {"type": "array", "items": {"type": "string"}},
+        "notes": {"type": "string"}
+      },
+      "additionalProperties": false
+    }
+  }
+}

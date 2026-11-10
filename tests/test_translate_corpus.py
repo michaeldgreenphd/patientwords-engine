@@ -127,20 +127,21 @@ def test_translation_scale_self_contained_recovery(tmp_path):
                         "original_patient": "PT1"}},
     ])
     troot = tmp_path / "trace_out"
-    (troot / "txcorpus_20260715T000000Z__m1").mkdir(parents=True)
-    (troot / "txcorpus_20260715T000000Z__m1" / "batch_summary.part_01.json").write_text(json.dumps(
-        {"backend": "logits", "graph_model": "m1", "results": [{
+    # a declared model id: a part whose graph_model no cohort declares enters no analysis (results policy)
+    (troot / "txcorpus_20260715T000000Z__olmo-2-1b").mkdir(parents=True)
+    (troot / "txcorpus_20260715T000000Z__olmo-2-1b" / "batch_summary.part_01.json").write_text(json.dumps(
+        {"backend": "logits", "graph_model": "olmo-2-1b", "results": [{
             "index": 1, "target_token": 'Output " a"',
             "probabilities": {"clinical": 0.5, "patient": 0.1},
             "predictive_spread": {"clinical": [['Output " a"', 0.5]], "patient": [['Output " b"', 0.2]]}}]}))
     # a source-batch run the OLD cross-join would have folded in — must be ignored now
-    (troot / "pairs_20260711T000000Z__m1").mkdir(parents=True)
-    (troot / "pairs_20260711T000000Z__m1" / "batch_summary.part_01.json").write_text(json.dumps(
-        {"backend": "logits", "graph_model": "m1", "results": [{
+    (troot / "pairs_20260711T000000Z__olmo-2-1b").mkdir(parents=True)
+    (troot / "pairs_20260711T000000Z__olmo-2-1b" / "batch_summary.part_01.json").write_text(json.dumps(
+        {"backend": "logits", "graph_model": "olmo-2-1b", "results": [{
             "index": 2, "probabilities": {"clinical": 0.9, "patient": 0.9},
             "predictive_spread": {"clinical": [["z", 0.9]], "patient": [["z", 0.9]]}}]}))
     out = ts.analyze(troot, sim)
-    s = out["per_model"]["m1"]
+    s = out["per_model"]["olmo-2-1b"]
     assert s["n"] == 1
     assert abs(s["mean_recovery"] - 0.4) < 1e-9          # 0.5 translated - 0.1 patient, self-contained
     assert s["mean_gap_closed"] is None                  # no independent clinical baseline

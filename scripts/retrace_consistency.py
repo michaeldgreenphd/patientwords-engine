@@ -47,7 +47,7 @@ from tierb_split import holdout_phrases  # noqa: E402  (script-style module)
 def collect(trace_root: Path, skipped: list[str] | None = None):
     """{(model, clinical, patient): [record, ...]} across every batch summary.
 
-    Parts of an exploratory stimulus set (scripts/publication_hold.py rule 3,
+    Parts of a stimulus class outside the default membership (scripts/results_policy.py,
     e.g. agscen_) are not read; their paths are appended to `skipped` when it
     is a list.
 
@@ -157,7 +157,7 @@ def main():
     rows = compare(collect(Path(args.trace_root), skipped))
     if skipped:
         print(f"retrace consistency: {len(skipped)} exploratory-set part(s) not read "
-              "(scripts/publication_hold.py, rule 3)")
+              "(scripts/results_policy.py)")
     spreads = [r["spread_p_clinical"] for r in rows if r["spread_p_clinical"] is not None] + \
               [r["spread_p_patient"] for r in rows if r["spread_p_patient"] is not None]
     stable_tops = sum(1 for r in rows if r["top_clinical_stable"] and r["top_patient_stable"])

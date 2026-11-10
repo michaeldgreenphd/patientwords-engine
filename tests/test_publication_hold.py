@@ -1,17 +1,22 @@
-"""The publication hold (scripts/publication_hold.py, 2026-10-09): nothing the backfill campaign lands moves a
-published number until the owner releases it.
+"""The default analysis membership (study-interim/1) through the import path collectors use
+(scripts/publication_hold.py, since 2026-11-10 a compatibility module over scripts/results_policy.py).
 
-Two rules: the exploratory models (HELD_MODELS) are never read; and a CPU-logits part is read only when the release
-manifest (data/publication_release/logits_parts.json) lists it with the sha256 of its bytes. Each consumer that
-would pool trace_out/ parts into something the site shows is run, or its reading function called, over a synthetic
-engine root before and after new parts land, and must give the same output until a release. The phrases are
-abstract placeholders, never study stimuli.
+Until 2026-11-10 these tests described a publication hold. The open-results policy (docs/open_results_policy.md)
+replaced the hold: parts outside a membership are public in the results catalogue. What these tests still
+guarantee is the benefit the hold was introduced for: nothing the backfill campaign lands moves a published
+statistic without a versioned change. Under the default membership the 2026-10-09 post-registration models are
+not read, and a CPU-logits part is read only when the pinned manifest
+(data/publication_release/logits_parts.json) lists it with the sha256 of its bytes. Each consumer that pools
+trace_out/ parts into a statistic the site shows is run, or its reading function called, over a synthetic engine
+root before and after new parts land, and must give the same output. tests/test_results_policy.py covers the
+other half: the same parts are visible. The phrases are abstract placeholders, never study stimuli.
 """
 from __future__ import annotations
 
 import hashlib
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -106,15 +111,18 @@ def test_urgency_shift_publishes_the_same_bytes_after_held_and_unreleased_parts_
     rc, rows_before, site_before, out_before = _urgency(engine_root, "before")
     assert rc == 0, out_before
     assert {(r["model"], r["index"]) for r in json.loads(rows_before)["rows"]} >= {("qwen3-4b", 1), ("qwen3-4b", 3)}
-    assert "publication hold" not in out_before
+    assert "parts not read" not in out_before
     _land_held_parts(engine_root)
     _land_unreleased_original_part(engine_root)
     rc, rows_after, site_after, out_after = _urgency(engine_root, "after")
     assert rc == 0, out_after
     assert rows_after == rows_before and site_after == site_before
     # skipped by name and count, never silently
-    assert ("publication hold (scripts/publication_hold.py), parts not read: held model gemma-4-e2b 1, "
-            "held model medgemma-1.5-4b-it 1, held model qwen3.5-2b-base 1, unreleased logits part 1") in out_after
+    assert ("membership study-interim/1 (scripts/results_policy.py), parts not read: "
+            "logits part outside the pinned manifest 1, "
+            "model gemma-4-e2b (cohort post_registration_20261009, outside this membership) 1, "
+            "model medgemma-1.5-4b-it (cohort post_registration_20261009, outside this membership) 1, "
+            "model qwen3.5-2b-base (cohort post_registration_20261009, outside this membership) 1") in out_after
 
 
 def test_a_release_publishes_the_new_part_and_nothing_else_changes_its_status(engine_root):
@@ -123,13 +131,13 @@ def test_a_release_publishes_the_new_part_and_nothing_else_changes_its_status(en
     _manifest(engine_root, [QWEN_PART, new])                           # what --release would write
     rc, rows, _, out = _urgency(engine_root, "released")
     assert rc == 0 and ("qwen3-4b", 4) in {(r["model"], r["index"]) for r in json.loads(rows)["rows"]}
-    assert "publication hold" not in out
+    assert "parts not read" not in out
 
 
 def test_a_released_part_whose_bytes_changed_is_held_and_named(engine_root):
     _write(engine_root / QWEN_PART, _summary([1, 2, 3, 3], "qwen3-4b"))   # overwritten after its release
     rc, rows, _, out = _urgency(engine_root, "changed")
-    assert rc == 0 and "logits part changed since its release 1" in out
+    assert rc == 0 and "logits part changed since it was recorded 1" in out
     assert "qwen3-4b" not in {r["model"] for r in json.loads(rows)["rows"]}
 
 
@@ -162,7 +170,7 @@ def test_a_held_part_is_skipped_by_its_directory_even_without_graph_model(engine
     _write(engine_root / "trace_out" / f"{BATCH}__gemma-4-e2b" / "batch_summary.part_01.json", part)
     rc, rows, _, out = _urgency(engine_root, "suffix")
     assert rc == 0 and "gemma-4-e2b" not in {r["model"] for r in json.loads(rows)["rows"]}
-    assert "held model gemma-4-e2b 1" in out
+    assert "model gemma-4-e2b (cohort post_registration_20261009, outside this membership) 1" in out
 
 
 def test_paired_stats_rigor_drops_held_rows_by_name(tmp_path, capsys):
@@ -173,7 +181,7 @@ def test_paired_stats_rigor_drops_held_rows_by_name(tmp_path, capsys):
     path.write_text(json.dumps({"rows": rows}))
     kept = rigor.load_rows(path)
     assert [r["model"] for r in kept] == ["qwen3-4b"]
-    assert "publication hold: excluded 2 rows" in capsys.readouterr().out
+    assert "analysis membership: excluded 2 rows" in capsys.readouterr().out
 
 
 def test_the_timeline_counts_only_publishable_parts(engine_root, monkeypatch):
@@ -220,7 +228,7 @@ def test_export_archive_reads_only_released_logits_parts(engine_root, tmp_path):
     before, _ = export("before")
     _land_unreleased_original_part(engine_root)
     after, out = export("after")
-    assert after == before and "unreleased logits part 1" in out
+    assert after == before and "logits part outside the pinned manifest 1" in out
 
 
 def test_interp_analyses_reads_only_released_parts(engine_root):
@@ -238,7 +246,7 @@ def test_the_exporter_refuses_to_merge_a_held_model(tmp_path):
                            str(tmp_path / "site"), "--stamps", "20200101T000000Z", "--models",
                            "gemma-2-2b,qwen3.5-2b-base"], cwd=tmp_path, capture_output=True, text=True, timeout=120)
     assert proc.returncode != 0
-    assert "held from publication" in proc.stderr and "qwen3.5-2b-base" in proc.stderr
+    assert "outside the analysis membership" in proc.stderr and "qwen3.5-2b-base" in proc.stderr
     assert not (tmp_path / "site").exists()
 
 
@@ -273,12 +281,32 @@ def test_release_lists_every_committed_logits_part_and_nothing_else(git_root, mo
 
 def test_release_refuses_in_the_routine_and_over_a_modified_part(git_root, monkeypatch):
     monkeypatch.setenv("PW_ROUTINE", "1")
-    with pytest.raises(SystemExit, match="never the Routine's"):
+    with pytest.raises(SystemExit, match="never the Routine's action while analysis_pin.auto_advance is false"):
         release.main(["--repo", str(git_root), "--release"])
     monkeypatch.delenv("PW_ROUTINE")
     _write(git_root / QWEN_PART, _summary([1], "qwen3-4b"))
     with pytest.raises(SystemExit, match="differ from HEAD"):
         release.main(["--repo", str(git_root), "--release"])
+
+
+def test_a_scoped_advance_pins_one_models_new_parts_and_keeps_every_existing_entry(git_root, monkeypatch, capsys):
+    """Before 2026-11-10 an advance was all-or-nothing: pinning one model's new part pinned every other
+    model's backfill in the same write. Hand-authored sets are never pinned: no pin could admit them."""
+    monkeypatch.delenv("PW_ROUTINE", raising=False)
+    _land_unreleased_original_part(git_root)                                               # qwen3-4b part_04
+    _write(git_root / "trace_out" / f"{BATCH}__olmo-2-1b" / "batch_summary.part_01.json", _summary([1], "olmo-2-1b"))
+    _write(git_root / "trace_out" / f"{EXPLORATORY}__qwen3-4b" / "batch_summary.part_01.json",
+           _summary([1], "qwen3-4b"))
+    _git(git_root, "-c", "user.email=t@example.invalid", "-c", "user.name=t", "add", "-A")
+    _git(git_root, "-c", "user.email=t@example.invalid", "-c", "user.name=t", "commit", "-qm", "landed")
+    assert release.main(["--repo", str(git_root), "--release", "--models", "olmo-2-1b"]) == 0
+    parts = json.loads((git_root / hold.RELEASE_MANIFEST).read_text())["parts"]
+    assert sorted(parts) == [f"trace_out/{BATCH}__olmo-2-1b/batch_summary.part_01.json", QWEN_PART.as_posix()]
+    assert "1 new part(s) pinned, 1 kept" in capsys.readouterr().out
+    assert release.main(["--repo", str(git_root), "--release"]) == 0                       # the unscoped advance
+    parts = json.loads((git_root / hold.RELEASE_MANIFEST).read_text())["parts"]
+    assert f"trace_out/{BATCH}__qwen3-4b/batch_summary.part_04.json" in parts
+    assert not any(EXPLORATORY in p for p in parts)
 
 
 def test_every_released_part_is_still_committed_with_its_released_bytes():
@@ -296,34 +324,30 @@ def test_the_exporter_candidate_models_and_labels_cover_held_models():
         assert f'"{m}"' in src
 
 
-def test_releasing_held_model_includes_it_in_models_meta(engine_root, tmp_path):
+def test_a_membership_that_includes_the_model_puts_it_in_models_meta(engine_root, tmp_path):
+    """The gallery payload follows the analysis membership. A candidate policy whose default membership is
+    exploratory-open/1 (named through PW_RESULTS_POLICY, the documented preview route) includes a 2026-10-09
+    model with no manifest entry and no code change, and the run says which policy file it used."""
     _land_held_parts(engine_root)
     _write(engine_root / "data" / "simulated" / f"{BATCH}.report.json", {"accepted": 3, "cost_usd": 0.0})
-    gemma4_part = Path(f"trace_out/{BATCH}__gemma-4-e2b/batch_summary.part_01.json")
-    _manifest(engine_root, [QWEN_PART, gemma4_part])
     (engine_root / "trace_out" / BATCH / "index_01.html").write_text("render 1", encoding="utf-8")
     (engine_root / "trace_out" / f"{BATCH}__gemma-4-e2b" / "index_01.html").write_text("render 1", encoding="utf-8")
+    candidate = json.loads((ROOT / "data" / "results_policy" / "policy.v1.json").read_text(encoding="utf-8"))
+    candidate["default_membership"] = "exploratory-open/1"
+    _write(tmp_path / "candidate_policy.json", candidate)
 
     site = tmp_path / "site"
     (site / "modes" / "simulated").mkdir(parents=True)
     (site / "data").mkdir(parents=True)
-    override_code = (
-        "import sys; "
-        f"sys.path.insert(0, {str(SCRIPTS)!r}); "
-        "import publication_hold as ph; "
-        "import sys as _sys; _sys.modules['scripts.publication_hold'] = ph; "
-        "ph.HELD_MODELS = frozenset(ph.HELD_MODELS - {'gemma-4-e2b'}); "
-        "import export_frontend_simulated\n"
-    )
     proc = subprocess.run(
-        [sys.executable, "-c", override_code, "--engine", str(engine_root),
-         "--frontend", str(site), "--stamps", "20200101T000000Z"],
+        [sys.executable, str(SCRIPTS / "export_frontend_simulated.py"), "--engine", str(engine_root),
+         "--frontend", str(site), "--stamps", "20200101T000000Z", "--models", "gemma-2-2b,qwen3-4b,gemma-4-e2b"],
         cwd=engine_root, capture_output=True, text=True, timeout=120,
+        env={**os.environ, "PW_RESULTS_POLICY": str(tmp_path / "candidate_policy.json")},
     )
     assert proc.returncode == 0, proc.stderr
+    assert "analysis membership exploratory-open/1" in proc.stdout and "policy file overridden" in proc.stdout
     payload = json.loads((site / "data" / "simulated_scenarios.json").read_text(encoding="utf-8"))
-    meta_ids = [m["id"] for m in payload["models_meta"]]
-    assert "gemma-4-e2b" in meta_ids
     gemma4_meta = next(m for m in payload["models_meta"] if m["id"] == "gemma-4-e2b")
     assert gemma4_meta["label"] == "Gemma 4 E2B"
     assert gemma4_meta["available"] is True
@@ -389,8 +413,8 @@ def test_translation_scale_reads_only_released_logits_parts(engine_root):
     assert "qwen3-4b" in out["per_model"]
     assert "olmo-2-1b" not in out["per_model"]
     assert "gemma-4-e2b" not in out["per_model"]
-    assert "unreleased logits part" in gate.report()
-    assert "held model gemma-4-e2b" in gate.report()
+    assert "logits part outside the pinned manifest" in gate.report()
+    assert "model gemma-4-e2b" in gate.report()
 
 
 # ---------------------------------------------------------------- exploratory stimulus sets (rule 3)
@@ -416,8 +440,8 @@ def test_the_gate_refuses_an_exploratory_set_by_stem_whatever_its_release(engine
     for run_dir in (EXPLORATORY, f"{EXPLORATORY}__model-x"):
         part = engine_root / "trace_out" / run_dir / "batch_summary.part_01.json"
         assert gate.admit(part, json.loads(part.read_text())) is False
-    assert gate.report() == ("publication hold (scripts/publication_hold.py), parts not read: "
-                             "exploratory set (not a study batch) 2")
+    assert gate.report() == ("membership study-interim/1 (scripts/results_policy.py), parts not read: "
+                             "stimulus class hand_authored_exploratory (not a study batch) 2")
 
 
 def test_urgency_shift_publishes_the_same_bytes_after_an_exploratory_set_lands(engine_root):
@@ -427,7 +451,7 @@ def test_urgency_shift_publishes_the_same_bytes_after_an_exploratory_set_lands(e
     rc, rows_after, site_after, out_after = _urgency(engine_root, "after_x")
     assert rc == 0, out_after
     assert rows_after == rows_before and site_after == site_before
-    assert "exploratory set (not a study batch) 2" in out_after
+    assert "stimulus class hand_authored_exploratory (not a study batch) 2" in out_after
 
 
 def test_the_timeline_and_the_audit_mirror_and_interp_skip_an_exploratory_set(engine_root, monkeypatch):
@@ -444,3 +468,78 @@ def test_the_timeline_and_the_audit_mirror_and_interp_skip_an_exploratory_set(en
     assert reads and not any(EXPLORATORY in p for p in reads)
     interp = _load("interp_analyses")
     assert {name for name, _ in interp.load_parts(engine_root / "trace_out")} == {BATCH, QWEN_PART.parent.name}
+
+
+# ---------------------------------------------------------------- pin advance: findings of the 2026-11-10 review
+
+def _commit(root: Path, message: str) -> None:
+    _git(root, "-c", "user.email=t@example.invalid", "-c", "user.name=t", "-c", "commit.gpgsign=false", "add", "-A")
+    _git(root, "-c", "user.email=t@example.invalid", "-c", "user.name=t", "-c", "commit.gpgsign=false", "commit",
+         "-qm", message)
+
+
+def test_a_scoped_advance_refuses_without_a_readable_pin_or_for_a_model_with_nothing_to_add(git_root, monkeypatch):
+    monkeypatch.delenv("PW_ROUTINE", raising=False)
+    _land_unreleased_original_part(git_root)
+    _commit(git_root, "landed")
+    before = (git_root / hold.RELEASE_MANIFEST).read_bytes()
+    with pytest.raises(SystemExit, match="have no unpinned committed logits part"):
+        release.main(["--repo", str(git_root), "--release", "--models", "olmo-2-1b"])
+    assert (git_root / hold.RELEASE_MANIFEST).read_bytes() == before
+    (git_root / hold.RELEASE_MANIFEST).write_text("<<<<<<< merge conflict", encoding="utf-8")
+    with pytest.raises(SystemExit, match="a scoped advance extends the existing pin and cannot read it"):
+        release.main(["--repo", str(git_root), "--release", "--models", "qwen3-4b"])
+    assert (git_root / hold.RELEASE_MANIFEST).read_text(encoding="utf-8") == "<<<<<<< merge conflict"
+
+
+def test_a_scoped_advance_never_drops_an_existing_pin(git_root, monkeypatch, capsys):
+    monkeypatch.delenv("PW_ROUTINE", raising=False)
+    manifest = json.loads((git_root / hold.RELEASE_MANIFEST).read_text())
+    manifest["parts"]["trace_out/pairs_gone__qwen3-4b/batch_summary.part_01.json"] = "0" * 64   # no longer committed
+    _write(git_root / hold.RELEASE_MANIFEST, manifest)
+    _land_unreleased_original_part(git_root)
+    _commit(git_root, "landed")
+    assert release.main(["--repo", str(git_root), "--release", "--models", "qwen3-4b"]) == 0
+    parts = json.loads((git_root / hold.RELEASE_MANIFEST).read_text())["parts"]
+    assert "trace_out/pairs_gone__qwen3-4b/batch_summary.part_01.json" in parts and len(parts) == 3
+    out = capsys.readouterr().out
+    assert "1 new part(s) pinned, 2 kept (1 of them name a part that is no longer committed or admissible" in out
+
+
+def test_no_advance_rewrites_the_hash_of_a_part_whose_committed_bytes_changed(git_root, monkeypatch):
+    """A recorded hash is never rewritten: before 2026-11-10 an unscoped release replaced it with the new
+    bytes' hash, which let a modified part stand in for the one that was pinned."""
+    monkeypatch.delenv("PW_ROUTINE", raising=False)
+    _write(git_root / QWEN_PART, _summary([1, 2, 3, 3], "qwen3-4b"))
+    _commit(git_root, "a pinned part rewritten and committed")
+    before = (git_root / hold.RELEASE_MANIFEST).read_bytes()
+    for argv in (["--release"], ["--release", "--models", "qwen3-4b"]):
+        with pytest.raises(SystemExit, match="differ from their recorded sha256"):
+            release.main(["--repo", str(git_root), *argv])
+    assert (git_root / hold.RELEASE_MANIFEST).read_bytes() == before
+
+
+def test_a_preview_override_cannot_let_the_routine_advance_the_pin(git_root, monkeypatch, tmp_path):
+    candidate = json.loads((ROOT / "data" / "results_policy" / "policy.v1.json").read_text(encoding="utf-8"))
+    candidate["analysis_pin"]["auto_advance"] = True
+    _write(tmp_path / "candidate.json", candidate)
+    monkeypatch.setenv("PW_ROUTINE", "1")
+    monkeypatch.setenv("PW_RESULTS_POLICY", str(tmp_path / "candidate.json"))
+    with pytest.raises(SystemExit, match="never the Routine's action while analysis_pin.auto_advance is false"):
+        release.main(["--repo", str(git_root), "--release"])
+
+
+def test_an_unscoped_advance_keeps_an_entry_whose_part_is_gone(git_root, monkeypatch, capsys):
+    """Regression: an unscoped release wrote only the parts now committed, so a pinned part that had been
+    deleted was dropped from the record with exit 0."""
+    monkeypatch.delenv("PW_ROUTINE", raising=False)
+    manifest = json.loads((git_root / hold.RELEASE_MANIFEST).read_text())
+    gone = "trace_out/pairs_gone__qwen3-4b/batch_summary.part_01.json"
+    manifest["parts"][gone] = "0" * 64
+    _write(git_root / hold.RELEASE_MANIFEST, manifest)
+    _land_unreleased_original_part(git_root)
+    _commit(git_root, "landed")
+    assert release.main(["--repo", str(git_root), "--release"]) == 0
+    parts = json.loads((git_root / hold.RELEASE_MANIFEST).read_text())["parts"]
+    assert parts[gone] == "0" * 64 and len(parts) == 3
+    assert "1 pinned entry names a part that is no longer committed or admissible (kept)" in capsys.readouterr().out

@@ -1,0 +1,370 @@
+{
+ "schema_version": "patientwords.exploratory/1",
+ "synthetic": true,
+ "publication": "exploratory_only",
+ "output_namespace": "exploratory_methods",
+ "seed": 7,
+ "model": {
+  "id": "fixture/toy-model",
+  "study_id": "toy-model",
+  "revision": "1111111111111111111111111111111111111111",
+  "tokenizer_id": "fixture/toy-tokenizer",
+  "tokenizer_revision": "1111111111111111111111111111111111111111",
+  "precision": "float32",
+  "backend": "fixture",
+  "hidden_size": 8,
+  "intermediate_size": 16,
+  "n_layers": 3
+ },
+ "capture_site": "block_output",
+ "layer_index_base": 0,
+ "final_norm": "model_final_norm_once_then_lm_head",
+ "input_settings": {
+  "chat_template": null,
+  "thinking": "not_applied_raw_prompt",
+  "add_special_tokens": true,
+  "truncation": false
+ },
+ "methods": {
+  "logit_lens": {
+   "method": "logit_lens",
+   "source_layers": [
+    0,
+    1
+   ],
+   "capture_site": "block_output",
+   "final_norm": "model_final_norm_once_then_lm_head"
+  },
+  "j_lens": {
+   "method": "j_lens",
+   "source_layers": [
+    0,
+    1
+   ],
+   "capture_site": "block_output",
+   "final_norm": "model_final_norm_once_then_lm_head",
+   "artifact_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+   "repository_revision": "3333333333333333333333333333333333333333",
+   "transport_target": 2,
+   "model_id": "fixture/toy-model",
+   "model_revision": "1111111111111111111111111111111111111111",
+   "tokenizer_revision": "1111111111111111111111111111111111111111"
+  },
+  "jpp": {
+   "method": "jpp",
+   "source_layers": [
+    0,
+    1
+   ],
+   "capture_site": "block_output",
+   "final_norm": "model_final_norm_once_then_lm_head",
+   "artifact_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+   "repository_revision": "3333333333333333333333333333333333333333",
+   "transport_target": 2,
+   "model_id": "fixture/toy-model",
+   "model_revision": "1111111111111111111111111111111111111111",
+   "tokenizer_revision": "1111111111111111111111111111111111111111"
+  }
+ },
+ "fixed_layers": [
+  0,
+  1
+ ],
+ "top_k": [
+  1,
+  2,
+  4
+ ],
+ "gap_threshold": 1e-06,
+ "vocabulary_filter": {
+  "id": "experiment-fixture-exclusions-v1",
+  "excluded": [
+   {
+    "token_id": 6,
+    "reason": "prespecified symbol audit"
+   },
+   {
+    "token_id": 7,
+    "reason": "prespecified punctuation audit"
+   }
+  ]
+ },
+ "cases": [
+  {
+   "id": "fam-1",
+   "family_id": "fam-1",
+   "template_family": "template-fam-1",
+   "split": "discovery",
+   "holdout_status": "unsealed_reviewed",
+   "review_provenance": "synthetic fixture only",
+   "join": {
+    "batch": "synthetic_only",
+    "index": 1,
+    "model": "toy-model"
+   },
+   "variants": {
+    "source": {
+     "prompt": "alpha tail",
+     "prompt_sha256": "921316d4d6fb6b3d6900ff55d7455dcf24143272e5fb2014ffed1f61e9b752c7",
+     "token_ids": [
+      0,
+      4
+     ],
+     "token_sha256": "41957fe516dfbfe04583dbab24f8b4ebad4e6c306dccb5a65a96eae86956b25c",
+     "positions": [
+      0,
+      1
+     ]
+    },
+    "recipient": {
+     "prompt": "beta tail",
+     "prompt_sha256": "72c47de9e3e5e1482682d8e4263f1868c183e9cd7f131ff9c5cd35fc0d0423ca",
+     "token_ids": [
+      1,
+      4
+     ],
+     "token_sha256": "aa5507f9e57ee8a21e59299df81766fe623be083b581b933bfc64bf00e64f4d1",
+     "positions": [
+      0,
+      1
+     ]
+    },
+    "normalized": {
+     "prompt": "gamma tail",
+     "prompt_sha256": "1f528e28e9acae82dc445c7b60792b68ccdb5604870ad13d1ae59aaab1cb28c8",
+     "token_ids": [
+      2,
+      4
+     ],
+     "token_sha256": "f25ed8cd5464710aff6e5d655a575ac273cb9c19d696e53fa13de05db97454ca",
+     "positions": [
+      0,
+      1
+     ]
+    }
+   },
+   "targets": [
+    {
+     "id": "t1",
+     "role": "answer",
+     "text": "omega",
+     "token_ids": [
+      5
+     ]
+    },
+    {
+     "id": "c1",
+     "role": "intermediate",
+     "text": "delta",
+     "token_ids": [
+      3
+     ]
+    }
+   ]
+  },
+  {
+   "id": "fam-2",
+   "family_id": "fam-2",
+   "template_family": "template-fam-2",
+   "split": "validation",
+   "holdout_status": "unsealed_reviewed",
+   "review_provenance": "synthetic fixture only",
+   "join": {
+    "batch": "synthetic_only",
+    "index": 2,
+    "model": "toy-model"
+   },
+   "variants": {
+    "source": {
+     "prompt": "alpha beta tail",
+     "prompt_sha256": "3c3cb4bba8e0e4516195be6aa26e11f9895f46ab0438b584d56c3b0bea8dd6b2",
+     "token_ids": [
+      0,
+      1,
+      4
+     ],
+     "token_sha256": "b2f95a1e1922af0b94bffb4e3a78cb95f712c4862e85fd58d7b4263a82b073be",
+     "positions": [
+      0,
+      1,
+      2
+     ]
+    },
+    "recipient": {
+     "prompt": "beta alpha tail",
+     "prompt_sha256": "43749777e3dbe05d5cb7cbc782b3a455149a4bc0293b7df51d5ec5255c99e2e2",
+     "token_ids": [
+      1,
+      0,
+      4
+     ],
+     "token_sha256": "2150957704fea43fdd8adf119c0c0e26f2fd5fb9ffb999248f10f47adfa6ee5c",
+     "positions": [
+      0,
+      1,
+      2
+     ]
+    },
+    "normalized": {
+     "prompt": "gamma alpha tail",
+     "prompt_sha256": "ca2a9ceb6f3a0c1e7a81b7e82ec17c831e2c012eeb55f5a9081ddf30eced6e1c",
+     "token_ids": [
+      2,
+      0,
+      4
+     ],
+     "token_sha256": "36c79c8fff668a876d7dd7e4f7eed0f40f0de23a773b951cf3b02e60d8e2bb83",
+     "positions": [
+      0,
+      1,
+      2
+     ]
+    }
+   },
+   "targets": [
+    {
+     "id": "t1",
+     "role": "answer",
+     "text": "omega",
+     "token_ids": [
+      5
+     ]
+    },
+    {
+     "id": "c1",
+     "role": "intermediate",
+     "text": "delta",
+     "token_ids": [
+      3
+     ]
+    }
+   ]
+  },
+  {
+   "id": "fam-3",
+   "family_id": "fam-3",
+   "template_family": "template-fam-3",
+   "split": "fresh_test",
+   "holdout_status": "unsealed_reviewed",
+   "review_provenance": "synthetic fixture only",
+   "join": {
+    "batch": "synthetic_only",
+    "index": 3,
+    "model": "toy-model"
+   },
+   "variants": {
+    "source": {
+     "prompt": "delta alpha tail",
+     "prompt_sha256": "5d0bc552c237d7202fccabf702c99be225f2de292669f46fda23b49e1e3e386b",
+     "token_ids": [
+      3,
+      0,
+      4
+     ],
+     "token_sha256": "c64bca0712ceb934ebb61fc05717f8b2d92a2eae278a7966aacb467814968b37",
+     "positions": [
+      0,
+      1,
+      2
+     ]
+    },
+    "recipient": {
+     "prompt": "delta beta tail",
+     "prompt_sha256": "d1a2f56d9e09ebf85b3e495d8d889f6ca90e4e57644ff73b2f7524688abed4e9",
+     "token_ids": [
+      3,
+      1,
+      4
+     ],
+     "token_sha256": "17bd9d6d847aac8a9c60e9a8aee94635e0cd2aa70dca2fa8f6bcea00362e5391",
+     "positions": [
+      0,
+      1,
+      2
+     ]
+    },
+    "normalized": {
+     "prompt": "delta gamma tail",
+     "prompt_sha256": "570290ef2178aa8856212566585136539f8e5fb63e7bda878f61c1510504d7df",
+     "token_ids": [
+      3,
+      2,
+      4
+     ],
+     "token_sha256": "c06fcfb21a299330305b219e537d6739e0e98fd251cdf3cc978a85947b4b2cd3",
+     "positions": [
+      0,
+      1,
+      2
+     ]
+    }
+   },
+   "targets": [
+    {
+     "id": "t1",
+     "role": "answer",
+     "text": "omega",
+     "token_ids": [
+      5
+     ]
+    },
+    {
+     "id": "c1",
+     "role": "intermediate",
+     "text": "delta",
+     "token_ids": [
+      3
+     ]
+    }
+   ]
+  }
+ ],
+ "intervention_plan": [
+  {
+   "id": "self-fam-1",
+   "case_id": "fam-1",
+   "donor": "recipient",
+   "recipient": "recipient",
+   "kind": "observed_replacement",
+   "component": "block_output",
+   "layer": 1,
+   "positions": [
+    [
+     1,
+     1
+    ]
+   ],
+   "channels": null,
+   "control": "self",
+   "seed": 7
+  }
+ ],
+ "experiment_variant_map": {
+  "clinical": "source",
+  "colloquial": "recipient",
+  "normalized": "normalized"
+ },
+ "derived_from": {
+  "path": "tests/fixtures/exploratory/synthetic_spec.json",
+  "sha256": "305f92f97fb487ce96bc974631d9da875e51285e62ac478760cd444c85c900e2",
+  "kept": [
+   "schema_version",
+   "publication",
+   "output_namespace",
+   "capture_site",
+   "layer_index_base",
+   "final_norm",
+   "input_settings",
+   "methods",
+   "top_k",
+   "gap_threshold"
+  ],
+  "replaced": [
+   "model",
+   "cases",
+   "intervention_plan",
+   "vocabulary_filter",
+   "fixed_layers"
+  ]
+ }
+}

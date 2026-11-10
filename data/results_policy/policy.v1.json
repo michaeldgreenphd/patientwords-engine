@@ -1,0 +1,126 @@
+{
+  "schema": "patientwords.results-policy/1",
+  "policy_version": "open-results/1",
+  "effective_utc_date": "2026-11-10",
+  "summary": "Sharing, analysis membership, integrity and data restrictions are decided separately. A result is shared when its artifact is intact and no named restriction applies; it joins a statistic only through a named membership rule. scripts/results_policy.py is the only reader of this file.",
+  "supersedes": {
+    "rule": "the publication hold of 2026-10-09 and 2026-11-08 (scripts/publication_hold.py: HELD_MODELS, the logits release manifest as a publication gate, EXPLORATORY_STEM_PREFIXES)",
+    "history": "docs/open_results_policy.md"
+  },
+  "model_cohorts": {
+    "registered_20260709": {
+      "evidence_class": "registered_cohort",
+      "models": ["gemma-2-2b", "gemma-3-4b-it", "qwen3-1.7b", "qwen3-4b"],
+      "source": "docs/preregistration_tierB.md; _PREREG_MODELS in scripts/paired_stats_rigor.py"
+    },
+    "post_registration_2026_07": {
+      "evidence_class": "exploratory_post_registration",
+      "models": ["llama-3.2-3b", "olmo-2-1b", "gemma-2-2b-it", "medgemma-4b-it", "meditron3-8b",
+                 "apertus-8b-meditronfo"],
+      "source": "docs/prereg_divergence_log.md (exploratory Benjamini-Hochberg family); docs/model_matrix.md"
+    },
+    "post_registration_20261009": {
+      "evidence_class": "exploratory_post_registration",
+      "models": ["gemma-4-e2b", "qwen3.5-2b-base", "medgemma-1.5-4b-it"],
+      "source": "docs/prereg_divergence_log.md (2026-10-09); docs/model_matrix.md; EXPLORATORY in scripts/backfill_planner.py"
+    }
+  },
+  "stimulus_classes": {
+    "_default": {
+      "evidence_class": null,
+      "clinical_review": "domain_review_pending",
+      "rows_exported": false,
+      "rows_reason": "this stimulus family has no row-export entry in policy version open-results/1; its runs are listed with counts only. Release condition: add a stimulus_classes entry in a reviewed pull request."
+    },
+    "study_batch": {
+      "match": {"stem_regex": "pairs_\\d{8}T\\d{6}Z"},
+      "evidence_class": null,
+      "clinical_review": "domain_review_pending",
+      "rows_exported": true,
+      "note": "generated study batches; the row's evidence class follows its model cohort"
+    },
+    "hand_authored_exploratory": {
+      "match": {"stem_prefix": "agscen_"},
+      "evidence_class": "exploratory_hand_authored",
+      "clinical_review": "owner_read_equivalence_and_domain_review_pending",
+      "rows_exported": true,
+      "sidecar_status_prefix": "exploratory:",
+      "note": "hand-authored pairs, owner-read, never through the study generator, validators or Tier B split (2026-11-08); shown as examples, never a member of a study membership rule"
+    },
+    "redistribution_limited_text": {
+      "match": {"stem_prefix": "pabharvest_"},
+      "evidence_class": "exploratory_third_party_source",
+      "clinical_review": "domain_review_pending",
+      "rows_exported": false,
+      "restriction": "redistribution_limited_text",
+      "rows_reason": "third-party source text with redistribution limits (TEXT_RESTRICTED_PREFIXES in scripts/jlens_insights.py; docs/decisions_20260804_pab.md). Responsible role: owner. Release condition: a recorded licence review that permits row text."
+    }
+  },
+  "memberships": {
+    "study-interim/1": {
+      "purpose": "analysis",
+      "label": "the interim study analysis as published since 2026-10-09",
+      "exclude_stimulus_classes": ["hand_authored_exploratory"],
+      "exclude_model_cohorts": ["post_registration_20261009"],
+      "logits_manifest": "data/publication_release/logits_parts.json",
+      "note": "Reproduces the rule the collectors applied from 2026-10-09 to 2026-11-10 so that the published statistics keep their inputs. It admits every stimulus family except the hand-authored sets (sentinels, translation arms, curated subsets and the generated study batches alike); each collector then keeps the families it analyses. The logits manifest is this membership's input pin, not a publication gate. A part whose bytes differ from its ledger record, or whose graph_model no cohort declares, is refused."
+    },
+    "exploratory-open/1": {
+      "purpose": "analysis",
+      "label": "separately declared exploratory analysis over every intact part of every declared model cohort, on the same stimulus families as the study membership",
+      "exclude_stimulus_classes": ["hand_authored_exploratory"],
+      "exclude_model_cohorts": [],
+      "logits_manifest": null,
+      "note": "A different multiple-testing family from study-interim/1. Its outputs are written to their own files and never replace the study-interim outputs."
+    },
+    "public-display/1": {
+      "purpose": "display",
+      "label": "everything shareable: every intact part with no named restriction",
+      "exclude_stimulus_classes": [],
+      "exclude_model_cohorts": [],
+      "logits_manifest": null,
+      "note": "Row-level restrictions (the Tier B seal) are applied by the exporter with tierb_split.sealed_pair."
+    }
+  },
+  "default_membership": "study-interim/1",
+  "analysis_pin": {
+    "auto_advance": false,
+    "reason": "Published statistics change only through a versioned snapshot (scripts/results_snapshot.py), so a statistic never moves without a version and a change record.",
+    "responsible_role": "whoever runs the publish chain (the Routine or the owner)",
+    "release_condition": "scripts/results_snapshot.py create succeeds for the new membership state, the temporary regeneration in verify.md passes its contract, claim and seal gates on it, and this flag or the default membership is changed in a reviewed pull request."
+  },
+  "sampling_labels": [
+    {
+      "model": "medgemma-1.5-4b-it",
+      "selection": "data/selections/medgemma15_priority_20261009.json",
+      "label": "outcome_selected_priority_subset",
+      "note": "pairs chosen because several models flipped on them; a statistic over these rows describes the selection, not the model"
+    }
+  ],
+  "restrictions": {
+    "sealed_holdout": {
+      "scope": "row",
+      "decided_by": "scripts/tierb_split.py sealed_pair",
+      "responsible_role": "owner",
+      "release_condition": "the owner's explicit unseal instruction for the Tier B endpoint (ops/dashboard.json endpoint_protocol; docs/prereg_amendment3_holdout.md)"
+    },
+    "redistribution_limited_text": {
+      "scope": "stimulus class",
+      "decided_by": "stimulus_classes.redistribution_limited_text",
+      "responsible_role": "owner",
+      "release_condition": "a recorded licence review that permits publishing the text"
+    },
+    "artifact_integrity": {
+      "scope": "part",
+      "decided_by": "scripts/results_policy.py integrity (unreadable, malformed, or bytes that differ from a recorded sha256)",
+      "responsible_role": "whoever runs the publish chain",
+      "release_condition": "the part is restored to its recorded bytes, or a new part with a new name lands; a recorded hash is never rewritten"
+    },
+    "uncalibrated_clinical_mass": {
+      "scope": "field",
+      "decided_by": "scripts/feature_models.py clinical_mass_publishable",
+      "responsible_role": "owner",
+      "release_condition": "scripts/feature_label_calibration.py demonstrates calibration and the pair is added to CALIBRATED_FEATURE_SOURCES"
+    }
+  }
+}

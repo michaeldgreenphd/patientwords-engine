@@ -32,8 +32,11 @@ cycles per `docs/routine_standing_prompt.md` (MAINTENANCE MODE since
   complete. Only `meditron3-8b`, `apertus-8b-meditronfo` and `gemma-2-2b`'s
   hosted traces covered all 39 batches; six original models miss 702 to
   1,140 of the 2,343 pairs each. The owner approved the backfill campaign
-  (`scripts/backfill_chain.py`, `docs/model_matrix.md`); its results publish
-  only at an owner release (`scripts/publication_release.py`).
+  (`scripts/backfill_chain.py`, `docs/model_matrix.md`). Since 2026-11-10 its
+  results are public in the results catalogue as they land
+  (`docs/open_results_policy.md`); they enter the published statistics only when
+  the study pin is advanced with a new snapshot (`scripts/publication_release.py`,
+  `scripts/results_snapshot.py`).
 - **All nine trigger lanes are PARKED** (`fire_trigger.py park`; eight on
   this date, and `petri-audit`, added 2026-09-16, since 2026-09-18). The tenth,
   `jev-audit` (added 2026-10-14), has no trigger file until its first park on

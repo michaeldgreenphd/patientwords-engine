@@ -1,0 +1,168 @@
+{
+  "annotation_statement": "Component labels and vocabulary readouts are hypotheses carried with their source. None is a verified concept.",
+  "artifact": {
+    "files": [
+      {
+        "bytes": 504,
+        "path": "artifacts/resid_post/layer_01.safetensors",
+        "sha256": "fdf40ba9a2bdf45650589bdbf525ad1e8a7c5f1f9b57a248e86adc637228831f"
+      },
+      {
+        "bytes": 1964,
+        "path": "icalens.json",
+        "sha256": "5fcabb1f87d324059fb6af6566dc451f2b9a225e300821965466c2ac0d99f5de"
+      }
+    ],
+    "format": "icalens",
+    "format_version": 4,
+    "package_version": "not_applicable_hand_written_fixture",
+    "root": "toy_basis"
+  },
+  "basis_id": "fixture/toy-ica-basis",
+  "capture": {
+    "artifact_activation_site": "resid_post",
+    "artifact_layer_indexing": "transformer_blocks_zero_based",
+    "layer_index_base": 0,
+    "layers": [
+      1
+    ],
+    "model_load_precision": "not_applicable_no_model",
+    "precision": "float32",
+    "site": "block_output"
+  },
+  "component_annotations": [
+    {
+      "component": 0,
+      "label": "placeholder label A",
+      "layer": 1,
+      "source": "synthetic fixture; written by hand; no model and no profile",
+      "status": "hypothesis"
+    },
+    {
+      "component": 1,
+      "layer": 1,
+      "source": "synthetic fixture; written by hand; no model and no profile",
+      "status": "hypothesis",
+      "vocabulary_readout": {
+        "method": "placeholder; no readout was computed",
+        "source": "synthetic fixture",
+        "tokens": [
+          "alpha",
+          "beta"
+        ]
+      }
+    }
+  ],
+  "description": "SYNTHETIC. Hand-written matrices in the saved ICA Lens layout. No fit was run.",
+  "fit": {
+    "activation_manifest_sha256": "71f1df5b9823d169b8ef5deb68b2bb5deb64c3b4a0d4c964d297584544da0cbe",
+    "corpus_id": "toy-discovery-corpus-1",
+    "corpus_ids": [
+      "toy-discovery-corpus-1"
+    ],
+    "description": "No fit was run. The toy discovery corpus is named as the fit corpus only so that the split checks have a corpus to check.",
+    "document_token_sha256": [
+      "13508638f51897fe1f8ac2bfc5bd697ac01af396c353a00bbabe0ac6635ee71e",
+      "3189877f39b9986a7b1f71190907dfbc2b3a66781473a198fa0c2b49360e57e8",
+      "43540fc385f19e82789e000237ec1859160cd5531024740881df1acbe4eec1ec",
+      "8ef850cdbbd8da4086ae0e5ecda61c455bd1b00703aaa27b1c90dae453b5021b",
+      "903f3cebe4a42b18d3cf9d81e0d64ff2ee5da3967b4b50ca6bbfa46c38f0f628",
+      "bfa75f789e3eed46da07bbed1c2e75ed1206f4cccf11929b2d016158b8680205",
+      "e141793a93153eb9063b121ed0673c11839d3830bba4eb05f80a9980713baccc",
+      "fe058ec94afcbf61e5f913474656eb8080e75a365d08ec29f00e5f9b98d3c513"
+    ],
+    "family_ids": [],
+    "n_samples": "not_applicable_no_fit",
+    "split": "discovery"
+  },
+  "fit_diagnostics_statement": "A finished iteration budget does not establish stable components. The fit runs a fixed number of iterations and saves no convergence flag. Component stability needs repeated fits with other seeds and other samples; none is recorded here.",
+  "layers": {
+    "1": {
+      "component_id_convention": "hand-written order; no sign canonicalization",
+      "file": "artifacts/resid_post/layer_01.safetensors",
+      "fit_diagnostics": {
+        "component_objectives": "not_applicable_no_fit",
+        "component_strengths": "not_applicable_no_fit",
+        "gaussian_objective": "not_applicable_no_fit",
+        "objective_history": "not_applicable_no_fit"
+      },
+      "fit_settings": {
+        "algorithm": "none_hand_written_matrices",
+        "batch_size": "not_applicable_no_fit",
+        "fit_device": "not_applicable_no_fit",
+        "fun": "not_applicable_no_fit",
+        "ica_algorithm": "not_applicable_no_fit",
+        "implementation": "tests/fixtures/experiments/ica/build_ica_fixtures.py",
+        "implementation_version": "1",
+        "input_dtype": "float32",
+        "max_iter": "not_applicable_no_fit",
+        "n_components": 4,
+        "n_iter": "not_applicable_no_fit",
+        "n_samples": "not_applicable_no_fit",
+        "seed": "not_applicable_no_fit",
+        "stopping_criterion": "not_applicable_no_fit",
+        "torch_version": "not_applicable_no_fit",
+        "whiten": "not_applicable_no_fit",
+        "whiten_solver": "not_applicable_no_fit"
+      },
+      "n_components": 4,
+      "sha256": "fdf40ba9a2bdf45650589bdbf525ad1e8a7c5f1f9b57a248e86adc637228831f",
+      "tensors": {
+        "center": [
+          8
+        ],
+        "reading_matrix": [
+          4,
+          8
+        ],
+        "writing_matrix": [
+          8,
+          4
+        ]
+      }
+    }
+  },
+  "limitations": [
+    "signs_as_saved_not_comparable_across_fits_layers_or_models",
+    "energy_share_is_a_squared_coordinate_share_not_a_probability_or_importance",
+    "reconstruction_error_is_in_preprocessed_space",
+    "component_labels_are_hypotheses",
+    "a_finished_iteration_budget_does_not_establish_stable_components",
+    "no_real_model_parity",
+    "synthetic_not_measurement"
+  ],
+  "model": {
+    "hf_id": "fixture/toy-model",
+    "hidden_size": 8,
+    "revision": "1111111111111111111111111111111111111111",
+    "tokenizer_id": "fixture/toy-tokenizer",
+    "tokenizer_revision": "1111111111111111111111111111111111111111",
+    "type": "base"
+  },
+  "not_recorded": [],
+  "preprocessing": {
+    "centering": "The mean of the preprocessed fitting rows (tensor 'center') is subtracted before the reading matrix is applied.",
+    "mode": "none",
+    "norm_eps": 1e-12,
+    "pre_normalization_center": "none",
+    "read_from": "icalens.json#/input_preprocessing/icalens_preprocessing",
+    "row_normalization": "none",
+    "whitening": "Recorded from the artifact's fitting block. Whitening is folded into reading_matrix and is not a separate step at scoring time."
+  },
+  "profile": {
+    "corpus_ids": [],
+    "description": "",
+    "family_ids": [],
+    "performed": false
+  },
+  "schema_version": "patientwords.ica-basis-manifest/1",
+  "seed": "not_applicable_no_fit",
+  "selection": {
+    "corpus_ids": [],
+    "description": "",
+    "family_ids": [],
+    "performed": false
+  },
+  "sign_convention": "as saved; not canonicalized; not comparable across fits, layers or models",
+  "synthetic": true
+}

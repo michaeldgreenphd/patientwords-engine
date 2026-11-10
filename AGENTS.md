@@ -22,6 +22,11 @@ The frontend renders exported JSON and HTML; it does not call a live engine API.
 - [README.md](README.md) introduces the package and CLI; [docs/README.md](docs/README.md)
   indexes designs, preregistrations and decision records. Dated reports are historical
   evidence, not proof that today's checkout passes.
+- [docs/start_here.md](docs/start_here.md) gives reading paths by role and the offline
+  quickstart. [docs/ecosystem.md](docs/ecosystem.md) maps the sibling repositories and
+  forks and what the engine consumes from each; `scripts/ecosystem_status.py` compares
+  that record with the checkouts and pins on disk. A fork's latest source is not the
+  runtime a lane executes: read the pin files before assuming a capability.
 - `medlang_circuits/`: `cli.py` and `pipeline.py` (comparison), `graph_client.py`
   (hosted graph contract), `batch_eval.py` (batch summaries), `scenario_gen.py`
   (stimulus generation). Console commands are defined in `pyproject.toml`.
@@ -58,8 +63,13 @@ The frontend renders exported JSON and HTML; it does not call a live engine API.
   Exported display `index` also supports public `?sim=` links: preserve batch ordering.
   `verify_summary*.json` intentionally stays outside measurement collectors.
 - Preserve base-model compatibility mirrors, `models_meta`, null/missing-data meaning,
-  holdout seals, publication-release hashes, source-set calibration and sampling labels.
-  Do not hand-edit generated payloads or release held data to make a check pass.
+  holdout seals, recorded part hashes, source-set calibration and sampling labels.
+  Do not hand-edit generated payloads, rewrite a recorded hash or lift a restriction
+  to make a check pass.
+- Sharing and analysis membership are separate decisions
+  ([docs/open_results_policy.md](docs/open_results_policy.md)): an intact, unrestricted
+  result is shared whatever its effect; it joins a statistic only through a named
+  membership, and a published statistic changes only through a versioned snapshot.
 - Record random seeds in statistical outputs; document methods, transforms and assumptions.
   Record absent/unreadable data explicitly; never silently turn it into zero or drop rows.
 - The engine computes; the frontend presents. Public explanations must retain provenance,

@@ -18,8 +18,10 @@ every generated batch is preserved and reproducible.
 - `agscen_<date>.json` — exploratory hand-authored 2panel pairs (not generated
   by the Action and not a study batch): owner-read scenario drafts copied with
   their verdicts under `generation`, traceable at $0 by the circuit-trace and
-  logits-eval lanes. Their `trace_out/agscen_*` outputs never enter a published
-  aggregate (`EXPLORATORY_STEM_PREFIXES` in `scripts/publication_hold.py`).
+  logits-eval lanes. Their `trace_out/agscen_*` outputs are in no analysis
+  membership, so they never enter a published aggregate; since 2026-11-10 they
+  are listed in the results catalogue as hand-authored examples with review
+  pending (`stimulus_classes` in `data/results_policy/policy.v1.json`).
 - `*.report.json` — the cost/provenance sidecar for each batch: run
   timestamp, Anthropic model, **USD spent vs. the ceiling**, token usage,
   accept/reject counts with rejection reasons, and the run's steering

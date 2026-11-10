@@ -91,7 +91,8 @@ LOGITS_CHUNK_FAST = 120
 # The six original models whose cross-model PREDICTIONS coverage was found short on 2026-10-09 (the
 # 2026-08-26 "39/39" claim held only for meditron3-8b, apertus-8b-meditronfo and gemma-2-2b's hosted traces;
 # docs/coordination/backfill_8b_complete_20260826.md, correction). `--fill-gaps` / `--campaign` fill them to
-# parity; owner decision 2026-10-09, with publication held until the owner releases (publication_hold.py).
+# parity; owner decision 2026-10-09. Landed parts are public in the results catalogue and stay outside the study
+# statistics until the pin is advanced (docs/open_results_policy.md).
 GAP_MODELS = ("gemma-3-4b-it", "qwen3-1.7b", "qwen3-4b", "llama-3.2-3b", "olmo-2-1b", "gemma-2-2b-it")
 # Measured CPU seconds per pair on the logits-eval runner, for sizing gap-fill fires: each model's leg must stay
 # within half the 240-minute job timeout. RATES_SOURCE says where each number comes from.

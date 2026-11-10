@@ -1,0 +1,880 @@
+{
+  "schema_version": "patientwords.capability-matrix/1",
+  "as_of": "2026-11-10",
+  "description": "What is known about each model revision x method x backend x artifact, with the evidence. A status is one of status_order and is never merged with another. model.revision null means no revision is recorded for that route; such a row answers a lookup for any revision, never with a status above artifact_available_identity_unknown when the lookup names a revision, and its status_note says what is not attested. A row at artifact_available or above records a model revision, or an artifact revision or SHA-256 (validate_matrix refuses unpinned_status otherwise). Evidence dates are the date of the cited record, or the date a file was read when it carries none.",
+  "status_order": [
+    "unsupported",
+    "architecture_supported",
+    "artifact_available_identity_unknown",
+    "artifact_available",
+    "runtime_verified_offline_fixture",
+    "parity_passed"
+  ],
+  "status_meaning": {
+    "unsupported": "This combination cannot run. A lookup with no row returns this status and says no row exists.",
+    "architecture_supported": "The method's code handles this architecture. No artifact or run is claimed.",
+    "artifact_available_identity_unknown": "An artifact or hosted route exists, and the identity of what it was fit or served on is not recorded.",
+    "artifact_available": "A pinned artifact or route exists (the row records a model revision, or an artifact revision or SHA-256) and runs have landed or a probe passed. No parity audit passed.",
+    "runtime_verified_offline_fixture": "The offline fixture path ran under this package's tests. It is not evidence about a real model.",
+    "parity_passed": "A recorded audit compared this route with another and passed within the scope stated in parity_record."
+  },
+  "backends": {
+    "fixture": "Offline synthetic fixtures. No model is loaded.",
+    "hosted_neuronpedia": "Neuronpedia hosted endpoints (attribution graphs, lens readouts).",
+    "cpu_transformers": "CPU forward pass through Hugging Face transformers in push-to-run CI (scripts/logits_eval.py), or a local-lens route that would run there.",
+    "cpu_interp_engine": "interp-engine eager CPU backend in push-to-run CI (scripts/verify_probs.py)."
+  },
+  "not_verified": [
+    "No row was re-measured. Statuses restate committed records read on 2026-11-10.",
+    "Hugging Face was not read: the host is blocked from development containers and was refused again on 2026-11-10. Released ICA bases under sida/ are recorded from the text of the ICA fork only. Neuronpedia's own records were read on 2026-11-10 with plain GET requests (data/experiments/neuronpedia_evidence/20261110/index.v1.json). They name a Hugging Face repository for each hosted model and source and no revision, commit or hash, so no hosted row records a model revision. The Neuronpedia id qwen3.5-2b-pt exists on the service and its model record names Qwen/Qwen3.5-2B-Base; the commit behind the id is not reported, so the alias stays unverified as a checkpoint.",
+    "Counts of landed runs in status notes are directory counts at engine head d8d0855d."
+  ],
+  "rows": [
+    {
+      "model": {
+        "study_id": "toy-model",
+        "hf_id": "fixture/toy-model",
+        "revision": "1111111111111111111111111111111111111111"
+      },
+      "method": "behavior_next_token",
+      "backend": "fixture",
+      "dtype": null,
+      "artifact": null,
+      "status": "runtime_verified_offline_fixture",
+      "evidence": [
+        {
+          "source": "tests/test_experiments_core.py",
+          "date": "2026-11-10"
+        }
+      ],
+      "status_note": "Fixture-supplied next-token logits scored by scripts/experiments/adapters/behavior_fixture.py. Verified by the offline tests only. It says nothing about any real model."
+    },
+    {
+      "model": {
+        "study_id": "toy-model",
+        "hf_id": "fixture/toy-model",
+        "revision": "1111111111111111111111111111111111111111"
+      },
+      "method": "logit_lens",
+      "backend": "fixture",
+      "dtype": null,
+      "artifact": null,
+      "status": "runtime_verified_offline_fixture",
+      "evidence": [
+        {
+          "source": "tests/test_experiments_core.py",
+          "date": "2026-11-10"
+        }
+      ],
+      "status_note": "A synthetic packet joined by scripts/exploratory_methods.build_report and wrapped by scripts/experiments/adapters/readout_exploratory.py. Verified by the offline tests only. No lens arithmetic runs; the packet supplies the readout logits."
+    },
+    {
+      "model": {
+        "study_id": "toy-model",
+        "hf_id": "fixture/toy-model",
+        "revision": "1111111111111111111111111111111111111111"
+      },
+      "method": "j_lens",
+      "backend": "fixture",
+      "dtype": null,
+      "artifact": null,
+      "status": "unsupported",
+      "evidence": [
+        {
+          "source": "scripts/experiments/adapters/__init__.py",
+          "date": "2026-11-10"
+        }
+      ],
+      "status_note": "No fixture J-Lens artifact and no executable J-Lens adapter exist in this milestone."
+    },
+    {
+      "model": {
+        "study_id": "toy-model",
+        "hf_id": "fixture/toy-model",
+        "revision": "1111111111111111111111111111111111111111"
+      },
+      "method": "jpp",
+      "backend": "fixture",
+      "dtype": null,
+      "artifact": {
+        "id": "fixture/toy-jpp-lens",
+        "repository": null,
+        "revision": null,
+        "path": null,
+        "sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+        "fit_model_revision": null,
+        "fit_tokenizer_revision": null,
+        "calibration": null
+      },
+      "status": "artifact_available_identity_unknown",
+      "evidence": [
+        {
+          "source": "tests/fixtures/experiments/protocol_synthetic.json",
+          "date": "2026-11-10"
+        }
+      ],
+      "status_note": "Synthetic stand-in, not a real artifact. The fixture protocol declares a J++ lens whose fit model and tokenizer revisions are null, as they are for the released Qwen3-4B J++ artifact (see that row). It exists so that the planner's unavailable path runs offline."
+    },
+    {
+      "model": {
+        "study_id": "toy-model",
+        "hf_id": "fixture/toy-model",
+        "revision": "1111111111111111111111111111111111111111"
+      },
+      "method": "ica_lens",
+      "backend": "fixture",
+      "dtype": null,
+      "artifact": null,
+      "status": "architecture_supported",
+      "evidence": [
+        {
+          "source": "scripts/experiments/adapters/__init__.py",
+          "date": "2026-11-10"
+        }
+      ],
+      "status_note": "The adapter registry maps ica_lens to scripts/experiments/adapters/ica.py. When that module is importable, the row it declares for itself replaces this one. When it is absent the planner reports the task as unavailable: adapter module not present. This row was written before the ICA adapter existed and claims no runtime verification."
+    },
+    {
+      "model": {
+        "study_id": "gemma-2-2b",
+        "hf_id": "google/gemma-2-2b",
+        "revision": "c5ebcd40d208330abc697524c919956e692655cf"
+      },
+      "method": "behavior_next_token",
+      "backend": "cpu_transformers",
+      "dtype": "bfloat16",
+      "artifact": null,
+      "status": "artifact_available",
+      "evidence": [
+        {
+          "source": "scripts/logits_eval.py (HF_REVISIONS)",
+          "date": "2026-10-09"
+        },
+        {
+          "source": "docs/model_matrix.md (Pinned revisions)",
+          "date": "2026-10-09"
+        },
+        {
+          "source": "docs/backend_agreement_20260903.md (Results, run 2026-09-04)",
+          "date": "2026-09-04"
+        }
+      ],
+      "status_note": "Pinned commit, enforced on every load since 2026-10-09. A cross-backend audit of this lane is recorded and it did not pass per pair: against interp-engine float32 on one 50-pair batch the mean absolute probability difference was 0.00431 and the maximum 0.0311, attributed to bfloat16 rounding. The status stays below parity_passed for that reason."
+    },
+    {
+      "model": {
+        "study_id": "gemma-3-4b-it",
+        "hf_id": "google/gemma-3-4b-it",
+        "revision": "093f9f388b31de276ce2de164bdc2081324b9767"
+      },
+      "method": "behavior_next_token",
+      "backend": "cpu_transformers",
+      "dtype": "bfloat16",
+      "artifact": null,
+      "status": "artifact_available",
+      "evidence": [
+        {
+          "source": "scripts/logits_eval.py (HF_REVISIONS)",
+          "date": "2026-10-09"
+        },
+        {
+          "source": "docs/model_matrix.md (Pinned revisions)",
+          "date": "2026-10-09"
+        }
+      ],
+      "status_note": "Pinned commit, enforced on every load since 2026-10-09; docs/model_matrix.md gives the number of landed summaries that record it. No cross-backend parity audit is recorded for this model."
+    },
+    {
+      "model": {
+        "study_id": "qwen3-4b",
+        "hf_id": "Qwen/Qwen3-4B",
+        "revision": "1cfa9a7208912126459214e8b04321603b3df60c"
+      },
+      "method": "behavior_next_token",
+      "backend": "cpu_transformers",
+      "dtype": "bfloat16",
+      "artifact": null,
+      "status": "artifact_available",
+      "evidence": [
+        {
+          "source": "scripts/logits_eval.py (HF_REVISIONS)",
+          "date": "2026-10-09"
+        },
+        {
+          "source": "docs/model_matrix.md (Pinned revisions)",
+          "date": "2026-10-09"
+        }
+      ],
+      "status_note": "Pinned commit, enforced on every load since 2026-10-09; docs/model_matrix.md gives the number of landed summaries that record it. No cross-backend parity audit is recorded for this model."
+    },
+    {
+      "model": {
+        "study_id": "qwen3-1.7b",
+        "hf_id": "Qwen/Qwen3-1.7B",
+        "revision": "70d244cc86ccca08cf5af4e1e306ecf908b1ad5e"
+      },
+      "method": "behavior_next_token",
+      "backend": "cpu_transformers",
+      "dtype": "bfloat16",
+      "artifact": null,
+      "status": "artifact_available",
+      "evidence": [
+        {
+          "source": "scripts/logits_eval.py (HF_REVISIONS)",
+          "date": "2026-10-09"
+        },
+        {
+          "source": "docs/model_matrix.md (Pinned revisions)",
+          "date": "2026-10-09"
+        }
+      ],
+      "status_note": "Pinned commit, enforced on every load since 2026-10-09; docs/model_matrix.md gives the number of landed summaries that record it. No cross-backend parity audit is recorded for this model."
+    },
+    {
+      "model": {
+        "study_id": "llama-3.2-3b",
+        "hf_id": "meta-llama/Llama-3.2-3B",
+        "revision": "13afe5124825b4f3751f836b40dafda64c1ed062"
+      },
+      "method": "behavior_next_token",
+      "backend": "cpu_transformers",
+      "dtype": "bfloat16",
+      "artifact": null,
+      "status": "artifact_available",
+      "evidence": [
+        {
+          "source": "scripts/logits_eval.py (HF_REVISIONS)",
+          "date": "2026-10-09"
+        },
+        {
+          "source": "docs/model_matrix.md (Pinned revisions)",
+          "date": "2026-10-09"
+        }
+      ],
+      "status_note": "Pinned commit, enforced on every load since 2026-10-09; docs/model_matrix.md gives the number of landed summaries that record it. No cross-backend parity audit is recorded for this model."
+    },
+    {
+      "model": {
+        "study_id": "olmo-2-1b",
+        "hf_id": "allenai/OLMo-2-0425-1B",
+        "revision": "a1847dff35000b4271fa70afc5db10fd29fedbdf"
+      },
+      "method": "behavior_next_token",
+      "backend": "cpu_transformers",
+      "dtype": "bfloat16",
+      "artifact": null,
+      "status": "artifact_available",
+      "evidence": [
+        {
+          "source": "scripts/logits_eval.py (HF_REVISIONS)",
+          "date": "2026-10-09"
+        },
+        {
+          "source": "docs/model_matrix.md (Pinned revisions)",
+          "date": "2026-10-09"
+        }
+      ],
+      "status_note": "Pinned commit, enforced on every load since 2026-10-09; docs/model_matrix.md gives the number of landed summaries that record it. No cross-backend parity audit is recorded for this model."
+    },
+    {
+      "model": {
+        "study_id": "meditron3-8b",
+        "hf_id": "EPFLiGHT/Meditron3-8B",
+        "revision": "783c241b18b84692689e0336170b345e5732e48e"
+      },
+      "method": "behavior_next_token",
+      "backend": "cpu_transformers",
+      "dtype": "bfloat16",
+      "artifact": null,
+      "status": "artifact_available",
+      "evidence": [
+        {
+          "source": "scripts/logits_eval.py (HF_REVISIONS)",
+          "date": "2026-10-09"
+        },
+        {
+          "source": "docs/model_matrix.md (Pinned revisions)",
+          "date": "2026-10-09"
+        }
+      ],
+      "status_note": "Pinned commit, enforced on every load since 2026-10-09; docs/model_matrix.md gives the number of landed summaries that record it. No cross-backend parity audit is recorded for this model."
+    },
+    {
+      "model": {
+        "study_id": "apertus-8b-meditronfo",
+        "hf_id": "EPFLiGHT/Apertus-8B-MeditronFO",
+        "revision": "ef2b141da7ccc347c2a13b2518370ba6a8a2b745"
+      },
+      "method": "behavior_next_token",
+      "backend": "cpu_transformers",
+      "dtype": "bfloat16",
+      "artifact": null,
+      "status": "artifact_available",
+      "evidence": [
+        {
+          "source": "scripts/logits_eval.py (HF_REVISIONS)",
+          "date": "2026-10-09"
+        },
+        {
+          "source": "docs/model_matrix.md (Pinned revisions)",
+          "date": "2026-10-09"
+        }
+      ],
+      "status_note": "Pinned commit, enforced on every load since 2026-10-09; docs/model_matrix.md gives the number of landed summaries that record it. No cross-backend parity audit is recorded for this model."
+    },
+    {
+      "model": {
+        "study_id": "medgemma-4b-it",
+        "hf_id": "google/medgemma-4b-it",
+        "revision": "290cda5eeccbee130f987c4ad74a59ae6f196408"
+      },
+      "method": "behavior_next_token",
+      "backend": "cpu_transformers",
+      "dtype": "bfloat16",
+      "artifact": null,
+      "status": "artifact_available",
+      "evidence": [
+        {
+          "source": "scripts/logits_eval.py (HF_REVISIONS)",
+          "date": "2026-10-09"
+        },
+        {
+          "source": "docs/model_matrix.md (Pinned revisions)",
+          "date": "2026-10-09"
+        }
+      ],
+      "status_note": "Pinned commit, enforced on every load since 2026-10-09; docs/model_matrix.md gives the number of landed summaries that record it. No cross-backend parity audit is recorded for this model."
+    },
+    {
+      "model": {
+        "study_id": "gemma-2-2b-it",
+        "hf_id": "google/gemma-2-2b-it",
+        "revision": "299a8560bedf22ed1c72a8a11e7dce4a7f9f51f8"
+      },
+      "method": "behavior_next_token",
+      "backend": "cpu_transformers",
+      "dtype": "bfloat16",
+      "artifact": null,
+      "status": "artifact_available",
+      "evidence": [
+        {
+          "source": "scripts/logits_eval.py (HF_REVISIONS)",
+          "date": "2026-10-09"
+        },
+        {
+          "source": "docs/model_matrix.md (Pinned revisions)",
+          "date": "2026-10-09"
+        }
+      ],
+      "status_note": "Pinned commit, enforced on every load since 2026-10-09; docs/model_matrix.md gives the number of landed summaries that record it. No cross-backend parity audit is recorded for this model."
+    },
+    {
+      "model": {
+        "study_id": "gemma-4-e2b",
+        "hf_id": "google/gemma-4-E2B",
+        "revision": "d29ff6b45f081a49ee2733a859c9c9c2d95d1a6f"
+      },
+      "method": "behavior_next_token",
+      "backend": "cpu_transformers",
+      "dtype": "bfloat16",
+      "artifact": null,
+      "status": "artifact_available",
+      "evidence": [
+        {
+          "source": "scripts/logits_eval.py (HF_REVISIONS)",
+          "date": "2026-10-09"
+        },
+        {
+          "source": "docs/model_matrix.md (Pinned revisions)",
+          "date": "2026-10-09"
+        }
+      ],
+      "status_note": "Post-registration exploratory addition. Pinned to the head of main on 2026-10-09; the limit-3 probe passed on 2026-10-09 (run 37960095244). No cross-backend parity audit is recorded."
+    },
+    {
+      "model": {
+        "study_id": "qwen3.5-2b-base",
+        "hf_id": "Qwen/Qwen3.5-2B-Base",
+        "revision": "b1485b2fa6dfa1287294f269f5fb618e03d52d7c"
+      },
+      "method": "behavior_next_token",
+      "backend": "cpu_transformers",
+      "dtype": "bfloat16",
+      "artifact": null,
+      "status": "artifact_available",
+      "evidence": [
+        {
+          "source": "scripts/logits_eval.py (HF_REVISIONS)",
+          "date": "2026-10-09"
+        },
+        {
+          "source": "docs/model_matrix.md (Pinned revisions)",
+          "date": "2026-10-09"
+        }
+      ],
+      "status_note": "Post-registration exploratory addition. Pinned to the head of main on 2026-10-09; the limit-3 probe passed on 2026-10-09 (run 37960095244). No cross-backend parity audit is recorded."
+    },
+    {
+      "model": {
+        "study_id": "medgemma-1.5-4b-it",
+        "hf_id": "google/medgemma-1.5-4b-it",
+        "revision": "91850547d9f0b2fdd21aa7c5f4f3d1a8a52c243b"
+      },
+      "method": "behavior_next_token",
+      "backend": "cpu_transformers",
+      "dtype": "bfloat16",
+      "artifact": null,
+      "status": "artifact_available",
+      "evidence": [
+        {
+          "source": "scripts/logits_eval.py (HF_REVISIONS)",
+          "date": "2026-10-09"
+        },
+        {
+          "source": "docs/model_matrix.md (Pinned revisions)",
+          "date": "2026-10-09"
+        }
+      ],
+      "status_note": "Post-registration exploratory addition. Pinned to the head of main on 2026-10-09; the limit-3 probe passed on 2026-10-09 (run 37960095244). No cross-backend parity audit is recorded."
+    },
+    {
+      "model": {
+        "study_id": "gemma-2-2b",
+        "hf_id": "google/gemma-2-2b",
+        "revision": null
+      },
+      "method": "behavior_next_token",
+      "backend": "cpu_interp_engine",
+      "dtype": "float32",
+      "artifact": null,
+      "status": "artifact_available_identity_unknown",
+      "evidence": [
+        {
+          "source": "docs/backend_agreement_20260903.md (Results, run 2026-09-04)",
+          "date": "2026-09-04"
+        },
+        {
+          "source": "ops/backend_agreement_interp_vs_hosted_20260904.json",
+          "date": "2026-09-04"
+        }
+      ],
+      "status_note": "Lowered from parity_passed on 2026-11-10, first to artifact_available and the same day to artifact_available_identity_unknown. The route exists and one run landed; the cited records state no pass criterion and no verdict for this comparison, and the audited summary records no model revision (last sentences of this note), so the row records neither a model revision nor an artifact revision or hash and cannot hold artifact_available. ops/backend_agreement_interp_vs_hosted_20260904.json compares interp-engine 1.5.1 eager CPU float32 with the hosted next-token probabilities on one batch (pairs_20260710T011743Z, 50 pairs, one model). It covers 71 of 100 side-measurements: the hosted route reported no value for 8 clinical and 21 patient sides. Over those 71 the absolute probability difference has mean 0.00062, median 0.0002 and maximum 0.0273, with 1 of 71 above each of the report's thresholds (near 0.01, far 0.02). Over the 29 pairs with a penalty on both sides the maximum penalty difference is 0.027, with 1 of 29 above each threshold. The report has no pass or verdict field. docs/backend_agreement_20260903.md wrote its thresholds before the run for the maximum per-pair penalty difference between interp-engine float32 and the local bfloat16 path (at or below 0.0315, under 0.005, above 0.0315) and calls none of them a pass. Its statement that interp-engine and the hosted values agree to 0.0005, the rounding limit of the hosted three-decimal values, holds for 70 measurements once one row is left out (index 20, patient side, where the hosted path recorded another token's probability); that row was left out after the run. Tokenization parity held on all 100 prompts. The hosted reference route carries the target-read limitation recorded in AGENTS.md. The audited summary (trace_out/verify_pairs_20260710T011743Z__gemma-2-2b) records inference.revision null, so model.revision is null in this row: the run predates enforced pinning. That it loaded the commit pinned later is inferred, not recorded."
+    },
+    {
+      "model": {
+        "study_id": "gemma-2-2b",
+        "hf_id": "google/gemma-2-2b",
+        "revision": null
+      },
+      "method": "attribution_graph",
+      "backend": "hosted_neuronpedia",
+      "dtype": null,
+      "artifact": {
+        "id": "gemmascope-transcoder-16k",
+        "repository": null,
+        "revision": null,
+        "path": null,
+        "sha256": null,
+        "fit_model_revision": null,
+        "fit_tokenizer_revision": null,
+        "calibration": "calibrated_reference"
+      },
+      "status": "artifact_available_identity_unknown",
+      "evidence": [
+        {
+          "source": "scripts/feature_models.py (CALIBRATED_FEATURE_SOURCES)",
+          "date": "2026-11-10"
+        },
+        {
+          "source": "docs/exploratory/method_readiness_20261024.md",
+          "date": "2026-10-24"
+        },
+        {
+          "source": "data/experiments/neuronpedia_evidence/20261110/index.v1.json (record api.source-set.gemma-2-2b.gemmascope-transcoder-16k)",
+          "date": "2026-11-10"
+        }
+      ],
+      "status_note": "The study's landed tracing route. gemmascope-transcoder-16k is the only calibrated feature source. No landed summary attests the hosted server's model or transcoder commit, so model.revision is null. Hosted target reads before 2026-10-07 carry the limitation recorded in AGENTS.md. The service's records were read on 2026-11-10: they name google/gemma-2-2b for the model and a transcoder weights repository for each source, and report no revision, commit or hash. The API record and the export record name the weights repository differently (google/gemma-scope-2b-pt-transcoders; google/gemma-scope), so artifact.repository stays null."
+    },
+    {
+      "model": {
+        "study_id": "qwen3-4b",
+        "hf_id": "Qwen/Qwen3-4B",
+        "revision": null
+      },
+      "method": "attribution_graph",
+      "backend": "hosted_neuronpedia",
+      "dtype": null,
+      "artifact": {
+        "id": "transcoder-hp",
+        "repository": "mwhanna/qwen3-4b-transcoders",
+        "revision": null,
+        "path": null,
+        "sha256": null,
+        "fit_model_revision": null,
+        "fit_tokenizer_revision": null,
+        "calibration": "not_calibrated"
+      },
+      "status": "artifact_available_identity_unknown",
+      "evidence": [
+        {
+          "source": "docs/cross-model.md (qwen3-4b feature labels, registered 2026-10-09)",
+          "date": "2026-10-09"
+        },
+        {
+          "source": "scripts/feature_models.py (CALIBRATED_FEATURE_SOURCES)",
+          "date": "2026-11-10"
+        },
+        {
+          "source": "data/experiments/neuronpedia_evidence/20261110/index.v1.json (record api.source-set.qwen3-4b.transcoder-hp)",
+          "date": "2026-11-10"
+        }
+      ],
+      "status_note": "The host serves graphs for this model: a two-pair probe landed. Source set transcoder-hp was registered on 2026-10-09. It is not calibrated against the reference, so exporters keep its clinical_mass null until an owner decision. Scaling past the probe is an owner decision. The hosted model commit is not attested, so model.revision is null. The service's records were read on 2026-11-10: they name Qwen/Qwen3-4B for the model and mwhanna/qwen3-4b-transcoders for every source, and report no revision, commit or hash."
+    },
+    {
+      "model": {
+        "study_id": "gemma-2-2b",
+        "hf_id": "google/gemma-2-2b",
+        "revision": null
+      },
+      "method": "j_lens",
+      "backend": "hosted_neuronpedia",
+      "dtype": null,
+      "artifact": {
+        "id": "neuronpedia-hosted:JACOBIAN_LENS",
+        "repository": null,
+        "revision": null,
+        "path": null,
+        "sha256": null,
+        "fit_model_revision": null,
+        "fit_tokenizer_revision": null,
+        "calibration": null
+      },
+      "status": "artifact_available_identity_unknown",
+      "evidence": [
+        {
+          "source": "scripts/jlens_readout.py (summary keys; LENS_TYPES)",
+          "date": "2026-11-10"
+        },
+        {
+          "source": "scripts/export_jlens_depth.py (host_state_provenance)",
+          "date": "2026-08-21"
+        },
+        {
+          "source": "docs/exploratory/method_readiness_20261024.md",
+          "date": "2026-10-24"
+        },
+        {
+          "source": "data/experiments/neuronpedia_evidence/20261110/index.v1.json (record page.jlens.gemma-2-2b)",
+          "date": "2026-11-10"
+        },
+        {
+          "source": "data/experiments/neuronpedia_evidence/20261110/index.v1.json (record page.api-doc)",
+          "date": "2026-11-10"
+        }
+      ],
+      "status_note": "Landed lens summaries record no lens artifact repository, revision or hash and no model or tokenizer revision. The host changed its readouts on 2026-07-31 and on 2026-08-14 under identical requests, so landed readouts span up to three instrument eras that no summary field separates. 99 run directories trace_out/*__jlens_gemma-2-2b exist at this head. The service was read on 2026-11-10: the lens page exists for this model id and names no lens repository, file, revision or hash; the API reference has no route that describes a lens, and its example meta message has no identity field. A live lens response was not requested."
+    },
+    {
+      "model": {
+        "study_id": "gemma-2-2b-it",
+        "hf_id": "google/gemma-2-2b-it",
+        "revision": null
+      },
+      "method": "j_lens",
+      "backend": "hosted_neuronpedia",
+      "dtype": null,
+      "artifact": {
+        "id": "neuronpedia-hosted:JACOBIAN_LENS",
+        "repository": null,
+        "revision": null,
+        "path": null,
+        "sha256": null,
+        "fit_model_revision": null,
+        "fit_tokenizer_revision": null,
+        "calibration": null
+      },
+      "status": "artifact_available_identity_unknown",
+      "evidence": [
+        {
+          "source": "scripts/jlens_readout.py (summary keys; LENS_TYPES)",
+          "date": "2026-11-10"
+        },
+        {
+          "source": "scripts/export_jlens_depth.py (host_state_provenance)",
+          "date": "2026-08-21"
+        },
+        {
+          "source": "docs/exploratory/method_readiness_20261024.md",
+          "date": "2026-10-24"
+        },
+        {
+          "source": "data/experiments/neuronpedia_evidence/20261110/index.v1.json (record page.jlens.gemma-2-2b-it)",
+          "date": "2026-11-10"
+        },
+        {
+          "source": "data/experiments/neuronpedia_evidence/20261110/index.v1.json (record page.api-doc)",
+          "date": "2026-11-10"
+        }
+      ],
+      "status_note": "Landed lens summaries record no lens artifact repository, revision or hash and no model or tokenizer revision. The host changed its readouts on 2026-07-31 and on 2026-08-14 under identical requests, so landed readouts span up to three instrument eras that no summary field separates. 39 run directories trace_out/*__jlens_gemma-2-2b-it exist at this head. The two host ids returned identical readouts until 2026-07-31; a summary's era is recoverable only from git history. The service was read on 2026-11-10: the lens page exists for this model id and names no lens repository, file, revision or hash; the API reference has no route that describes a lens, and its example meta message has no identity field. A live lens response was not requested."
+    },
+    {
+      "model": {
+        "study_id": "gemma-2-2b",
+        "hf_id": "google/gemma-2-2b",
+        "revision": null
+      },
+      "method": "logit_lens",
+      "backend": "hosted_neuronpedia",
+      "dtype": null,
+      "artifact": {
+        "id": "neuronpedia-hosted:LOGIT_LENS",
+        "repository": null,
+        "revision": null,
+        "path": null,
+        "sha256": null,
+        "fit_model_revision": null,
+        "fit_tokenizer_revision": null,
+        "calibration": null
+      },
+      "status": "artifact_available_identity_unknown",
+      "evidence": [
+        {
+          "source": "scripts/jlens_readout.py (summary keys; LENS_TYPES)",
+          "date": "2026-11-10"
+        },
+        {
+          "source": "scripts/export_jlens_depth.py (host_state_provenance)",
+          "date": "2026-08-21"
+        },
+        {
+          "source": "docs/exploratory/method_readiness_20261024.md",
+          "date": "2026-10-24"
+        }
+      ],
+      "status_note": "A logit lens has no fitted artifact. What is unknown is the hosted model revision and the service's readout convention, which no summary records. One run directory trace_out/*__loglens_gemma-2-2b exists at this head."
+    },
+    {
+      "model": {
+        "study_id": "qwen3-4b",
+        "hf_id": "Qwen/Qwen3-4B",
+        "revision": "1cfa9a7208912126459214e8b04321603b3df60c"
+      },
+      "method": "jpp",
+      "backend": "cpu_transformers",
+      "dtype": null,
+      "artifact": {
+        "id": "neuronpedia/jacobian-lens:qwen3-4b/jpp",
+        "repository": "neuronpedia/jacobian-lens",
+        "revision": "e166deb5ad540932100ef803c8c9bcc2a5453694",
+        "path": "qwen3-4b/jpp/Salesforce-wikitext/Qwen3-4B_jpp_lens.pt",
+        "sha256": "893f7da243ab60d0628548a8c2b3afebaa45afdb1877d1c11521fde53209722d",
+        "fit_model_revision": null,
+        "fit_tokenizer_revision": null,
+        "calibration": null
+      },
+      "status": "artifact_available_identity_unknown",
+      "evidence": [
+        {
+          "source": "data/exploratory/method_sources.v1.json (release.jpp_local_integrity)",
+          "date": "2026-10-15"
+        },
+        {
+          "source": "data/exploratory/jpp_artifact_inspection.v1.json",
+          "date": "2026-10-15"
+        },
+        {
+          "source": "docs/exploratory/lens_fit_provenance_question.md",
+          "date": "2026-11-10"
+        }
+      ],
+      "status_note": "The file's SHA-256 was verified locally. Its embedded provenance holds no fit model revision, tokenizer identity or tokenizer revision (historical_fit_identity: unknown_after_full_embedded_provenance_inspection; transport_authorized: false). The model revision in this row is the study pin, not a known fit revision. No lens comparison was run."
+    },
+    {
+      "model": {
+        "study_id": "qwen3-4b",
+        "hf_id": "Qwen/Qwen3-4B",
+        "revision": "1cfa9a7208912126459214e8b04321603b3df60c"
+      },
+      "method": "j_lens",
+      "backend": "cpu_transformers",
+      "dtype": null,
+      "artifact": {
+        "id": "neuronpedia/jacobian-lens:qwen3-4b/jlens",
+        "repository": "neuronpedia/jacobian-lens",
+        "revision": "e166deb5ad540932100ef803c8c9bcc2a5453694",
+        "path": "qwen3-4b/jlens/Salesforce-wikitext/Qwen3-4B_jacobian_lens.pt",
+        "sha256": "9c94a43ac2db2debbab36acb74480f49a3ac411fb3d7fa8e5461377028e74606",
+        "fit_model_revision": null,
+        "fit_tokenizer_revision": null,
+        "calibration": null
+      },
+      "status": "artifact_available_identity_unknown",
+      "evidence": [
+        {
+          "source": "data/exploratory/method_sources.v1.json (release.files; jlens_checkpoint_inspection)",
+          "date": "2026-10-15"
+        }
+      ],
+      "status_note": "The SHA-256 in this row is the value the repository's LFS pointer advertises. The file was not hashed locally; only the pickle opcodes of its first 131,072 bytes were examined. Fit model and tokenizer revisions are not recorded."
+    },
+    {
+      "model": {
+        "study_id": "gemma-2-2b",
+        "hf_id": "google/gemma-2-2b",
+        "revision": "c5ebcd40d208330abc697524c919956e692655cf"
+      },
+      "method": "ica_lens",
+      "backend": "cpu_transformers",
+      "dtype": null,
+      "artifact": {
+        "id": "sida/icalens-gemma-2-2b-pile10k",
+        "repository": "sida/icalens-gemma-2-2b-pile10k",
+        "revision": null,
+        "path": null,
+        "sha256": null,
+        "fit_model_revision": null,
+        "fit_tokenizer_revision": null,
+        "calibration": null
+      },
+      "status": "artifact_available_identity_unknown",
+      "evidence": [
+        {
+          "source": "michaeldgreenphd/patientwords-ica-lens-paper@aa3b95c9e755e4374f8c9645a064e3f51d96066e: docs/fit-and-publish.md:291",
+          "date": "2026-11-10"
+        },
+        {
+          "source": "michaeldgreenphd/patientwords-ica-lens-paper@aa3b95c9e755e4374f8c9645a064e3f51d96066e: experiments/reconstruction/official/results/gemma2/run.json (resolved.lens)",
+          "date": "2026-11-10"
+        }
+      ],
+      "status_note": "Named as a published basis in the ICA fork. The basis manifest on Hugging Face (layers, fit model revision) was not read: huggingface.co is blocked from development containers. Basis revision, tensor hashes and fit model revision are therefore unknown here. The model revision in this row is the study pin, not a known fit revision."
+    },
+    {
+      "model": {
+        "study_id": null,
+        "hf_id": "openai-community/gpt2",
+        "revision": null
+      },
+      "method": "ica_lens",
+      "backend": "cpu_transformers",
+      "dtype": null,
+      "artifact": {
+        "id": "sida/icalens-gpt2-small-pile10k",
+        "repository": "sida/icalens-gpt2-small-pile10k",
+        "revision": null,
+        "path": null,
+        "sha256": null,
+        "fit_model_revision": null,
+        "fit_tokenizer_revision": null,
+        "calibration": null
+      },
+      "status": "artifact_available_identity_unknown",
+      "evidence": [
+        {
+          "source": "michaeldgreenphd/patientwords-ica-lens-paper@aa3b95c9e755e4374f8c9645a064e3f51d96066e: docs/fit-and-publish.md:290",
+          "date": "2026-11-10"
+        }
+      ],
+      "status_note": "Named as a published basis in the ICA fork. The basis manifest on Hugging Face (layers, fit model revision) was not read: huggingface.co is blocked from development containers. Basis revision, tensor hashes and fit model revision are therefore unknown here. Not a model in the engine registry (scripts/logits_eval.py HF_IDS)."
+    },
+    {
+      "model": {
+        "study_id": null,
+        "hf_id": "Qwen/Qwen3.5-9B-Base",
+        "revision": null
+      },
+      "method": "ica_lens",
+      "backend": "cpu_transformers",
+      "dtype": null,
+      "artifact": {
+        "id": "sida/icalens-qwen3.5-9b-base-pile10k",
+        "repository": "sida/icalens-qwen3.5-9b-base-pile10k",
+        "revision": null,
+        "path": null,
+        "sha256": null,
+        "fit_model_revision": null,
+        "fit_tokenizer_revision": null,
+        "calibration": null
+      },
+      "status": "artifact_available_identity_unknown",
+      "evidence": [
+        {
+          "source": "michaeldgreenphd/patientwords-ica-lens-paper@aa3b95c9e755e4374f8c9645a064e3f51d96066e: docs/fit-and-publish.md:292",
+          "date": "2026-11-10"
+        }
+      ],
+      "status_note": "Named as a published basis in the ICA fork. The basis manifest on Hugging Face (layers, fit model revision) was not read: huggingface.co is blocked from development containers. Basis revision, tensor hashes and fit model revision are therefore unknown here. Not a model in the engine registry (scripts/logits_eval.py HF_IDS)."
+    },
+    {
+      "model": {
+        "study_id": null,
+        "hf_id": "Qwen/Qwen3.5-2B",
+        "revision": null
+      },
+      "method": "ica_lens",
+      "backend": "cpu_transformers",
+      "dtype": null,
+      "artifact": {
+        "id": "sida/icalens-qwen3.5-2b-ultrachat-1m",
+        "repository": "sida/icalens-qwen3.5-2b-ultrachat-1m",
+        "revision": null,
+        "path": null,
+        "sha256": null,
+        "fit_model_revision": null,
+        "fit_tokenizer_revision": null,
+        "calibration": null
+      },
+      "status": "artifact_available_identity_unknown",
+      "evidence": [
+        {
+          "source": "michaeldgreenphd/patientwords-ica-lens-paper@aa3b95c9e755e4374f8c9645a064e3f51d96066e: README.md:53",
+          "date": "2026-11-10"
+        }
+      ],
+      "status_note": "Named as a published basis in the ICA fork. The basis manifest on Hugging Face (layers, fit model revision) was not read: huggingface.co is blocked from development containers. Basis revision, tensor hashes and fit model revision are therefore unknown here. Not a model in the engine registry (scripts/logits_eval.py HF_IDS)."
+    },
+    {
+      "model": {
+        "study_id": "qwen3.5-2b-base",
+        "hf_id": "Qwen/Qwen3.5-2B-Base",
+        "revision": "b1485b2fa6dfa1287294f269f5fb618e03d52d7c"
+      },
+      "method": "ica_lens",
+      "backend": "cpu_transformers",
+      "dtype": null,
+      "artifact": {
+        "id": "neuronpedia/icalens-qwen3.5-2b-pt",
+        "repository": "neuronpedia/icalens-qwen3.5-2b-pt",
+        "revision": null,
+        "path": null,
+        "sha256": null,
+        "fit_model_revision": null,
+        "fit_tokenizer_revision": null,
+        "calibration": null
+      },
+      "status": "artifact_available_identity_unknown",
+      "evidence": [
+        {
+          "source": "michaeldgreenphd/patientwords-ica-lens-paper@aa3b95c9e755e4374f8c9645a064e3f51d96066e: model_framing.json (models.Qwen/Qwen3.5-2B-Base)",
+          "date": "2026-11-10"
+        },
+        {
+          "source": "data/experiments/neuronpedia_evidence/20261110/index.v1.json (record api.source-set.qwen3.5-2b-pt.icalens-res)",
+          "date": "2026-11-10"
+        }
+      ],
+      "status_note": "The ICA fork's framing registry names Qwen/Qwen3.5-2B-Base; the fork names no published basis for it. Neuronpedia's source-set record, read on 2026-11-10, does: the model id qwen3.5-2b-pt exists, its model record names Qwen/Qwen3.5-2B-Base, and its ICA sources (layers 0, 4, 8, 12, 16 and 20, hook blocks.{layer}.hook_resid_post) name the basis repository neuronpedia/icalens-qwen3.5-2b-pt. The status is artifact_available_identity_unknown for that reason, on the same footing as the bases named in the ICA fork. No record read reports the commit of the model behind the hosted set, the commit of the basis repository or a hash, and the repository itself was not read (huggingface.co is blocked from development containers), so its file format, its layer list and its fit model revision are unknown here and no local run is implied. The model revision in this row is the study pin, not a known fit revision. The id qwen3.5-2b-pt was first supplied in the owner's task brief of 2026-11-10 and is recorded as an alias of engine id qwen3.5-2b-base whose checkpoint commit is unverified.",
+      "aliases": [
+        {
+          "namespace": "neuronpedia",
+          "id": "qwen3.5-2b-pt",
+          "verified": false,
+          "note": "the id exists on the service and its model record names Qwen/Qwen3.5-2B-Base (read on 2026-11-10); the checkpoint commit behind the id is not reported"
+        }
+      ]
+    }
+  ]
+}

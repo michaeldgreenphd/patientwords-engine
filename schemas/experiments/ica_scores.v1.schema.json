@@ -1,0 +1,583 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "patientwords.ica-scores/1",
+  "title": "ICA scores payload (kind ica_scores/1)",
+  "description": "Signed scores, squared-coordinate shares and reconstruction error of one family variant under one fixed ICA basis. Structure only, in the keyword subset scripts/frontend_contract_schema.py executes. The payload kind, equality of every fixed statement with the adapter's constants, the limitations list, the capture site, the exact key set of split_leakage_checks and the closed list of words under each key, the dataset file hashes, recomputation of every share from the row's scores, row alignment with the protocol's token ids, completeness of the component list, finiteness and the rule that an undefined share is null (never zero) are enforced by scripts/experiments/adapters/ica.py. An energy share is a squared-coordinate share. It is not a probability and not an importance. Scores are signed as saved and are not comparable across fits, layers or models.",
+  "type": "object",
+  "required": [
+    "kind",
+    "synthetic",
+    "family_id",
+    "variant",
+    "input",
+    "model",
+    "tokenizer",
+    "identity",
+    "basis",
+    "capture",
+    "split_leakage_checks",
+    "execution_path",
+    "rows",
+    "components_complete",
+    "score_definition",
+    "scores",
+    "energy_share",
+    "reconstruction",
+    "annotation_statement",
+    "component_annotations",
+    "limitations"
+  ],
+  "properties": {
+    "kind": {
+      "type": "string"
+    },
+    "synthetic": {
+      "type": "boolean"
+    },
+    "family_id": {
+      "type": "string"
+    },
+    "variant": {
+      "type": "string"
+    },
+    "input": {
+      "type": "object",
+      "required": [
+        "prompt_sha256",
+        "token_sha256"
+      ],
+      "properties": {
+        "prompt_sha256": {
+          "type": "string"
+        },
+        "token_sha256": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "model": {
+      "type": "object",
+      "required": [
+        "hf_id",
+        "revision"
+      ],
+      "properties": {
+        "hf_id": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "tokenizer": {
+      "type": "object",
+      "required": [
+        "id",
+        "revision"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "identity": {
+      "type": "object",
+      "required": [
+        "basis",
+        "activation_dataset",
+        "parity"
+      ],
+      "properties": {
+        "basis": {
+          "type": "string"
+        },
+        "activation_dataset": {
+          "type": "string"
+        },
+        "parity": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "basis": {
+      "type": "object",
+      "required": [
+        "manifest_sha256",
+        "basis_id",
+        "synthetic",
+        "preprocessing_mode",
+        "preprocessing_read_from",
+        "norm_eps",
+        "fit_split",
+        "fit_corpus_id",
+        "seed",
+        "n_components",
+        "artifact_files",
+        "sign_convention",
+        "fit_diagnostics_statement"
+      ],
+      "properties": {
+        "manifest_sha256": {
+          "type": "string"
+        },
+        "basis_id": {
+          "type": "string"
+        },
+        "synthetic": {
+          "type": "boolean"
+        },
+        "preprocessing_mode": {
+          "type": "string"
+        },
+        "preprocessing_read_from": {
+          "type": "string"
+        },
+        "norm_eps": {
+          "type": "number"
+        },
+        "fit_split": {
+          "type": "string"
+        },
+        "fit_corpus_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "seed": {
+          "type": [
+            "integer",
+            "string",
+            "null"
+          ]
+        },
+        "n_components": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer"
+          }
+        },
+        "artifact_files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "path",
+              "sha256"
+            ],
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "sha256": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "sign_convention": {
+          "type": "string"
+        },
+        "fit_diagnostics_statement": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "capture": {
+      "type": "object",
+      "required": [
+        "site",
+        "layer_index_base",
+        "layers",
+        "positions",
+        "activation_site",
+        "layer_indexing",
+        "activation_dataset",
+        "precision"
+      ],
+      "properties": {
+        "site": {
+          "type": "string"
+        },
+        "layer_index_base": {
+          "type": "integer"
+        },
+        "layers": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "positions": {
+          "type": "string"
+        },
+        "activation_site": {
+          "type": "string"
+        },
+        "layer_indexing": {
+          "type": "string"
+        },
+        "activation_dataset": {
+          "type": "object",
+          "required": [
+            "manifest_sha256",
+            "dtype",
+            "sample_count",
+            "file_pins",
+            "samples_sha256",
+            "layer_sha256"
+          ],
+          "properties": {
+            "manifest_sha256": {
+              "type": "string"
+            },
+            "dtype": {
+              "type": "string"
+            },
+            "sample_count": {
+              "type": "integer"
+            },
+            "file_pins": {
+              "type": "string"
+            },
+            "samples_sha256": {
+              "type": "string"
+            },
+            "layer_sha256": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "precision": {
+          "type": "object",
+          "required": [
+            "basis_fit_input_dtype",
+            "scored_activation_dtype",
+            "match",
+            "model_load_precision"
+          ],
+          "properties": {
+            "basis_fit_input_dtype": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "scored_activation_dtype": {
+              "type": "string"
+            },
+            "match": {
+              "type": "boolean"
+            },
+            "model_load_precision": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "split_leakage_checks": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "execution_path": {
+      "type": "object",
+      "required": [
+        "used",
+        "requested",
+        "icalens_importable",
+        "icalens_version",
+        "torch_version",
+        "icalens_import_error",
+        "compute_dtype",
+        "cross_check_by_layer"
+      ],
+      "properties": {
+        "used": {
+          "type": "string"
+        },
+        "requested": {
+          "type": "string"
+        },
+        "icalens_importable": {
+          "type": "boolean"
+        },
+        "icalens_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "torch_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "icalens_import_error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "compute_dtype": {
+          "type": "string"
+        },
+        "cross_check_by_layer": {
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "required": [
+              "other_path",
+              "max_abs_score_difference",
+              "max_abs_reconstruction_difference",
+              "min_score_cosine",
+              "tolerance",
+              "tolerance_scale",
+              "scope"
+            ],
+            "properties": {
+              "other_path": {
+                "type": "string"
+              },
+              "max_abs_score_difference": {
+                "type": "number"
+              },
+              "max_abs_reconstruction_difference": {
+                "type": "number"
+              },
+              "min_score_cosine": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "tolerance": {
+                "type": "number"
+              },
+              "tolerance_scale": {
+                "type": "number"
+              },
+              "scope": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "position",
+          "token_id",
+          "document_index",
+          "dataset_row"
+        ],
+        "properties": {
+          "position": {
+            "type": "integer"
+          },
+          "token_id": {
+            "type": "integer"
+          },
+          "document_index": {
+            "type": "integer"
+          },
+          "dataset_row": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "components_complete": {
+      "type": "boolean"
+    },
+    "score_definition": {
+      "type": "string"
+    },
+    "scores": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "layer",
+          "position",
+          "component",
+          "score",
+          "energy_share"
+        ],
+        "properties": {
+          "layer": {
+            "type": "integer"
+          },
+          "position": {
+            "type": "integer"
+          },
+          "component": {
+            "type": "integer"
+          },
+          "score": {
+            "type": "number"
+          },
+          "energy_share": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "energy_share": {
+      "type": "object",
+      "required": [
+        "label",
+        "definition",
+        "rows"
+      ],
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "definition": {
+          "type": "string"
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "layer",
+              "position",
+              "status",
+              "total_squared"
+            ],
+            "properties": {
+              "layer": {
+                "type": "integer"
+              },
+              "position": {
+                "type": "integer"
+              },
+              "status": {
+                "type": "string"
+              },
+              "total_squared": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "reconstruction": {
+      "type": "object",
+      "required": [
+        "space",
+        "definition",
+        "restore_norm",
+        "rows"
+      ],
+      "properties": {
+        "space": {
+          "type": "string"
+        },
+        "definition": {
+          "type": "string"
+        },
+        "restore_norm": {
+          "type": "string"
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "layer",
+              "position",
+              "l2_error",
+              "relative_l2_error",
+              "cosine",
+              "preprocessed_l2_norm"
+            ],
+            "properties": {
+              "layer": {
+                "type": "integer"
+              },
+              "position": {
+                "type": "integer"
+              },
+              "l2_error": {
+                "type": "number"
+              },
+              "relative_l2_error": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "cosine": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "preprocessed_l2_norm": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "annotation_statement": {
+      "type": "string"
+    },
+    "component_annotations": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

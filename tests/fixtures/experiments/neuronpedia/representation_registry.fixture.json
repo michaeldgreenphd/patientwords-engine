@@ -1,0 +1,296 @@
+{
+  "schema_version": "patientwords.representation-registry/1",
+  "as_of": "2026-11-10",
+  "synthetic": true,
+  "description": "SYNTHETIC. A registry for the toy model of the offline fixtures. The model, the ids, the hashes and the host are invented. The host ends in .invalid, a reserved top-level domain, so a link built from this file reaches no site. It exists so the link path runs under test.",
+  "verification_statuses": [
+    "verified_exact",
+    "alias_unverified_checkpoint",
+    "hosted_identity_unknown",
+    "unverified"
+  ],
+  "verification_meaning": {
+    "verified_exact": "The Neuronpedia ids were read in a primary source and the hosted checkpoint revision is recorded and equals the study revision. The only status that permits a link.",
+    "alias_unverified_checkpoint": "Another id is given for the same checkpoint by the source that the entry's id_source names. No record of the checkpoint revision behind that id was read. An alias alone verifies nothing.",
+    "hosted_identity_unknown": "The engine uses these hosted ids and responses have landed. The engine records no model, dictionary or instrument revision for these responses. The entry's evidence names the records of the service that were read and says that none of them carries a revision, or says that none was read. What answered is therefore not identified by commit.",
+    "unverified": "The representation is named in a source that was read. Its own manifest or page was not read."
+  },
+  "sources_not_read": [],
+  "entries": [
+    {
+      "registry_id": "toy-model.ica-component.fixture-verified",
+      "representation_type": "ica_component",
+      "method": "ica_lens",
+      "model": {
+        "study_id": "toy-model",
+        "hf_id": "fixture/toy-model",
+        "revision": "1111111111111111111111111111111111111111"
+      },
+      "neuronpedia": {
+        "model_id": "toy-model-hosted",
+        "source_set": "toy-ica-set",
+        "source_id": "not_applicable",
+        "id_source": "synthetic fixture; invented ids"
+      },
+      "site": {
+        "capture_site": "block_output",
+        "layer_index_base": 0,
+        "layers": [
+          1
+        ]
+      },
+      "component_id": {
+        "form": "C{index}",
+        "index_kind": "non-negative integer",
+        "source": "synthetic fixture",
+        "count": 4096
+      },
+      "fitted_artifact_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "artifact": {
+        "id": "fixture/toy-ica-basis",
+        "repository": "fixture/toy-ica-basis",
+        "revision": "3333333333333333333333333333333333333333",
+        "fit_model_hf_id": "fixture/toy-model",
+        "fit_model_revision": "1111111111111111111111111111111111111111"
+      },
+      "calibration": "not_applicable",
+      "use": "synthetic_fixture",
+      "label_source": {
+        "name": "fixture_labels",
+        "version": "1",
+        "explanation_type": "fixture_type",
+        "explanation_model": "fixture/explainer",
+        "scorer": "fixture_scorer",
+        "retrieved_utc": "2026-11-10T00:00:00Z"
+      },
+      "url_pattern": {
+        "kind": "component_page",
+        "template": "https://registry-fixture.invalid/{model_id}/{layer}-{source_set}/{component}",
+        "source": "synthetic fixture; no real page has this pattern",
+        "read_utc_date": "2026-11-10"
+      },
+      "verification": {
+        "status": "verified_exact",
+        "hosted_checkpoint_revision": "1111111111111111111111111111111111111111",
+        "evidence": [
+          {
+            "source": "tests/fixtures/experiments/neuronpedia/representation_registry.fixture.json",
+            "date": "2026-11-10",
+            "states": "Synthetic. The hosted revision is set equal to the toy revision by construction."
+          }
+        ],
+        "checked_utc_date": "2026-11-10"
+      },
+      "links_enabled": true,
+      "not_recorded": [],
+      "notes": "SYNTHETIC. The one verified_exact entry, so build_link returns a URL under test."
+    },
+    {
+      "registry_id": "toy-model.ica-component.fixture-alias",
+      "representation_type": "ica_component",
+      "method": "ica_lens",
+      "model": {
+        "study_id": "toy-model",
+        "hf_id": "fixture/toy-model",
+        "revision": "1111111111111111111111111111111111111111"
+      },
+      "neuronpedia": {
+        "model_id": "toy-model-other-name",
+        "source_set": "toy-ica-alias-set",
+        "source_id": "not_applicable",
+        "id_source": "synthetic fixture; invented ids"
+      },
+      "site": {
+        "capture_site": "block_output",
+        "layer_index_base": 0,
+        "layers": [
+          2
+        ]
+      },
+      "component_id": {
+        "form": "C{index}",
+        "index_kind": "non-negative integer",
+        "source": "synthetic fixture"
+      },
+      "fitted_artifact_sha256": null,
+      "artifact": null,
+      "calibration": "not_applicable",
+      "use": "synthetic_fixture",
+      "label_source": {
+        "name": null,
+        "version": null,
+        "explanation_type": null,
+        "explanation_model": null,
+        "scorer": null,
+        "retrieved_utc": null
+      },
+      "url_pattern": {
+        "kind": "component_page",
+        "template": "https://registry-fixture.invalid/{model_id}/{layer}-{source_set}/{component}",
+        "source": "synthetic fixture; no real page has this pattern",
+        "read_utc_date": "2026-11-10"
+      },
+      "verification": {
+        "status": "alias_unverified_checkpoint",
+        "hosted_checkpoint_revision": null,
+        "evidence": [
+          {
+            "source": "tests/fixtures/experiments/neuronpedia/representation_registry.fixture.json",
+            "date": "2026-11-10",
+            "states": "Synthetic. An alias with a recorded URL pattern and no checkpoint revision."
+          }
+        ],
+        "checked_utc_date": "2026-11-10"
+      },
+      "links_enabled": false,
+      "not_recorded": [
+        "/artifact",
+        "/fitted_artifact_sha256",
+        "/label_source/explanation_model",
+        "/label_source/explanation_type",
+        "/label_source/name",
+        "/label_source/retrieved_utc",
+        "/label_source/scorer",
+        "/label_source/version",
+        "/verification/hosted_checkpoint_revision"
+      ],
+      "notes": "SYNTHETIC. An alias at another layer. It has a URL pattern and still gives no link."
+    },
+    {
+      "registry_id": "toy-model.workspace-readout.fixture-no-pattern",
+      "representation_type": "workspace_readout",
+      "method": "logit_lens",
+      "model": {
+        "study_id": "toy-model",
+        "hf_id": "fixture/toy-model",
+        "revision": "1111111111111111111111111111111111111111"
+      },
+      "neuronpedia": {
+        "model_id": "toy-model-hosted",
+        "source_set": "not_applicable",
+        "source_id": "not_applicable",
+        "id_source": "synthetic fixture; invented ids"
+      },
+      "site": {
+        "capture_site": "block_output",
+        "layer_index_base": 0,
+        "layers": [
+          0,
+          1,
+          2
+        ]
+      },
+      "component_id": "not_applicable",
+      "fitted_artifact_sha256": "not_applicable",
+      "artifact": null,
+      "calibration": "not_applicable",
+      "use": "synthetic_fixture",
+      "label_source": {
+        "name": "not_applicable",
+        "version": "not_applicable",
+        "explanation_type": "not_applicable",
+        "explanation_model": "not_applicable",
+        "scorer": "not_applicable",
+        "retrieved_utc": "not_applicable"
+      },
+      "url_pattern": null,
+      "verification": {
+        "status": "verified_exact",
+        "hosted_checkpoint_revision": "1111111111111111111111111111111111111111",
+        "evidence": [
+          {
+            "source": "tests/fixtures/experiments/neuronpedia/representation_registry.fixture.json",
+            "date": "2026-11-10",
+            "states": "Synthetic. Verified by construction, with no URL pattern recorded."
+          }
+        ],
+        "checked_utc_date": "2026-11-10"
+      },
+      "links_enabled": true,
+      "not_recorded": [
+        "/artifact",
+        "/url_pattern"
+      ],
+      "notes": "SYNTHETIC. Verified and without a URL pattern, so the second withheld-link reason is tested."
+    },
+    {
+      "registry_id": "toy-model.transcoder-feature.fixture-set",
+      "representation_type": "transcoder_feature",
+      "method": "attribution_graph",
+      "model": {
+        "study_id": "toy-model",
+        "hf_id": "fixture/toy-model",
+        "revision": "1111111111111111111111111111111111111111"
+      },
+      "neuronpedia": {
+        "model_id": "toy-model-hosted",
+        "source_set": "toy-transcoder-set",
+        "source_id": "not_applicable",
+        "id_source": "synthetic fixture; invented ids"
+      },
+      "site": {
+        "capture_site": null,
+        "layer_index_base": 0,
+        "layers": [
+          0,
+          1,
+          2
+        ]
+      },
+      "component_id": {
+        "form": "{layer}-{source_set}/{index}",
+        "index_kind": "non-negative integer",
+        "source": "synthetic fixture"
+      },
+      "fitted_artifact_sha256": null,
+      "artifact": {
+        "id": "toy-transcoder-set",
+        "repository": null,
+        "revision": null,
+        "fit_model_hf_id": null,
+        "fit_model_revision": null
+      },
+      "calibration": "not_calibrated",
+      "use": "synthetic_fixture",
+      "label_source": {
+        "name": null,
+        "version": null,
+        "explanation_type": null,
+        "explanation_model": null,
+        "scorer": null,
+        "retrieved_utc": null
+      },
+      "url_pattern": null,
+      "verification": {
+        "status": "hosted_identity_unknown",
+        "hosted_checkpoint_revision": null,
+        "evidence": [
+          {
+            "source": "tests/fixtures/experiments/neuronpedia/representation_registry.fixture.json",
+            "date": "2026-11-10",
+            "states": "Synthetic. A source set whose served revision is not recorded."
+          }
+        ],
+        "checked_utc_date": "2026-11-10"
+      },
+      "links_enabled": false,
+      "not_recorded": [
+        "/artifact/fit_model_hf_id",
+        "/artifact/fit_model_revision",
+        "/artifact/repository",
+        "/artifact/revision",
+        "/fitted_artifact_sha256",
+        "/label_source/explanation_model",
+        "/label_source/explanation_type",
+        "/label_source/name",
+        "/label_source/retrieved_utc",
+        "/label_source/scorer",
+        "/label_source/version",
+        "/site/capture_site",
+        "/url_pattern",
+        "/verification/hosted_checkpoint_revision"
+      ],
+      "notes": "SYNTHETIC. The node representation a fixture graph reference names. No graph exists."
+    }
+  ]
+}

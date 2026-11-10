@@ -97,8 +97,8 @@ def main(argv=None):
 
     gen_batches = [b for b in batches if isinstance(b.get("cost_usd"), (int, float))
                    and b["cost_usd"] > 0]
-    # parts the publication hold keeps out (held models, unreleased logits parts: scripts/publication_hold.py)
-    # are not counted until the owner releases them
+    # parts outside the default analysis membership (scripts/results_policy.py) are counted separately, under
+    # the payload's existing key held_trace_summary_parts
     gate = Gate(".")
     trace_parts = 0
     for p in sorted(glob.glob("trace_out/*/batch_summary.part_*.json")):

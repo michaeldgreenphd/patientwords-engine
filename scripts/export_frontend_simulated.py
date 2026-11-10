@@ -133,7 +133,8 @@ parser.add_argument("--steered-stamps", default="",
                          "(owner decision 2026-08-15).")
 parser.add_argument("--models", default=",".join(DEFAULT_MODELS),
                     help="comma-separated circuit-tracer models to merge; a model's "
-                         "trace dir is used only where present (default: active non-held models)")
+                         "trace dir is used only where present (default: the models inside the default "
+                         "analysis membership)")
 parser.add_argument("--preview-models", choices=["base", "all"], default="base",
                     help="'base' publishes only gemma renders for the demo cap (the site "
                          "stays a lightweight preview); 'all' also publishes each other "
@@ -175,12 +176,16 @@ _unknown_steered = STEERED - set(STAMPS)
 if _unknown_steered:
     sys.exit(f"--steered-stamps names stamps absent from --stamps: {sorted(_unknown_steered)}")
 WANT_MODELS = [m.strip() for m in args.models.split(",") if m.strip()]
-# unreleased logits parts are not read (scripts/publication_hold.py); counted in the summary printed below
+# This payload feeds the urgency joins and the statistics, so it follows the analysis membership in force
+# (scripts/results_policy.py; default study-interim/1). Parts outside it are counted in the summary printed
+# below and are public in the results catalogue (scripts/export_results_catalogue.py).
 GATE = Gate(ENGINE)
 _held_wanted = sorted(set(WANT_MODELS) & HELD_MODELS)
 if _held_wanted:
-    sys.exit(f"--models names models held from publication (scripts/publication_hold.py): {_held_wanted}; "
-             "releasing one is a reviewed change to that file")
+    sys.exit(f"--models names models outside the analysis membership this payload follows "
+             f"({GATE.membership}, scripts/results_policy.py): {_held_wanted}. Their results are public in the "
+             "results catalogue (scripts/export_results_catalogue.py); adding one to this payload is a reviewed "
+             "change of membership in data/results_policy/policy.v1.json")
 
 # The render prune reads the working tree. A site checkout that keeps tracked
 # renders off disk (the cloud containers' sparse clone excludes modes/) would
@@ -601,6 +606,7 @@ model_line = ", ".join(f"{mm['id']} ({mm['n_traced']})" for mm in models_meta) o
 print(f"{len(scenarios)} scenarios ({measured_n} measured) across {len(batches)} batch(es) "
       f"-> {out_data} ({withheld_holdout} confirmatory-holdout pairs withheld)")
 print(f"  models: {model_line}")
+print(f"  {GATE.describe()}")
 if GATE.report():
     print(f"  {GATE.report()}")
 print(f"  {copied} interactive renders published (cap {args.max_renders or 'none'}); "

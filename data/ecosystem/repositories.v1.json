@@ -1,0 +1,1341 @@
+{
+  "schema_version": "patientwords.ecosystem/1",
+  "as_of": "2026-11-10",
+  "description": "Repositories, forks and external services of the PatientWords project, with the exact artifact the engine consumes from each and the file that holds its pin. The latest source head of a repository and the pin the engine has executed are separate fields in every entry: a synced fork is not a migrated runtime. Structure is in schemas/ecosystem/repositories.v1.schema.json; vocabularies, commit formats and pin agreement are enforced by scripts/ecosystem_status.py and tests/test_ecosystem_manifest.py. The prose map is docs/ecosystem.md.",
+  "vocabularies": {
+    "group": [
+      "core",
+      "method_fork",
+      "outside_the_seven"
+    ],
+    "consumption_type": [
+      "source_checkout",
+      "installed_distribution",
+      "fitted_artifact",
+      "model_weights",
+      "hosted_service",
+      "generated_files",
+      "none"
+    ],
+    "pointer_kind": [
+      "constraints_line",
+      "json_pointer",
+      "text_contains"
+    ],
+    "head_vs_pin_relation": [
+      "same_repository",
+      "no_execution_pin",
+      "not_executed_by_engine",
+      "pin_is_older_source",
+      "pin_is_separate_distribution"
+    ],
+    "adapter_state": [
+      "active",
+      "manual",
+      "staged",
+      "historical",
+      "added_in_change_set_20261110"
+    ]
+  },
+  "owner_preparation_note": {
+    "date": "2026-11-10",
+    "status": "owner-reported, not re-derived, except where an entry's upstream_relation.basis says what was verified",
+    "statement": "Before the 2026-11-10 change set the owner synced the five method forks with their upstreams: patientwords-interp-engine received 55 upstream commits, patientwords-inspect_petri 13, patient-words-jpp_lens merged one upstream README-only change and keeps its local commits, and patientwords-ica-lens-paper and jacobian-lens-patientwords were already current. At the recorded heads no upstream commit is missing from any of the five.",
+    "scope": "A source sync only. No runtime test, package upgrade, constraints.txt change or lock change was part of it. docs/upgrade_checklist.md is the procedure for a runtime change."
+  },
+  "repositories": [
+    {
+      "id": "patientwords-engine",
+      "group": "core",
+      "url": "https://github.com/michaeldgreenphd/patientwords-engine",
+      "role": "Python research engine. It generates paired stimuli, measures next-token behaviour and assistant responses, analyses the results and exports data and renders to the site.",
+      "visibility": {
+        "value": "public",
+        "basis": "documented: AGENTS.md states that both repositories are public"
+      },
+      "fork_of": null,
+      "holds_this_manifest": true,
+      "default_sibling_path": "../patientwords-engine",
+      "path_override": {
+        "cli_flags": [
+          "scripts/export_frontend_simulated.py --engine",
+          "scripts/publication_release.py --repo"
+        ],
+        "environment_variables": [
+          "PW_ENG (scripts/find_grammar_2x2.py only; default /home/user/patientwords-engine)"
+        ],
+        "note": "The default sibling path is the engine as seen from the site checkout. ecosystem_status.py uses the checkout that holds this manifest and takes no path for it."
+      },
+      "recorded_head": {
+        "commit": "d8d0855d976b62a1a98b8cceab24a407673d7610",
+        "recorded_utc_date": "2026-11-10",
+        "source": "owner anchor; confirmed equal to the local branch `main` with git rev-parse on 2026-11-10",
+        "note": "A manifest stored in this repository cannot record the commit that contains it. The anchor is the head the 2026-11-10 change set started from. git ls-remote on 2026-11-10 returned 61b33f964425 for refs/heads/main: the default branch received commits after the anchor. Their number was not counted."
+      },
+      "upstream_relation": null,
+      "licence": {
+        "code": "MIT (LICENSE)",
+        "data": "DATA_LICENSE.md: CC BY 4.0 for project-authored data, with the exclusions that file lists",
+        "notice_obligations": "Keep the copyright and permission notice with redistributed code. Third-party data restrictions are in DATA_LICENSE.md and docs/open_results_policy.md."
+      },
+      "maintenance": "Maintained by the owner. Agents open pull requests; the owner merges (AGENTS.md, PR review).",
+      "entry_points": [
+        "console commands medlang-compare, medlang-batch-eval, medlang-evaluate, medlang-generate (pyproject.toml)",
+        "scripts/*.py, indexed with status and writer in scripts/README.md",
+        "push-to-run CI lanes fired only through scripts/fire_trigger.py (AGENTS.md lane table)",
+        "python -m scripts.petri_audit.cli",
+        "python -m scripts.experiments.cli (offline experiment interface, added 2026-11-10)"
+      ],
+      "environment": {
+        "python": "^3.10 declared in pyproject.toml; measurement lanes run 3.11; the Petri lane runs 3.12.3",
+        "lock_or_constraints": [
+          "constraints.txt (measurement lanes)",
+          "docs/framework/petri_environment.lock.json (Petri lane)",
+          "scripts/boundary_client/requirements.lock (synthetic boundary check, Python 3.13)"
+        ]
+      },
+      "tests_and_ci": {
+        "tests": "pytest suite under tests/. Baseline at the recorded head on 2026-11-10, Python 3.12.3: 6506 passed, 4 failed, 20 skipped in 712 s. The four failures are in tests/test_action_pilot.py (docs/ecosystem.md, finding 2).",
+        "ci": "No pull-request pytest or ruff workflow (verify.md). The 13 workflows are measurement and operations lanes.",
+        "lint": "ruff, line length 120, rules E4 E7 E9 F (pyproject.toml)"
+      },
+      "consumed_by_engine": [
+        {
+          "type": "none",
+          "artifact": "This is the engine itself.",
+          "pins": [],
+          "note": null
+        }
+      ],
+      "engine_writes": [],
+      "head_vs_pin": {
+        "latest_source_head": "d8d0855d976b62a1a98b8cceab24a407673d7610",
+        "tested_execution_pin": null,
+        "relation": "same_repository",
+        "note": "There is no separate pin. Each CI-produced summary records the engine commit it ran at (`engine_sha` in its environment block) where the producing script writes one."
+      },
+      "source_facts": [],
+      "adapters": [],
+      "active_vs_historical": "Active. `trace_out/` summaries and `data/simulated/` batches are append-only measurements. Dated reports under docs/ describe their recorded revisions. scripts/README.md marks each script live, operator tool, one-off and done, or staged.",
+      "dependencies": [
+        "patientwords (export target and paired checks)",
+        "patientwords-traces (render consumer)",
+        "external_services: neuronpedia, huggingface_hub, pypi"
+      ]
+    },
+    {
+      "id": "patientwords",
+      "group": "core",
+      "url": "https://github.com/michaeldgreenphd/patientwords",
+      "role": "Public static research gallery. It displays committed measurements and renders exported by the engine. Pages fetch local JSON; there is no live backend.",
+      "visibility": {
+        "value": "public",
+        "basis": "documented: AGENTS.md states that both repositories are public"
+      },
+      "fork_of": null,
+      "holds_this_manifest": false,
+      "head_moves_with_operations": true,
+      "default_sibling_path": "../patientwords",
+      "path_override": {
+        "cli_flags": [
+          "--site on most engine scripts that read or write the site (default ../patientwords)",
+          "--frontend on scripts/export_frontend_simulated.py, scripts/urgency_shift.py and scripts/pab_tier_scenario.py",
+          "scripts/ecosystem_status.py --path patientwords=DIR"
+        ],
+        "environment_variables": [
+          "PW_SITE_ROOT (read by tests only: tests/test_shared_conventions.py, tests/test_doc_paths.py, tests/test_claim_check.py, tests/test_specialty_map.py)",
+          "PW_FE (scripts/find_grammar_2x2.py only)"
+        ],
+        "note": "No script under scripts/, medlang_circuits/ or pilot/ reads PW_SITE_ROOT. Scripts take --site. Most defaults are relative to the current directory, so they are correct only when run from the engine root."
+      },
+      "recorded_head": {
+        "commit": "b7da45303be3057c5993d1bb192219827d1acda9",
+        "recorded_utc_date": "2026-11-10",
+        "source": "owner anchor; confirmed equal to the local checkout HEAD with git rev-parse on 2026-11-10",
+        "note": "git ls-remote on 2026-11-10 returned f1504ce95b54 for refs/heads/main: the default branch received commits after the anchor. Their number was not counted."
+      },
+      "upstream_relation": null,
+      "licence": {
+        "code": "MIT (LICENSE)",
+        "data": "DATA_LICENSE.md: CC BY 4.0 for the published data and renders, with the exclusions that file lists",
+        "notice_obligations": "Attribution as described in CITATION.cff. Neuronpedia content and model weights are not covered by the data licence."
+      },
+      "maintenance": "Maintained by the owner. The engine owns generation, measurement, statistics and exports; this repository presents them.",
+      "entry_points": [
+        "index.html, methods.html and the section index.html pages",
+        "simulated-scenarios/scenario.html?sim=<display index>[&model=<id>]",
+        "results/index.html (results catalogue page, added 2026-11-10)"
+      ],
+      "environment": {
+        "python": "none: no build system, Node dependency, framework or Python source (site AGENTS.md)",
+        "lock_or_constraints": []
+      },
+      "tests_and_ci": {
+        "tests": "none of its own",
+        "ci": ".github/workflows/site_checks.yml runs the engine's scripts/validate_frontend_contract.py (without --strict) and scripts/check_pages.py against a sparse engine checkout of scripts, data, ops and docs, at the engine branch of the same name, else engine main.",
+        "lint": "none"
+      },
+      "consumed_by_engine": [
+        {
+          "type": "generated_files",
+          "artifact": "data/*.json payloads the engine itself wrote, read back by later steps (scripts/urgency_shift.py, scripts/embed_scenario_joins.py, scripts/export_traces_site.py, scripts/claim_check.py, scripts/validate_frontend_contract.py)",
+          "pins": [],
+          "note": "No pin. The engine reads whatever the sibling checkout holds."
+        },
+        {
+          "type": "source_checkout",
+          "artifact": "page HTML read by scripts/check_pages.py, scripts/claim_check.py and scripts/extract_site_text.py",
+          "pins": [],
+          "note": "No pin. Site CI pairs the two repositories by branch name, not by commit."
+        }
+      ],
+      "engine_writes": [
+        "data/*.json payloads and modes/ renders, through the publish chain in .claude/skills/publish-site-data/SKILL.md; the writer table is in the site's docs/agent_reference.md"
+      ],
+      "head_vs_pin": {
+        "latest_source_head": "b7da45303be3057c5993d1bb192219827d1acda9",
+        "tested_execution_pin": null,
+        "relation": "no_execution_pin",
+        "note": "Nothing in the engine pins a site commit. The synthetic boundary receipt (docs/exploratory/frontend_boundary_receipt.json) names site head 6bfd860 and a dirty engine tree at ef22c7b9; it is a dated record, not a pin."
+      },
+      "source_facts": [],
+      "adapters": [
+        {
+          "path": "scripts/export_frontend_simulated.py",
+          "state": "active"
+        },
+        {
+          "path": "scripts/validate_frontend_contract.py",
+          "state": "active"
+        },
+        {
+          "path": "scripts/check_pages.py",
+          "state": "active"
+        },
+        {
+          "path": "scripts/claim_check.py",
+          "state": "active"
+        },
+        {
+          "path": "scripts/contracts/simulated_scenarios.v1.schema.json",
+          "state": "active"
+        },
+        {
+          "path": "scripts/check_frontend_boundary.py",
+          "state": "manual"
+        }
+      ],
+      "active_vs_historical": "Active. The payload data/simulated_scenarios.json was last rebuilt by the exporter on 2026-08-29 and lists four models; the exporter's default model list has grown since. SITE_COPY_OUTLINE.md is a historical working copy. docs/boundary-check.yml.example is an inactive workflow proposal.",
+      "dependencies": [
+        "patientwords-engine (all data, renders and both CI checkers)",
+        "patientwords-traces (link target for trace_url)"
+      ]
+    },
+    {
+      "id": "patientwords-ica-lens-paper",
+      "group": "method_fork",
+      "url": "https://github.com/michaeldgreenphd/patientwords-ica-lens-paper",
+      "role": "Owner fork of the ICA Lens paper repository and its installable library `icalens`. Source for the ActivationDataset format and the scoring equations an ICA adapter must match.",
+      "visibility": {
+        "value": "public",
+        "basis": "not documented in the engine; the fork and its upstream answered git ls-remote on 2026-11-10, which does not by itself prove anonymous access from this environment"
+      },
+      "fork_of": "https://github.com/liusida/ica-lens-paper",
+      "holds_this_manifest": false,
+      "default_sibling_path": "../patientwords-ica-lens-paper",
+      "path_override": {
+        "cli_flags": [
+          "scripts/ecosystem_status.py --root DIR",
+          "scripts/ecosystem_status.py --path patientwords-ica-lens-paper=DIR"
+        ],
+        "environment_variables": [],
+        "note": "No engine script reads this checkout. The sibling path is a convention for the status command only."
+      },
+      "recorded_head": {
+        "commit": "aa3b95c9e755e4374f8c9645a064e3f51d96066e",
+        "recorded_utc_date": "2026-11-10",
+        "source": "owner anchor; confirmed equal to the local clone HEAD with git rev-parse on 2026-11-10"
+      },
+      "upstream_relation": {
+        "upstream_url": "https://github.com/liusida/ica-lens-paper",
+        "ahead": 0,
+        "behind": 0,
+        "as_of": "2026-11-10",
+        "basis": "verified: git ls-remote <url> HEAD, run 2026-11-10 for this manifest returned aa3b95c9e755 for both the fork and the upstream",
+        "note": "Owner-reported: already current before the 2026-11-10 preparation. The fork has no commit of its own."
+      },
+      "licence": {
+        "code": "MIT (LICENSE: Sida Liu and Feijiang Han)",
+        "data": "The licence of the released lens weights and fitting corpora is not stated in the checkout.",
+        "notice_obligations": "Copied code carries the MIT notice. Code derived from src/icalens/_fastica.py also carries the FastICA_torch notice in THIRD_PARTY_NOTICES.md (Richard Hakim, MIT). Cite arXiv:2606.11722 and state the version cited; the README citation block is the v1 title."
+      },
+      "maintenance": "Maintained upstream by the paper authors; the head commit is dated 2026-11-10. The fork carries no local change.",
+      "entry_points": [
+        "Python API: icalens.ICALens (fit, transform, save, load) and ActivationDataset",
+        "CLI `icalens fit activations|text|chat`, `icalens capture` (all require CUDA)"
+      ],
+      "environment": {
+        "python": ">=3.10 (pyproject.toml)",
+        "lock_or_constraints": [
+          "uv.lock",
+          "pyproject.toml pins transformers==5.14.1 exactly, equal to the engine's constraints.txt pin"
+        ]
+      },
+      "tests_and_ci": {
+        "tests": "tests/ with 28 test files on synthetic data. Not run for this manifest: no interpreter in the dev container has torch or safetensors.",
+        "ci": ".github/workflows/release.yml only (builds and publishes to PyPI on a GitHub release). No workflow runs tests.",
+        "lint": "ruff and mypy declared as dev tools; no workflow runs them"
+      },
+      "consumed_by_engine": [
+        {
+          "type": "none",
+          "artifact": "Nothing is consumed today: no icalens distribution, released basis or model weights are installed, pinned or downloaded by the engine.",
+          "pins": [],
+          "note": "The 2026-11-10 change set adds an optional offline adapter, scripts/experiments/adapters/ica.py (payload kind ica_scores/1). It applies a saved basis with numpy and uses `icalens` as the reference path only where that package imports. No icalens version is pinned in constraints.txt, and no engine lane installs it. The adapter is exercised on synthetic fixtures only."
+        }
+      ],
+      "engine_writes": [],
+      "head_vs_pin": {
+        "latest_source_head": "aa3b95c9e755e4374f8c9645a064e3f51d96066e",
+        "tested_execution_pin": null,
+        "relation": "not_executed_by_engine",
+        "note": "No engine lane has executed icalens. A fixture test of the adapter is not evidence of parity with icalens on a real model. Pin an icalens version here before any run that imports it."
+      },
+      "source_facts": [
+        {
+          "name": "icalens version declared by the source",
+          "value": "0.4.0",
+          "file": "pyproject.toml",
+          "text": "version = \"0.4.0\""
+        },
+        {
+          "name": "exact transformers pin",
+          "value": "5.14.1",
+          "file": "pyproject.toml",
+          "text": "\"transformers==5.14.1\""
+        }
+      ],
+      "adapters": [
+        {
+          "path": "scripts/experiments/adapters/ica.py",
+          "state": "added_in_change_set_20261110"
+        },
+        {
+          "path": "scripts/experiments/activation_dataset.py",
+          "state": "added_in_change_set_20261110"
+        }
+      ],
+      "active_vs_historical": "Active upstream. Commit c4f3528 (2026-09-29) replaced the arXiv v1 implementation with v2 and removed the v1 layout. notes/naming.md lists planned lens names that do not match the released ids.",
+      "dependencies": [
+        "external_services: huggingface_hub (published lenses `sida/icalens-*`; not read by the engine)"
+      ]
+    },
+    {
+      "id": "patient-words-jpp_lens",
+      "group": "method_fork",
+      "url": "https://github.com/michaeldgreenphd/patient-words-jpp_lens",
+      "role": "Owner fork of the J++ Lens repository. The owner added `src/lens_interop/`, a lens interchange contract that verifies an artifact by hash and refuses transport when the fit identity is unknown.",
+      "visibility": {
+        "value": "public",
+        "basis": "not documented in the engine; answered git ls-remote on 2026-11-10"
+      },
+      "fork_of": "https://github.com/safety-research/jpp_lens",
+      "holds_this_manifest": false,
+      "default_sibling_path": "../patient-words-jpp_lens",
+      "path_override": {
+        "cli_flags": [
+          "scripts/ecosystem_status.py --root DIR",
+          "scripts/ecosystem_status.py --path patient-words-jpp_lens=DIR"
+        ],
+        "environment_variables": [],
+        "note": "tests/manual/exploratory_bridge.py imports `lens_interop` from a checkout the caller names and refuses when the imported file is not that checkout's src/lens_interop/artifact.py."
+      },
+      "recorded_head": {
+        "commit": "e74e722899666a71969713b087e8f606b342e122",
+        "recorded_utc_date": "2026-11-10",
+        "source": "owner anchor; confirmed equal to the local clone HEAD with git rev-parse on 2026-11-10"
+      },
+      "upstream_relation": {
+        "upstream_url": "https://github.com/safety-research/jpp_lens",
+        "ahead": 7,
+        "behind": 0,
+        "as_of": "2026-11-10",
+        "basis": "verified in the local clone, which holds full history (13 commits): the upstream tip d7efc0de372e, read with git ls-remote on 2026-11-10, is an ancestor of the fork head, and git rev-list --count d7efc0de..HEAD is 7 (five owner commits of 2026-10-15 and two merge commits)",
+        "note": "Owner-reported: the 2026-11-10 preparation merged one upstream README-only change and kept the local commits. pyproject.toml and README.md still name https://github.com/koayon/jpp_lens, which did not answer an anonymous git ls-remote on 2026-11-10."
+      },
+      "licence": {
+        "code": "Apache-2.0 (LICENSE; NOTICE: Copyright 2026 Kola Ayonrinde)",
+        "data": "data/jlens/ evaluation data comes from anthropics/jacobian-lens (Apache-2.0), per NOTICE",
+        "notice_obligations": "Redistribution keeps LICENSE and NOTICE. NOTICE records that src/jlens/ is vendored from anthropics/jacobian-lens at commit 581d398613e5 and that the LRP rules are adapted from the R-Lens of Camila Blank and Agam Bhatia. No upstream implementation is copied into the engine."
+      },
+      "maintenance": "Upstream is maintained by its authors. The fork's added module is maintained by the owner and has no CI.",
+      "entry_points": [
+        "python -m lens_interop --manifest PATH [--artifact PATH --expected-model ID]",
+        "python -m lens_interop --inspect PATH --sha256 HEX",
+        "scripts/jpp_cli.py and scripts/quickstart.py (upstream pipeline; need a model)"
+      ],
+      "environment": {
+        "python": ">=3.12 (pyproject.toml)",
+        "lock_or_constraints": [
+          "uv.lock",
+          "pyproject.toml pins every dependency exactly, including transformers==5.14.1"
+        ]
+      },
+      "tests_and_ci": {
+        "tests": "src/lens_interop/tests/test_manifest.py (needs only pytest) and test_artifact.py (skipped without torch). Not run for this manifest.",
+        "ci": "none: the repository has no .github directory, and .gitignore lists .github/workflows/tests.yml",
+        "lint": "none run automatically"
+      },
+      "consumed_by_engine": [
+        {
+          "type": "fitted_artifact",
+          "artifact": "released Qwen3-4B J++ lens, Hugging Face `neuronpedia/jacobian-lens`, path qwen3-4b/jpp/Salesforce-wikitext/Qwen3-4B_jpp_lens.pt",
+          "pins": [
+            {
+              "name": "artifact sha256",
+              "value": "893f7da243ab60d0628548a8c2b3afebaa45afdb1877d1c11521fde53209722d",
+              "pointer_file": "data/exploratory/method_sources.v1.json",
+              "pointer": {
+                "kind": "json_pointer",
+                "pointer": "/release/jpp_local_integrity/sha256"
+              },
+              "how_to_read": "JSON key release.jpp_local_integrity.sha256"
+            },
+            {
+              "name": "Hugging Face repository revision",
+              "value": "e166deb5ad540932100ef803c8c9bcc2a5453694",
+              "pointer_file": "data/exploratory/method_sources.v1.json",
+              "pointer": {
+                "kind": "json_pointer",
+                "pointer": "/release/revision"
+              },
+              "how_to_read": "JSON key release.revision"
+            },
+            {
+              "name": "fit identity",
+              "value": "unknown_after_full_embedded_provenance_inspection",
+              "pointer_file": "data/exploratory/method_sources.v1.json",
+              "pointer": {
+                "kind": "json_pointer",
+                "pointer": "/release/jpp_local_integrity/historical_fit_identity"
+              },
+              "how_to_read": "JSON key release.jpp_local_integrity.historical_fit_identity"
+            },
+            {
+              "name": "transport authorized",
+              "value": false,
+              "pointer_file": "data/exploratory/method_sources.v1.json",
+              "pointer": {
+                "kind": "json_pointer",
+                "pointer": "/release/jpp_local_integrity/transport_authorized"
+              },
+              "how_to_read": "JSON key release.jpp_local_integrity.transport_authorized"
+            }
+          ],
+          "note": "Recorded and inspected, never used in a measurement. The file's bytes are identified by hash; the model and tokenizer revisions it was fitted on are unknown, so `lens_interop` refuses to load it for transport."
+        },
+        {
+          "type": "source_checkout",
+          "artifact": "`lens_interop` imported by tests/manual/exploratory_bridge.py (a manual script on synthetic tensors; needs torch)",
+          "pins": [
+            {
+              "name": "fork commit in the dated audit receipt",
+              "value": "93f02cd6c27db765abb127f20eff656bb5d27340",
+              "pointer_file": "data/exploratory/method_sources.v1.json",
+              "pointer": {
+                "kind": "json_pointer",
+                "pointer": "/repositories/jpp/fork_commit"
+              },
+              "how_to_read": "JSON key repositories.jpp.fork_commit"
+            }
+          ],
+          "note": "The receipt is dated 2026-10-15 and predates the five interop commits. It is an audit record, not an execution pin. Nothing pins the commit the bridge runs against."
+        }
+      ],
+      "engine_writes": [],
+      "head_vs_pin": {
+        "latest_source_head": "e74e722899666a71969713b087e8f606b342e122",
+        "tested_execution_pin": null,
+        "relation": "no_execution_pin",
+        "note": "No engine measurement has executed this repository's code. The only machine-readable commit on record (93f02cd6, 2026-10-15) is eight commits behind the fork head (git rev-list --count)."
+      },
+      "source_facts": [
+        {
+          "name": "vendored J-Lens commit named in NOTICE",
+          "value": "581d398613e5602a5af361e1c34d3a92ea82ba8e",
+          "file": "NOTICE",
+          "text": "581d398613e5602a5af361e1c34d3a92ea82ba8e"
+        },
+        {
+          "name": "exact transformers pin",
+          "value": "5.14.1",
+          "file": "pyproject.toml",
+          "text": "\"transformers==5.14.1\""
+        }
+      ],
+      "adapters": [
+        {
+          "path": "tests/manual/exploratory_bridge.py",
+          "state": "manual"
+        },
+        {
+          "path": "scripts/exploratory_methods.py",
+          "state": "active"
+        },
+        {
+          "path": "data/exploratory/jpp_artifact_inspection.v1.json",
+          "state": "historical"
+        }
+      ],
+      "active_vs_historical": "The interchange module is active and hand-tested. data/exploratory/method_sources.v1.json and the other data/exploratory receipts are dated and byte-pinned; they are not edited to follow the fork. The draft question to the lens publisher about the fit revisions (docs/exploratory/lens_fit_provenance_question.md) is unsent.",
+      "dependencies": [
+        "jacobian-lens-patientwords (vendored source at 581d398613e5)",
+        "external_services: huggingface_hub (released lens files), neuronpedia (hosted lens types)"
+      ]
+    },
+    {
+      "id": "patientwords-interp-engine",
+      "group": "method_fork",
+      "url": "https://github.com/michaeldgreenphd/patientwords-interp-engine",
+      "role": "Owner fork of interp-engine, the interpretability runtime behind the engine's depth and verify modes. The engine installs the PyPI distribution, not this source.",
+      "visibility": {
+        "value": "public",
+        "basis": "not documented in the engine; answered git ls-remote on 2026-11-10"
+      },
+      "fork_of": "https://github.com/decoderesearch/interp-engine",
+      "holds_this_manifest": false,
+      "default_sibling_path": "../patientwords-interp-engine",
+      "path_override": {
+        "cli_flags": [
+          "scripts/ecosystem_status.py --root DIR",
+          "scripts/ecosystem_status.py --path patientwords-interp-engine=DIR"
+        ],
+        "environment_variables": [],
+        "note": "No engine script reads this checkout."
+      },
+      "recorded_head": {
+        "commit": "2afe000da14f1fff8b9c611665f7fe343f523dd0",
+        "recorded_utc_date": "2026-11-10",
+        "source": "owner anchor; confirmed equal to the local clone HEAD with git rev-parse on 2026-11-10"
+      },
+      "upstream_relation": {
+        "upstream_url": "https://github.com/decoderesearch/interp-engine",
+        "ahead": 0,
+        "behind": 0,
+        "as_of": "2026-11-10",
+        "basis": "verified: git ls-remote <url> HEAD, run 2026-11-10 for this manifest returned 2afe000da14f for both the fork and the upstream",
+        "note": "Owner-reported, not re-derived: the 2026-11-10 preparation brought 55 upstream commits into the fork. The local clone is depth 1, so the count cannot be checked here."
+      },
+      "licence": {
+        "code": "Apache-2.0 (LICENSE; pyproject.toml). No NOTICE file.",
+        "data": "not applicable",
+        "notice_obligations": "Redistribution of source keeps the Apache-2.0 licence text. Installing the PyPI distribution copies no source into the engine."
+      },
+      "maintenance": "Maintained upstream (decoderesearch); release v1.14.3 is dated 2026-10-27. The fork carries no local commit at the recorded head.",
+      "entry_points": [
+        "load_model, sync_model, layer_logits, generate_stream (the names the engine imports)",
+        "capture, steer, generate_with_lens and the vLLM backends (not used by the engine)"
+      ],
+      "environment": {
+        "python": ">=3.11,<3.14 (pyproject.toml); the engine's lane installs it on Python 3.11",
+        "lock_or_constraints": [
+          "uv.lock (the fork's own; resolves transformers 5.16.1)",
+          "engine constraints.txt (the pin the engine runs: interp-engine==1.5.1, transformers==5.14.1, torch==2.13.0)"
+        ]
+      },
+      "tests_and_ci": {
+        "tests": "tests/ (109 directory entries) with markers gpu, xl, hub and multigpu. Not run for this manifest.",
+        "ci": ".github/workflows/engine-tests.yml runs the CPU subset and a dependency-floor job; also comparison.yml, validator-tests.yml, visualizer-tests.yml, codeql.yml, release.yml",
+        "lint": "per the fork's own configuration; not inspected"
+      },
+      "consumed_by_engine": [
+        {
+          "type": "installed_distribution",
+          "artifact": "interp-engine==1.5.1 from PyPI, installed with `pip install -c constraints.txt interp-engine` in .github/workflows/logits_evaluation.yml for modes depth and verify",
+          "pins": [
+            {
+              "name": "interp-engine",
+              "value": "1.5.1",
+              "pointer_file": "constraints.txt",
+              "pointer": {
+                "kind": "constraints_line",
+                "package": "interp-engine"
+              },
+              "how_to_read": "the line `interp-engine==<version>`"
+            },
+            {
+              "name": "transformers",
+              "value": "5.14.1",
+              "pointer_file": "constraints.txt",
+              "pointer": {
+                "kind": "constraints_line",
+                "package": "transformers"
+              },
+              "how_to_read": "the line `transformers==<version>`"
+            },
+            {
+              "name": "torch",
+              "value": "2.13.0",
+              "pointer_file": "constraints.txt",
+              "pointer": {
+                "kind": "constraints_line",
+                "package": "torch"
+              },
+              "how_to_read": "the line `torch==<version>`"
+            },
+            {
+              "name": "einops",
+              "value": "0.8.1",
+              "pointer_file": "constraints.txt",
+              "pointer": {
+                "kind": "constraints_line",
+                "package": "einops"
+              },
+              "how_to_read": "the line `einops==<version>`"
+            }
+          ],
+          "note": "The installed distribution is not the fork source. The fork source declares version 1.14.3. A landed summary records only `interp_engine.__version__`, which cannot distinguish a PyPI wheel from a fork commit that keeps the same version number."
+        }
+      ],
+      "engine_writes": [],
+      "head_vs_pin": {
+        "latest_source_head": "2afe000da14f1fff8b9c611665f7fe343f523dd0",
+        "tested_execution_pin": "interp-engine==1.5.1 (PyPI distribution)",
+        "relation": "pin_is_separate_distribution",
+        "note": "Source declares 1.14.3; the engine runs 1.5.1. The 2026-11-10 source sync changed neither constraints.txt nor any run. The offline test doubles for interp_engine keep passing under any version, so they are not evidence for an upgrade."
+      },
+      "source_facts": [
+        {
+          "name": "version declared by the fork source",
+          "value": "1.14.3",
+          "file": "pyproject.toml",
+          "text": "version = \"1.14.3\""
+        },
+        {
+          "name": "Python requirement",
+          "value": ">=3.11,<3.14",
+          "file": "pyproject.toml",
+          "text": "requires-python = \">=3.11,<3.14\""
+        }
+      ],
+      "adapters": [
+        {
+          "path": "scripts/depth_probe.py",
+          "state": "active"
+        },
+        {
+          "path": "scripts/verify_probs.py",
+          "state": "active"
+        },
+        {
+          "path": "scripts/logits_eval.py",
+          "state": "active"
+        },
+        {
+          "path": "scripts/backend_agreement.py",
+          "state": "active"
+        },
+        {
+          "path": "docs/interp_engine_assessment.md",
+          "state": "historical"
+        }
+      ],
+      "active_vs_historical": "The pin and both adapter scripts are active. docs/interp_engine_assessment.md is a dated assessment of fork commit 74716092 (package 1.5.1); its statements about validator coverage do not hold at the recorded head. scripts/activation_patch.py uses transformer-lens, not interp-engine. medlang_circuits/steering.py calls the hosted Neuronpedia API, not interp-engine.",
+      "dependencies": [
+        "external_services: pypi (the installed distribution), huggingface_hub (model weights at pinned revisions)"
+      ]
+    },
+    {
+      "id": "patientwords-inspect_petri",
+      "group": "method_fork",
+      "url": "https://github.com/michaeldgreenphd/patientwords-inspect_petri",
+      "role": "Owner fork of inspect_petri, the conversation-audit harness. The engine's Petri lane drives it with its own scripted controller and exports transcripts and run manifests.",
+      "visibility": {
+        "value": "public",
+        "basis": "CI installs it anonymously by git URL (.github/workflows/petri_audit.yml); answered git ls-remote on 2026-11-10"
+      },
+      "fork_of": "https://github.com/meridianlabs-ai/inspect_petri",
+      "holds_this_manifest": false,
+      "default_sibling_path": "../patientwords-inspect_petri",
+      "path_override": {
+        "cli_flags": [
+          "scripts/ecosystem_status.py --root DIR",
+          "scripts/ecosystem_status.py --path patientwords-inspect_petri=DIR",
+          "python -m scripts.petri_audit.cli verify-lock --lock PATH (a candidate lock file; not a checkout path)"
+        ],
+        "environment_variables": [],
+        "note": "No engine script reads a local checkout. CI installs the harness from the git URL at the locked commit."
+      },
+      "recorded_head": {
+        "commit": "de5dad81b9af711ff1680fff2c7c849c33c1c429",
+        "recorded_utc_date": "2026-11-10",
+        "source": "owner anchor; confirmed equal to the local clone HEAD with git rev-parse on 2026-11-10"
+      },
+      "upstream_relation": {
+        "upstream_url": "https://github.com/meridianlabs-ai/inspect_petri",
+        "ahead": 0,
+        "behind": 0,
+        "as_of": "2026-11-10",
+        "basis": "verified: git ls-remote <url> HEAD, run 2026-11-10 for this manifest returned de5dad81b9af for both the fork and the upstream",
+        "note": "Owner-reported, not re-derived: the 2026-11-10 preparation brought 13 upstream commits into the fork. The local clone is depth 1, so the count and the locked commit e199ec1a cannot be read here."
+      },
+      "licence": {
+        "code": "MIT (LICENSE: 2025 Kai Fronsdal, 2026 Meridian Labs). No NOTICE file.",
+        "data": "not applicable",
+        "notice_obligations": "Copied code carries the MIT notice. The engine installs the package and copies no source."
+      },
+      "maintenance": "Maintained upstream (Meridian Labs); release 3.1.1, head commit dated 2026-11-09. The fork carries no local commit at the recorded head.",
+      "entry_points": [
+        "inspect_petri.audit_solver, target_agent, select_timeline",
+        "inspect_petri.target.controller and ResponseOutput"
+      ],
+      "environment": {
+        "python": ">=3.12 (pyproject.toml); the engine's lock records 3.12.3",
+        "lock_or_constraints": [
+          "uv.lock (the fork's own; resolves inspect-ai 0.3.276 and inspect-scout 0.5.3)",
+          "docs/framework/petri_environment.lock.json (the engine's lock of record)"
+        ]
+      },
+      "tests_and_ci": {
+        "tests": "tests/ run with `uv run pytest`. The engine's lock records 737 passed and 1 failed (classified environmental) at the locked commit on 2026-09-16. Not run at the recorded head.",
+        "ci": ".github/workflows/build.yaml (pytest matrix), pr-title-lint.yml, publish.yaml, release.yaml",
+        "lint": "per the fork's own configuration; not inspected"
+      },
+      "consumed_by_engine": [
+        {
+          "type": "source_checkout",
+          "artifact": "inspect_petri source at the locked commit, installed with `pip install --no-deps \"inspect_petri @ git+<url>@<commit>\"` after every package in the lock is installed with ==",
+          "pins": [
+            {
+              "name": "harness commit",
+              "value": "e199ec1abcd10267c60cd7eb03035a76567d9e52",
+              "pointer_file": "docs/framework/petri_environment.lock.json",
+              "pointer": {
+                "kind": "json_pointer",
+                "pointer": "/harness/commit"
+              },
+              "how_to_read": "JSON key harness.commit"
+            },
+            {
+              "name": "python",
+              "value": "3.12.3",
+              "pointer_file": "docs/framework/petri_environment.lock.json",
+              "pointer": {
+                "kind": "json_pointer",
+                "pointer": "/python/version"
+              },
+              "how_to_read": "JSON key python.version"
+            },
+            {
+              "name": "inspect-ai",
+              "value": "0.3.237",
+              "pointer_file": "docs/framework/petri_environment.lock.json",
+              "pointer": {
+                "kind": "json_pointer",
+                "pointer": "/pins_of_record/inspect-ai"
+              },
+              "how_to_read": "JSON key pins_of_record.inspect-ai"
+            },
+            {
+              "name": "inspect-scout",
+              "value": "0.4.39",
+              "pointer_file": "docs/framework/petri_environment.lock.json",
+              "pointer": {
+                "kind": "json_pointer",
+                "pointer": "/pins_of_record/inspect-scout"
+              },
+              "how_to_read": "JSON key pins_of_record.inspect-scout"
+            },
+            {
+              "name": "anthropic",
+              "value": "0.105.0",
+              "pointer_file": "docs/framework/petri_environment.lock.json",
+              "pointer": {
+                "kind": "json_pointer",
+                "pointer": "/pins_of_record/anthropic"
+              },
+              "how_to_read": "JSON key pins_of_record.anthropic"
+            },
+            {
+              "name": "openai",
+              "value": "2.40.0",
+              "pointer_file": "docs/framework/petri_environment.lock.json",
+              "pointer": {
+                "kind": "json_pointer",
+                "pointer": "/pins_of_record/openai"
+              },
+              "how_to_read": "JSON key pins_of_record.openai"
+            },
+            {
+              "name": "google-genai",
+              "value": "1.69.0",
+              "pointer_file": "docs/framework/petri_environment.lock.json",
+              "pointer": {
+                "kind": "json_pointer",
+                "pointer": "/pins_of_record/google-genai"
+              },
+              "how_to_read": "JSON key pins_of_record.google-genai"
+            },
+            {
+              "name": "lock digest",
+              "value": "4aecf38c856ea4b68567bb76335954d4b92f16a112de200f9b9eb7e432aa0eff",
+              "pointer_file": "docs/framework/petri_environment.lock.json",
+              "pointer": {
+                "kind": "json_pointer",
+                "pointer": "/lock_sha256"
+              },
+              "how_to_read": "JSON key lock_sha256"
+            }
+          ],
+          "note": "`python -m scripts.petri_audit.cli verify-lock` compares the resolved environment with the lock before any model call. All nine landed runs record this harness commit and lock digest."
+        }
+      ],
+      "engine_writes": [],
+      "head_vs_pin": {
+        "latest_source_head": "de5dad81b9af711ff1680fff2c7c849c33c1c429",
+        "tested_execution_pin": "e199ec1abcd10267c60cd7eb03035a76567d9e52",
+        "relation": "pin_is_older_source",
+        "note": "The fork head requires inspect-ai>=0.3.276 and inspect-scout>=0.5.3; the lock holds 0.3.237 and 0.4.39. The lock cannot host the head. The 2026-11-10 source sync changed neither the lock nor any run."
+      },
+      "source_facts": [
+        {
+          "name": "inspect-ai floor at the fork head",
+          "value": ">=0.3.276",
+          "file": "pyproject.toml",
+          "text": "\"inspect-ai>=0.3.276\""
+        },
+        {
+          "name": "inspect-scout floor at the fork head",
+          "value": ">=0.5.3",
+          "file": "pyproject.toml",
+          "text": "\"inspect-scout>=0.5.3\""
+        },
+        {
+          "name": "release-please version",
+          "value": "3.1.1",
+          "file": ".release-please-manifest.json",
+          "text": "\".\": \"3.1.1\""
+        }
+      ],
+      "adapters": [
+        {
+          "path": "scripts/petri_audit/task.py",
+          "state": "active"
+        },
+        {
+          "path": "scripts/petri_audit/controller.py",
+          "state": "active"
+        },
+        {
+          "path": "scripts/petri_audit/adapter.py",
+          "state": "active"
+        },
+        {
+          "path": "scripts/petri_audit/envlock.py",
+          "state": "active"
+        },
+        {
+          "path": "scripts/petri_audit/rejudge.py",
+          "state": "active"
+        },
+        {
+          "path": ".github/workflows/petri_audit.yml",
+          "state": "active"
+        },
+        {
+          "path": "tests/petri",
+          "state": "manual"
+        }
+      ],
+      "active_vs_historical": "The lock and the lane are active. Landed runs under data/petri/runs/ are chained records of the locked harness and are not re-adapted in place. tests/petri/ runs only where inspect_petri is installed; it skips in the ordinary environment.",
+      "dependencies": [
+        "external_services: pypi (inspect-ai, inspect-scout and provider SDKs at locked versions), model providers through OpenRouter and Anthropic in paid modes"
+      ]
+    },
+    {
+      "id": "jacobian-lens-patientwords",
+      "group": "method_fork",
+      "url": "https://github.com/michaeldgreenphd/jacobian-lens-patientwords",
+      "role": "Owner fork of the original Jacobian-lens reference implementation. Method description and credit only.",
+      "visibility": {
+        "value": "public",
+        "basis": "not documented in the engine; answered git ls-remote on 2026-11-10"
+      },
+      "fork_of": "https://github.com/anthropics/jacobian-lens",
+      "holds_this_manifest": false,
+      "default_sibling_path": "../jacobian-lens-patientwords",
+      "path_override": {
+        "cli_flags": [
+          "scripts/ecosystem_status.py --root DIR",
+          "scripts/ecosystem_status.py --path jacobian-lens-patientwords=DIR"
+        ],
+        "environment_variables": [],
+        "note": "No engine script reads this checkout."
+      },
+      "recorded_head": {
+        "commit": "581d398613e5602a5af361e1c34d3a92ea82ba8e",
+        "recorded_utc_date": "2026-11-10",
+        "source": "owner anchor; confirmed equal to the local clone HEAD with git rev-parse on 2026-11-10"
+      },
+      "upstream_relation": {
+        "upstream_url": "https://github.com/anthropics/jacobian-lens",
+        "ahead": 0,
+        "behind": 0,
+        "as_of": "2026-11-10",
+        "basis": "verified: git ls-remote <url> HEAD, run 2026-11-10 for this manifest returned 581d398613e5 for both the fork and the upstream",
+        "note": "Owner-reported: already current. The repository has one commit, `Initial release`."
+      },
+      "licence": {
+        "code": "Apache-2.0 (LICENSE; pyproject.toml). No NOTICE file.",
+        "data": "data/ is synthetic, authored by Anthropic, same licence (README.md)",
+        "notice_obligations": "Credit the method in every lens summary and payload, as the engine's lens scripts do. No source is copied into the engine."
+      },
+      "maintenance": "Upstream status in README.md: reference implementation, not maintained and not accepting contributions.",
+      "entry_points": [
+        "Python package `jlens` (fitting, lens, hf adapter, visualisation)",
+        "walkthrough.ipynb"
+      ],
+      "environment": {
+        "python": ">=3.10 (pyproject.toml); dependencies unpinned apart from transformers>=5.5",
+        "lock_or_constraints": [
+          "uv.lock"
+        ]
+      },
+      "tests_and_ci": {
+        "tests": "tests/ with five test files. Not run for this manifest.",
+        "ci": "none: the repository has no .github directory",
+        "lint": "none run automatically"
+      },
+      "consumed_by_engine": [
+        {
+          "type": "none",
+          "artifact": "No code, artifact or pin. The engine cites the method and its authors' limitations (docs/jlens_evaluation.md) and writes a credit string into every lens summary.",
+          "pins": [],
+          "note": "The engine's J-Lens measurements come from the hosted Neuronpedia endpoint listed under external_services, not from this implementation. The engine never ran it."
+        }
+      ],
+      "engine_writes": [],
+      "head_vs_pin": {
+        "latest_source_head": "581d398613e5602a5af361e1c34d3a92ea82ba8e",
+        "tested_execution_pin": null,
+        "relation": "not_executed_by_engine",
+        "note": "The commit string does not occur in the engine. The J++ fork vendors from this commit."
+      },
+      "source_facts": [
+        {
+          "name": "upstream maintenance statement",
+          "value": "reference implementation, not maintained",
+          "file": "README.md",
+          "text": "Not maintained and not accepting contributions."
+        }
+      ],
+      "adapters": [
+        {
+          "path": "docs/jlens_evaluation.md",
+          "state": "historical"
+        }
+      ],
+      "active_vs_historical": "Frozen upstream. docs/jlens_evaluation.md planned a pinned-commit, local-execution route that was never implemented; the hosted route replaced it.",
+      "dependencies": []
+    },
+    {
+      "id": "patientwords-traces",
+      "group": "outside_the_seven",
+      "url": "https://github.com/michaeldgreenphd/patientwords-traces",
+      "role": "Public render consumer. A GitHub Pages site at https://michaeldgreenphd.github.io/patientwords-traces that serves the interactive per-scenario trace renders the main site does not ship.",
+      "visibility": {
+        "value": "public",
+        "basis": "documented: served by GitHub Pages (docs/agent_reference.md, verify.md)"
+      },
+      "fork_of": null,
+      "holds_this_manifest": false,
+      "head_moves_with_operations": true,
+      "default_sibling_path": "../patientwords-traces",
+      "path_override": {
+        "cli_flags": [
+          "scripts/export_traces_site.py --traces-repo (default ../patientwords-traces)",
+          "scripts/export_traces_site.py --base-url",
+          "scripts/ecosystem_status.py --path patientwords-traces=DIR"
+        ],
+        "environment_variables": [],
+        "note": "Identity resolved from engine source. No local checkout existed on 2026-11-10."
+      },
+      "recorded_head": {
+        "commit": "96bd3cd6be5769beea3c73d34a4c9e163e7f6980",
+        "recorded_utc_date": "2026-11-10",
+        "source": "git ls-remote <url> HEAD, run 2026-11-10 for this manifest; not an owner anchor; no local checkout",
+        "note": "The repository rebuilds on a schedule, so this head is expected to move."
+      },
+      "upstream_relation": null,
+      "licence": {
+        "code": "not read: no local checkout",
+        "data": "renders are engine outputs; the site's DATA_LICENSE.md covers the copies under modes/ there, and this repository's own terms were not read",
+        "notice_obligations": "not determined"
+      },
+      "maintenance": "Owner repository. Its build workflow lives there; the engine keeps no copy (docs/README.md).",
+      "entry_points": [
+        "URL scheme <base>/t/<batch>/index_<NN>.html, built from scenario batch and batch_index (scripts/export_traces_site.py)"
+      ],
+      "environment": {
+        "python": "not read: no local checkout",
+        "lock_or_constraints": []
+      },
+      "tests_and_ci": {
+        "tests": "not read: no local checkout",
+        "ci": "its own .github/workflows/build.yml copies engine renders (stated in engine docs; the workflow file was not read)",
+        "lint": "not read"
+      },
+      "consumed_by_engine": [
+        {
+          "type": "none",
+          "artifact": "Nothing is read back from this repository.",
+          "pins": [],
+          "note": "The engine has no liveness check for stamped trace_url links: neither scripts/validate_frontend_contract.py nor scripts/check_pages.py fetches them."
+        }
+      ],
+      "engine_writes": [
+        "generated_files: scripts/export_traces_site.py without --stamp-only copies trace_out/<batch>/index_NN.html renders for published scenarios into a local checkout and exits 3 when the checkout is absent",
+        "generated_files: scripts/export_traces_site.py --stamp-only (publish chain) sets scenario.trace_url and payload.traces_site in the site's data/simulated_scenarios.json"
+      ],
+      "head_vs_pin": {
+        "latest_source_head": "96bd3cd6be5769beea3c73d34a4c9e163e7f6980",
+        "tested_execution_pin": null,
+        "relation": "no_execution_pin",
+        "note": "The engine pins a URL scheme, not a commit. Changing the scheme on one side breaks published links (docs/agent_reference.md)."
+      },
+      "source_facts": [],
+      "adapters": [
+        {
+          "path": "scripts/export_traces_site.py",
+          "state": "active"
+        },
+        {
+          "path": "tests/test_export_traces_site.py",
+          "state": "active"
+        }
+      ],
+      "active_vs_historical": "Active. The site payload's traces_site block was stamped on 2026-08-29 by a dirty engine tree, so the code that stamped the published links is not reproducible from a commit.",
+      "dependencies": [
+        "patientwords-engine (render source)",
+        "patientwords (pages link to it)"
+      ]
+    },
+    {
+      "id": "patient-words-causalab",
+      "group": "outside_the_seven",
+      "url": "https://github.com/michaeldgreenphd/patient-words-causalab",
+      "role": "Owner fork of Causalab, an intervention library. Planned as an independent second implementation in the one-case baseline preflight. It has not run.",
+      "visibility": {
+        "value": "public",
+        "basis": "not documented in the engine; answered git ls-remote on 2026-11-10"
+      },
+      "fork_of": "https://github.com/goodfire-ai/causalab",
+      "holds_this_manifest": false,
+      "default_sibling_path": "../patient-words-causalab",
+      "path_override": {
+        "cli_flags": [
+          "scripts/ecosystem_status.py --path patient-words-causalab=DIR"
+        ],
+        "environment_variables": [
+          "PW_CAUSALAB_PYTHON (workflow-local, .github/workflows/exploratory_baseline_preflight.yml)"
+        ],
+        "note": "Identity resolved from engine source (data/exploratory/method_sources.v1.json). No local checkout existed on 2026-11-10. The workflow checks the fork out itself at the readiness file's commit."
+      },
+      "recorded_head": {
+        "commit": "1db3b8ce19bcee2cd2e6a7226ec9ec9d145481dc",
+        "recorded_utc_date": "2026-11-10",
+        "source": "git ls-remote <url> HEAD, run 2026-11-10 for this manifest; not an owner anchor; no local checkout"
+      },
+      "upstream_relation": {
+        "upstream_url": "https://github.com/goodfire-ai/causalab",
+        "ahead": null,
+        "behind": null,
+        "as_of": "2026-11-10",
+        "basis": "verified by git ls-remote on 2026-11-10 that the tips differ: fork 1db3b8ce19bc, upstream 07cf9b9671e8. Ahead and behind counts need history and were not derived.",
+        "note": "Not covered by the owner preparation note. The 2026-10-15 audit receipt recorded fork and upstream both at 8e8d5d1f8f9c."
+      },
+      "licence": {
+        "code": "Unresolved for the Python distribution. The engine's record: no root LICENSE or COPYING and no Python project licence found; the Rust workspace declares Apache-2.0.",
+        "data": "not applicable",
+        "notice_obligations": "Do not copy or redistribute Causalab Python code until the licence is resolved (docs/exploratory/methods_integration.md). No upstream implementation is copied into the engine."
+      },
+      "maintenance": "Upstream maintained by goodfire-ai. The owner fork holds adapter branches. Not inspected locally.",
+      "entry_points": [
+        "Python package `causalab` (causalab.neural.engines.pytorch_hooks, causalab.protocol), imported only with scripts/exploratory_baseline_preflight.py --backend causalab"
+      ],
+      "environment": {
+        "python": "a separate virtual environment from the engine's; expected torch 2.9.0, transformers 5.16.1 and accelerate 1.14.0, per data/exploratory/baseline_ci_readiness.v1.json",
+        "lock_or_constraints": [
+          "the fork's requirements.lock.txt, as named by the workflow; not read"
+        ]
+      },
+      "tests_and_ci": {
+        "tests": "not read: no local checkout",
+        "ci": "not read",
+        "lint": "not read"
+      },
+      "consumed_by_engine": [
+        {
+          "type": "source_checkout",
+          "artifact": "the fork checked out by .github/workflows/exploratory_baseline_preflight.yml and installed editable with --no-deps (workflow_dispatch only; owner-gated)",
+          "pins": [
+            {
+              "name": "execution commit",
+              "value": null,
+              "pointer_file": "data/exploratory/baseline_ci_readiness.v1.json",
+              "pointer": {
+                "kind": "json_pointer",
+                "pointer": "/causalab_commit"
+              },
+              "how_to_read": "JSON key causalab_commit"
+            },
+            {
+              "name": "readiness status",
+              "value": "blocked_not_authorized",
+              "pointer_file": "data/exploratory/baseline_ci_readiness.v1.json",
+              "pointer": {
+                "kind": "json_pointer",
+                "pointer": "/status"
+              },
+              "how_to_read": "JSON key status"
+            },
+            {
+              "name": "fork commit in the dated audit receipt",
+              "value": "8e8d5d1f8f9ca8f42bfce7c6b5eef194f012660e",
+              "pointer_file": "data/exploratory/method_sources.v1.json",
+              "pointer": {
+                "kind": "json_pointer",
+                "pointer": "/repositories/causalab/fork_commit"
+              },
+              "how_to_read": "JSON key repositories.causalab.fork_commit"
+            }
+          ],
+          "note": "The execution commit is null: no execution pin exists and the workflow is blocked. The engine's dated records name four other commits for this repository; none is a pin."
+        }
+      ],
+      "engine_writes": [],
+      "head_vs_pin": {
+        "latest_source_head": "1db3b8ce19bcee2cd2e6a7226ec9ec9d145481dc",
+        "tested_execution_pin": null,
+        "relation": "no_execution_pin",
+        "note": "Never executed by the engine. Causalab needs transformers >= 5.16; the engine pins 5.14.1, hence the separate environment."
+      },
+      "source_facts": [],
+      "adapters": [
+        {
+          "path": "scripts/exploratory_baseline_preflight.py",
+          "state": "staged"
+        },
+        {
+          "path": "scripts/exploratory_ci_preflight.py",
+          "state": "staged"
+        },
+        {
+          "path": ".github/workflows/exploratory_baseline_preflight.yml",
+          "state": "staged"
+        },
+        {
+          "path": "tests/manual/baseline_protocol_smoke.py",
+          "state": "manual"
+        }
+      ],
+      "active_vs_historical": "Staged, never run. Execution needs separate owner approval (AGENTS.md, owner exception PR #121).",
+      "dependencies": [
+        "external_services: huggingface_hub (model weights), pypi"
+      ]
+    },
+    {
+      "id": "patientwords-verify",
+      "group": "outside_the_seven",
+      "url": "https://github.com/michaeldgreenphd/patientwords-verify",
+      "role": "Private physician-rating app. Invited physicians rate study items; the engine exports the task bundle it shows and imports a summary of the ratings it returns.",
+      "visibility": {
+        "value": "private",
+        "basis": "documented: docs/verification_protocol.md, docs/README.md, scripts/export_verification_tasks.py"
+      },
+      "fork_of": null,
+      "holds_this_manifest": false,
+      "default_sibling_path": null,
+      "path_override": {
+        "cli_flags": [],
+        "environment_variables": [],
+        "note": "No engine script reads a checkout of this repository. Files are exchanged by hand: the owner uploads the bundle and passes the export's path to the importer."
+      },
+      "recorded_head": {
+        "commit": null,
+        "recorded_utc_date": "2026-11-10",
+        "source": "not recorded: private repository; this public manifest states only its role and the engine scripts that exchange files with it"
+      },
+      "upstream_relation": null,
+      "licence": {
+        "code": "not stated in the public engine documents",
+        "data": "ratings are private; see docs/verification_protocol.md",
+        "notice_obligations": "not applicable to the public repositories"
+      },
+      "maintenance": "Maintained by the owner. Deployment is a manual owner action.",
+      "entry_points": [
+        "not recorded here"
+      ],
+      "environment": {
+        "python": "not recorded here",
+        "lock_or_constraints": []
+      },
+      "tests_and_ci": {
+        "tests": "not recorded here",
+        "ci": "not recorded here",
+        "lint": "not recorded here"
+      },
+      "consumed_by_engine": [
+        {
+          "type": "generated_files",
+          "artifact": "one ratings export (schema patientwords-verification-ratings/1), read by scripts/import_verification_ratings.py from a path outside the engine checkout",
+          "pins": [
+            {
+              "name": "export schema read by the importer",
+              "value": "patientwords-verification-ratings/1",
+              "pointer_file": "scripts/import_verification_ratings.py",
+              "pointer": {
+                "kind": "text_contains",
+                "text": "EXPORT_SCHEMA = \"patientwords-verification-ratings/1\""
+              },
+              "how_to_read": "the constant EXPORT_SCHEMA"
+            }
+          ],
+          "note": "The importer refuses an export path inside the repository and never copies note text. No ratings summary has been imported: data/verification/ holds the questions file and one task bundle."
+        }
+      ],
+      "engine_writes": [
+        "generated_files: scripts/export_verification_tasks.py writes data/verification/tasks_<stamp>.json (schema patientwords-verification-tasks/1); the questions are data/verification/questions.json"
+      ],
+      "head_vs_pin": {
+        "latest_source_head": null,
+        "tested_execution_pin": null,
+        "relation": "no_execution_pin",
+        "note": "The contract between the two is the pair of file schemas, not a commit."
+      },
+      "source_facts": [],
+      "adapters": [
+        {
+          "path": "scripts/export_verification_tasks.py",
+          "state": "active"
+        },
+        {
+          "path": "scripts/import_verification_ratings.py",
+          "state": "active"
+        },
+        {
+          "path": "docs/verification_protocol.md",
+          "state": "active"
+        }
+      ],
+      "active_vs_historical": "The protocol is a draft dated 2026-10-03. One task bundle is committed; no ratings have been imported.",
+      "dependencies": [
+        "patientwords-engine (task bundle and questions)"
+      ]
+    }
+  ],
+  "external_services": [
+    {
+      "id": "neuronpedia",
+      "name": "Neuronpedia hosted API (https://www.neuronpedia.org)",
+      "role": "Hosted attribution graphs, feature labels, steering, and lens readouts.",
+      "consumed_by_engine": [
+        {
+          "type": "hosted_service",
+          "artifact": "POST /api/lens/prompt, lens types JACOBIAN_LENS and LOGIT_LENS (scripts/jlens_readout.py, scripts/jlens_steer.py)",
+          "pins": [
+            {
+              "name": "endpoint path",
+              "value": "/api/lens/prompt",
+              "pointer_file": "scripts/jlens_readout.py",
+              "pointer": {
+                "kind": "text_contains",
+                "text": "LENS_ENDPOINT = \"/api/lens/prompt\""
+              },
+              "how_to_read": "the constant LENS_ENDPOINT"
+            }
+          ],
+          "note": "No revision is recorded. A lens summary holds no timestamp, base URL, lens artifact, lens revision or model revision. The host changed its readouts on 2026-07-31 and 2026-08-14 under identical requests."
+        },
+        {
+          "type": "hosted_service",
+          "artifact": "POST /api/graph/generate and the feature, explanation and steer endpoints (medlang_circuits/graph_client.py, neuronpedia_features.py, steering.py)",
+          "pins": [
+            {
+              "name": "endpoint path",
+              "value": "/api/graph/generate",
+              "pointer_file": "medlang_circuits/graph_client.py",
+              "pointer": {
+                "kind": "text_contains",
+                "text": "/api/graph/generate"
+              },
+              "how_to_read": "the URL built in the graph client"
+            }
+          ],
+          "note": "Each hosted summary records its graph model and source set. No service revision is recorded, and the native graph JSON is not retained."
+        }
+      ],
+      "base_url_override": "environment variable NEURONPEDIA_BASE_URL"
+    },
+    {
+      "id": "huggingface_hub",
+      "name": "Hugging Face Hub",
+      "role": "Model weights and tokenizers for CPU inference; released lens files.",
+      "consumed_by_engine": [
+        {
+          "type": "model_weights",
+          "artifact": "one repository and one 40-hex revision per measured model",
+          "pins": [
+            {
+              "name": "per-model revisions",
+              "value": "HF_REVISIONS",
+              "pointer_file": "scripts/logits_eval.py",
+              "pointer": {
+                "kind": "text_contains",
+                "text": "HF_REVISIONS = {"
+              },
+              "how_to_read": "the dict HF_REVISIONS; tests/test_model_pins.py holds each pin to the revision the landed logits summaries record"
+            }
+          ],
+          "note": "The loader passes the revision to tokenizer and model and compares the resolved commit with the pin. The dev container cannot reach huggingface.co."
+        }
+      ],
+      "base_url_override": null
+    },
+    {
+      "id": "pypi",
+      "name": "PyPI",
+      "role": "Installed distributions for measurement CI.",
+      "consumed_by_engine": [
+        {
+          "type": "installed_distribution",
+          "artifact": "the ML stack and interp-engine at the versions in constraints.txt",
+          "pins": [
+            {
+              "name": "transformer-lens",
+              "value": "3.5.1",
+              "pointer_file": "constraints.txt",
+              "pointer": {
+                "kind": "constraints_line",
+                "package": "transformer-lens"
+              },
+              "how_to_read": "the line `transformer-lens==<version>`"
+            },
+            {
+              "name": "accelerate",
+              "value": "1.14.0",
+              "pointer_file": "constraints.txt",
+              "pointer": {
+                "kind": "constraints_line",
+                "package": "accelerate"
+              },
+              "how_to_read": "the line `accelerate==<version>`"
+            }
+          ],
+          "note": "Update policy in constraints.txt: one pin change per commit, noted in the ledger."
+        }
+      ],
+      "base_url_override": null
+    }
+  ]
+}

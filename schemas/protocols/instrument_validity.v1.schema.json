@@ -1,0 +1,458 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "instrument_validity.v1.schema.json",
+  "title": "PatientWords interpretability-instrument validity benchmark bundle, v1",
+  "description": "Structural contract for one benchmark bundle. Written in the keyword subset that scripts/frontend_contract_schema.check_schema_subset accepts ($ref, type, required, properties, items, additionalProperties), so the same file is both documentation and the executed structural check. Value sets (register names, fact statuses, split names, stage names) and every cross-field rule are enforced by scripts/instrument_validity.py and named in docs/protocols/instrument_validity_benchmark.md. A bundle states what an interpretability instrument reported about matched case families; it never states what the model understood. All case and description text in a synthetic bundle is an abstract placeholder.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "synthetic",
+    "execution_status",
+    "seed",
+    "analysis_plan",
+    "equivalence_margins",
+    "development",
+    "thresholds",
+    "identities",
+    "families",
+    "stages",
+    "held_artifact"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "description": "Must equal patientwords.instrument-validity/1.",
+      "type": "string"
+    },
+    "synthetic": {
+      "description": "True for a software fixture. Version 1 of the scorer admits synthetic bundles only.",
+      "type": "boolean"
+    },
+    "execution_status": {
+      "description": "What the bundle claims to be. A synthetic bundle must say synthetic.",
+      "type": "string"
+    },
+    "seed": {
+      "description": "Non-negative integer. The only source of randomness in the scorer; copied into the report.",
+      "type": "integer"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "analysis_plan": {
+      "$ref": "#/definitions/analysis_plan"
+    },
+    "equivalence_margins": {
+      "$ref": "#/definitions/equivalence_margins"
+    },
+    "development": {
+      "$ref": "#/definitions/development"
+    },
+    "thresholds": {
+      "$ref": "#/definitions/thresholds"
+    },
+    "identities": {
+      "$ref": "#/definitions/identities"
+    },
+    "families": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/family"
+      }
+    },
+    "stages": {
+      "description": "Keyed by stage name: activation, readout, label, score. Each stage is evaluated on its own. A stage that is not supplied is reported as not_supplied.",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/stage"
+      }
+    },
+    "held_artifact": {
+      "description": "Description-register manipulation records: the underlying artifact is held fixed and only the register of a meaning-equivalent description varies.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/held_artifact_record"
+      }
+    }
+  },
+  "definitions": {
+    "analysis_plan": {
+      "description": "Fixed before data. The scorer reads its interval settings and scoring rule from here and nowhere else.",
+      "type": "object",
+      "required": [
+        "bootstrap_resamples",
+        "confidence_level",
+        "partial_credit",
+        "minimum_families_for_verdict",
+        "primary_analysis_set",
+        "prespecified_subsets"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "bootstrap_resamples": {
+          "type": "integer"
+        },
+        "confidence_level": {
+          "description": "Strictly between 0 and 1.",
+          "type": "number"
+        },
+        "partial_credit": {
+          "description": "Credit for a partially recovered reference fact, between 0 and 1. Recovered scores 1; not recovered and contradicted score 0.",
+          "type": "number"
+        },
+        "minimum_families_for_verdict": {
+          "description": "At least 2. Below this count of included families the verdict is inconclusive and no interval is computed.",
+          "type": "integer"
+        },
+        "primary_analysis_set": {
+          "description": "validation, fresh_test or held_out (validation plus fresh_test). Never a set that contains discovery families.",
+          "type": "string"
+        },
+        "prespecified_subsets": {
+          "description": "Subset names declared before data. Version 1 knows one: comparable_behaviour.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "equivalence_margins": {
+      "type": "object",
+      "required": [
+        "prespecified",
+        "fixed_before_data",
+        "endpoints"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "prespecified": {
+          "description": "Must be true. A margin chosen after seeing the data refuses.",
+          "type": "boolean"
+        },
+        "fixed_before_data": {
+          "description": "Where and when the margins were fixed (a document path, a commit, a date).",
+          "type": "string"
+        },
+        "endpoints": {
+          "description": "One positive margin per endpoint. Required endpoint: fact_recovery_rate_difference. Required when held_artifact has records: held_artifact_score_difference.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "development": {
+      "description": "Which split each tuned element came from. Each value must be discovery.",
+      "type": "object",
+      "required": [
+        "label_development_split",
+        "scorer_calibration_split"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "label_development_split": {
+          "type": "string"
+        },
+        "scorer_calibration_split": {
+          "type": "string"
+        }
+      }
+    },
+    "threshold": {
+      "type": "object",
+      "required": [
+        "value",
+        "selected_on_split"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "description": "Non-negative. A paired absolute difference strictly above it counts as changed.",
+          "type": "number"
+        },
+        "selected_on_split": {
+          "description": "Must be discovery.",
+          "type": "string"
+        }
+      }
+    },
+    "thresholds": {
+      "type": "object",
+      "required": [
+        "behaviour_change",
+        "representation_change"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "behaviour_change": {
+          "$ref": "#/definitions/threshold"
+        },
+        "representation_change": {
+          "description": "Keyed by stage name. A stage without an entry gets an undetermined behaviour-by-representation table.",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/threshold"
+          }
+        }
+      }
+    },
+    "identities": {
+      "description": "Pinned identities shared by every stage.",
+      "type": "object",
+      "required": [
+        "model_id",
+        "model_revision",
+        "tokenizer_revision",
+        "behaviour_endpoint"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "model_id": {
+          "type": "string"
+        },
+        "model_revision": {
+          "type": "string"
+        },
+        "tokenizer_revision": {
+          "type": "string"
+        },
+        "behaviour_endpoint": {
+          "description": "Name of the original-model output endpoint recorded as behaviour_value.",
+          "type": "string"
+        }
+      }
+    },
+    "reference_fact": {
+      "description": "A fact established independently of the interpretability instrument. The id is the join key; the text is abstract in a synthetic bundle.",
+      "type": "object",
+      "required": [
+        "fact_id",
+        "text"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "fact_id": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        }
+      }
+    },
+    "variant": {
+      "type": "object",
+      "required": [
+        "variant_id",
+        "register",
+        "text"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "variant_id": {
+          "type": "string"
+        },
+        "register": {
+          "description": "medical, everyday, within_register_paraphrase or changed_fact.",
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "base_register": {
+          "description": "Required for within_register_paraphrase and changed_fact: medical or everyday, the variant this one was derived from.",
+          "type": "string"
+        },
+        "changed_fact_id": {
+          "description": "Required for changed_fact: the one reference fact that no longer holds in this variant.",
+          "type": "string"
+        }
+      }
+    },
+    "family": {
+      "type": "object",
+      "required": [
+        "family_id",
+        "split",
+        "review_status",
+        "reference_facts",
+        "variants"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "family_id": {
+          "type": "string"
+        },
+        "split": {
+          "description": "discovery, validation or fresh_test.",
+          "type": "string"
+        },
+        "review_status": {
+          "description": "Clinical-equivalence review status of the family, in words.",
+          "type": "string"
+        },
+        "reference_facts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/reference_fact"
+          }
+        },
+        "variants": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/variant"
+          }
+        }
+      }
+    },
+    "observation": {
+      "description": "What one stage reported for one variant. A null is a missing value and is never read as zero.",
+      "type": "object",
+      "required": [
+        "family_id",
+        "variant_id",
+        "fact_recovery",
+        "unsupported_facts",
+        "raw_rank",
+        "filtered_rank",
+        "rank_status",
+        "representation_value",
+        "behaviour_value"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "family_id": {
+          "type": "string"
+        },
+        "variant_id": {
+          "type": "string"
+        },
+        "fact_recovery": {
+          "description": "Keyed by reference fact id: recovered, partially, not_recovered, contradicted, or null when not assessed.",
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "unsupported_facts": {
+          "description": "Count of facts the instrument output asserts that the reference set does not support.",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "raw_rank": {
+          "description": "Exact-token rank over the full vocabulary, 1-based. A lexical endpoint.",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "filtered_rank": {
+          "description": "Exact-token rank after the declared vocabulary filter; null when the candidate is excluded or no rank was recorded.",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "rank_status": {
+          "description": "observed, not_observed_in_window or not_recorded. A top-k miss is not_observed_in_window and is never an absence.",
+          "type": "string"
+        },
+        "representation_value": {
+          "description": "The stage's scalar summary of the measured representation for this variant (for example a signed component score or a readout probability).",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "behaviour_value": {
+          "description": "The original model's output endpoint for this variant. It is a property of the model, not of the stage; where several stages record it, the values must agree.",
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      }
+    },
+    "stage": {
+      "type": "object",
+      "required": [
+        "method_id",
+        "method_revision",
+        "artifact_id",
+        "artifact_sha256",
+        "observations"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "method_id": {
+          "type": "string"
+        },
+        "method_revision": {
+          "type": "string"
+        },
+        "artifact_id": {
+          "description": "The fitted basis, lens, labeler or scorer the stage used.",
+          "type": "string"
+        },
+        "artifact_sha256": {
+          "type": "string"
+        },
+        "observations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/observation"
+          }
+        }
+      }
+    },
+    "held_artifact_record": {
+      "type": "object",
+      "required": [
+        "artifact_id",
+        "artifact_sha256",
+        "family_id",
+        "stage",
+        "description_register",
+        "description_text",
+        "score"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {
+          "description": "The artifact held fixed across the two description registers.",
+          "type": "string"
+        },
+        "artifact_sha256": {
+          "description": "Must be identical on every record of one artifact_id.",
+          "type": "string"
+        },
+        "family_id": {
+          "type": "string"
+        },
+        "stage": {
+          "description": "The stage that accepted the description: label or score.",
+          "type": "string"
+        },
+        "description_register": {
+          "description": "medical or everyday.",
+          "type": "string"
+        },
+        "description_text": {
+          "type": "string"
+        },
+        "score": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      }
+    }
+  }
+}
