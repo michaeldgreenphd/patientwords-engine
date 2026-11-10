@@ -1,17 +1,25 @@
 # Neuronpedia identity and link boundary (2026-11-10)
 
 Status: registry, validators and an offline link builder. No link to a real Neuronpedia page is
-built today. No real registry entry is `verified_exact`, no real entry records a URL pattern, and
-none of the fourteen source pages this work was meant to be checked against could be read on
-2026-11-10 (table below). Every Neuronpedia fact on this page is cited to engine source code or a
-dated engine document, or is marked unverified.
+built today. No real registry entry is `verified_exact` and no real entry records a URL pattern.
+The registry was first written on 2026-11-10 without network access to the service. Later the same
+day the service's documentation, pages, API records and export files were read with plain GET
+requests (*What was read on 2026-11-10*). Those records confirm every hosted id in the registry and
+name a Hugging Face repository for each hosted model and source. None names a revision, a commit or
+a hash, so no status rose to `verified_exact`. Every Neuronpedia fact on this page is cited to a
+dated, hashed record of the service, to engine source code or to a dated engine document, or is
+marked unverified.
 
 Code: `scripts/experiments/neuronpedia.py`. Data: `data/experiments/representation_registry.v1.json`
 (schema `patientwords.representation-registry/1`,
 `schemas/experiments/representation_registry.v1.schema.json`). Fixtures:
 `tests/fixtures/experiments/neuronpedia/` (synthetic). Tests: `tests/test_experiments_neuronpedia.py`.
+Evidence: `data/experiments/neuronpedia_evidence/20261110/` (the index `index.v1.json` and the kept
+response bodies under `bodies/`).
 
-The module makes no network request. It imports no HTTP client. One test,
+The module makes no network request. It imports no HTTP client. The records of 2026-11-10 were
+fetched by a session, outside the module; the module's `record_snapshot` and `request_record`
+described the saved files afterwards. One test,
 `test_importing_and_using_the_module_opens_no_socket`, loads the module from its file and calls
 each of its sixteen public functions with `socket.socket`, `socket.create_connection` and
 `socket.getaddrinfo` replaced by a function that raises. The same test compares the functions it
@@ -38,37 +46,71 @@ Three consequences follow, and the code enforces each.
 
 ## What was read on 2026-11-10
 
-Each URL was requested once with WebFetch in this session. Every request failed with
-`getaddrinfo ENOTFOUND <host>`: the three hosts are outside the session's allowed network
-domains. No page content was read. An earlier pass on the same day had the same result.
+Each record was one plain GET with curl's default User-Agent: no credential, no cookie, no query
+string, nothing about the project in a header or a URL. No POST was sent, and no endpoint that runs
+a model or generates a graph was called. 62 responses were saved, between 18:24 and 18:28 UTC.
+`data/experiments/neuronpedia_evidence/20261110/index.v1.json` holds one record per response: the SHA-256 and size of the body, the URL, the retrieval
+time (the output of `record_snapshot`), the HTTP status and the fields read. For the eleven API
+records it also holds a request record (`request_record`), in which a null revision listed in
+`not_recorded` means the response carried no such field. 61 answered HTTP 200; the one 404 is a
+probe of a route that does not exist.
 
-| URL | Read today |
+A body is kept under `bodies/` only for a JSON identity record of at most 65,536 bytes that holds
+no dataset text and no user name: the seven source-set records and the sixteen export files, plus
+the list of NLA sources (24 files, 144,765 bytes). For a page (20 KB to 4 MB of HTML) and for a
+feature record (dataset text, label text and user names) the index keeps the hash and the fields
+read, not the body.
+
+| What | Records | What they state |
+|---|---|---|
+| API reference, `https://www.neuronpedia.org/api-doc` | `page.api-doc` | An OpenAPI 3.0.0 document with 53 operations. Six are GET. None describes a model, a source set or a lens. `GET /api/feature/{modelId}/{layer}/{index}` returns a feature. `POST /api/model/lookup` maps a Hugging Face repository id to a model id; its documented response has no revision field |
+| API guide and concepts, `https://docs.neuronpedia.org/` | `docs.api-and-data.api`, `docs.getting-started.key-concepts`, `docs.getting-started.find-resources`, `docs.getting-started.accounts`, `docs.api-and-data.exports` and seven more `docs.*` records | Id forms, the feature page form, rate limits, the export layout |
+| Source-set records, `https://www.neuronpedia.org/api/source-set/<model>/<set>` | seven `api.source-set.*` records | For each set: the model record (`id`, `hfRepoId`), the sources with their layer, `hfRepoId`, `hfFolderId`, dataset and, for a transcoder, the SAELens configuration |
+| Feature records | four `api.feature.*` records (layer 0, index 0 of each hosted set) | The same model and source identity, the hook name, and each explanation's type and explainer model |
+| Export identity files, `https://neuronpedia-datasets.s3.us-east-1.amazonaws.com/v1/<model>/<source>/` | sixteen `export.*` records | `model.jsonl`, `source.jsonl`, `sourceset.jsonl`, `release.jsonl` for layer 0 of four sets |
+| Pages | `page.available-resources`, `page.jlens.gemma-2-2b`, `page.jlens.gemma-2-2b-it`, `page.graph.validator` and four more `page.*` records | The list of 43 public models with their sources; the two lens pages; the graph validator and its schema |
+| Blog posts and the paper | ten `blog.*` records, `arxiv.2606.11722v2` | Dates and announcements. The nine posts were searched for the words commit, revision and checkpoint; none contains one |
+| Other | `probe.api.model.qwen3.5-2b-pt`, `probe.api.source.qwen3.5-2b-pt.0-icalens-res`, `api.nla.sources` | Two guessed routes that are not endpoints; the list of NLA sources, none for a model in the registry |
+
+The identity fields the service returns are: for a model, `id` and `hfRepoId`; for a source,
+`hfRepoId` and `hfFolderId` (the repository and path of the dictionary, transcoder or basis),
+`dataset`, and for SAELens-loadable sources `saelensRelease`, `saelensSaeId` and `saelensConfig`
+(`model_name`, `hook_name`, `d_sae`, `architecture`, `dtype`); for a source set, `releaseName`.
+No response has a key that names a model revision, a weights revision, a commit or a hash. The only
+key that resembles one is `sae_lens_training_version`, a library version, which is null in every
+record. `test_no_record_of_the_service_names_a_revision` checks this on the kept bodies.
+
+Three places where the documentation and the responses, or two responses, disagree. Both sides are
+recorded.
+
+- **An endpoint the specification does not list.** `GET /api/source-set/<model>/<set>` answered
+  with JSON for all seven sets. The API reference lists no operation under `/api/source-set`. The
+  guessed routes `GET /api/model/<model>` and `GET /api/source/<model>/<source>` are not endpoints
+  (HTML with an empty title and HTTP 200; HTML with HTTP 404).
+- **The API and the export name different weights repositories for `gemmascope-transcoder-16k`.**
+  The API source record says `hfRepoId` `google/gemma-scope-2b-pt-transcoders` and `hfFolderId`
+  `layer_0/width_16k/average_l0_76`. The export's `source.jsonl` says `google/gemma-scope` and
+  `layer_0/width_16k`. The registry therefore records no repository for that set.
+- **The export's model record is thinner than the API's.** `model.jsonl` has no `hfRepoId` key. For
+  `qwen3.5-2b-pt` it gives `displayName` `qwen3.5-2b-pt` and `createdAt` 2026-11-07, where the API
+  gives `Qwen3.5-2B Base` and 2026-05-08. For `qwen3-4b` it says `instruct` false and its source
+  says `inferenceEnabled` true, where the API says true and false.
+
+Not read, and listed in the registry under `sources_not_read`:
+
+| URL | Why |
 |---|---|
-| `https://www.neuronpedia.org/blog/neurons-ica` | no: host blocked |
-| `https://www.neuronpedia.org/blog` | no: host blocked |
-| `https://arxiv.org/abs/2606.11722v2` | no: host blocked |
-| `https://docs.neuronpedia.org/api-and-data/api` | no: host blocked |
-| `https://docs.neuronpedia.org/sparse-autoencoders/auto-interp` | no: host blocked |
-| `https://www.neuronpedia.org/graph/validator` | no: host blocked |
-| `https://www.neuronpedia.org/blog/circuit-tracer` | no: host blocked |
-| `https://www.neuronpedia.org/blog/interp-engine` | no: host blocked |
-| `https://www.neuronpedia.org/blog/headvis` | no: host blocked |
-| `https://www.neuronpedia.org/blog/nlas` | no: host blocked |
-| `https://www.neuronpedia.org/blog/assistant-axis` | no: host blocked |
-| `https://www.neuronpedia.org/blog/jpp-drift-ui` | no: host blocked |
-| `https://www.neuronpedia.org/blog/interp-explorer` | no: host blocked |
-| `https://www.neuronpedia.org/blog/fall-update` | no: host blocked |
+| `https://huggingface.co/api/models/neuronpedia/icalens-qwen3.5-2b-pt` | the session's network proxy refused the host (CONNECT, response 403). No basis repository or manifest on Hugging Face was read |
+| `https://www.neuronpedia.org/api/model/lookup` | a POST endpoint; only GET requests were made |
+| `https://www.neuronpedia.org/api/lens/prompt` | a POST endpoint that runs a model. What a live lens response reports about the lens was not read |
 
-The registry file repeats this list under `sources_not_read`. To unblock: add
-`www.neuronpedia.org`, `docs.neuronpedia.org` and `arxiv.org` to the session's allowed network
-domains. `huggingface.co` is also blocked from development containers (engine `AGENTS.md`), so no
-released basis manifest was read.
-
-What this leaves unknown, stated once: the Neuronpedia model id and the ICA source-set id for the
-Qwen3.5 2B base checkpoint; the checkpoint commit behind any hosted model id; the layer and site
-naming of the ICA sources; every human-facing page URL pattern; bulk export locations and file
-formats; numeric API limits; the graph validator's field list; explanation-type ids and scorer
-names beyond the two the engine documents; the arXiv version dates.
+What this leaves unknown, stated once: the commit of any hosted model; the commit and hash of any
+hosted dictionary, transcoder, lens or ICA basis; which file of
+`huggingface.co/neuronpedia/jacobian-lens` serves a model id; what a live lens response reports
+about its instrument; whether the repositories under `neuronpedia/` that the hosted ICA sets name
+hold the same files as the bases under `sida/` that the ICA fork names; the explainer and scorer
+for a whole source set (one feature per set was read). The graph validator's schema was fetched and
+has not been compared field by field with the plan below.
 
 ## The registry
 
@@ -103,27 +145,33 @@ apply holds the string `not_applicable`.
 |---|---|---|
 | `verified_exact` | The ids were read in a primary source, and the hosted checkpoint revision is recorded and equals the study revision. The validator refuses this status without both revisions equal | permitted |
 | `alias_unverified_checkpoint` | Another id is given for the same checkpoint by the source that the entry's `id_source` names. No record of the commit behind that id was read | none |
-| `hosted_identity_unknown` | The engine uses these hosted ids and responses have landed. The engine records no model, dictionary or instrument revision for these responses; whether the service reports one was not read | none |
+| `hosted_identity_unknown` | The engine uses these hosted ids and responses have landed. The engine records no model, dictionary or instrument revision for these responses. The entry's evidence names the records of the service that were read and says that none of them carries a revision, or says that none was read | none |
 | `unverified` | The representation is named in a source that was read. Its own manifest or page was not | none |
 
 An alias alone does not verify a checkpoint. Two ids can name the same model family and different
 commits, or the same commit served at another precision. `verified_exact` therefore needs
 `hosted_checkpoint_revision` to equal `model.revision`, and `links_enabled: true` with any other
-status is refused (`links_without_verification`).
+status is refused (`links_without_verification`). A repository id is not a commit either: on
+2026-11-10 the service named the repository behind every hosted id and no commit, and every status
+stayed where it was.
 
 ### Id mapping on 2026-11-10
 
-| Engine study id | Representation | Neuronpedia model id / source set | Artifact | Status | Evidence |
+| Engine study id | Representation | Neuronpedia model id / source set | Artifact | Status | What the service reported on 2026-11-10 |
 |---|---|---|---|---|---|
-| `gemma-2-2b` | `transcoder_feature` | `gemma-2-2b` / `gemmascope-transcoder-16k` | hosted set; weights commit not recorded | `hosted_identity_unknown` | `medlang_circuits/neuronpedia_features.py:30,46,155`; `scripts/feature_models.py:31` (the one calibrated pair) |
-| `qwen3-4b` | `transcoder_feature` | `qwen3-4b` / `transcoder-hp` | `mwhanna/qwen3-4b-transcoders`, commit not recorded | `hosted_identity_unknown` | `medlang_circuits/neuronpedia_features.py:55`; `docs/cross-model.md:33-63` (2026-10-09). Labelled, not calibrated: exploration only |
-| `gemma-2-2b` | `workspace_readout` (hosted J-lens) | `gemma-2-2b` / not applicable | `neuronpedia-hosted:JACOBIAN_LENS`; no instrument revision | `hosted_identity_unknown` | `scripts/jlens_readout.py:44,52,60,310-324`; `scripts/export_jlens_depth.py:409-417` |
-| `gemma-2-2b-it` | `workspace_readout` (hosted J-lens) | `gemma-2-2b-it` / not applicable | same | `hosted_identity_unknown` | same |
-| `qwen3.5-2b-base` | `ica_component` | `qwen3.5-2b-pt` (unverified) / not recorded | not recorded | `alias_unverified_checkpoint` | engine pin `scripts/logits_eval.py:109,147`; the id comes from the owner's task brief of 2026-11-10 and has no retrievable record; page not read |
-| `gemma-2-2b` | `ica_component` | none | `sida/icalens-gemma-2-2b-pile10k` | `unverified` | `patientwords-ica-lens-paper/docs/fit-and-publish.md:289-292`; `patientwords-ica-lens-paper/experiments/reconstruction/official/results/gemma2/run.json:181-183` |
-| none | `ica_component` | none | `sida/icalens-gpt2-small-pile10k` (`openai-community/gpt2`) | `unverified` | `patientwords-ica-lens-paper/README.md:23` |
-| none | `ica_component` | none | `sida/icalens-qwen3.5-9b-base-pile10k` (`Qwen/Qwen3.5-9B-Base`) | `unverified` | `patientwords-ica-lens-paper/docs/fit-and-publish.md:289-292` |
-| none | `ica_component` | none | `sida/icalens-qwen3.5-2b-ultrachat-1m` (`Qwen/Qwen3.5-2B`, the instruct model) | `unverified` | `patientwords-ica-lens-paper/README.md:53`, `patientwords-ica-lens-paper/docs/fit-and-publish.md:167-176` |
+| `gemma-2-2b` | `transcoder_feature` | `gemma-2-2b` / `gemmascope-transcoder-16k` | hosted set; repository not recorded (two records disagree) | `hosted_identity_unknown` | ids exist; model `hfRepoId` `google/gemma-2-2b`; 26 sources, layers 0 to 25; no revision (`api.source-set.gemma-2-2b.gemmascope-transcoder-16k`). The one calibrated pair (`scripts/feature_models.py:31`) |
+| `qwen3-4b` | `transcoder_feature` | `qwen3-4b` / `transcoder-hp` | `mwhanna/qwen3-4b-transcoders`, commit not recorded | `hosted_identity_unknown` | ids exist; model `hfRepoId` `Qwen/Qwen3-4B`; 36 sources, layers 0 to 35; the API and the export name the same weights repository; no revision (`api.source-set.qwen3-4b.transcoder-hp`). Labelled, not calibrated: exploration only |
+| `gemma-2-2b` | `workspace_readout` (hosted J-lens) | `gemma-2-2b` / not applicable | `neuronpedia-hosted:JACOBIAN_LENS`; no instrument revision | `hosted_identity_unknown` | the lens page exists and names no lens repository, file, revision or hash (`page.jlens.gemma-2-2b`); model `hfRepoId` `google/gemma-2-2b`; a live lens response was not requested |
+| `gemma-2-2b-it` | `workspace_readout` (hosted J-lens) | `gemma-2-2b-it` / not applicable | same | `hosted_identity_unknown` | the same, for `page.jlens.gemma-2-2b-it` and `google/gemma-2-2b-it` |
+| `qwen3.5-2b-base` | `ica_component` | `qwen3.5-2b-pt` / `icalens-res` | `neuronpedia/icalens-qwen3.5-2b-pt`, commit not recorded | `alias_unverified_checkpoint` | the id exists; model `hfRepoId` `Qwen/Qwen3.5-2B-Base`; six sources, layers 0, 4, 8, 12, 16, 20; no revision (`api.source-set.qwen3.5-2b-pt.icalens-res`) |
+| `gemma-2-2b` | `ica_component` | none | `sida/icalens-gemma-2-2b-pile10k` | `unverified` | a hosted ICA set exists under `gemma-2-2b/icalens-res`; its sources name `neuronpedia/icalens-gemma-2-2b`, not the `sida/` repository |
+| none | `ica_component` | none | `sida/icalens-gpt2-small-pile10k` (`openai-community/gpt2`) | `unverified` | a hosted ICA set exists under `gpt2-small/icalens-res`; its sources name `neuronpedia/icalens-gpt2-small` |
+| none | `ica_component` | none | `sida/icalens-qwen3.5-9b-base-pile10k` (`Qwen/Qwen3.5-9B-Base`) | `unverified` | a hosted ICA set exists under `qwen3.5-9b-pt/icalens-res` (8 layers); its sources name `neuronpedia/icalens-qwen3.5-9b-pt` |
+| none | `ica_component` | none | `sida/icalens-qwen3.5-2b-ultrachat-1m` (`Qwen/Qwen3.5-2B`, the instruct model) | `unverified` | the service lists no model for `Qwen/Qwen3.5-2B` and hosts no ICA set for it (`page.available-resources`) |
+
+Names in the last column that look like `api.source-set.…` or `page.…` are record ids in
+`data/experiments/neuronpedia_evidence/20261110/index.v1.json`. The engine-side evidence of each row (code lines,
+dated documents, the ICA fork) is unchanged and is in the registry entry.
 
 Paths that start with `patientwords-ica-lens-paper/` are in the fork
 `michaeldgreenphd/patientwords-ica-lens-paper` at `aa3b95c9e755e4374f8c9645a064e3f51d96066e`.
@@ -132,35 +180,47 @@ Notes on single rows.
 
 - **`qwen3.5-2b-base` and `qwen3.5-2b-pt`.** The engine pins `Qwen/Qwen3.5-2B-Base` at
   `b1485b2fa6dfa1287294f269f5fb618e03d52d7c` (`scripts/logits_eval.py:147`; chosen as the head of
-  `main` on 2026-10-09, `docs/model_matrix.md:285-293`). The id `qwen3.5-2b-pt` has one origin: the
-  owner's task brief of 2026-11-10 for this session supplied it. The brief is not a file in the
-  repository and no retrievable record of it exists here. The id is unverified against the
-  service: `www.neuronpedia.org` was blocked by this environment's network policy on 2026-11-10,
-  so no Neuronpedia page was read. Unverified for the same reason: the ICA source-set id, the
-  layers and the commit the components were fitted on. The registry and
-  `data/experiments/capability_matrix.v1.json` state the same origin. The ICA fork records no
-  revision of this model, no Neuronpedia id and no released ICA basis for it. It names the model in
-  places that are not a released basis: `patientwords-ica-lens-paper/notes/naming.md:24` lists
-  `sida/icalens-qwen-3.5-2b` as a repository id in its naming scheme, without saying base or
-  instruct and without saying that the repository exists;
-  `patientwords-ica-lens-paper/integrations/r_lens/fit_qwen35.py:21-24` holds an R-lens fitting
-  preset for `Qwen/Qwen3.5-2B-Base`, which is not an ICA basis. To reach `verified_exact`: read
-  the Neuronpedia model record and the release manifest, record the commit, and confirm it equals
-  the pin.
+  `main` on 2026-10-09, `docs/model_matrix.md:285-293`). The id `qwen3.5-2b-pt` was first supplied
+  in the owner's task brief of 2026-11-10. The service's records, read later that day, establish
+  three things. The model id exists, and its model record names `hfRepoId` `Qwen/Qwen3.5-2B-Base`
+  with display name "Qwen3.5-2B Base": the same repository the engine pins. Its ICA source set is
+  `icalens-res`, with six sources at layers 0, 4, 8, 12, 16 and 20, each on the hook
+  `blocks.<layer>.hook_resid_post`. Each source names the basis repository
+  `neuronpedia/icalens-qwen3.5-2b-pt` and the dataset `monology/pile-uncopyrighted`; the set is
+  described as a Pile-10k fit and has no inference. The service reports no commit: not of the
+  model, not of the basis repository, not of the model the basis was fitted on. A repository can be
+  served at another commit than the one a study pins, so the status stays
+  `alias_unverified_checkpoint` and no link is built. `huggingface.co` was refused on 2026-11-10,
+  so the basis repository and its manifest were not read. To reach `verified_exact`: obtain a
+  record that states the model commit behind the hosted set (the fit revision in the basis manifest
+  is the candidate), enter it, and confirm it equals the pin. The ICA fork still names no released
+  basis for this model
+  (`patientwords-ica-lens-paper/notes/naming.md:24` lists `sida/icalens-qwen-3.5-2b` in a naming
+  scheme; `patientwords-ica-lens-paper/integrations/r_lens/fit_qwen35.py:21-24` is an R-lens
+  preset).
 - **`sida/icalens-gemma-2-2b-pile10k`.** The paper's reconstruction run record names this basis
   with model revision `c5ebcd40d208330abc697524c919956e692655cf`, which is the engine's pin of
   `google/gemma-2-2b` (`scripts/logits_eval.py:132`). That is one evaluation run. The record pins no
-  basis revision, and the fit revision stored in the basis manifest was not read. The status stays
-  `unverified`.
+  basis revision, and the fit revision stored in the basis manifest was not read. Neuronpedia hosts
+  an ICA set for the same model, and its sources name `neuronpedia/icalens-gemma-2-2b`. No record
+  read says that this repository and the `sida/` one hold the same basis, so the entry records no
+  Neuronpedia mapping and the status stays `unverified`. The same holds for the GPT-2 and
+  Qwen3.5 9B bases.
 - **`sida/icalens-qwen3.5-2b-ultrachat-1m`** was fitted on the instruction-tuned model. It is not
-  a basis for the engine's `qwen3.5-2b-base`.
+  a basis for the engine's `qwen3.5-2b-base`. Neuronpedia lists no model for `Qwen/Qwen3.5-2B`.
 - **`gemma-2-2b` with `gemmascope-transcoder-16k`.** The status is strict on purpose. A hosted
   graph and its feature labels come from the same service under the same ids, so a link from a
-  node of that graph to its feature would be id-consistent by construction. What is unknown is the
-  model commit and the transcoder weights commit behind those ids, which matters as soon as a
-  locally loaded model is compared with a hosted feature. The four-word vocabulary has no status
-  for "ids consistent within the service, checkpoint not attested". Adding one is an owner
+  node of that graph to its feature would be id-consistent by construction. The service now
+  attests the model repository and names a weights repository. What is unknown is the model commit
+  and the transcoder weights commit behind those ids, which matters as soon as a locally loaded
+  model is compared with a hosted feature. The four-word vocabulary has no status for "ids and
+  repository attested by the service, commit not reported". All five hosted entries have their
+  model repository attested and no commit reported today. Adding such a status is an owner
   decision; this change does not add it.
+- **Hosted sets that have no registry entry.** The service also hosts `icalens-res` for
+  `gemma-2-2b` (`neuronpedia/icalens-gemma-2-2b`), `gemma-2-2b-it` and `qwen3.6-27b`, and
+  `clt-hp` for `gemma-2-2b`. The registry has no entry for them. They are named here so that a
+  reader does not take the registry for a list of what the service offers.
 
 ## Resolving and linking
 
@@ -169,8 +229,9 @@ from scripts.experiments import neuronpedia as nps
 
 found = nps.resolve("qwen3.5-2b-base", "ica_component")   # Resolution(status="mapped", ...)
 found.verified                                            # False: an alias never reads as verified
+nps.resolve("qwen3.5-2b-base", "ica_component", 1).status # "no_mapping": the hosted set has layers 0, 4, 8, ...
 nps.resolve("gemma-2-2b", "sae_latent").status            # "no_mapping", with the reason
-nps.link_or_fallback(found, 3, layer=1, record={"signed_score": -0.5})
+nps.link_or_fallback(found, 3, layer=4, record={"signed_score": -0.5})
 # {"link": None, "reason": "mapping not verified", "detail": ..., "local": {...}}
 ```
 
@@ -212,9 +273,12 @@ Two patterns the engine holds are deliberately not recorded, because each carrie
 
 The engine builds one feature URL today, an API path:
 `/api/feature/<model>/<layer>-<source set>/<index>` (`neuronpedia_features.py:155`). It is a JSON
-endpoint, not a page, and is not recorded as a link pattern. A page path of the form
-`/<model>/<layer>-<source set>/<index>` appeared in search-result URLs on 2026-11-10. It was not
-read in a page or in source code: unverified, and not in the registry.
+endpoint, not a page, and is not recorded as a link pattern. The service's documentation gives the
+page form: a feature's URL is `neuronpedia.org/[MODEL_ID]/[SOURCE_ID]/[INDEX]`, and a source id is
+the layer number followed by the source set name (record `docs.getting-started.key-concepts`, read
+on 2026-11-10). That form would fit the registry's template rule. It is not entered as a
+`url_pattern` in any real entry: no entry permits a link, so a pattern would change nothing today,
+and entering one is left to the owner.
 
 The fixture registry holds one `verified_exact` entry for the toy model so the link path runs
 under test. Its host is `registry-fixture.invalid`. A synthetic registry may link only to a
@@ -414,9 +478,12 @@ registry comparison are what stop it, so validate against the registry.
 The fields below are the ones the engine's own parser and fixtures use. Paths given without a
 directory are under `medlang_circuits/`. Neuronpedia's schema file
 is cited in the engine by repository path only (`apps/webapp/app/api/graph/graph-schema.json`,
-`medlang_circuits/feature_tagger.py:4`, `README.md:56`). No copy of it is in any checkout, and the
-validator page was not read. The list is therefore the engine's reading of the contract, not the
-contract.
+`medlang_circuits/feature_tagger.py:4`, `README.md:56`). No copy of it is in any checkout. The
+validator page was fetched on 2026-11-10 (record `page.graph.validator`): it shows a JSON Schema
+titled "Anthropic Attribution Graph", version 1.0.0, and says that the model matching the graph's
+`metadata.scan` value must be on Neuronpedia. The table below was written before that and has not
+been compared with the schema field by field. It is therefore still the engine's reading of the
+contract, not the contract.
 
 | Area | Check | Fields known from engine code |
 |---|---|---|
@@ -429,11 +496,12 @@ contract.
 | Reconstruction and error information | Keep error nodes and their edges. Report the share of attribution on error nodes beside any feature statistic. Do not drop them to make a graph smaller | `feature_type` values `mlp reconstruction error` and `lorsa error` (`schema_utils.py:20-21`); `error_node_share` (`batch_eval.py:193-212`); summary field `error_share` |
 | Feature detail | A node's label is fetched separately and can change. Record it as an explanation record with source and retrieval time, not as text inside the graph | `GET /api/feature/<model>/<layer>-<source set>/<index>`; response keys read: `explanations[].description`, `activations[].tokens`, `activations[].values` (`neuronpedia_features.py:155,199-224`) |
 
-Could not be read today, and so not specified here: the validator's required and optional
-fields; the `qParams` contract; the `metadata.feature_details` contract beyond the one key above;
-the feature-detail response schema beyond the three keys the engine reads; any size or rate limit
-on upload; whether the validator accepts graphs from a source set that is not registered on the
-site.
+Not specified here, because the fetched schema has not been reconciled with this table: the
+validator's required and optional fields; the `qParams` contract; the `metadata.feature_details`
+contract beyond the one key above; any size limit on upload; whether the validator accepts graphs
+from a source set that is not registered on the site. The feature-detail response read on
+2026-11-10 has 46 top-level keys, of which the engine reads `explanations` and `activations`; the
+four `api.feature.*` records list the identity fields.
 
 ### Three gaps in the current hosted path that an exporter would hit
 
@@ -461,8 +529,11 @@ establish, for today:
   the study pins. The engine's own record shows coverage moving: `qwen3-4b` returned errors on
   2026-07-07 and served graphs from 2026-09-02 (`graph_client.py:39-41`).
 - **API limits.** The engine records no numeric rate limit. It retries on HTTP 429, 500, 502, 503
-  and 504, four attempts (`graph_client.py:156-158`). Limits named in search summaries were not
-  read in a page and are not repeated here.
+  and 504, four attempts (`graph_client.py:156-158`). The documentation read on 2026-11-10 (record
+  `docs.getting-started.accounts`) gives default limits per 60-minute window, among them 30 for
+  `/api/graph/generate`, 240 for `/api/lens/prompt` and 25,000 for endpoints it does not list. That
+  is the documentation of one date. It says that a key can be given higher limits, and it does not
+  say what the study's key is allowed.
 - **Artifact compatibility.** That a released basis, lens or dictionary was fitted on the same
   commit, tokenizer, site and precision as a study run. The ICA fork's saved lens records no
   tokenizer identity and no tensor hashes (`docs/experiment_interface/ica_adapter.md`,
@@ -475,28 +546,30 @@ an evidence item that names a source and a date.
 
 ## Roadmap
 
-Status of each external link is "not read on 2026-11-10" for every row, because the host was
-blocked. The descriptions say what the project holds, not what a post says.
+Each linked post was fetched on 2026-11-10 (HTTP 200; record `blog.<name>` in the evidence index,
+with its hash). The posts were searched for statements about commits, revisions and checkpoints and
+for the items this page cites; apart from `blog/neurons-ica` they were not studied in full. The
+descriptions say what the project holds, not what a post says.
 
 | When | Item | What the project holds today | Link status |
 |---|---|---|---|
-| now | interp-engine | CPU eager backend used in push-to-run CI; one recorded float32 agreement audit for `gemma-2-2b` next-token behaviour (`docs/backend_agreement_20260903.md`); the fork's README says the engine powers Neuronpedia's inference (`patientwords-interp-engine/README.md:16`, fork head `2afe000d`) | `blog/interp-engine`: not read |
-| now | ICA | offline adapter and toy fixtures (`ica_adapter.md`); four released bases named, none read; the Neuronpedia alias for `qwen3.5-2b-base` unverified | `blog/neurons-ica`: not read |
-| now | existing lenses | hosted J-lens readouts for `gemma-2-2b` and `gemma-2-2b-it`, instrument revision not recorded; a released Qwen3-4B J++ artifact whose fit identity is unknown (capability matrix) | `blog/jpp-drift-ui`: not read |
-| now | neuron / ICA comparisons | nothing run. The registry has no `neuron` entry. A comparison needs both representations on one verified checkpoint | `blog/neurons-ica`: not read |
-| now | graph interchange | the reference payload and the plan above; no exporter | `graph/validator`, `blog/circuit-tracer`: not read |
-| next | HeadVis | nothing. No `attention_head` entry | `blog/headvis`: not read |
-| next | attention-aware graphs | the engine names one model traced with attention replacement and its two request parameters (`graph_client.py:62-64`); that model's hosted graphs are capped at 10 prompt tokens, which study prompts exceed (`neuronpedia_features.py:56-58`) | `blog/circuit-tracer`: not read |
+| now | interp-engine | CPU eager backend used in push-to-run CI; one recorded float32 agreement audit for `gemma-2-2b` next-token behaviour (`docs/backend_agreement_20260903.md`); the fork's README says the engine powers Neuronpedia's inference (`patientwords-interp-engine/README.md:16`, fork head `2afe000d`) | `blog/interp-engine`: fetched; dated August 31st, 2026 |
+| now | ICA | offline adapter and toy fixtures (`ica_adapter.md`); four released bases named in the ICA fork, none read; the Neuronpedia id for `qwen3.5-2b-base` confirmed, its checkpoint commit not reported | `blog/neurons-ica`: read; dated November 9th, 2026; lists ICA lenses for 6 models |
+| now | existing lenses | hosted J-lens readouts for `gemma-2-2b` and `gemma-2-2b-it`, instrument revision not recorded; a released Qwen3-4B J++ artifact whose fit identity is unknown (capability matrix) | `blog/jpp-drift-ui`: fetched; dated October 15th, 2026 |
+| now | neuron / ICA comparisons | nothing run. The registry has no `neuron` entry. A comparison needs both representations on one verified checkpoint | `blog/neurons-ica`: read |
+| now | graph interchange | the reference payload and the plan above; no exporter | `graph/validator`: fetched, schema not reconciled; `blog/circuit-tracer`: fetched; dated June 13th, 2025 |
+| next | HeadVis | nothing. No `attention_head` entry | `blog/headvis`: fetched; dated June 9th, 2026 |
+| next | attention-aware graphs | the engine names one model traced with attention replacement and its two request parameters (`graph_client.py:62-64`); that model's hosted graphs are capped at 10 prompt tokens, which study prompts exceed (`neuronpedia_features.py:56-58`) | `blog/circuit-tracer`: fetched |
 | next | temporal analysis | nothing. To be opened only for a defined hypothesis about reference, negation or information retained over turns | none |
-| optional study | NLAs | nothing | `blog/nlas`: not read |
-| optional study | Assistant Axis, Drift Calibrator | nothing | `blog/assistant-axis`, `blog/jpp-drift-ui`: not read |
+| optional study | NLAs | nothing | `blog/nlas`: fetched; dated May 17th, 2026 |
+| optional study | Assistant Axis, Drift Calibrator | nothing | `blog/assistant-axis`: fetched; dated January 28th, 2026; `blog/jpp-drift-ui`: fetched |
 
 Conditions attached to the later rows.
 
 - **Attention.** An attention pattern shows where a head reads from. It does not establish that
   the head causes an output. A claim about cause needs an intervention with a control, on a
   hypothesis stated before the run.
-- **NLAs.** The post was not read, so this page does not define the method. Any method that
+- **NLAs.** The post was fetched and not studied, so this page does not define the method. Any method that
   returns a natural-language account of an activation can return a fluent account that is wrong. A
   study that uses one needs a confabulation test (for example: does the account change when the
   activation is replaced by an unrelated one) and a misleading-explanation test (for example: does
@@ -507,8 +580,10 @@ Conditions attached to the later rows.
   probability of clinical error, and it would be stored as its own quantity, never as a
   `clinical_outcome`.
 - **Interp Explorer.** The owner's task brief of 2026-11-10 says the Interp Explorer post reports
-  that development paused in July. The brief has no retrievable record in the repository and the
-  post was not read today, so this page does not confirm it.
+  that development paused in July. The post, read on 2026-11-10 (record `blog.interp-explorer`;
+  dated April 21st, 2026), carries this line in its Interpretability Explorer section: "Update July
+  2026 - We're pausing work on Interp Explorer as we figure out a more intuitive way to surface
+  great interp content."
 
 ## What was verified, and what was not
 
@@ -516,12 +591,16 @@ Conditions attached to the later rows.
 |---|---|
 | The registry rules, link rules, snapshot checks, record validators and graph-reference rules behave as written | `tests/test_experiments_neuronpedia.py`, offline, on a synthetic registry and the real registry file |
 | Real entries agree with the engine's tables | the same tests compare study ids, Hugging Face ids and pins with `scripts/logits_eval.py`, source sets with `neuronpedia_features.MODEL_SOURCE_SETS`, the calibrated pair with `scripts/feature_models.py`, and artifact ids with the capability matrix |
+| Real entries agree with the service's records of 2026-11-10 | the tests read the kept bodies and the index: model id, source set, layer list and Hugging Face repository of each hosted entry equal the saved source-set record; every evidence item that cites a URL names a record whose URL and date match; every kept body still has its recorded SHA-256 and size (`verify_snapshot`). This is evidence about that date. Nothing re-fetches |
+| No record of the service names a revision | `test_no_record_of_the_service_names_a_revision` searches every kept body and the fields read of every record for a key that names a revision, a commit or a hash, and finds none |
 | The module opens no socket | `test_importing_and_using_the_module_opens_no_socket` replaces `socket.socket`, `socket.create_connection` and `socket.getaddrinfo`, loads the module from its file, calls each of its sixteen public functions and asserts that the set it called equals the set the module defines; `test_module_imports_no_network_or_process_library` lists the imports |
 | A request record holds no credential and no prompt text | checked by key name, value type, character class and the credential screen (issuer prefix; token form), on abstract placeholders and on dummy strings made of an issuer prefix and filler. Not verified: the cases listed under "What the check cannot see", which the check cannot tell from an id |
 | A refusal of a request record repeats no value | a sentinel string is placed under each key, in `not_recorded`, in the endpoint and as a key, and the message is read (`test_no_refusal_of_a_request_record_repeats_a_value`, `test_a_not_recorded_entry_is_checked_as_a_pointer_and_never_repeated`, `test_a_string_with_a_credential_prefix_is_refused_wherever_it_sits`) |
 | An integer in a URL is a component index or a layer number | bounded as described under *Resolving and linking*; `test_the_integers_of_a_url_are_bounded_so_a_hash_written_as_an_integer_is_refused` also builds no URL from any committed entry over layers 0 to 4095 and component ids up to 2**20 - 1 |
-| Any Neuronpedia id resolves on the site | not verified. No page was read and no request was made |
-| Any hosted checkpoint equals a study pin | not verified. No hosted revision is recorded anywhere |
-| Any page URL pattern | not verified. None is recorded |
-| The graph contract | not verified against Neuronpedia's schema or validator. The plan lists the engine's reading |
+| The hosted ids resolve on the site | verified for 2026-11-10: the five hosted entries' model ids and source sets answered, each with a feature record or a lens page. Not verified for any later date |
+| A hosted model id names the study's Hugging Face repository | verified for 2026-11-10, from the service's model records (`hfRepoId`) |
+| Any hosted checkpoint equals a study pin | not verified. The service reported no revision for any model, dictionary, lens or basis, so no hosted revision is recorded anywhere |
+| What a live lens response reports | not read. The route runs a model and was not called |
+| Any page URL pattern | the feature page form was read in the documentation. None is recorded in the registry |
+| The graph contract | not verified. The validator page and its schema were fetched; the plan has not been reconciled with them and still lists the engine's reading |
 | That a fixture link works | not applicable. The fixture host is under `.invalid` |
