@@ -129,16 +129,15 @@ The generated site file `data/urgency_shift.json` belongs to the companion repos
 Follow the [figure-style decision](docs/agent_reference.md#figure-style-standing-preference):
 Tufte, minimal structure, direct labels, readable at thumbnail size.
 
-## Dual-AI PR Review Architecture
+## PR review
 
-- **Codex** audits hunk-level diff logic, local edge cases and isolated code correctness.
-- **Gemini CLI ([GEMINI.md](GEMINI.md))** audits whole-repo blast radius, untouched
-  downstream callers, data provenance and `patientwords-engine` ↔ `patientwords`
-  contract sync. It reports only cross-file findings with both changed and untouched
-  evidence; it never duplicates Codex's local syntax, type or isolated logic checks.
-- **Triggers** (`.github/workflows/gemini-pr-review.yml`): Gemini runs on non-draft PRs
-  automatically, and on any PR when an owner, member or collaborator comments
-  `@codex review` (once per head) or `@gemini-cli` (always).
+- **Codex** reviews every pull request: hunk-level diff logic, local edge cases and
+  isolated code correctness. It runs when a PR is opened or marked ready, and on an
+  `@codex review` comment.
+- Cross-file effects (untouched downstream callers, data provenance,
+  `patientwords-engine` ↔ `patientwords` contract sync) have no automated reviewer.
+  The author checks them with the paired checks in [verify.md](verify.md). The Gemini
+  cross-file review was removed on 2026-11-10 at the owner's request.
 
 ## Code Review Rules
 
