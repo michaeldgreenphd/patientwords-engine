@@ -241,7 +241,14 @@ to clear it) and `python scripts/seal_check.py --site ../patientwords
 --extra docs,ops,data/verification` (must be CLEAN; `data/verification`
 holds the physician task bundles, which a later Tier B batch can seal after
 they were exported clean). Never edit page HTML, text, figures, or
-labels. When nothing landed, skip this
+labels. The skill's step 9 fixes the release order, and nothing is pushed
+before its release check passes: local engine commit, local site commit, a
+new analysis snapshot whenever any published statistics file changed
+(`python scripts/results_snapshot.py create`), the snapshot's commit,
+`python scripts/results_snapshot.py check-release --site ../patientwords`
+(exit 0 required), the engine push, the site push, then
+`check-release --site ../patientwords --published`. A catalogue-only publish
+needs no new snapshot and still runs both checks. When nothing landed, skip this
 section entirely — do not republish unchanged data. The site checkout is
 `main`, which GitHub Pages serves: a data-payload push there is a live
 publish, so the gates above are the last check before the public sees

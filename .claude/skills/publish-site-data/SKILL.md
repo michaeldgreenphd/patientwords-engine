@@ -178,49 +178,133 @@ Exit 2: a config error, never a pass. The printed line names the cause: an empty
 sealed set (wrong branch), a malformed `data/seal_allowlist.json` (fix the entry;
 never delete the file to get past it), or a sparse site checkout (precondition 3).
 
-**9. Commit and push.**
-- Site: `git -C ../patientwords status` first. Only `data/*.json`, the catalogue's files
-  under `data/results_catalogue/`, and exporter-written `modes/simulated/` render files
-  may have changed (added, modified, or deleted by the prune or the catalogue export). Anything else changed → abort, revert, investigate. Stage render deletions
-  too (`git add -A data modes/simulated`), or the pruned files stay published. Commit
-  and push `main`; GitHub Pages serves it, so this push is the publish — the contract,
-  claim and seal gates above are the last check.
-- Engine: commit the chain's engine-side outputs (`ops/*.json`, `data/jlens_*.json`,
-  and `data/results_policy/part_ledger.v1.json` when step 6b recorded new hashes) to
-  `main`; `git pull --rebase` before pushing.
+**9. Release: commit locally, snapshot, check, then push.**
+Nothing is pushed before step 9e passes. The site push (9g) is the publication: GitHub
+Pages serves the site's `main`. The order below keeps a published statistic from
+existing without its version record. *Recovery* (below) says what each failure leaves
+and how to continue.
+
+**9a. Engine commit, local.** Commit the chain's engine-side outputs (`ops/*.json`,
+`data/jlens_*.json`, and `data/results_policy/part_ledger.v1.json` when step 6b recorded
+new hashes). Do not push.
+
+**9b. Site commit, local.** `git -C ../patientwords status` first. Only `data/*.json`,
+the catalogue's files under `data/results_catalogue/`, and exporter-written
+`modes/simulated/` render files may have changed (added, modified, or deleted by the
+prune or the catalogue export). Anything else changed → abort, revert, investigate.
+Stage render deletions too (`git -C ../patientwords add -A data modes/simulated`), or
+the pruned files stay published. Commit. Do not push. The contract, claim and seal
+gates above are the last check of the content; steps 9c to 9e check that the release
+is recorded.
+
+**9c. Snapshot — required whenever ANY published statistics file changes.**
+The published statistics set is `STATISTICS_FILES` in `scripts/results_snapshot.py`,
+the one definition. It holds every site data file that carries a measured or computed
+number: the gallery payload `data/simulated_scenarios.json` (its `summary.penalty`
+block is a published statistic, and it can change when `data/urgency_shift.json` does
+not), `data/urgency_shift.json`, `data/model_stats.json`, the lens and J-space files
+of step 3, `data/translation_scale.json`, and the owner-run advice, Petri and Jev
+payloads. A run of the whole chain normally changes at least the payload, so it
+normally needs a snapshot. When unsure, go to 9e: it names every changed statistics
+file the current snapshot does not cover.
+```
+python scripts/results_snapshot.py create --id study-interim-<UTC date> \
+    --supersedes <the id `results_snapshot.py list` marks current> --site ../patientwords \
+    --change "<one sentence: what landed or changed since the previous snapshot>"
+```
+It writes a new immutable file under `data/analysis_snapshots/` and changes no
+published number. It records the sha256 of every file of the statistics set as
+committed in the site, which of them changed since the superseded snapshot, and the
+payload's `summary.penalty` block at both site commits, read from git. It refuses
+(exit 2, `refused, nothing written`) inputs that are not committed (untracked parts
+included), site statistics files that differ from the site's HEAD, an existing id
+(a second snapshot on one date takes a letter suffix), an id that does not supersede
+the current snapshot of its membership, and a directory holding a file the index does
+not list. It reads the committed policy whatever `PW_RESULTS_POLICY` says. It does not
+recompute the statistics (`--recomputed-statistics` records a comparison when the
+owner has recomputed `model_stats.json`). Never edit or delete a landed snapshot.
+
+**9d. Snapshot commit, local.** Commit the new snapshot file and
+`data/analysis_snapshots/index.json` in a second engine commit. Do not push.
+
+**9e. Release check.**
+```
+git -C ../patientwords fetch origin main
+python scripts/results_snapshot.py check-release --site ../patientwords
+```
+Exit 0 is required before any push. It reads both repositories and pushes nothing.
+It refuses (exit 1, one `REFUSED:` line per problem) unless: the engine tree is clean
+under the snapshot's inputs; the snapshot file and the index are committed; the
+snapshot is the current one of its membership and verifies; the engine commit it
+records is an ancestor of the engine HEAD; the site has no uncommitted change under
+`data/` or `modes/simulated/`; every file the snapshot records has the recorded sha256
+in the site's HEAD commit; every published statistics file this release changes
+(relative to the fetched `origin/main`) is recorded by the snapshot; and no changed
+data file is unclassified. An unclassified file is one that is in neither
+`STATISTICS_FILES` nor the commented lists of files a snapshot does not version; do
+not classify it yourself: put the `REFUSED:` line in `blockers` and stop. Report the
+manifest it prints (engine commit, site commit, snapshot id, each output's sha256) in
+the digest. `--json` prints the same manifest as JSON.
+
+**9f. Engine push.** `git push origin main`. If it is rejected, bring the remote in
+with a merge, `git pull --no-rebase origin main` (keep the target's trigger files, as
+the fire-trigger-safe skill says for any merge), never with a rebase: the snapshot
+records the engine commit it was created at, and a rebase replaces that commit. Then
+run 9e again and push.
+
+**9g. Site push — the publication.** `git -C ../patientwords push origin main`. If it
+is rejected, `git -C ../patientwords pull --rebase origin main`, run 9e again, then
+push. The rebase changes the site commit's id; the snapshot's recorded sha256 values
+bind the release, and 9e compares them at the new HEAD.
+
+**9h. Post-publication check.**
+```
+python scripts/results_snapshot.py check-release --site ../patientwords --published --record
+```
+It fetches both remotes and exits 1 unless the remote site branch holds every recorded
+file with the recorded sha256 and the remote engine branch holds the snapshot. On
+success `--record` appends a publication record (snapshot id, published site commit,
+time) to `data/analysis_snapshots/index.json`; commit that file and push the engine.
+The snapshot file is not edited. A snapshot with no publication record was created
+and not published: `results_snapshot.py list` shows `(no publication recorded)`.
+Exit 1 goes in `blockers` with its `REFUSED:` lines.
 
 ## Catalogue-only publish
 
 For a cycle whose only new results are parts outside the default analysis membership
-(precondition 4). Run, in order: step 6b, step 7, step 8, step 8b, step 9. Nothing else.
-The statistics files do not change in such a cycle, because the collectors behind them
-read under `study-interim/1`; if step 9's `git status` shows a change outside
-`data/results_catalogue/`, abort and investigate.
+(precondition 4). Run, in order: step 6b, step 7, step 8, step 8b, then steps 9a, 9b,
+9e, 9f, 9g and 9h without `--record`. Nothing else. It needs no new snapshot: the
+statistics files do not change in such a cycle, because the collectors behind them
+read under `study-interim/1`, and the results catalogue is not versioned by a
+snapshot. Step 9e passes against the current snapshot and prints
+`published statistics files this release changes: 0`; step 9h confirms that the
+published statistics files still have the bytes the current snapshot records. If
+step 9b's `git status` shows a change outside `data/results_catalogue/`, abort and
+investigate.
 
-## Snapshots
+## Recovery
 
-When step 2 changed the site's `data/urgency_shift.json` (new hosted parts landed, or
-the study pin was advanced in a reviewed change), record what the statistics were
-computed from. Run it after step 9's two commits, because it refuses inputs that are
-not committed (untracked parts included) and site statistics files that differ from
-the site's HEAD:
-```
-python scripts/results_snapshot.py create --id study-interim-<UTC date> \
-    --supersedes <the id `results_snapshot.py list` marks current> --site ../patientwords \
-    --change "<one sentence: what landed since the previous snapshot>"
-```
-It writes a new immutable file under `data/analysis_snapshots/` and changes no
-published number; commit the file and `index.json` in a second engine commit. It
-refuses an existing id, an id that does not supersede the current snapshot of its
-membership, and a directory holding a file the index does not list: never edit or
-delete a landed snapshot. It reads the committed policy whatever `PW_RESULTS_POLICY`
-says. The snapshot records each statistics file as published, with the generation time
-the file states; it does not recompute them (`--recomputed-statistics` records a
-comparison when the owner has recomputed `model_stats.json`).
+A snapshot is never edited or deleted to recover. A release that did not complete is
+continued, or its snapshot is superseded by the next one and keeps no publication
+record.
+
+| What failed | State it leaves | Continue | Undo |
+|---|---|---|---|
+| A gate stops the publish (step 7 errors, step 8b exit 1 or 2, an exporter's exit 2) | Nothing committed. The site working tree holds the chain's writes. | Fix the cause in the engine and run the chain again from step 1. | `git -C ../patientwords checkout -- data modes/simulated`, then `git -C ../patientwords clean -fd data modes/simulated` for new files. Leave the engine's ledger additions: they are true whether or not the publish completes. |
+| 9c `create` refuses (exit 2) | Commits 9a and 9b are local. No snapshot file was written. | Fix the cause the message names and run 9c again. | `git -C ../patientwords reset --hard origin/main` drops the local site commit. Nothing was published. |
+| 9c `create` is interrupted | Possibly a snapshot file the index does not list; `results_snapshot.py list` prints `NOT INDEXED`. | Remove that one file, then run 9c again. | The same removal. |
+| 9e `check-release` exits 1 | Everything is local. Nothing was pushed. | Fix what each `REFUSED:` line names and run 9e again. A recorded file with another sha256, or a changed statistics file the snapshot does not record: run 9c with `--supersedes <the snapshot just created>`, then 9d. | None needed. The unpublished snapshot stays in the index with no publication record. |
+| 9f succeeds, 9g fails | The engine remote holds a snapshot whose bytes are not published. `list` shows `(no publication recorded)`; `check-release --published` exits 1 and names the files. | Run 9g again (its rejected-push steps), then 9h. | If the publish is abandoned: `git -C ../patientwords reset --hard origin/main`, then 9c with `--supersedes <the unpublished snapshot>` and a change sentence saying the release was abandoned, 9d, 9e, 9f. The current snapshot then describes the published site again. |
+| 9g is rejected because the remote moved | The local site commit must be rebased, and its id changes. | `git -C ../patientwords pull --rebase origin main`, 9e, 9g. The recorded sha256 values bind the release; the publication record of 9h stores the published commit id. | As the row above. |
+| Another publish changed a recorded file | Before the pull 9e says `origin/main changed the published statistics file ...`; after it, `... at the site HEAD has sha256 ...`. | Supersede: 9c with `--supersedes <the snapshot just created>`, 9d, 9e, then push. If the rebase stops on a conflict in an engine-written file, `git -C ../patientwords rebase --abort`, `git -C ../patientwords reset --hard origin/main`, and run the chain again from step 1; never resolve such a conflict by hand. | None. |
+| The engine merge of 9f conflicts in `data/analysis_snapshots/index.json` | Two sessions created snapshots at once. | `git merge --abort`, stop, and put it in `blockers`: the owner decides which release stands. | None from this chain. |
+| 9h exits 1 after both pushes | The published bytes differ from the snapshot (another publish landed after 9g). | `git pull` in both repositories, then 9c (superseding) to 9h on the published state. | None. |
+
 `results_snapshot.py verify` (exit 1) means a recorded part changed or went missing,
 the current snapshot no longer describes the checkout (the pin, the tiers file or the
 membership rule changed without a superseding snapshot), or a snapshot file is not
-indexed: put it in `blockers`.
+indexed: put it in `blockers`. In a shallow engine checkout whose history ends before
+the snapshot's commit, 9e says so and names the remedy (`git fetch --deepen=<n>`).
 
 ## Never
 

@@ -106,11 +106,57 @@ not: a statistics file can predate a part, and the collector also takes rows fro
 site's gallery payload (recorded as `inputs.site_payload`). `--recomputed-statistics`
 records a field-by-field comparison with a file the operator has just recomputed.
 
+**The published statistics set** is defined once, as `STATISTICS_FILES` in
+`scripts/results_snapshot.py`. It lists every site data file that carries a measured
+or computed number, with how the file relates to the snapshot's inputs: written from
+the membership's parts (the gallery payload with its `summary.penalty` block, the
+urgency rows, the per-model statistics and the files derived from them); computed from
+other `trace_out/` artifacts (lens, J-space and patching exports); or computed from
+another lane's own record (advice, Petri, Jev). For the last two groups a snapshot
+records the published bytes and nothing about their inputs. A snapshot created with
+`--site` records every file of the set. Snapshots created before the set was written
+down recorded eight of them and are not rewritten.
+
+Some site data is deliberately outside the set, each with its reason in the same
+file: the results catalogue (the evolving record above), experiment bundles and
+their index, the daily sentinel series, hand-maintained files and synthetic sample
+fixtures. A data file in neither list is unclassified, and a publish that changes one
+is refused until a reviewed change classifies it.
+
+A snapshot that supersedes another also records what changed between the two site
+commits (`outputs.changed_since_superseded`): each statistics file whose bytes differ,
+with both sha256 values and the top-level keys that differ, and the gallery payload's
+`summary.penalty` block at both commits. Both sides are read from git and nothing is
+recomputed. When the superseded snapshot's site commit is no longer in the site
+repository (its release never completed and the commit was rebased away), the
+comparison is made with the snapshot before it, and the record says which one was
+passed over.
+
+**A statistic is published only with its snapshot.** `results_snapshot.py check-release`
+runs after the local commits of a publish and before any push. It exits 1, naming each
+problem, unless the snapshot is committed, current and verifying; the engine commit it
+records is an ancestor of the engine HEAD; every file it records has the recorded
+sha256 in the site's HEAD commit; and every published statistics file the site's HEAD
+changes relative to the published branch is one the snapshot records. It prints a
+release manifest: engine commit, site commit, snapshot id and each recorded file's
+sha256. A publish that changes only catalogue files passes against the current
+snapshot and needs no new one.
+
+The sha256 values bind a release, not the site commit id, which changes when a
+rejected site push is rebased. After the pushes, `check-release --published` compares
+the remote site branch's files with the snapshot's hashes and checks that the remote
+engine branch holds the snapshot. With `--record` it appends a publication record to
+the index (`publications`: snapshot id, published site commit, engine commit, time).
+The snapshot file is not edited. A snapshot with no publication record was created
+and not published; `list` shows which is which. The publish order and the recovery
+steps are in `.claude/skills/publish-site-data/SKILL.md`.
+
 `verify` exits 1 when a recorded part is missing or has different bytes, when a
 snapshot file changed or is not in the index, and, for the current snapshot of a
 membership, when the membership rule, the pinned manifest or a recorded input file
 differs from the record. A superseded snapshot reports those differences without
-failing. `tests/test_results_catalogue.py` runs it over every committed snapshot.
+failing. `tests/test_results_catalogue.py` runs it over every committed snapshot;
+`tests/test_results_release.py` covers the release check and the publication record.
 
 ## What did not change on 2026-11-10
 
