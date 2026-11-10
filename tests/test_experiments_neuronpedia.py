@@ -8,6 +8,12 @@ times and the fields read are in ``data/experiments/neuronpedia_evidence/2026111
 small JSON bodies beside it. The tests compare the registry with those saved records. They are therefore
 evidence about what the service answered on that date, not about what it answers today, and nothing here shows
 that a hosted checkpoint equals a study pin: no record that was read names a revision.
+
+Reference links are tested the same way. The fixture registry names synthetic evidence files under
+``tests/fixtures/experiments/neuronpedia/reference_evidence/``; the real registry names the kept source-set
+records of 2026-11-10 and the page records in
+``data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json``. A test that alters a saved file
+does so on a copy in a temporary directory.
 """
 from __future__ import annotations
 
@@ -18,6 +24,7 @@ import importlib.util
 import inspect
 import json
 import re
+import shutil
 import socket
 import sys
 from pathlib import Path
@@ -39,6 +46,10 @@ MODULE = ENGINE / "scripts" / "experiments" / "neuronpedia.py"
 EVIDENCE = ENGINE / "data" / "experiments" / "neuronpedia_evidence" / "20261110"
 EVIDENCE_INDEX = "data/experiments/neuronpedia_evidence/20261110/index.v1.json"
 EVIDENCE_DAY = "2026-11-10"
+# The pages fetched later the same day to confirm the page forms of reference links, and the paper's page.
+PAGES = ENGINE / "data" / "experiments" / "neuronpedia_evidence" / "20261110_reference_pages"
+PAGES_INDEX = "data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json"
+FX_EVIDENCE = "tests/fixtures/experiments/neuronpedia/reference_evidence"
 # A response key that would name a revision, a commit or a content hash.
 REVISION_KEY = re.compile(r"revision|commit|checkpoint|sha256|sha1|hash", re.I)
 CITED_RECORD = re.compile(r"\(records? ([a-z0-9.-]+)(?: and ([a-z0-9.-]+))? in " + re.escape(EVIDENCE_INDEX) + r"\)")
@@ -150,6 +161,13 @@ def test_schema_uses_only_the_keywords_the_repository_validator_executes() -> No
 def test_vocabularies_are_the_contract_strings() -> None:
     assert nps.VERIFICATION_STATUSES == ("verified_exact", "alias_unverified_checkpoint",
                                          "hosted_identity_unknown", "unverified")
+    # The second fact has its own vocabulary. No word of it is a verification status, and the reverse.
+    assert nps.REFERENCE_STATUSES == ("service_record_read_revision_not_reported", "no_service_record")
+    assert not set(nps.REFERENCE_STATUSES) & set(nps.VERIFICATION_STATUSES)
+    assert nps.LINK_KINDS == ("exact", "reference", "none")
+    assert nps.IDENTITY_USES == ("exact_link", "pooling", "parity_statement")
+    assert nps.REFERENCE_PAGE_KINDS == ("model_page", "source_page", "lens_page")
+    assert not set(nps.REFERENCE_PAGE_KINDS) & set(nps.URL_KINDS)      # no feature page among the reference pages
     assert nps.GRAPH_REF_KIND in common.PAYLOAD_KINDS
     assert common.METHOD_PAYLOAD_KINDS["attribution_graph"] == (nps.GRAPH_REF_KIND,)
     assert nps.QUANTITY_KINDS == ("feature_interpretability_score", "label_prediction_score", "lens_token_rank",
@@ -221,7 +239,8 @@ def test_real_statuses_are_the_ones_the_evidence_supports(real: dict) -> None:
     }
     # The service's records were read on 2026-11-10 and none names a revision (the tests below), so nothing is
     # verified_exact and no hosted revision is recorded. The documentation gives a feature page form; it is
-    # not entered as a URL pattern. An entry may change only together with its evidence.
+    # not entered as a URL pattern. An entry may change only together with its evidence. The reference block
+    # added later is a second fact and moved none of these statuses: links_enabled is the exact-link flag.
     for item in real["entries"]:
         assert item["verification"]["status"] != "verified_exact", item["registry_id"]
         assert item["links_enabled"] is False
@@ -431,10 +450,14 @@ def test_the_registry_the_matrix_and_the_doc_say_the_same_about_what_was_read(re
         assert sourced in registry["verification_meaning"]["hosted_identity_unknown"]
         assert "whether the service reports one was not read" not in json.dumps(registry)
     assert sourced in doc and "whether the service reports one was not read" not in doc
-    # verified_exact keeps its definition, in the registry and in the doc.
+    # verified_exact keeps its definition, in the registry and in the doc: the first sentence is unchanged. The
+    # second used to read "The only status that permits a link." It now names the three things the status
+    # permits, because a reference link exists and does not depend on it.
     assert real["verification_meaning"]["verified_exact"] == fixture["verification_meaning"]["verified_exact"] == (
         "The Neuronpedia ids were read in a primary source and the hosted checkpoint revision is recorded and "
-        "equals the study revision. The only status that permits a link.")
+        "equals the study revision. The only status that permits an exact link, pooling of hosted and local "
+        "results, or a parity statement. A reference link does not depend on this status and is not evidence "
+        "for it.")
 
     origin, stale = "owner's task brief of 2026-11-10", (
         "design note", "repository text", "web-search", "search result", "are reported to name",
@@ -593,9 +616,22 @@ def test_no_real_entry_yields_a_link(real: dict) -> None:
         assert nps.build_link(item, 0, layer=0).url is None, item["registry_id"]
 
 
-def test_link_functions_take_no_text_argument() -> None:
+def test_link_functions_take_no_text_argument(fixture_registry: dict) -> None:
     assert list(inspect.signature(nps.build_link).parameters) == ["entry", "component_id", "layer"]
-    assert list(inspect.signature(nps.link_or_fallback).parameters) == ["target", "component_id", "layer", "record"]
+    # link_or_fallback gained one keyword, reference_page, and build_reference_link has page: each takes one
+    # word of a closed vocabulary that selects a page form and is never put in a URL. root is a directory.
+    assert list(inspect.signature(nps.link_or_fallback).parameters) == ["target", "component_id", "layer", "record",
+                                                                        "reference_page"]
+    assert list(inspect.signature(nps.build_reference_link).parameters) == ["entry", "page", "layer", "root"]
+    alias = entry(fixture_registry, FX_ALIAS)
+    for words in ("alpha beta tail", "feature_page", "component_page", "model_page ", "MODEL_PAGE", 3, None,
+                  ["model_page"]):
+        with pytest.raises(Refusal) as caught:
+            nps.build_reference_link(alias, words)
+        assert caught.value.code == "reference_page_kind" and "alpha" not in str(caught.value)
+        if words is not None:
+            assert code_of(lambda: nps.link_or_fallback(alias, 3, layer=2, reference_page=words)) \
+                == "reference_page_kind"
 
 
 def test_the_integers_of_a_url_are_bounded_so_a_hash_written_as_an_integer_is_refused(
@@ -732,6 +768,703 @@ def test_fallback_record_is_also_present_with_a_link_and_with_no_mapping(real: d
     assert unmapped["local"]["record"] == {"signed_score": 0.0}
 
 
+# ------------------------------------------------------------------------------------------------ reference links
+
+# Every reference URL the committed registry yields, written out here and not read from the registry: the model
+# page of each of the five entries with a saved record, the source page of each layer the record lists, and the
+# lens page of the two hosted-lens entries.
+EXPECTED_REFERENCE_URLS = {
+    GEMMA_SET: ["https://www.neuronpedia.org/gemma-2-2b"]
+    + [f"https://www.neuronpedia.org/gemma-2-2b/{layer}-gemmascope-transcoder-16k" for layer in range(26)],
+    QWEN_SET: ["https://www.neuronpedia.org/qwen3-4b"]
+    + [f"https://www.neuronpedia.org/qwen3-4b/{layer}-transcoder-hp" for layer in range(36)],
+    HOSTED_LENSES[0]: ["https://www.neuronpedia.org/gemma-2-2b", "https://www.neuronpedia.org/gemma-2-2b/jlens"],
+    HOSTED_LENSES[1]: ["https://www.neuronpedia.org/gemma-2-2b-it", "https://www.neuronpedia.org/gemma-2-2b-it/jlens"],
+    ALIAS: ["https://www.neuronpedia.org/qwen3.5-2b-pt"]
+    + [f"https://www.neuronpedia.org/qwen3.5-2b-pt/{layer}-icalens-res" for layer in (0, 4, 8, 12, 16, 20)],
+}
+REFERENCE_RECORDS = {
+    GEMMA_SET: "api.source-set.gemma-2-2b.gemmascope-transcoder-16k",
+    QWEN_SET: "api.source-set.qwen3-4b.transcoder-hp",
+    HOSTED_LENSES[0]: "api.source-set.gemma-2-2b.gemmascope-transcoder-16k",
+    HOSTED_LENSES[1]: "api.source-set.gemma-2-2b-it.icalens-res",
+    ALIAS: "api.source-set.qwen3.5-2b-pt.icalens-res",
+}
+EXPECTED_LABEL = ("Reference page on Neuronpedia, an external service: the service record this link was built "
+                  "from names no checkpoint revision, so the hosted checkpoint is not identified and the link is "
+                  "not evidence that the page shows the study's model or representation.")
+
+
+@pytest.fixture(scope="module")
+def pages() -> dict[str, dict]:
+    """The thirteen pages fetched on 2026-11-10 between 19:49 and 19:51 UTC, by record id."""
+    index = json.loads((PAGES / "index.v1.json").read_text(encoding="utf-8"))
+    assert index["schema_version"] == "patientwords.neuronpedia-evidence/1"
+    assert index["retrieved_utc_date"] == EVIDENCE_DAY
+    by_id = {record["id"]: record for record in index["records"]}
+    assert len(by_id) == len(index["records"]) == 13
+    return by_id
+
+
+@pytest.fixture
+def copied_evidence(tmp_path: Path) -> Path:
+    """A root that holds a copy of the fixture's synthetic evidence files, for tests that alter one."""
+    shutil.copytree(ENGINE / FX_EVIDENCE, tmp_path / FX_EVIDENCE)
+    return tmp_path
+
+
+def all_reference_urls(item: dict, **kwargs: Any) -> list[str]:
+    """Every reference URL the module builds for one entry: each recorded page form, and for a source page each
+    layer from 0 to 63. A layer the saved record does not list is refused and adds nothing."""
+    urls = []
+    for kind in nps.REFERENCE_PAGE_KINDS:
+        for layer in (range(64) if kind == "source_page" else [None]):
+            try:
+                built = nps.build_reference_link(item, kind, layer=layer, **kwargs)
+            except Refusal as refusal:
+                assert refusal.code in ("reference_form_not_confirmed", "reference_ids_not_confirmed",
+                                        "layer_metadata"), refusal.code
+                continue
+            if built.url is not None:
+                urls.append(built.url)
+    return urls
+
+
+def rewrite_body(root: Path, item: dict, change: Callable[[dict], None]) -> dict:
+    """Alter the kept record under ``root`` and make the index and a copy of the entry repeat its new hash, so
+    that only the record's content differs from the committed fixture."""
+    evidence = item["reference"]["evidence"]
+    path = root / evidence["path"]
+    body = json.loads(path.read_text(encoding="utf-8"))
+    change(body)
+    path.write_text(json.dumps(body), encoding="utf-8")
+    data = path.read_bytes()
+    index_path = root / evidence["index"]
+    index = json.loads(index_path.read_text(encoding="utf-8"))
+    for record in index["records"]:
+        if record["id"] == evidence["record_id"]:
+            record["snapshot"].update(sha256=hashlib.sha256(data).hexdigest(), bytes=len(data))
+    index_path.write_text(json.dumps(index), encoding="utf-8")
+    changed = copy.deepcopy(item)
+    changed["reference"]["evidence"].update(sha256=hashlib.sha256(data).hexdigest(), bytes=len(data))
+    return changed
+
+
+def test_reference_and_identity_are_two_facts_in_the_real_registry(real: dict, fixture_registry: dict) -> None:
+    for registry in (real, fixture_registry):
+        assert registry["verification_statuses"] == list(nps.VERIFICATION_STATUSES)
+        assert registry["reference_statuses"] == list(nps.REFERENCE_STATUSES)
+        assert set(registry["reference_meaning"]) == set(nps.REFERENCE_STATUSES)
+        read = " ".join(registry["reference_meaning"]["service_record_read_revision_not_reported"].split())
+        assert "reports no revision, commit or hash" in read and "Permits a reference link" in read
+        assert "permits no exact link, no pooling and no parity statement" in read
+    # The reference block moved no verification status and switched no exact link on.
+    states = {item["registry_id"]: (item["verification"]["status"], item["links_enabled"],
+                                    item["reference"]["status"], item["reference"]["enabled"])
+              for item in real["entries"]}
+    read, none = "service_record_read_revision_not_reported", "no_service_record"
+    assert states == {
+        GEMMA_SET: ("hosted_identity_unknown", False, read, True),
+        QWEN_SET: ("hosted_identity_unknown", False, read, True),
+        HOSTED_LENSES[0]: ("hosted_identity_unknown", False, read, True),
+        HOSTED_LENSES[1]: ("hosted_identity_unknown", False, read, True),
+        ALIAS: ("alias_unverified_checkpoint", False, read, True),
+        **{registry_id: ("unverified", False, none, False) for registry_id in (*FORK_BASES, INSTRUCT_BASIS)},
+    }
+    for registry_id in (*FORK_BASES, INSTRUCT_BASIS):
+        block = entry(real, registry_id)["reference"]
+        assert block["evidence"] is None and block["pages"] == [] and block["reason"].startswith("Off: ")
+        assert "/reference/evidence" in entry(real, registry_id)["not_recorded"]
+    for registry_id in FORK_BASES:
+        assert "No record read says the two hold the same basis" in entry(real, registry_id)["reference"]["reason"]
+
+
+def test_the_real_registry_builds_exactly_these_reference_links_and_no_exact_link(real: dict) -> None:
+    built = {item["registry_id"]: all_reference_urls(item) for item in real["entries"]}
+    assert built == {**EXPECTED_REFERENCE_URLS, **{registry_id: [] for registry_id in (*FORK_BASES, INSTRUCT_BASIS)}}
+    assert sum(len(urls) for urls in built.values()) == 75
+    for urls in built.values():
+        for url in urls:
+            assert re.fullmatch(r"https://www\.neuronpedia\.org/[a-z0-9.-]+(/(\d{1,2}-[a-z0-9-]+|jlens))?", url), url
+    # Zero exact links, by every path that could give one, for every entry.
+    for item in real["entries"]:
+        layers = item["site"]["layers"] or [0, 1, 12]
+        for layer in (None, *layers[:3], layers[-1]):
+            for component in (0, 3, 2 ** 20 - 1):
+                exact = nps.build_link(item, component, layer=layer)
+                assert isinstance(exact, nps.Link) and exact.kind == "exact" and exact.url is None
+                for page in (None, *nps.REFERENCE_PAGE_KINDS):
+                    if page == "source_page" and layer is None:
+                        continue
+                    result = nps.link_or_fallback(item, component, layer=layer, reference_page=page)
+                    assert result["link"] is None and result["kind"] in ("reference", "none"), item["registry_id"]
+                    assert result["reason"] in (nps.REASON_NOT_VERIFIED, nps.REASON_NO_PATTERN)
+                    assert result["local"]["inspectable_offline"] is True
+        assert nps.permissions(item)["exact_link"] is False
+
+
+def test_exact_links_pooling_and_parity_stay_refused_for_every_real_entry(real: dict, fixture_registry: dict) -> None:
+    for item in real["entries"]:
+        allowed = nps.permissions(item)
+        assert (allowed["exact_link"], allowed["pooling"], allowed["parity_statement"]) == (False, False, False)
+        assert allowed["reference_link"] is item["reference"]["enabled"]
+        for use in nps.IDENTITY_USES:
+            with pytest.raises(Refusal) as caught:
+                nps.require_exact_identity(item, use)
+            assert caught.value.code == "identity_not_verified" and "verified_exact" in str(caught.value)
+        if item["model"]["study_id"] is not None:
+            strict = nps.resolve(item["model"]["study_id"], item["representation_type"], require_verified=True,
+                                 artifact_id=(item["artifact"] or {}).get("id"), registry=real)
+            assert strict.status == "no_mapping" and strict.entry is None, item["registry_id"]
+    # A reference link that is on changes none of the three: the fixture alias has one and is refused all the same.
+    alias, verified = entry(fixture_registry, FX_ALIAS), entry(fixture_registry, FX_VERIFIED)
+    assert nps.permissions(alias) == {
+        "registry_id": FX_ALIAS, "identity_status": "alias_unverified_checkpoint",
+        "reference_status": "service_record_read_revision_not_reported", "exact_link": False, "pooling": False,
+        "parity_statement": False, "reference_link": True}
+    assert all(code_of(lambda: nps.require_exact_identity(alias, use)) == "identity_not_verified"
+               for use in nps.IDENTITY_USES)
+    # verified_exact permits all three whatever the reference block says.
+    without = copy.deepcopy(verified)
+    without["reference"] = {"status": "no_service_record", "enabled": False, "evidence": None, "pages": [],
+                            "reason": "SYNTHETIC. Off."}
+    without["not_recorded"].append("/reference/evidence")
+    for item in (verified, without):
+        assert all(nps.require_exact_identity(item, use)[use] is True for use in nps.IDENTITY_USES)
+    assert code_of(lambda: nps.require_exact_identity(verified, "reference_link")) == "invalid_input"
+    # Switching the reference flag cannot switch the exact flag, and the reverse.
+    assert code_of(lambda: nps.validate_registry(mutated(fixture_registry, FX_ALIAS, lambda e: e.update(
+        links_enabled=True)))) == "links_without_verification"
+
+
+def test_reference_evidence_of_the_real_registry_is_the_saved_record(real: dict, evidence: dict[str, dict],
+                                                                    pages: dict[str, dict]) -> None:
+    for registry_id, record_id in REFERENCE_RECORDS.items():
+        item = entry(real, registry_id)
+        block = item["reference"]
+        saved = evidence[record_id]
+        assert block["evidence"] == {
+            "index": EVIDENCE_INDEX, "record_id": record_id,
+            "path": f"data/experiments/neuronpedia_evidence/20261110/{saved['body']}",
+            "sha256": saved["snapshot"]["sha256"], "bytes": saved["snapshot"]["bytes"],
+            "retrieved_utc": saved["snapshot"]["retrieved_utc"]}
+        assert nps.verify_snapshot(ENGINE / block["evidence"]["path"], saved["snapshot"])["status"] == "verified"
+        # The record names the entry's model id and the study's repository, and no revision.
+        body = body_of(saved)
+        assert body["model"]["id"] == item["neuronpedia"]["model_id"]
+        assert body["model"]["hfRepoId"] == item["model"]["hf_id"] == logits_eval.HF_IDS[item["model"]["study_id"]]
+        assert not {key for key in keys_in(body) if REVISION_KEY.search(key)}
+        checked = nps.verify_reference_evidence(item)
+        assert checked["status"] == "verified" and checked["sha256"] == saved["snapshot"]["sha256"]
+        assert checked["layers"] == (item["site"]["layers"] if registry_id not in HOSTED_LENSES else None)
+        assert set(checked["pages"]) == {page["kind"] for page in block["pages"]}
+        for page in block["pages"]:
+            assert page["template"] == "https://www.neuronpedia.org" + nps.REFERENCE_PAGES[page["kind"]]
+            assert page["read_utc_date"] == EVIDENCE_DAY and "{component}" not in page["template"]
+            for key in ("form_record", "instance_record"):
+                cited = pages[page[key]["record_id"]]
+                assert page[key] == {"index": PAGES_INDEX, "record_id": cited["id"],
+                                     "sha256": cited["snapshot"]["sha256"],
+                                     "retrieved_utc": cited["snapshot"]["retrieved_utc"]}
+                assert cited["http_status"] == 200
+            # The documentation record is named in the form's source, and the form is quoted in that record.
+            form = pages[page["form_record"]["record_id"]]
+            assert f"(record {form['id']} in {PAGES_INDEX})" in page["source"]
+            assert form["snapshot"]["source_url"] in page["source"]
+            quoted = {"model_page": "neuronpedia.org/[MODEL_ID])", "source_page": "neuronpedia.org/[MODEL_ID]/[SOURCE_ID])",
+                      "lens_page": "neuronpedia.org/[MODEL_ID]/jlens"}[page["kind"]]
+            assert any(quoted in statement for statement in form["fields_read"]["statements"]), page["kind"]
+            # One page of the form was fetched for this entry's ids, and it is a URL the module builds.
+            instance = pages[page["instance_record"]["record_id"]]
+            assert instance["snapshot"]["source_url"] in EXPECTED_REFERENCE_URLS[registry_id]
+            assert instance["fields_read"]["title"].endswith("Neuronpedia")
+            assert instance["fields_read"]["page_components"] == {"model_page": ["PageModel"],
+                                                                 "source_page": ["PageSource"],
+                                                                 "lens_page": []}[page["kind"]]
+        assert "No feature page" in block["reason"] or registry_id in HOSTED_LENSES
+
+
+def test_the_page_records_are_hashed_dated_and_agree_with_the_earlier_ones(evidence: dict[str, dict],
+                                                                           pages: dict[str, dict]) -> None:
+    for record_id, record in pages.items():
+        snapshot = record["snapshot"]
+        assert snapshot["schema_version"] == nps.SNAPSHOT_SCHEMA and snapshot["not_recorded"] == [], record_id
+        assert nps.HEX64.fullmatch(snapshot["sha256"]) and snapshot["bytes"] > 0, record_id
+        assert nps.PLAIN_URL.fullmatch(snapshot["source_url"]) and "?" not in snapshot["source_url"], record_id
+        assert re.fullmatch(EVIDENCE_DAY + r"T19:(49|50):\d{2}Z", snapshot["retrieved_utc"]), record_id
+        assert record["http_status"] == 200 and record["kind"] == "html_page" and record["body"] is None
+        assert record["body_omitted_reason"] and record["fields_read"]["title"], record_id
+    assert sorted(record_id.split(".")[0] for record_id in pages) == ["arxiv"] + ["docs"] * 3 + ["page"] * 9
+    assert not (PAGES / "bodies").exists()
+    # The three documentation pages and the arXiv page had the same bytes at 18:24-18:27 and at 19:49.
+    for record_id in ("docs.getting-started.key-concepts", "docs.getting-started.find-resources",
+                      "docs.jacobian-lens", "arxiv.2606.11722v2"):
+        assert pages[record_id]["snapshot"]["sha256"] == evidence[record_id]["snapshot"]["sha256"], record_id
+        assert pages[record_id]["snapshot"]["bytes"] == evidence[record_id]["snapshot"]["bytes"]
+        assert pages[record_id]["fields_read"]["compared_with_record_of_20261110"]["same_sha256"] is True
+    # No documentation record gives a page form for a source set without a layer, and the registry records none.
+    assert any("no page form for a source set" in statement
+               for statement in pages["docs.getting-started.key-concepts"]["fields_read"]["statements"])
+    # The paper, as its own page states it.
+    paper = " ".join(pages["arxiv.2606.11722v2"]["fields_read"]["statements"])
+    assert "Title: Non-Gaussianity Reveals Interpretable Directions in Language Models." in paper
+    assert "Authors: Sida Liu, Feijiang Han, Sarah Wiegreffe, Furong Huang." in paper
+    assert "arXiv:2606.11722v2 [cs.LG]" in paper and "v2 Mon, 19 Oct 2026 17:23:26 UTC" in paper
+    assert "v1 Wed, 10 Jun 2026 06:53:58 UTC" in paper
+
+
+def test_an_exact_link_and_a_reference_link_cannot_be_confused(real: dict, fixture_registry: dict) -> None:
+    """Each consumer path, on the fixture entry that permits both kinds and on the one that permits only a
+    reference."""
+    verified, alias = entry(fixture_registry, FX_VERIFIED), entry(fixture_registry, FX_ALIAS)
+    assert nps.REFERENCE_LABEL == EXPECTED_LABEL
+
+    # 1. build_link: always a Link of kind exact. It never returns the reference link, on either entry.
+    exact = nps.build_link(verified, 3, layer=1)
+    assert type(exact) is nps.Link and exact.kind == "exact" and exact.url == EXPECTED_FIXTURE_URL
+    assert not hasattr(exact, "label") and not hasattr(exact, "evidence")
+    withheld = nps.build_link(alias, 3, layer=2)
+    assert type(withheld) is nps.Link and withheld.kind == "exact" and withheld.url is None
+    assert withheld.reason == nps.REASON_NOT_VERIFIED
+
+    # 2. build_reference_link: always a ReferenceLink of kind reference with the fixed label, on either entry.
+    for target, layer, url in ((verified, 1, "https://registry-fixture.invalid/toy-model-hosted/1-toy-ica-set"),
+                               (alias, 2, "https://registry-fixture.invalid/toy-model-other-name/2-toy-ica-alias-set")):
+        reference = nps.build_reference_link(target, "source_page", layer=layer)
+        assert type(reference) is nps.ReferenceLink and reference.kind == "reference"
+        assert reference.url == url and reference.label == EXPECTED_LABEL and reference.reason == nps.REFERENCE_BUILT
+        assert reference.url != EXPECTED_FIXTURE_URL and reference.reason != nps.LINK_BUILT
+        record = reference.as_record()
+        assert tuple(record) == nps.REFERENCE_LINK_KEYS == (
+            "kind", "url", "label", "page", "registry_id", "evidence", "read_utc_date", "identity_status",
+            "reason", "detail")
+        assert record["evidence"] == target["reference"]["evidence"] and record["read_utc_date"] == "2026-11-10"
+        assert tuple(record["evidence"]) == ("index", "record_id", "path", "sha256", "bytes", "retrieved_utc")
+        assert record["identity_status"] == target["verification"]["status"]
+        assert nps.validate_reference_link(record) == record
+        assert nps.validate_reference_link(record, fixture_registry) == record
+        assert json.loads(json.dumps(record)) == record
+    assert nps.build_reference_link(verified, "model_page").url == "https://registry-fixture.invalid/toy-model-hosted"
+
+    # 3. link_or_fallback without reference_page: what it returned before, plus the keys that say so.
+    plain = nps.link_or_fallback(alias, 3, layer=2)
+    assert (plain["kind"], plain["link"], plain["reference"]) == ("none", None, None)
+    assert plain["reason"] == nps.REASON_NOT_VERIFIED and plain["reference_reason"] == nps.REASON_REFERENCE_NOT_ASKED
+    linked = nps.link_or_fallback(verified, 3, layer=1)
+    assert (linked["kind"], linked["link"], linked["reference"]) == ("exact", EXPECTED_FIXTURE_URL, None)
+    assert set(plain) == set(linked) == {"kind", "link", "reason", "detail", "reference", "reference_reason",
+                                         "reference_detail", "local"}
+
+    # 4. link_or_fallback with reference_page. An exact link is returned as exact and no reference is attempted;
+    #    a reference is returned under its own key, and "link" stays None with the reason no exact link exists.
+    both = nps.link_or_fallback(verified, 3, layer=1, reference_page="source_page")
+    assert (both["kind"], both["link"], both["reference"]) == ("exact", EXPECTED_FIXTURE_URL, None)
+    assert both["reference_reason"] == nps.REASON_EXACT_RETURNED
+    only = nps.link_or_fallback(alias, 3, layer=2, reference_page="source_page", record={"signed_score": -0.5})
+    assert only["kind"] == "reference" and only["link"] is None
+    assert only["reason"] == nps.REASON_NOT_VERIFIED and "exact links are off" in only["detail"]
+    assert only["reference"] == nps.build_reference_link(alias, "source_page", layer=2).as_record()
+    assert only["reference"]["kind"] == "reference" and only["reference"]["label"] == EXPECTED_LABEL
+    assert only["reference_reason"] == nps.REFERENCE_BUILT
+    assert only["local"]["record"] == {"signed_score": -0.5} and only["local"]["component_id"] == 3
+    # The component id is in the local record and in no reference URL.
+    assert not only["reference"]["url"].endswith("/3")
+    # The rule the site applies to "link" (an https string, the built-link reason, a verified status) is false
+    # for every result that carries a reference, so an older page shows it as "no link" with its reason.
+    for result in (only, nps.link_or_fallback(entry(real, GEMMA_SET), 0, layer=0, reference_page="model_page")):
+        assert result["kind"] == "reference" and result["link"] is None and result["reason"] != nps.LINK_BUILT
+        assert result["local"]["verification"]["status"] != "verified_exact"
+        assert result["local"]["reference"] == {"status": "service_record_read_revision_not_reported",
+                                                "enabled": True}
+    # No page form, no evidence: no reference, and the local record is still there.
+    for target in (entry(fixture_registry, FX_TRANSCODER), entry(real, INSTRUCT_BASIS)):
+        none = nps.link_or_fallback(target, 3, layer=1, reference_page="model_page")
+        assert (none["kind"], none["link"], none["reference"]) == ("none", None, None)
+        assert none["reference_reason"] == nps.REASON_NO_REFERENCE and "no_service_record" in none["reference_detail"]
+        assert none["local"]["reference"] == {"status": "no_service_record", "enabled": False}
+    unmapped = nps.link_or_fallback(nps.resolve("gemma-2-2b", "neuron", registry=real), 5, layer=2,
+                                    reference_page="model_page")
+    assert (unmapped["kind"], unmapped["link"], unmapped["reference"]) == ("none", None, None)
+    assert unmapped["reference_reason"] == nps.REASON_NO_MAPPING
+
+    # 5. validate_reference_link accepts a reference record and nothing that is, or is dressed as, an exact link.
+    record = only["reference"]
+    assert code_of(lambda: nps.validate_reference_link({**record, "kind": "exact"})) == "link_kind"
+    assert code_of(lambda: nps.validate_reference_link(only)) == "reference_link_record"      # the whole result
+    assert code_of(lambda: nps.validate_reference_link(EXPECTED_FIXTURE_URL)) == "link_kind"
+    assert code_of(lambda: nps.validate_reference_link({"kind": "exact", "link": EXPECTED_FIXTURE_URL})) == "link_kind"
+    assert code_of(lambda: nps.validate_reference_link({**record, "url": EXPECTED_FIXTURE_URL})) == "free_text_in_url"
+    assert code_of(lambda: nps.validate_reference_link({**record, "label": "Verified link"})) \
+        == "reference_link_record"
+    assert code_of(lambda: nps.validate_reference_link({**record, "label": EXPECTED_LABEL + " "})) \
+        == "reference_link_record"
+    assert code_of(lambda: nps.validate_reference_link({**record, "reason": nps.LINK_BUILT})) \
+        == "reference_link_record"
+    assert code_of(lambda: nps.validate_reference_link({**record, "link": EXPECTED_FIXTURE_URL})) \
+        == "reference_link_record"
+    for url in (record["url"] + "?prompt=alpha", record["url"] + "#alpha", record["url"].replace("https", "http"),
+                "https://example.org/toy-model-other-name/2-toy-ica-alias-set",
+                "https://registry-fixture.invalid/toy-model-other-name/alpha%20beta"):
+        assert code_of(lambda: nps.validate_reference_link({**record, "url": url})) == "free_text_in_url", url
+    assert code_of(lambda: nps.validate_reference_link({**record, "page": "lens_page"})) == "reference_link_record"
+    assert code_of(lambda: nps.validate_reference_link({**record, "page": "feature_page"})) == "reference_link_record"
+    assert code_of(lambda: nps.validate_reference_link({**record, "read_utc_date": "2026-11-09"})) \
+        == "reference_link_record"
+    assert code_of(lambda: nps.validate_reference_link({**record, "identity_status": "verified_exact"},
+                                                       fixture_registry)) == "reference_link_record"
+    assert code_of(lambda: nps.validate_reference_link({**record, "registry_id": FX_VERIFIED},
+                                                       fixture_registry)) == "reference_link_record"
+    assert code_of(lambda: nps.validate_reference_link(record, real)) == "unknown_registry_id"
+
+
+def test_a_reference_link_is_refused_without_a_saved_evidence_record(fixture_registry: dict, real: dict,
+                                                                    tmp_path: Path, copied_evidence: Path) -> None:
+    alias = entry(fixture_registry, FX_ALIAS)
+    assert nps.build_reference_link(alias, "model_page", root=copied_evidence).url \
+        == "https://registry-fixture.invalid/toy-model-other-name"
+
+    # The entry names no record: reference links cannot be on, in a registry file or in a hand-made entry.
+    def unnamed(e: dict) -> None:
+        e["reference"]["evidence"] = None
+        e["not_recorded"].append("/reference/evidence")
+    assert code_of(lambda: nps.validate_registry(mutated(fixture_registry, FX_ALIAS, unnamed))) \
+        == "reference_links_without_record"
+    forged = copy.deepcopy(alias)
+    unnamed(forged)
+    assert code_of(lambda: nps.build_reference_link(forged, "model_page")) == "reference_links_without_record"
+    without_pages = mutated(fixture_registry, FX_ALIAS, lambda e: e["reference"].update(pages=[]))
+    assert code_of(lambda: nps.validate_registry(without_pages)) == "reference_links_without_record"
+    for registry, registry_id in ((fixture_registry, FX_TRANSCODER), (real, INSTRUCT_BASIS)):
+        switched = mutated(registry, registry_id, lambda e: e["reference"].update(enabled=True))
+        assert code_of(lambda: nps.validate_registry(switched)) == "reference_links_without_record"
+        renamed = mutated(registry, registry_id, lambda e: e["reference"].update(
+            status="service_record_read_revision_not_reported"))
+        assert code_of(lambda: nps.validate_registry(renamed)) == "reference_links_without_record"
+        assert code_of(lambda: nps.verify_reference_evidence(entry(registry, registry_id))) \
+            == "reference_evidence_missing"
+    assert code_of(lambda: nps.validate_registry(mutated(fixture_registry, FX_ALIAS, lambda e: e["reference"].update(
+        status="read")))) == "reference_status"
+    assert code_of(lambda: nps.validate_registry({**fixture_registry, "reference_statuses": ["read"]})) \
+        == "reference_status"
+
+    # The entry names a record and the files are not there: an empty root, a missing body, a missing index record.
+    assert code_of(lambda: nps.build_reference_link(alias, "model_page", root=tmp_path / "empty")) \
+        == "reference_evidence_missing"
+    (copied_evidence / alias["reference"]["evidence"]["path"]).unlink()
+    assert code_of(lambda: nps.build_reference_link(alias, "model_page", root=copied_evidence)) \
+        == "reference_evidence_missing"
+    assert code_of(lambda: nps.verify_reference_evidence(alias, root=copied_evidence)) == "reference_evidence_missing"
+    other = copy.deepcopy(alias)
+    other["reference"]["evidence"]["record_id"] = "source-set.no-such-record"
+    assert code_of(lambda: nps.build_reference_link(other, "model_page")) == "reference_evidence_missing"
+    # A path cannot leave the evidence directory of its registry kind.
+    for path in ("../outside.json", "/etc/outside.json", "data/experiments/neuronpedia_evidence/20261110/index.v1.json",
+                 f"{FX_EVIDENCE}/../../outside.json", f"{FX_EVIDENCE}/bodies/alpha beta.json",
+                 f"{FX_EVIDENCE}/bodies/record.txt"):
+        moved = copy.deepcopy(alias)
+        moved["reference"]["evidence"]["path"] = path
+        assert code_of(lambda: nps.build_reference_link(moved, "model_page")) == "reference_entry", path
+    # link_or_fallback turns an evidence refusal into "no reference link" and still returns the local record.
+    result = nps.link_or_fallback(other, 3, layer=2, reference_page="model_page", record={"signed_score": 1.5})
+    assert (result["kind"], result["link"], result["reference"]) == ("none", None, None)
+    assert result["reference_reason"] == nps.REASON_REFERENCE_REFUSED == "reference link refused"
+    assert result["reference_detail"].startswith("reference_evidence_missing: ")
+    assert result["local"]["record"] == {"signed_score": 1.5} and result["local"]["inspectable_offline"] is True
+
+
+def test_a_reference_link_is_refused_when_the_saved_file_no_longer_has_its_hash(fixture_registry: dict,
+                                                                              copied_evidence: Path) -> None:
+    alias = entry(fixture_registry, FX_ALIAS)
+    path = copied_evidence / alias["reference"]["evidence"]["path"]
+    original = path.read_bytes()
+    assert hashlib.sha256(original).hexdigest() == alias["reference"]["evidence"]["sha256"]
+    assert nps.verify_reference_evidence(alias, root=copied_evidence)["status"] == "verified"
+    for altered in (original + b" ",                                             # one byte more
+                    original.replace(b"toy-model-other-name", b"toy-model-other-nbme"),     # same size
+                    b"{}"):
+        path.write_bytes(altered)
+        for call in (lambda: nps.build_reference_link(alias, "model_page", root=copied_evidence),
+                     lambda: nps.build_reference_link(alias, "source_page", layer=2, root=copied_evidence),
+                     lambda: nps.verify_reference_evidence(alias, root=copied_evidence)):
+            assert code_of(call) == "reference_evidence_hash"
+    path.write_bytes(original)
+    assert nps.build_reference_link(alias, "model_page", root=copied_evidence).url is not None
+    # The entry's copy of the hash, size or time differs from the index: refused before the file is read.
+    for key, value in (("sha256", "a" * 64), ("bytes", len(original) + 1), ("retrieved_utc", "2026-11-11T00:00:00Z")):
+        differing = copy.deepcopy(alias)
+        differing["reference"]["evidence"][key] = value
+        assert code_of(lambda: nps.build_reference_link(differing, "model_page", root=copied_evidence)) \
+            == "reference_evidence_mismatch", key
+    # The committed evidence of every real and fixture entry still has its hash (nothing above touched it).
+    assert nps.verify_reference_evidence(alias)["status"] == "verified"
+
+
+def test_a_reference_link_is_refused_when_the_record_does_not_confirm_the_ids(fixture_registry: dict, real: dict,
+                                                                            copied_evidence: Path) -> None:
+    alias = entry(fixture_registry, FX_ALIAS)
+    # Another model id on the entry: the kept record does not name it.
+    renamed = copy.deepcopy(alias)
+    renamed["neuronpedia"]["model_id"] = "toy-model-third-name"
+    assert code_of(lambda: nps.build_reference_link(renamed, "model_page")) == "reference_ids_not_confirmed"
+    # Another source set on the entry: the record is of another set.
+    other_set = copy.deepcopy(alias)
+    other_set["neuronpedia"]["source_set"] = "toy-ica-set"
+    assert code_of(lambda: nps.build_reference_link(other_set, "model_page")) == "reference_ids_not_confirmed"
+    # A real entry pointed at the record of another model id, with that record's own hash.
+    swapped = copy.deepcopy(entry(real, ALIAS))
+    swapped["reference"]["evidence"] = copy.deepcopy(entry(real, QWEN_SET)["reference"]["evidence"])
+    assert code_of(lambda: nps.build_reference_link(swapped, "model_page")) == "reference_ids_not_confirmed"
+    assert nps.link_or_fallback(swapped, 0, layer=0, reference_page="model_page")["reference"] is None
+
+    # The record itself changed (and the index and the entry repeat its new hash): model id, repository, sources.
+    def model_id(body: dict) -> None:
+        body["model"]["id"] = "toy-model-third-name"
+
+    def repository(body: dict) -> None:
+        body["model"]["hfRepoId"] = "fixture/another-model"
+
+    def no_sources(body: dict) -> None:
+        body["sources"] = []
+
+    for change in (model_id, repository, no_sources):
+        root = copied_evidence / change.__name__
+        shutil.copytree(ENGINE / FX_EVIDENCE, root / FX_EVIDENCE)
+        changed = rewrite_body(root, alias, change)
+        assert code_of(lambda: nps.build_reference_link(changed, "model_page", root=root)) \
+            == "reference_ids_not_confirmed", change.__name__
+    # A source page: the layer has to be one the record lists, and one the entry records.
+    assert nps.verify_reference_evidence(alias)["layers"] == [2, 3] and alias["site"]["layers"] == [2]
+    assert code_of(lambda: nps.build_reference_link(alias, "source_page", layer=3)) == "layer_metadata"
+    wider = copy.deepcopy(alias)
+    wider["site"]["layers"] = [2, 3, 5]
+    assert nps.build_reference_link(wider, "source_page", layer=3).url.endswith("/3-toy-ica-alias-set")
+    assert code_of(lambda: nps.build_reference_link(wider, "source_page", layer=5)) == "reference_ids_not_confirmed"
+    assert code_of(lambda: nps.build_reference_link(entry(real, ALIAS), "source_page", layer=1)) \
+        == "reference_ids_not_confirmed"
+    assert code_of(lambda: nps.build_reference_link(entry(real, GEMMA_SET), "source_page", layer=26)) \
+        == "reference_ids_not_confirmed"
+
+    # A record that names a revision: the status word no longer describes it, and the entry has to be re-read.
+    def with_revision(body: dict) -> None:
+        body["model"]["hfRevision"] = "1" * 40
+
+    root = copied_evidence / "with_revision"
+    shutil.copytree(ENGINE / FX_EVIDENCE, root / FX_EVIDENCE)
+    changed = rewrite_body(root, alias, with_revision)
+    with pytest.raises(Refusal) as caught:
+        nps.build_reference_link(changed, "model_page", root=root)
+    assert caught.value.code == "reference_status" and "1 key(s)" in str(caught.value)
+    assert "1" * 40 not in str(caught.value) and "hfRevision" not in str(caught.value)
+
+
+def test_a_reference_link_is_refused_for_a_url_form_the_evidence_does_not_confirm(fixture_registry: dict, real: dict,
+                                                                                copied_evidence: Path) -> None:
+    alias, lens = entry(fixture_registry, FX_ALIAS), entry(fixture_registry, FX_NO_PATTERN)
+    # A feature page is not a reference page form at all, for any entry.
+    for item in (alias, lens, *real["entries"]):
+        for kind in nps.URL_KINDS:
+            assert code_of(lambda: nps.build_reference_link(item, kind)) == "reference_page_kind"
+    # A form the entry does not record: a lens page for a source set, a source page for a lens.
+    assert code_of(lambda: nps.build_reference_link(alias, "lens_page")) == "reference_form_not_confirmed"
+    assert nps.build_reference_link(lens, "lens_page").url == "https://registry-fixture.invalid/toy-model-hosted/jlens"
+    assert code_of(lambda: nps.build_reference_link(lens, "source_page", layer=1)) == "reference_form_not_confirmed"
+    assert code_of(lambda: nps.build_reference_link(lens, "model_page")) == "reference_form_not_confirmed"
+    assert code_of(lambda: nps.build_reference_link(entry(real, GEMMA_SET), "lens_page")) \
+        == "reference_form_not_confirmed"
+    assert code_of(lambda: nps.build_reference_link(entry(real, HOSTED_LENSES[0]), "source_page", layer=0)) \
+        == "reference_form_not_confirmed"
+    assert nps.link_or_fallback(alias, 3, layer=2, reference_page="lens_page")["reference_detail"].startswith(
+        "reference_form_not_confirmed: ")
+    # Arguments that do not fit the form.
+    assert code_of(lambda: nps.build_reference_link(alias, "source_page")) == "link_arguments"
+    assert code_of(lambda: nps.build_reference_link(alias, "model_page", layer=2)) == "link_arguments"
+    for layer in ("2", "alpha tail", 2.0, True, -1, 4096, int("a" * 64, 16)):
+        with pytest.raises(Refusal) as caught:
+            nps.build_reference_link(alias, "source_page", layer=layer)
+        assert caught.value.code == "free_text_in_url" and "alpha" not in str(caught.value)
+
+    # A template is the one fixed path of its page form on the fixed host: nothing else validates.
+    def template(value: str, kind: str = "model_page") -> Callable[[dict], None]:
+        def change(e: dict) -> None:
+            next(page for page in e["reference"]["pages"] if page["kind"] == kind).update(template=value)
+        return change
+    host = "https://registry-fixture.invalid"
+    for value in (f"{host}/{{model_id}}?prompt={{layer}}", f"{host}/{{model_id}}#alpha", f"{host}/{{model_id}}/",
+                  f"{host}/{{model_id}}/{{layer}}-{{source_set}}/{{component}}", f"{host}/{{model_id}}/graph",
+                  f"{host}/api/feature/{{model_id}}", "http://registry-fixture.invalid/{model_id}",
+                  f"{host}/{{source_set}}", "https://{model_id}.invalid/{model_id}", f"{host}/alpha%20beta",
+                  f"{host}/{{model_id}}/{{layer}}-{{source_set}}", "https://Registry-Fixture.invalid/{model_id}"):
+        doc = mutated(fixture_registry, FX_ALIAS, template(value))
+        assert code_of(lambda: nps.validate_registry(doc)) == "reference_template", value
+        hand_made = copy.deepcopy(alias)
+        template(value)(hand_made)
+        assert code_of(lambda: nps.build_reference_link(hand_made, "model_page")) == "reference_template", value
+    # A template that is not a string: the schema refuses the file, and the entry check refuses a hand-made entry.
+    assert code_of(lambda: nps.validate_registry(mutated(fixture_registry, FX_ALIAS, template(3)))) == "invalid_input"
+    not_text = copy.deepcopy(alias)
+    template(3)(not_text)
+    assert code_of(lambda: nps.build_reference_link(not_text, "model_page")) == "reference_template"
+    # Hosts: a fixture never links to a real host; a real entry never to a fixture host or to any other host.
+    assert code_of(lambda: nps.validate_registry(mutated(fixture_registry, FX_ALIAS, template(
+        "https://www.neuronpedia.org/{model_id}")))) == "synthetic_label"
+    assert code_of(lambda: nps.validate_registry(mutated(real, GEMMA_SET, template(f"{host}/{{model_id}}")))) \
+        == "synthetic_label"
+    for value in ("https://neuronpedia.org/{model_id}", "https://example.org/{model_id}",
+                  "https://www.neuronpedia.org.example.org/{model_id}", "https://docs.neuronpedia.org/{model_id}"):
+        assert code_of(lambda: nps.validate_registry(mutated(real, GEMMA_SET, template(value)))) \
+            == "reference_template", value
+    # A page kind the vocabulary does not have, two pages of one kind, a lens page on another representation.
+    assert code_of(lambda: nps.validate_registry(mutated(fixture_registry, FX_ALIAS, lambda e: e["reference"][
+        "pages"][0].update(kind="feature_page")))) == "reference_template"
+    assert code_of(lambda: nps.validate_registry(mutated(fixture_registry, FX_ALIAS, lambda e: e["reference"][
+        "pages"].append(copy.deepcopy(e["reference"]["pages"][0]))))) == "reference_template"
+
+    def lens_on_a_source_set(e: dict) -> None:
+        e["reference"]["pages"][0].update(kind="lens_page", template=f"{host}/{{model_id}}/jlens")
+    assert code_of(lambda: nps.validate_registry(mutated(fixture_registry, FX_ALIAS, lens_on_a_source_set))) \
+        == "reference_template"
+
+    def source_page_without_a_set(e: dict) -> None:
+        e["reference"]["pages"][0].update(kind="source_page", template=f"{host}/{{model_id}}/{{layer}}-{{source_set}}")
+    assert code_of(lambda: nps.validate_registry(mutated(fixture_registry, FX_NO_PATTERN, source_page_without_a_set))) \
+        == "reference_template"
+
+    # The records behind a form: the documentation record and the fetched page. Absent, changed, or a page of
+    # other ids, and no URL of that form is built. The other form of the same entry is refused with it, because
+    # the entry's evidence is checked as a whole.
+    for key in ("form_record", "instance_record"):
+        for field, value in (("record_id", "page.no-such-record"), ("sha256", "a" * 64),
+                             ("retrieved_utc", "2026-11-11T00:00:00Z")):
+            cited = copy.deepcopy(alias)
+            cited["reference"]["pages"][0][key][field] = value
+            for kind, layer in (("model_page", None), ("source_page", 2)):
+                assert code_of(lambda: nps.build_reference_link(cited, kind, layer=layer)) \
+                    == "reference_form_not_confirmed", (key, field)
+    borrowed = copy.deepcopy(alias)
+    borrowed["reference"]["pages"][0]["instance_record"] = copy.deepcopy(
+        entry(fixture_registry, FX_VERIFIED)["reference"]["pages"][0]["instance_record"])      # the other model's page
+    assert code_of(lambda: nps.build_reference_link(borrowed, "model_page")) == "reference_form_not_confirmed"
+    index_path = copied_evidence / FX_EVIDENCE / "index.v1.json"
+    index = json.loads(index_path.read_text(encoding="utf-8"))
+    for record in index["records"]:
+        if record["id"] == "page.model.toy-model-other-name":
+            record["http_status"] = 404
+    index_path.write_text(json.dumps(index), encoding="utf-8")
+    assert code_of(lambda: nps.build_reference_link(alias, "model_page", root=copied_evidence)) \
+        == "reference_form_not_confirmed"
+    assert nps.build_reference_link(alias, "model_page").url is not None      # the committed index is unchanged
+
+
+def test_no_refusal_of_a_reference_link_repeats_a_value(fixture_registry: dict, copied_evidence: Path) -> None:
+    """The sentinel is placed in each argument, in each field of the reference block and in the saved record."""
+    alias = entry(fixture_registry, FX_ALIAS)
+
+    def message(call: Callable[[], Any], code: str) -> str:
+        with pytest.raises(Refusal) as caught:
+            call()
+        assert caught.value.code == code, (caught.value.code, str(caught.value))
+        assert SENTINEL not in str(caught.value) and SENTINEL.lower() not in str(caught.value), str(caught.value)
+        return str(caught.value)
+
+    def block(change: Callable[[dict], None]) -> dict:
+        changed = copy.deepcopy(alias)
+        change(changed["reference"])
+        return changed
+
+    low = SENTINEL.lower()
+    message(lambda: nps.build_reference_link(alias, SENTINEL), "reference_page_kind")
+    message(lambda: nps.build_reference_link(alias, "source_page", layer=SENTINEL), "free_text_in_url")
+    message(lambda: nps.link_or_fallback(alias, 3, layer=2, reference_page=SENTINEL + " words"), "reference_page_kind")
+    message(lambda: nps.require_exact_identity(alias, SENTINEL), "invalid_input")
+    message(lambda: nps.build_reference_link(block(lambda r: r.update(status=SENTINEL)), "model_page"),
+            "reference_status")
+    message(lambda: nps.build_reference_link(block(lambda r: r.update(reason="")), "model_page"), "reference_entry")
+    for key, value in (("index", f"{FX_EVIDENCE}/{SENTINEL} words.json"), ("path", f"../{SENTINEL}.json"),
+                       ("record_id", SENTINEL + " words"), ("sha256", SENTINEL), ("retrieved_utc", SENTINEL),
+                       ("bytes", SENTINEL)):
+        message(lambda: nps.build_reference_link(block(lambda r: r["evidence"].update({key: value})), "model_page"),
+                "reference_entry")
+    message(lambda: nps.build_reference_link(block(lambda r: r["evidence"].update({SENTINEL: 1})), "model_page"),
+            "reference_entry")
+    for change in (lambda r: r["pages"][0].update(template=f"https://registry-fixture.invalid/{SENTINEL}"),
+                   lambda r: r["pages"][0].update(template=f"https://{low}.invalid/{{model_id}}?q={SENTINEL}"),
+                   lambda r: r["pages"][0].update(kind=SENTINEL),
+                   lambda r: r["pages"][0]["instance_record"].update(record_id=SENTINEL + " words"),
+                   lambda r: r["pages"][0]["form_record"].update(sha256=SENTINEL)):
+        message(lambda: nps.build_reference_link(block(change), "model_page"), "reference_template")
+    # Well-formed values that name nothing: a record id and a path that pass the form check and match no file.
+    message(lambda: nps.build_reference_link(block(lambda r: r["evidence"].update(record_id=low)), "model_page"),
+            "reference_evidence_missing")
+    message(lambda: nps.build_reference_link(block(lambda r: r["pages"][0]["instance_record"].update(
+        record_id=low)), "model_page"), "reference_form_not_confirmed")
+    message(lambda: nps.build_reference_link(block(lambda r: r["evidence"].update(sha256="a" * 64)), "model_page"),
+            "reference_evidence_mismatch")
+    # The model id of the entry, and the model id inside the saved record.
+    renamed = copy.deepcopy(alias)
+    renamed["neuronpedia"]["model_id"] = low
+    message(lambda: nps.build_reference_link(renamed, "model_page"), "reference_ids_not_confirmed")
+
+    def planted(body: dict) -> None:
+        body["model"]["id"] = SENTINEL
+        body[SENTINEL] = SENTINEL
+    changed = rewrite_body(copied_evidence, alias, planted)
+    message(lambda: nps.build_reference_link(changed, "model_page", root=copied_evidence),
+            "reference_ids_not_confirmed")
+    # link_or_fallback reads the committed files, where this entry's copy of the hash no longer matches.
+    detail = nps.link_or_fallback(changed, 3, layer=2, reference_page="model_page")["reference_detail"]
+    assert detail.startswith("reference_evidence_mismatch: ") and SENTINEL not in detail
+    message(lambda: nps.verify_reference_evidence(changed, root=copied_evidence), "reference_ids_not_confirmed")
+    path = copied_evidence / alias["reference"]["evidence"]["path"]
+    path.write_text(SENTINEL, encoding="utf-8")
+    message(lambda: nps.build_reference_link(changed, "model_page", root=copied_evidence), "reference_evidence_hash")
+    # A reference link record handed to the validator.
+    record = nps.build_reference_link(alias, "model_page").as_record()
+    for change in ({"url": f"https://registry-fixture.invalid/x?q={SENTINEL}"}, {"label": SENTINEL},
+                   {"page": SENTINEL}, {"identity_status": SENTINEL}, {"registry_id": SENTINEL + " words"},
+                   {"read_utc_date": SENTINEL}, {"evidence": {**record["evidence"], "sha256": SENTINEL}},
+                   {"evidence": SENTINEL}, {SENTINEL + " words": 1}):
+        with pytest.raises(Refusal) as caught:
+            nps.validate_reference_link({**record, **change})
+        assert SENTINEL not in str(caught.value), str(caught.value)
+
+
+def test_reference_urls_hold_recorded_ids_and_a_listed_layer_and_nothing_else(real: dict,
+                                                                             fixture_registry: dict) -> None:
+    """A reference URL has no component index, no query string and no text: host, model id, and either nothing,
+    a listed layer with the source set, or the fixed word jlens."""
+    for registry, host in ((real, "www.neuronpedia.org"), (fixture_registry, "registry-fixture.invalid")):
+        for item in registry["entries"]:
+            hosted = item["neuronpedia"] or {}
+            for url in all_reference_urls(item):
+                assert not any(mark in url for mark in "?#%& ") and url == url.strip()
+                found_host, model_id, *rest = url[len("https://"):].split("/")
+                assert (found_host, model_id) == (host, hosted["model_id"]) and len(rest) <= 1, url
+                if rest and rest[0] != "jlens":
+                    layer, _, source_set = rest[0].partition("-")
+                    assert source_set == hosted["source_set"] and int(layer) in item["site"]["layers"], url
+    # The integers a caller controls are the layer alone, and it has to be a layer the saved record lists: the
+    # 2 ** 12 layer values and the 2 ** 20 component values of an exact link have no counterpart here.
+    alias = entry(fixture_registry, FX_ALIAS)
+    assert all_reference_urls(alias) == ["https://registry-fixture.invalid/toy-model-other-name",
+                                         "https://registry-fixture.invalid/toy-model-other-name/2-toy-ica-alias-set"]
+    assert "component_id" not in inspect.signature(nps.build_reference_link).parameters
+
+
+def test_the_doc_and_the_registry_state_the_reference_rule_in_the_modules_words(real: dict) -> None:
+    text = (ENGINE / "docs" / "experiment_interface" / "neuronpedia.md").read_text(encoding="utf-8")
+    doc = " ".join(re.sub(r"(?m)^> ?", "", text).split())      # the label is quoted in a Markdown blockquote
+    assert EXPECTED_LABEL in doc
+    for word in (*nps.REFERENCE_STATUSES, *nps.REFERENCE_PAGE_KINDS, *nps.REFERENCE_LINK_KEYS, *nps.IDENTITY_USES,
+                 "build_reference_link", "verify_reference_evidence", "validate_reference_link",
+                 "require_exact_identity", "reference_page", PAGES_INDEX):
+        assert re.search("`" + re.escape(word) + "[`(]", doc), word      # as a code span or the start of a call
+    # One URL per entry is written out in the doc: the source page of the first layer, or the lens page.
+    for url in (urls[1] for urls in EXPECTED_REFERENCE_URLS.values()):
+        assert f"`{url}`" in doc, url
+    assert "five entries have the reference status service_record_read_revision_not_reported" in real["description"]
+    assert "no real exact link is built" in real["description"] and PAGES_INDEX in real["description"]
+
+
 # ------------------------------------------------------------------------------------------------ no network
 
 def test_module_imports_no_network_or_process_library() -> None:
@@ -742,7 +1475,8 @@ def test_module_imports_no_network_or_process_library() -> None:
             imported.update(alias.name for alias in node.names)
         elif isinstance(node, ast.ImportFrom):
             imported.add(node.module or "")
-    assert imported == {"__future__", "functools", "math", "re", "dataclasses", "pathlib", "typing",
+    # json was added with reference links: the module parses the saved evidence files it reads from disk.
+    assert imported == {"__future__", "functools", "json", "math", "re", "dataclasses", "pathlib", "typing",
                         "scripts.experiments.common", "scripts.experiments.envelope"}
     assert "NO NETWORK REQUEST" in (ast.get_docstring(tree) or "")
 
@@ -782,6 +1516,16 @@ def test_importing_and_using_the_module_opens_no_socket(monkeypatch: pytest.Monk
     assert use("resolve")("gemma-2-2b", "transcoder_feature", registry=real).mapped
     assert use("build_link")(verified, 3, layer=1).url == EXPECTED_FIXTURE_URL
     assert use("link_or_fallback")(alias, 3, layer=1)["link"] is None
+    # The reference path reads the saved evidence files from disk and nothing else: the real entry's kept
+    # source-set record and both evidence indexes, and the fixture's synthetic ones.
+    assert use("verify_reference_evidence")(alias)["status"] == "verified"
+    built = use("build_reference_link")(alias, "source_page", layer=4)
+    assert built.url == "https://www.neuronpedia.org/qwen3.5-2b-pt/4-icalens-res"
+    assert fresh.build_reference_link(verified, "model_page").url == "https://registry-fixture.invalid/toy-model-hosted"
+    assert use("validate_reference_link")(built.as_record(), real)["kind"] == "reference"
+    assert fresh.link_or_fallback(alias, 3, layer=4, reference_page="source_page")["reference"]["url"] == built.url
+    assert use("permissions")(alias)["reference_link"] is True
+    assert use("require_exact_identity")(verified, "pooling")["pooling"] is True
     assert use("local_record")(alias, 3, 1, {"signed_score": 1.5})["inspectable_offline"] is True
     export = tmp_path / "export.jsonl"
     export.write_bytes(b"alpha\n")
@@ -798,7 +1542,7 @@ def test_importing_and_using_the_module_opens_no_socket(monkeypatch: pytest.Monk
     assert use("request_record")(**{key: document[key] for key in (
         "endpoint", "effective_request_settings", "service_identity", "response_sha256", "retrieved_utc",
         "not_recorded")}) == document
-    assert called == public_functions(fresh) and len(called) == 16
+    assert called == public_functions(fresh) and len(called) == 21
 
 
 # ------------------------------------------------------------------------------------------------ snapshots

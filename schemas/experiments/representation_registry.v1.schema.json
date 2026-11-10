@@ -2,9 +2,9 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "patientwords.representation-registry/1",
   "title": "Representation registry",
-  "description": "Structure only, in the keyword subset scripts/frontend_contract_schema.py executes. The verification-status, representation-type and method vocabularies, the rule that links_enabled needs verified_exact, the rule that a null is listed in not_recorded, the hash and date formats and the URL-template rule are enforced by scripts/experiments/neuronpedia.py.",
+  "description": "Structure only, in the keyword subset scripts/frontend_contract_schema.py executes. An entry carries two separate facts: verification (identity of the hosted checkpoint) and reference (whether the service's own record for the ids was read and saved). The verification-status, reference-status, representation-type and method vocabularies, the rule that links_enabled (exact links) needs verified_exact, the rule that reference.enabled needs a named evidence record, the rule that a null is listed in not_recorded, the hash and date formats and the URL-template rules are enforced by scripts/experiments/neuronpedia.py.",
   "type": "object",
-  "required": ["schema_version", "as_of", "synthetic", "description", "verification_statuses", "entries"],
+  "required": ["schema_version", "as_of", "synthetic", "description", "verification_statuses", "reference_statuses", "entries"],
   "properties": {
     "schema_version": {"type": "string"},
     "as_of": {"type": "string"},
@@ -12,6 +12,8 @@
     "description": {"type": "string"},
     "verification_statuses": {"type": "array", "items": {"type": "string"}},
     "verification_meaning": {"type": "object", "additionalProperties": {"type": "string"}},
+    "reference_statuses": {"type": "array", "items": {"type": "string"}},
+    "reference_meaning": {"type": "object", "additionalProperties": {"type": "string"}},
     "sources_not_read": {"type": "array", "items": {"$ref": "#/definitions/source_not_read"}},
     "entries": {"type": "array", "items": {"$ref": "#/definitions/entry"}}
   },
@@ -37,12 +39,36 @@
       },
       "additionalProperties": false
     },
+    "page_record": {
+      "type": "object",
+      "required": ["index", "record_id", "sha256", "retrieved_utc"],
+      "properties": {
+        "index": {"type": "string"},
+        "record_id": {"type": "string"},
+        "sha256": {"type": "string"},
+        "retrieved_utc": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "reference_page": {
+      "type": "object",
+      "required": ["kind", "template", "source", "read_utc_date", "form_record", "instance_record"],
+      "properties": {
+        "kind": {"type": "string"},
+        "template": {"type": "string"},
+        "source": {"type": "string"},
+        "read_utc_date": {"type": "string"},
+        "form_record": {"$ref": "#/definitions/page_record"},
+        "instance_record": {"$ref": "#/definitions/page_record"}
+      },
+      "additionalProperties": false
+    },
     "entry": {
       "type": "object",
       "required": [
         "registry_id", "representation_type", "method", "model", "neuronpedia", "site", "component_id",
         "fitted_artifact_sha256", "artifact", "calibration", "use", "label_source", "url_pattern",
-        "verification", "links_enabled", "not_recorded", "notes"
+        "verification", "links_enabled", "reference", "not_recorded", "notes"
       ],
       "properties": {
         "registry_id": {"type": "string"},
@@ -141,6 +167,30 @@
           "additionalProperties": false
         },
         "links_enabled": {"type": "boolean"},
+        "reference": {
+          "type": "object",
+          "required": ["status", "enabled", "evidence", "pages", "reason"],
+          "properties": {
+            "status": {"type": "string"},
+            "enabled": {"type": "boolean"},
+            "evidence": {
+              "type": ["object", "null"],
+              "required": ["index", "record_id", "path", "sha256", "bytes", "retrieved_utc"],
+              "properties": {
+                "index": {"type": "string"},
+                "record_id": {"type": "string"},
+                "path": {"type": "string"},
+                "sha256": {"type": "string"},
+                "bytes": {"type": "integer"},
+                "retrieved_utc": {"type": "string"}
+              },
+              "additionalProperties": false
+            },
+            "pages": {"type": "array", "items": {"$ref": "#/definitions/reference_page"}},
+            "reason": {"type": "string"}
+          },
+          "additionalProperties": false
+        },
         "not_recorded": {"type": "array", "items": {"type": "string"}},
         "notes": {"type": "string"}
       },

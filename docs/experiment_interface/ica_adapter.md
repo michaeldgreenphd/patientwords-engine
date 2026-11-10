@@ -544,8 +544,12 @@ updated in the same change; `tests/test_experiments_slice.py` compares the two.
 ## Citation, licence and attribution
 
 Paper: Sida Liu, Feijiang Han, Sarah Wiegreffe and Furong Huang, "Non-Gaussianity Reveals
-Interpretable Directions in Language Models", arXiv:2606.11722v2, 2026-10-19. This title, author
-list and date are the owner's statement of the v2 record; the arXiv page was not fetched in this
+Interpretable Directions in Language Models", arXiv:2606.11722v2 [cs.LG]. Version 2 was submitted
+on Mon, 19 Oct 2026 17:23:26 UTC; version 1 on Wed, 10 Jun 2026 06:53:58 UTC. The title, the
+version, the four authors and both dates were read on 2026-11-10 on the arXiv abstract page,
+`https://arxiv.org/abs/2606.11722v2` (record `arxiv.2606.11722v2` in
+`data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json`; the page had the same SHA-256 at 18:27 and at 19:49 UTC). They agree with
+the owner's earlier statement of the v2 record. The paper's text (the PDF) was not read in this
 work. The fork's `patientwords-ica-lens-paper/README.md:185-190`, its
 `patientwords-ica-lens-paper/docs/index.md` and the model card it generates still cite the earlier
 title, "ICA Lens: Interpreting Language Models Without Training Another Dictionary", with two

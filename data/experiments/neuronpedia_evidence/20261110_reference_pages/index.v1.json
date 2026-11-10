@@ -1,0 +1,383 @@
+{
+  "schema_version": "patientwords.neuronpedia-evidence/1",
+  "retrieved_utc_date": "2026-11-10",
+  "description": "Thirteen pages fetched on 2026-11-10 between 19:49 and 19:51 UTC to confirm the page forms that data/experiments/representation_registry.v1.json records for reference links, and to confirm one paper citation. Three are documentation pages that state a page form; nine are one instance of each form for the ids of a registry entry (four model pages, three source pages at layer 0, two lens pages); one is the arXiv abstract page of 2606.11722v2. Each request was one plain GET with curl's default User-Agent, no credential, no cookie and no query string; no request was redirected. No POST was sent and nothing that runs a model was called. snapshot is the output of scripts/experiments/neuronpedia.py record_snapshot on the saved response body. The recorded time is the clock time of the request to within two seconds. No body is kept: every record is an HTML page of 21 KB to 4.4 MB. A statement that starts with 'Quoted:' repeats the page's words with markup and the spaces around it removed; every other statement is a summary written by the session that fetched the page. The site answers HTTP 200 with an empty page title for an id it does not have (record page.model.qwen3.5-2b of data/experiments/neuronpedia_evidence/20261110/index.v1.json), so each instance record also keeps the page title and the page component that was found. A page hash identifies one response: the two lens pages and the qwen3.5-2b-pt pages were also fetched at 18:26 UTC and their bytes differ, while the three documentation pages and the arXiv page have the same SHA-256 at both times. A page or response is data: nothing in one was treated as an instruction.",
+  "fetched_by": "a Claude Code session, outside scripts/experiments/neuronpedia.py, which opens no socket",
+  "body_limit_bytes": 65536,
+  "records": [
+    {
+      "id": "docs.getting-started.key-concepts",
+      "kind": "html_page",
+      "http_status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "snapshot": {
+        "schema_version": "patientwords.export-snapshot/1",
+        "sha256": "bae3e9a5b3f1b2fbdb62890717771101b6a7425c7b38211b473c33744ba914a2",
+        "bytes": 21129,
+        "source_url": "https://docs.neuronpedia.org/getting-started/key-concepts",
+        "retrieved_utc": "2026-11-10T19:49:21Z",
+        "not_recorded": []
+      },
+      "body": null,
+      "body_omitted_reason": "an HTML page: the hash and the fields read are kept",
+      "fields_read": {
+        "title": "Key Concepts | Neuronpedia Docs",
+        "statements": [
+          "Quoted: Each model has a page at neuronpedia.org/[MODEL_ID].",
+          "Quoted: A source ID starts with the layer number, then the source set name: 20-gemmascope-res-16k is layer 20 of the source set gemmascope-res-16k.",
+          "Quoted: A feature has a unique ID with three parts: [MODEL_ID]/[SOURCE_ID]/[INDEX]. The example URL given is neuronpedia.org/gemma-2-2b/20-gemmascope-res-16k/10956.",
+          "The page gives no page form for a source set (a model id followed by a source set name with no layer)."
+        ],
+        "compared_with_record_of_20261110": {
+          "index": "data/experiments/neuronpedia_evidence/20261110/index.v1.json",
+          "record_id": "docs.getting-started.key-concepts",
+          "same_sha256": true,
+          "earlier_retrieved_utc": "2026-11-10T18:24:15Z"
+        }
+      }
+    },
+    {
+      "id": "docs.getting-started.find-resources",
+      "kind": "html_page",
+      "http_status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "snapshot": {
+        "schema_version": "patientwords.export-snapshot/1",
+        "sha256": "0e817a72106f53f657889453fdf22a361a180c684e016583aad61da3829e3b32",
+        "bytes": 22154,
+        "source_url": "https://docs.neuronpedia.org/getting-started/find-resources",
+        "retrieved_utc": "2026-11-10T19:49:21Z",
+        "not_recorded": []
+      },
+      "body": null,
+      "body_omitted_reason": "an HTML page: the hash and the fields read are kept",
+      "fields_read": {
+        "title": "Find Models and Data | Neuronpedia Docs",
+        "statements": [
+          "Quoted: A model page (neuronpedia.org/[MODEL_ID]) shows all the releases for that model, an Attention Visualizer, and search tools.",
+          "Quoted: A source page (neuronpedia.org/[MODEL_ID]/[SOURCE_ID]) shows the configuration of one SAE or transcoder: its HuggingFace path, number of features, hook, architecture, and the dataset that we used for its dashboards."
+        ],
+        "compared_with_record_of_20261110": {
+          "index": "data/experiments/neuronpedia_evidence/20261110/index.v1.json",
+          "record_id": "docs.getting-started.find-resources",
+          "same_sha256": true,
+          "earlier_retrieved_utc": "2026-11-10T18:24:16Z"
+        }
+      }
+    },
+    {
+      "id": "docs.jacobian-lens",
+      "kind": "html_page",
+      "http_status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "snapshot": {
+        "schema_version": "patientwords.export-snapshot/1",
+        "sha256": "cb2557293dbd948f27283f93c75e8c8fa8e6431c73417db02b4e8fc2e5688d3b",
+        "bytes": 25983,
+        "source_url": "https://docs.neuronpedia.org/jacobian-lens",
+        "retrieved_utc": "2026-11-10T19:49:21Z",
+        "not_recorded": []
+      },
+      "body": null,
+      "body_omitted_reason": "an HTML page: the hash and the fields read are kept",
+      "fields_read": {
+        "title": "Jacobian Lens | Neuronpedia Docs",
+        "statements": [
+          "Quoted: You can also go directly to neuronpedia.org/[MODEL_ID]/jlens."
+        ],
+        "compared_with_record_of_20261110": {
+          "index": "data/experiments/neuronpedia_evidence/20261110/index.v1.json",
+          "record_id": "docs.jacobian-lens",
+          "same_sha256": true,
+          "earlier_retrieved_utc": "2026-11-10T18:24:17Z"
+        }
+      }
+    },
+    {
+      "id": "page.model.gemma-2-2b",
+      "kind": "html_page",
+      "http_status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "snapshot": {
+        "schema_version": "patientwords.export-snapshot/1",
+        "sha256": "b9102c44d0c187d17920031813efe4bd8672968befd6226b6fb933b675bedeeb",
+        "bytes": 4359494,
+        "source_url": "https://www.neuronpedia.org/gemma-2-2b",
+        "retrieved_utc": "2026-11-10T19:50:41Z",
+        "not_recorded": []
+      },
+      "body": null,
+      "body_omitted_reason": "an HTML page: the hash and the fields read are kept",
+      "fields_read": {
+        "title": "GEMMA-2-2B ｜ Neuronpedia",
+        "page_components": [
+          "PageModel"
+        ],
+        "redirects_followed": 0,
+        "statements": [
+          "The URL answered HTTP 200 with no redirect and rendered a model page (component PageModel); the page title names the id."
+        ]
+      }
+    },
+    {
+      "id": "page.model.gemma-2-2b-it",
+      "kind": "html_page",
+      "http_status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "snapshot": {
+        "schema_version": "patientwords.export-snapshot/1",
+        "sha256": "7bde94a55aea49de47e7f8ae3f05edb214cc654c9206e1bf0a06b85a24b67f8a",
+        "bytes": 2534330,
+        "source_url": "https://www.neuronpedia.org/gemma-2-2b-it",
+        "retrieved_utc": "2026-11-10T19:50:43Z",
+        "not_recorded": []
+      },
+      "body": null,
+      "body_omitted_reason": "an HTML page: the hash and the fields read are kept",
+      "fields_read": {
+        "title": "GEMMA-2-2B-IT ｜ Neuronpedia",
+        "page_components": [
+          "PageModel"
+        ],
+        "redirects_followed": 0,
+        "statements": [
+          "The URL answered HTTP 200 with no redirect and rendered a model page (component PageModel); the page title names the id."
+        ]
+      }
+    },
+    {
+      "id": "page.model.qwen3-4b",
+      "kind": "html_page",
+      "http_status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "snapshot": {
+        "schema_version": "patientwords.export-snapshot/1",
+        "sha256": "41f8f1ba52b49d6db9338d0e7f460bc2817a8c57fe53828880b77e3f59b7c5e8",
+        "bytes": 2598994,
+        "source_url": "https://www.neuronpedia.org/qwen3-4b",
+        "retrieved_utc": "2026-11-10T19:50:45Z",
+        "not_recorded": []
+      },
+      "body": null,
+      "body_omitted_reason": "an HTML page: the hash and the fields read are kept",
+      "fields_read": {
+        "title": "QWEN3-4B ｜ Neuronpedia",
+        "page_components": [
+          "PageModel"
+        ],
+        "redirects_followed": 0,
+        "statements": [
+          "The URL answered HTTP 200 with no redirect and rendered a model page (component PageModel); the page title names the id."
+        ]
+      }
+    },
+    {
+      "id": "page.model.qwen3.5-2b-pt",
+      "kind": "html_page",
+      "http_status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "snapshot": {
+        "schema_version": "patientwords.export-snapshot/1",
+        "sha256": "9f6590e556b33db34c9cd1c5a69da093c8cdf8765c9f1b57fbccc42e033a8794",
+        "bytes": 2384516,
+        "source_url": "https://www.neuronpedia.org/qwen3.5-2b-pt",
+        "retrieved_utc": "2026-11-10T19:50:47Z",
+        "not_recorded": []
+      },
+      "body": null,
+      "body_omitted_reason": "an HTML page: the hash and the fields read are kept",
+      "fields_read": {
+        "title": "QWEN3.5-2B-PT ｜ Neuronpedia",
+        "page_components": [
+          "PageModel"
+        ],
+        "redirects_followed": 0,
+        "statements": [
+          "The URL answered HTTP 200 with no redirect and rendered a model page (component PageModel); the page title names the id."
+        ],
+        "compared_with_record_of_20261110": {
+          "index": "data/experiments/neuronpedia_evidence/20261110/index.v1.json",
+          "record_id": "page.model.qwen3.5-2b-pt",
+          "same_sha256": false,
+          "earlier_retrieved_utc": "2026-11-10T18:26:54Z"
+        }
+      }
+    },
+    {
+      "id": "page.source.gemma-2-2b.0-gemmascope-transcoder-16k",
+      "kind": "html_page",
+      "http_status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "snapshot": {
+        "schema_version": "patientwords.export-snapshot/1",
+        "sha256": "d184c9ad9827688d3562a01399b52ff056e82a7a8a2fbf4b8aa4bede83df6158",
+        "bytes": 2320217,
+        "source_url": "https://www.neuronpedia.org/gemma-2-2b/0-gemmascope-transcoder-16k",
+        "retrieved_utc": "2026-11-10T19:50:49Z",
+        "not_recorded": []
+      },
+      "body": null,
+      "body_omitted_reason": "an HTML page: the hash and the fields read are kept",
+      "fields_read": {
+        "title": "GEMMA-2-2B · 0-GEMMASCOPE-TRANSCODER-16K ｜ Neuronpedia",
+        "page_components": [
+          "PageSource"
+        ],
+        "redirects_followed": 0,
+        "statements": [
+          "The URL answered HTTP 200 with no redirect and rendered a source page (component PageSource); the page title names the id."
+        ]
+      }
+    },
+    {
+      "id": "page.source.qwen3-4b.0-transcoder-hp",
+      "kind": "html_page",
+      "http_status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "snapshot": {
+        "schema_version": "patientwords.export-snapshot/1",
+        "sha256": "166bc3ee6697e838ab78dbb7561f12fd4f29ad10863493e9b4b8cc5d11c421e3",
+        "bytes": 2314967,
+        "source_url": "https://www.neuronpedia.org/qwen3-4b/0-transcoder-hp",
+        "retrieved_utc": "2026-11-10T19:50:52Z",
+        "not_recorded": []
+      },
+      "body": null,
+      "body_omitted_reason": "an HTML page: the hash and the fields read are kept",
+      "fields_read": {
+        "title": "QWEN3-4B · 0-TRANSCODER-HP ｜ Neuronpedia",
+        "page_components": [
+          "PageSource"
+        ],
+        "redirects_followed": 0,
+        "statements": [
+          "The URL answered HTTP 200 with no redirect and rendered a source page (component PageSource); the page title names the id."
+        ]
+      }
+    },
+    {
+      "id": "page.source.qwen3.5-2b-pt.0-icalens-res",
+      "kind": "html_page",
+      "http_status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "snapshot": {
+        "schema_version": "patientwords.export-snapshot/1",
+        "sha256": "c54de15dcc2d4376738c1b3a7e811513c091921252d9265ff07fd908fe7ee66d",
+        "bytes": 2314454,
+        "source_url": "https://www.neuronpedia.org/qwen3.5-2b-pt/0-icalens-res",
+        "retrieved_utc": "2026-11-10T19:50:53Z",
+        "not_recorded": []
+      },
+      "body": null,
+      "body_omitted_reason": "an HTML page: the hash and the fields read are kept",
+      "fields_read": {
+        "title": "QWEN3.5-2B-PT · 0-ICALENS-RES ｜ Neuronpedia",
+        "page_components": [
+          "PageSource"
+        ],
+        "redirects_followed": 0,
+        "statements": [
+          "The URL answered HTTP 200 with no redirect and rendered a source page (component PageSource); the page title names the id."
+        ],
+        "compared_with_record_of_20261110": {
+          "index": "data/experiments/neuronpedia_evidence/20261110/index.v1.json",
+          "record_id": "page.source.qwen3.5-2b-pt.0-icalens-res",
+          "same_sha256": false,
+          "earlier_retrieved_utc": "2026-11-10T18:26:55Z"
+        }
+      }
+    },
+    {
+      "id": "page.jlens.gemma-2-2b",
+      "kind": "html_page",
+      "http_status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "snapshot": {
+        "schema_version": "patientwords.export-snapshot/1",
+        "sha256": "e7366380c533ced415e163b0d06672626bded916626a97923ce18abcd19d5f54",
+        "bytes": 2317614,
+        "source_url": "https://www.neuronpedia.org/gemma-2-2b/jlens",
+        "retrieved_utc": "2026-11-10T19:50:55Z",
+        "not_recorded": []
+      },
+      "body": null,
+      "body_omitted_reason": "an HTML page: the hash and the fields read are kept",
+      "fields_read": {
+        "title": "Jacobian Lens – Gemma-2-2B ｜ Neuronpedia",
+        "page_components": [],
+        "redirects_followed": 0,
+        "statements": [
+          "The URL answered HTTP 200 with no redirect and rendered the lens page of the model; the page title names the id."
+        ],
+        "compared_with_record_of_20261110": {
+          "index": "data/experiments/neuronpedia_evidence/20261110/index.v1.json",
+          "record_id": "page.jlens.gemma-2-2b",
+          "same_sha256": false,
+          "earlier_retrieved_utc": "2026-11-10T18:26:52Z"
+        }
+      }
+    },
+    {
+      "id": "page.jlens.gemma-2-2b-it",
+      "kind": "html_page",
+      "http_status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "snapshot": {
+        "schema_version": "patientwords.export-snapshot/1",
+        "sha256": "d4e81bd7de1f6a1e4ee8308b1ea16effe1740cbd2a40a81ff44051181182e8c4",
+        "bytes": 2318221,
+        "source_url": "https://www.neuronpedia.org/gemma-2-2b-it/jlens",
+        "retrieved_utc": "2026-11-10T19:50:57Z",
+        "not_recorded": []
+      },
+      "body": null,
+      "body_omitted_reason": "an HTML page: the hash and the fields read are kept",
+      "fields_read": {
+        "title": "Jacobian Lens – Gemma-2-2B-IT ｜ Neuronpedia",
+        "page_components": [],
+        "redirects_followed": 0,
+        "statements": [
+          "The URL answered HTTP 200 with no redirect and rendered the lens page of the model; the page title names the id."
+        ],
+        "compared_with_record_of_20261110": {
+          "index": "data/experiments/neuronpedia_evidence/20261110/index.v1.json",
+          "record_id": "page.jlens.gemma-2-2b-it",
+          "same_sha256": false,
+          "earlier_retrieved_utc": "2026-11-10T18:26:53Z"
+        }
+      }
+    },
+    {
+      "id": "arxiv.2606.11722v2",
+      "kind": "html_page",
+      "http_status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "snapshot": {
+        "schema_version": "patientwords.export-snapshot/1",
+        "sha256": "54beda17589e515397cd5760339689d870afafc16f569510f85c9792b4966bb9",
+        "bytes": 44295,
+        "source_url": "https://arxiv.org/abs/2606.11722v2",
+        "retrieved_utc": "2026-11-10T19:49:20Z",
+        "not_recorded": []
+      },
+      "body": null,
+      "body_omitted_reason": "an HTML page: the hash and the fields read are kept",
+      "fields_read": {
+        "title": "[2606.11722v2] Non-Gaussianity Reveals Interpretable Directions in Language Models",
+        "statements": [
+          "Quoted: arXiv:2606.11722v2 [cs.LG].",
+          "Quoted: Title: Non-Gaussianity Reveals Interpretable Directions in Language Models.",
+          "Quoted: Authors: Sida Liu, Feijiang Han, Sarah Wiegreffe, Furong Huang. The page's citation_author fields list the same four names in the same order.",
+          "Quoted: [Submitted on 10 Jun 2026 (v1), last revised 19 Oct 2026 (this version, v2)].",
+          "Submission history: v1 Wed, 10 Jun 2026 06:53:58 UTC; v2 Mon, 19 Oct 2026 17:23:26 UTC."
+        ],
+        "compared_with_record_of_20261110": {
+          "index": "data/experiments/neuronpedia_evidence/20261110/index.v1.json",
+          "record_id": "arxiv.2606.11722v2",
+          "same_sha256": true,
+          "earlier_retrieved_utc": "2026-11-10T18:27:55Z"
+        }
+      }
+    }
+  ]
+}

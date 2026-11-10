@@ -1,7 +1,14 @@
 # Neuronpedia identity and link boundary (2026-11-10)
 
-Status: registry, validators and an offline link builder. No link to a real Neuronpedia page is
-built today. No real registry entry is `verified_exact` and no real entry records a URL pattern.
+Status: registry, validators and an offline link builder. An entry carries two separate facts:
+what is known about the identity of the hosted checkpoint (the verification status) and whether the
+service's own record for the entry's ids was read and saved (the reference status). No exact link
+to a real Neuronpedia page is built today: no real registry entry is `verified_exact` and no real
+entry records an exact URL pattern. Five real entries permit a reference link, which is a link to
+the service's page for a model, for one layer's source or for a model's lens, shown as a reference
+to an external page (*Reference links*). A reference link permits no pooling of hosted and local
+results and no parity statement.
+
 The registry was first written on 2026-11-10 without network access to the service. Later the same
 day the service's documentation, pages, API records and export files were read with plain GET
 requests (*What was read on 2026-11-10*). Those records confirm every hosted id in the registry and
@@ -15,13 +22,16 @@ Code: `scripts/experiments/neuronpedia.py`. Data: `data/experiments/representati
 `schemas/experiments/representation_registry.v1.schema.json`). Fixtures:
 `tests/fixtures/experiments/neuronpedia/` (synthetic). Tests: `tests/test_experiments_neuronpedia.py`.
 Evidence: `data/experiments/neuronpedia_evidence/20261110/` (the index `index.v1.json` and the kept
-response bodies under `bodies/`).
+response bodies under `bodies/`) and
+`data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json` (the pages fetched
+to confirm the page forms of reference links, and the paper's page; no body kept).
 
 The module makes no network request. It imports no HTTP client. The records of 2026-11-10 were
 fetched by a session, outside the module; the module's `record_snapshot` and `request_record`
-described the saved files afterwards. One test,
+described the saved files afterwards. The reference-link functions read those saved files from
+disk and hash them; they fetch nothing. One test,
 `test_importing_and_using_the_module_opens_no_socket`, loads the module from its file and calls
-each of its sixteen public functions with `socket.socket`, `socket.create_connection` and
+each of its twenty-one public functions with `socket.socket`, `socket.create_connection` and
 `socket.getaddrinfo` replaced by a function that raises. The same test compares the functions it
 called with the functions the module defines, and fails when the two sets differ.
 
@@ -36,7 +46,7 @@ Three consequences follow, and the code enforces each.
 
 - The static site and every exported bundle work with no Neuronpedia account and no live request.
   `link_or_fallback` always returns a `local` record that is enough to inspect the result. The
-  external link is an extra.
+  external link, exact or reference, is an extra.
 - An external label is a hypothesis with a source. It is never a study outcome. The four
   quantities in *Explanation provenance* stay in four fields.
 - An external id is a field of a registry entry. It is never a key. `resolve` matches on the
@@ -69,7 +79,7 @@ read, not the body.
 | Feature records | four `api.feature.*` records (layer 0, index 0 of each hosted set) | The same model and source identity, the hook name, and each explanation's type and explainer model |
 | Export identity files, `https://neuronpedia-datasets.s3.us-east-1.amazonaws.com/v1/<model>/<source>/` | sixteen `export.*` records | `model.jsonl`, `source.jsonl`, `sourceset.jsonl`, `release.jsonl` for layer 0 of four sets |
 | Pages | `page.available-resources`, `page.jlens.gemma-2-2b`, `page.jlens.gemma-2-2b-it`, `page.graph.validator` and four more `page.*` records | The list of 43 public models with their sources; the two lens pages; the graph validator and its schema |
-| Blog posts and the paper | ten `blog.*` records, `arxiv.2606.11722v2` | Dates and announcements. The nine posts were searched for the words commit, revision and checkpoint; none contains one |
+| Blog posts and the paper | ten `blog.*` records, `arxiv.2606.11722v2` | Dates and announcements. The nine posts were searched for the words commit, revision and checkpoint; none contains one. The paper's page states: arXiv:2606.11722v2, "Non-Gaussianity Reveals Interpretable Directions in Language Models", by Sida Liu, Feijiang Han, Sarah Wiegreffe and Furong Huang; v1 submitted 10 Jun 2026, v2 on 19 Oct 2026 |
 | Other | `probe.api.model.qwen3.5-2b-pt`, `probe.api.source.qwen3.5-2b-pt.0-icalens-res`, `api.nla.sources` | Two guessed routes that are not endpoints; the list of NLA sources, none for a model in the registry |
 
 The identity fields the service returns are: for a model, `id` and `hfRepoId`; for a source,
@@ -104,6 +114,32 @@ Not read, and listed in the registry under `sources_not_read`:
 | `https://www.neuronpedia.org/api/model/lookup` | a POST endpoint; only GET requests were made |
 | `https://www.neuronpedia.org/api/lens/prompt` | a POST endpoint that runs a model. What a live lens response reports about the lens was not read |
 
+### Pages fetched to confirm the reference page forms (19:49 to 19:51 UTC)
+
+Thirteen more plain GET requests were made the same day, under the same rules, and none was
+redirected. `data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json` holds one record per response (SHA-256, size, URL, retrieval
+time from `record_snapshot`, page title, page component). No body is kept: each is an HTML page of
+21 KB to 4.4 MB.
+
+| What | Records | What they state |
+|---|---|---|
+| Documentation pages that give a page form | `docs.getting-started.key-concepts`, `docs.getting-started.find-resources`, `docs.jacobian-lens` | Quoted: "A model page (neuronpedia.org/[MODEL_ID]) shows all the releases for that model". Quoted: "A source page (neuronpedia.org/[MODEL_ID]/[SOURCE_ID]) shows the configuration of one SAE or transcoder". Quoted: "A source ID starts with the layer number, then the source set name". Quoted: "You can also go directly to neuronpedia.org/[MODEL_ID]/jlens". The three pages have the same SHA-256 as at 18:24, so these sentences are also the content of the earlier records |
+| One model page per hosted model id | `page.model.gemma-2-2b`, `page.model.gemma-2-2b-it`, `page.model.qwen3-4b`, `page.model.qwen3.5-2b-pt` | HTTP 200, a page title that names the id, the page component `PageModel` |
+| One source page per hosted source set, at layer 0 | `page.source.gemma-2-2b.0-gemmascope-transcoder-16k`, `page.source.qwen3-4b.0-transcoder-hp`, `page.source.qwen3.5-2b-pt.0-icalens-res` | HTTP 200, a page title that names the model id and the source id, the page component `PageSource` |
+| The two lens pages | `page.jlens.gemma-2-2b`, `page.jlens.gemma-2-2b-it` | HTTP 200, the page title "Jacobian Lens" with the model's display name |
+| The paper | `arxiv.2606.11722v2` | The same SHA-256 as at 18:27. Title, version, four authors and both submission dates, quoted in the record |
+
+HTTP 200 alone does not show that a page exists: the site answers 200 with an empty page title for
+an id it does not have (record `page.model.qwen3.5-2b` of the earlier index). Each page record
+therefore keeps the title and the component found. A page hash identifies one response: the lens
+pages and the `qwen3.5-2b-pt` pages fetched at 18:26 have other bytes.
+
+The documentation gives no page form for a source set without a layer (a model id followed by a
+set name). The link `neuronpedia.org/qwen3.5-2b-pt/icalens-res` appears in the ICA Lens
+documentation page and in a blog post (records `docs.research-releases.ica-lens` and
+`blog.neurons-ica` of the earlier index); it was not fetched, and the registry records no such
+form.
+
 What this leaves unknown, stated once: the commit of any hosted model; the commit and hash of any
 hosted dictionary, transcoder, lens or ICA basis; which file of
 `huggingface.co/neuronpedia/jacobian-lens` serves a model id; what a live lens response reports
@@ -130,18 +166,39 @@ when a model has an entry of another type.
 | `fitted_artifact_sha256`, `artifact` | content hash, repository, revision, and the model the artifact was fitted on |
 | `calibration`, `use` | whether the pair is the calibrated reference; what the project does with it |
 | `label_source` | `name`, `version`, `explanation_type`, `explanation_model`, `scorer`, `retrieved_utc` |
-| `url_pattern` | a page template with the source it was read in and the date, or null |
-| `verification` | `status`, `hosted_checkpoint_revision`, `evidence` items `{source, date, states}`, `checked_utc_date` |
-| `links_enabled` | true only with `verified_exact` |
+| `url_pattern` | the template of an exact link, with the source it was read in and the date, or null |
+| `verification` | fact one, identity: `status`, `hosted_checkpoint_revision`, `evidence` items `{source, date, states}`, `checked_utc_date` |
+| `links_enabled` | the exact-link flag: true only with `verified_exact` |
+| `reference` | fact two, the source of a reference link: `status`, `enabled`, `evidence` (the saved record of the service: `index`, `record_id`, `path`, `sha256`, `bytes`, `retrieved_utc`, or null), `pages` (the page forms, each with `kind`, `template`, `source`, `read_utc_date`, `form_record`, `instance_record`) and `reason` |
 | `not_recorded` | JSON pointers of every null field in the entry |
 
 A null means the registry holds no value. A null whose pointer is not in `not_recorded` is refused
 (`silent_missing_provenance`), and so is a listed pointer that is not null. A field that does not
 apply holds the string `not_applicable`.
 
+### Two facts, two vocabularies
+
+The owner's instruction of 2026-11-10: "Separate source-link verification from scientific
+comparability. A verified reference page can be useful even when the hosted checkpoint is unknown.
+If you support such links, label them as references and keep exact representation links, pooling
+and parity claims behind their stronger identity requirements."
+
+The registry therefore holds two statuses per entry, and no function derives one from the other.
+
+| Fact | Field | Question it answers | What it permits |
+|---|---|---|---|
+| identity | `verification.status` | Is the hosted checkpoint identified, and is it the study's? | Only `verified_exact` permits an exact link (`exact_link`), pooling of hosted and local results (`pooling`) and a parity statement (`parity_statement`) |
+| reference | `reference.status` | Was the service's own record for these ids read and saved? | Only `service_record_read_revision_not_reported` permits a reference link |
+
+`permissions(entry)` returns the four answers with the status that decides each.
+`require_exact_identity(entry, use)` refuses an exact link, pooling and a parity statement
+(`identity_not_verified`) unless the status is `verified_exact`; it does not read the reference
+block. Both statuses of every real entry are in *Id mapping on 2026-11-10* and *Reference links on
+2026-11-10*.
+
 ### Verification statuses
 
-| Status | Meaning | Link |
+| Status | Meaning | Exact link, pooling, parity |
 |---|---|---|
 | `verified_exact` | The ids were read in a primary source, and the hosted checkpoint revision is recorded and equals the study revision. The validator refuses this status without both revisions equal | permitted |
 | `alias_unverified_checkpoint` | Another id is given for the same checkpoint by the source that the entry's `id_source` names. No record of the commit behind that id was read | none |
@@ -153,7 +210,28 @@ commits, or the same commit served at another precision. `verified_exact` theref
 `hosted_checkpoint_revision` to equal `model.revision`, and `links_enabled: true` with any other
 status is refused (`links_without_verification`). A repository id is not a commit either: on
 2026-11-10 the service named the repository behind every hosted id and no commit, and every status
-stayed where it was.
+stayed where it was. The meaning of `verified_exact` is unchanged. Its sentence in the registry used
+to end "The only status that permits a link"; it now names the three things the status permits,
+because a reference link exists and does not depend on it.
+
+### Reference statuses
+
+| Status | Meaning | Reference link |
+|---|---|---|
+| `service_record_read_revision_not_reported` | The service's own record for the entry's Neuronpedia ids was read and is saved; `reference.evidence` names it by path, SHA-256, size and retrieval time. The record names the entry's model id and a Hugging Face repository equal to the study's, and reports no revision, commit or hash | permitted, to a page form listed in `reference.pages` |
+| `no_service_record` | The entry names no saved record of the service for its ids: it records no Neuronpedia ids, or no record was saved | none |
+
+This is the status word the registry lacked for "ids and repository confirmed by the service's own
+record; revision not reported". It is a word of the reference vocabulary and not a fifth
+verification status, so that a consumer who reads `verification.status` sees exactly the four words
+it saw before, with the same meanings. The validator refuses `reference.enabled: true` without this
+status, without a named evidence record or without a page form
+(`reference_links_without_record`). It refuses `links_enabled: true` on the strength of a
+reference block (`links_without_verification`): the two flags are checked separately.
+
+A reference status is evidence about the retrieval date. If a later record of the service names a
+revision, `verify_reference_evidence` refuses it (`reference_status`): the word no longer describes
+the record, and the entry has to be read again, including its verification status.
 
 ### Id mapping on 2026-11-10
 
@@ -175,6 +253,41 @@ dated documents, the ICA fork) is unchanged and is in the registry entry.
 
 Paths that start with `patientwords-ica-lens-paper/` are in the fork
 `michaeldgreenphd/patientwords-ica-lens-paper` at `aa3b95c9e755e4374f8c9645a064e3f51d96066e`.
+
+### Reference links on 2026-11-10
+
+The verification status of every row is the one in the table above. No row permits an exact link,
+pooling or a parity statement.
+
+| Registry entry | Reference status | Reference links | Saved record (`reference.evidence`) | Page forms and one URL the module builds |
+|---|---|---|---|---|
+| `gemma-2-2b.transcoder-feature.gemmascope-transcoder-16k` | `service_record_read_revision_not_reported` | on | `api.source-set.gemma-2-2b.gemmascope-transcoder-16k`, 34,248 bytes, retrieved 2026-11-10T18:25:56Z | `model_page`; `source_page` for layers 0 to 25: `https://www.neuronpedia.org/gemma-2-2b/0-gemmascope-transcoder-16k` |
+| `qwen3-4b.transcoder-feature.transcoder-hp` | `service_record_read_revision_not_reported` | on | `api.source-set.qwen3-4b.transcoder-hp`, 43,307 bytes, retrieved 2026-11-10T18:25:57Z | `model_page`; `source_page` for layers 0 to 35: `https://www.neuronpedia.org/qwen3-4b/0-transcoder-hp` |
+| `gemma-2-2b.workspace-readout.hosted-jlens` | `service_record_read_revision_not_reported` | on | `api.source-set.gemma-2-2b.gemmascope-transcoder-16k`, cited for its model record | `model_page`; `lens_page`: `https://www.neuronpedia.org/gemma-2-2b/jlens` |
+| `gemma-2-2b-it.workspace-readout.hosted-jlens` | `service_record_read_revision_not_reported` | on | `api.source-set.gemma-2-2b-it.icalens-res`, 17,879 bytes, retrieved 2026-11-10T18:25:57Z, cited for its model record | `model_page`; `lens_page`: `https://www.neuronpedia.org/gemma-2-2b-it/jlens` |
+| `qwen3.5-2b-base.ica-component.neuronpedia-alias` | `service_record_read_revision_not_reported` | on | `api.source-set.qwen3.5-2b-pt.icalens-res`, 5,588 bytes, retrieved 2026-11-10T18:25:32Z | `model_page`; `source_page` for layers 0, 4, 8, 12, 16, 20: `https://www.neuronpedia.org/qwen3.5-2b-pt/0-icalens-res` |
+| `gemma-2-2b.ica-component.sida-icalens-gemma-2-2b-pile10k` | `no_service_record` | off | none | none. The hosted ICA set of this model names `neuronpedia/icalens-gemma-2-2b`; no record read ties it to the `sida/` basis |
+| `gpt2.ica-component.sida-icalens-gpt2-small-pile10k` | `no_service_record` | off | none | none, for the same reason (`neuronpedia/icalens-gpt2-small`) |
+| `qwen3.5-9b-base.ica-component.sida-icalens-qwen3.5-9b-base-pile10k` | `no_service_record` | off | none | none, for the same reason (`neuronpedia/icalens-qwen3.5-9b-pt`) |
+| `qwen3.5-2b-instruct.ica-component.sida-icalens-qwen3.5-2b-ultrachat-1m` | `no_service_record` | off | none | none. The service lists no model for `Qwen/Qwen3.5-2B` |
+
+The saved records are under `data/experiments/neuronpedia_evidence/20261110/bodies/`; each entry
+repeats its record's SHA-256. The model page URL of a row is `https://www.neuronpedia.org/` followed
+by the Neuronpedia model id. The module builds 75 reference URLs from the committed registry (74
+distinct: two entries share the model page of `gemma-2-2b`), and
+`test_the_real_registry_builds_exactly_these_reference_links_and_no_exact_link` lists every one.
+
+What was verified and what is inferred, per page form:
+
+- **Model pages and lens pages.** Verified for 2026-11-10: each URL the module builds was fetched
+  and rendered a titled page (four model pages, two lens pages).
+- **Source pages.** Verified for 2026-11-10 at layer 0 of each of the three sets. For the other 65
+  layers the URL is inferred from two things that were read: the source id is listed in the saved
+  source-set record, and the documentation gives the form `[MODEL_ID]/[SOURCE_ID]`. Those 65 pages
+  were not fetched.
+- **The two lens entries.** Their saved record is the source-set record of another representation
+  of the same model id. It is cited for the model record inside it (`model.id`, `model.hfRepoId`)
+  and for nothing about the lens. The lens page names no lens repository, file or revision.
 
 Notes on single rows.
 
@@ -213,10 +326,11 @@ Notes on single rows.
   node of that graph to its feature would be id-consistent by construction. The service now
   attests the model repository and names a weights repository. What is unknown is the model commit
   and the transcoder weights commit behind those ids, which matters as soon as a locally loaded
-  model is compared with a hosted feature. The four-word vocabulary has no status for "ids and
-  repository attested by the service, commit not reported". All five hosted entries have their
-  model repository attested and no commit reported today. Adding such a status is an owner
-  decision; this change does not add it.
+  model is compared with a hosted feature. The four-word verification vocabulary has no status for
+  "ids and repository attested by the service, commit not reported", and it still has none: that
+  fact is the reference status `service_record_read_revision_not_reported`, which all five hosted
+  entries hold. It permits a reference link to the model page or to one layer's source page. It
+  does not permit the link from a graph node to its feature page: that is an exact link.
 - **Hosted sets that have no registry entry.** The service also hosts `icalens-res` for
   `gemma-2-2b` (`neuronpedia/icalens-gemma-2-2b`), `gemma-2-2b-it` and `qwen3.6-27b`, and
   `clt-hp` for `gemma-2-2b`. The registry has no entry for them. They are named here so that a
@@ -232,11 +346,17 @@ found.verified                                            # False: an alias neve
 nps.resolve("qwen3.5-2b-base", "ica_component", 1).status # "no_mapping": the hosted set has layers 0, 4, 8, ...
 nps.resolve("gemma-2-2b", "sae_latent").status            # "no_mapping", with the reason
 nps.link_or_fallback(found, 3, layer=4, record={"signed_score": -0.5})
-# {"link": None, "reason": "mapping not verified", "detail": ..., "local": {...}}
+# {"kind": "none", "link": None, "reason": "mapping not verified", "detail": ..., "reference": None,
+#  "reference_reason": "reference link not requested", "reference_detail": ..., "local": {...}}
 ```
 
 `resolve` returns a `Resolution` with status `mapped`, `no_mapping` or `ambiguous`. Two matching
 entries give `ambiguous` with both ids; the caller narrows the query. Nothing is picked.
+
+`build_link` and `build_reference_link` are two functions with two result types. `build_link`
+returns a `Link` of kind `exact` and never a reference link. `build_reference_link` returns a
+`ReferenceLink` of kind `reference` and never an exact link. The rest of this section is about
+exact links; *Reference links* follows.
 
 `build_link(entry, component_id, layer=None)` returns a URL only when both conditions hold:
 
@@ -248,7 +368,9 @@ entries give `ambiguous` with both ids; the caller narrows the query. Nothing is
 No text can enter a URL. The rule has five parts.
 
 - `build_link` and `link_or_fallback` take a registry entry, an integer component id and an
-  integer layer. They have no text parameter.
+  integer layer. They have no text parameter. `link_or_fallback` also takes `reference_page`, one
+  word of a closed vocabulary (`model_page`, `source_page`, `lens_page`) that selects a reference
+  page form and is never put in a URL; any other value is refused (`reference_page_kind`).
 - A component id or layer that is not a non-negative integer is refused (`free_text_in_url`)
   before the entry's status is looked at.
 - Both integers are bounded, with the same code. A component id is below the entry's
@@ -277,13 +399,160 @@ endpoint, not a page, and is not recorded as a link pattern. The service's docum
 page form: a feature's URL is `neuronpedia.org/[MODEL_ID]/[SOURCE_ID]/[INDEX]`, and a source id is
 the layer number followed by the source set name (record `docs.getting-started.key-concepts`, read
 on 2026-11-10). That form would fit the registry's template rule. It is not entered as a
-`url_pattern` in any real entry: no entry permits a link, so a pattern would change nothing today,
-and entering one is left to the owner.
+`url_pattern` in any real entry: no entry permits an exact link, so a pattern would change nothing
+today, and entering one is left to the owner. It is not a reference page form either (*Why no
+feature page*).
 
 The fixture registry holds one `verified_exact` entry for the toy model so the link path runs
 under test. Its host is `registry-fixture.invalid`. A synthetic registry may link only to a
 `.invalid` host and a real registry never may (`synthetic_label`), so a fixture link reaches no
-site and a real entry cannot borrow the fixture pattern.
+site and a real entry cannot borrow the fixture pattern. Three fixture entries also have reference
+links on. Their evidence is synthetic and is stored under
+`tests/fixtures/experiments/neuronpedia/reference_evidence/`: an index, two hand-written
+source-set records and page records with invented hashes. A synthetic registry may name evidence
+only under `tests/fixtures/experiments/neuronpedia/`, and a real one only under
+`data/experiments/neuronpedia_evidence/`.
+
+## Reference links
+
+A reference link is a link to a page of the external service, shown as a reference. It says that
+the service had a page under these ids on the retrieval date. It does not say that the page shows
+the study's model or representation, and it permits no pooling and no parity statement.
+
+```python
+entry = nps.entry_by_id(nps.load_registry(), "qwen3.5-2b-base.ica-component.neuronpedia-alias")
+nps.build_link(entry, 3, layer=4).url                        # None: "mapping not verified"
+nps.build_reference_link(entry, "source_page", layer=4).url  # https://www.neuronpedia.org/qwen3.5-2b-pt/4-icalens-res
+nps.link_or_fallback(entry, 3, layer=4)["kind"]              # "none": no reference unless asked for
+nps.link_or_fallback(entry, 3, layer=4, reference_page="source_page")["kind"]   # "reference"
+nps.require_exact_identity(entry, "pooling")                 # Refusal("identity_not_verified")
+```
+
+### The record a page renders
+
+`ReferenceLink.as_record()`, which is also the value of `reference` in the result of
+`link_or_fallback`, has exactly these ten keys (`REFERENCE_LINK_KEYS`):
+
+| Key | Value |
+|---|---|
+| `kind` | always `"reference"` |
+| `url` | the page URL: `https://www.neuronpedia.org/` and one or two path segments |
+| `label` | the fixed sentence below, unchanged |
+| `page` | the page form: `model_page`, `source_page` or `lens_page` |
+| `registry_id` | the registry entry the link was built from |
+| `evidence` | the saved record of the service the link was built from: `index` (the evidence index), `record_id`, `path` (the kept file), `sha256`, `bytes`, `retrieved_utc` |
+| `read_utc_date` | the date that record was retrieved |
+| `identity_status` | the entry's verification status, repeated so the reader sees it beside the link |
+| `reason` | `reference link built from the recorded page form` |
+| `detail` | the record ids of the page form, of the ids and of the fetched page |
+
+The label is one constant, `REFERENCE_LABEL`. A page shows it beside every reference link:
+
+> Reference page on Neuronpedia, an external service: the service record this link was built from
+> names no checkpoint revision, so the hosted checkpoint is not identified and the link is not
+> evidence that the page shows the study's model or representation.
+
+`validate_reference_link(record, registry=None)` checks such a record for the code that stores or
+renders one: the closed key set, the kind, the unchanged label, the URL (https, the fixed host, the
+path shape of its page form, no query string) and the evidence fields. With a registry it also
+compares the record with the entry. It refuses a record of any other kind (`link_kind`).
+
+### How the two kinds are kept apart
+
+- **Two result types.** `Link` has `url`, `reason`, `detail` and `kind: "exact"`. `ReferenceLink`
+  has the fields of the table above and `kind: "reference"`. Neither function returns the other
+  type.
+- **Two keys in `link_or_fallback`.** The result has `kind` (`exact`, `reference` or `none`),
+  `link`, `reason`, `detail`, `reference`, `reference_reason`, `reference_detail` and `local`.
+  `link` is an exact link or null and is never a reference link. `reference` is a reference record
+  or null. They are never both set: when an exact link is built, no reference is attempted.
+- **Asked for explicitly.** `link_or_fallback` builds a reference only when the caller passes
+  `reference_page`. Without it the result is what it was before, plus `kind` and the three
+  reference keys, which then say `reference link not requested`.
+- **Unchanged meaning for an existing reader.** With a reference, `link` is null and `reason` and
+  `detail` still say why no exact link exists (`mapping not verified`). The site page of this
+  release shows a link only for an https string under `link` with the built-link reason and the
+  status `verified_exact` (the experiments page of the companion repository, read on 2026-11-10),
+  so it shows a reference result as "no link" with that reason. It does not render the `reference`
+  record; that needs a change in the companion repository.
+- **Two flags in the registry.** `links_enabled` switches exact links and needs `verified_exact`.
+  `reference.enabled` switches reference links and needs the reference status and a named record.
+
+### What a reference URL is made of
+
+Every safeguard of an exact link applies, and three are stricter.
+
+- **A template recorded on the entry, from a source that was read.** `reference.pages` lists each
+  page form with its template, the documentation page the form was read in (`source`,
+  `form_record`) and the record of one fetched page of that form for the entry's ids
+  (`instance_record`). The module also defines the one path a form may have, and the template must
+  equal it: `/{model_id}` for `model_page`, `/{model_id}/{layer}-{source_set}` for `source_page`,
+  `/{model_id}/jlens` for `lens_page`. Any other template is refused when the registry is loaded
+  (`reference_template`).
+- **https and a fixed host.** The host of a real registry is `www.neuronpedia.org` and no other.
+  The documentation writes `neuronpedia.org`; the pages fetched answered at `www.neuronpedia.org`
+  with no redirect, which is also the host the API records were read from. A fixture links only to
+  a `.invalid` host (`synthetic_label`).
+- **Ids from the registry, checked against the saved record.** The model id and the source set are
+  the entry's. On every call the module reads the kept record from disk, compares its SHA-256 and
+  size with the entry's copy, and checks that the record names that model id, the study's Hugging
+  Face repository and, for a source page, a source id for the layer asked for.
+- **One bounded integer.** The only number a caller supplies is the layer of a source page. It is
+  a non-negative integer below 4096 (`free_text_in_url`), and it must be a layer the saved record
+  lists and the entry records. A reference URL has no component index, so the 20 bits that the
+  component id of an exact link leaves open do not exist here.
+- **No query string, no text.** `build_reference_link(entry, page, layer=None, root=None)` takes a
+  registry entry, one word of a closed vocabulary that is never put in a URL, an integer and a
+  directory. The lens page is the form without a query string; the form with `?prompt=` is not
+  recorded and cannot be built.
+- **The offline fallback.** When no reference is permitted, `link_or_fallback` returns `reference:
+  null` with the reason, and the `local` record. That includes a saved record that is absent or
+  changed on the machine that builds the bundle: the refusal becomes `reference link refused` with
+  its code in `reference_detail`.
+
+`verify_reference_evidence(entry, root=None)` runs the file checks alone and returns what the
+record confirms. A reference link is refused:
+
+| Code | When |
+|---|---|
+| `reference_links_without_record` | the entry switches reference links on and names no evidence record, no Neuronpedia ids or no page form (at registry load, and for a hand-made entry) |
+| `reference_evidence_missing` | the evidence index, the cited record or the kept file is absent |
+| `reference_evidence_mismatch` | the index's record differs from the entry's copy (SHA-256, size, retrieval time, path), or did not answer HTTP 200 |
+| `reference_evidence_hash` | the kept file no longer has the recorded SHA-256 and size |
+| `reference_ids_not_confirmed` | the kept record does not name the entry's model id, the study's repository, the source set, or a source for the layer asked for |
+| `reference_status` | the kept record has a key that names a revision, a commit or a hash |
+| `reference_form_not_confirmed` | the entry records no such page form; or the documentation record or the fetched-page record of a form is absent or changed; or the fetched page is not a page of this entry's ids |
+| `reference_page_kind` | `page` is not one of the three page forms. `feature_page` is refused here |
+
+No refusal of a reference link repeats a value of the entry, of the arguments or of the saved
+files. `test_no_refusal_of_a_reference_link_repeats_a_value` places a sentinel string in each
+position and reads the message.
+
+Cost: each call reads and hashes the kept record and the two evidence indexes (about 0.15 MB in
+all) and reuses the parse of bytes it has already seen. A changed file is always read again.
+
+### Why no feature page
+
+A reference link points at a model page, at one layer's source page or at a lens page. It never
+points at a feature page (model, source and feature index), although the documentation gives that
+form. Three reasons, each from what the saved evidence does and does not confirm.
+
+1. The saved record of an entry is its source-set record. It lists the source ids. It confirms no
+   feature index. The number of directions of one source is in that record only for the two
+   transcoder sets (`d_sae`); for the hosted ICA set it is in a documentation page (2,048 for
+   Qwen3.5 2B Base; record `docs.research-releases.ica-lens`), not in the record that is hashed.
+   The one feature record read per set (layer 0, index 0) is not kept, because it holds dataset
+   text and user names, so its hash cannot be checked again.
+2. No feature page was fetched. The site answers HTTP 200 with an empty page for an id it does not
+   have, so a URL built for an unconfirmed index could be an empty page under a reference label.
+3. A feature page beside a component number reads as "this is that component". For a component of
+   a local fit that is false unless the hosted basis is the same file, which is the identity claim
+   the verification status decides. The module cannot tell where a component index came
+   from, so it does not put one in a reference URL.
+
+The case where a feature-level reference would be sound is a node of a hosted graph: its feature
+index was issued by the service under the same ids. Supporting that needs a rule that records
+where an index came from, and it is left to the owner (*What was verified, and what was not*).
 
 ## Snapshots and request records
 
@@ -593,7 +862,13 @@ Conditions attached to the later rows.
 | Real entries agree with the engine's tables | the same tests compare study ids, Hugging Face ids and pins with `scripts/logits_eval.py`, source sets with `neuronpedia_features.MODEL_SOURCE_SETS`, the calibrated pair with `scripts/feature_models.py`, and artifact ids with the capability matrix |
 | Real entries agree with the service's records of 2026-11-10 | the tests read the kept bodies and the index: model id, source set, layer list and Hugging Face repository of each hosted entry equal the saved source-set record; every evidence item that cites a URL names a record whose URL and date match; every kept body still has its recorded SHA-256 and size (`verify_snapshot`). This is evidence about that date. Nothing re-fetches |
 | No record of the service names a revision | `test_no_record_of_the_service_names_a_revision` searches every kept body and the fields read of every record for a key that names a revision, a commit or a hash, and finds none |
-| The module opens no socket | `test_importing_and_using_the_module_opens_no_socket` replaces `socket.socket`, `socket.create_connection` and `socket.getaddrinfo`, loads the module from its file, calls each of its sixteen public functions and asserts that the set it called equals the set the module defines; `test_module_imports_no_network_or_process_library` lists the imports |
+| The module opens no socket | `test_importing_and_using_the_module_opens_no_socket` replaces `socket.socket`, `socket.create_connection` and `socket.getaddrinfo`, loads the module from its file, calls each of its twenty-one public functions (the five added with reference links among them) and asserts that the set it called equals the set the module defines; `test_module_imports_no_network_or_process_library` lists the imports |
+| An exact link and a reference link cannot be taken for each other | `test_an_exact_link_and_a_reference_link_cannot_be_confused` runs each consumer path on a fixture entry that permits both kinds and on one that permits only a reference: `build_link`, `build_reference_link`, `link_or_fallback` with and without `reference_page`, and `validate_reference_link` |
+| A reference link is built only from a saved record that still has its hash and names the ids | tests that remove the record, alter the kept file, point the entry at another record and ask for a page form the entry does not record; each is refused with the code listed under *Reference links* |
+| Exact links, pooling and parity statements are refused for every real entry | `test_exact_links_pooling_and_parity_stay_refused_for_every_real_entry` and `test_the_real_registry_builds_exactly_these_reference_links_and_no_exact_link` |
+| The reference URLs of the real registry resolve | verified for 2026-11-10 for the four model pages, the two lens pages and the source page of layer 0 of each of the three sets: fetched, HTTP 200, titled page. Inferred for the other 65 source pages from the saved source-set records and the documented form; not fetched. Not verified for any later date |
+| A reference page shows the study's model or representation | not verified, and not claimed. The label of every reference link says so |
+| A feature-level reference link | not supported. Whether to support one for a node of a hosted graph, whose index the service issued, is an owner decision |
 | A request record holds no credential and no prompt text | checked by key name, value type, character class and the credential screen (issuer prefix; token form), on abstract placeholders and on dummy strings made of an issuer prefix and filler. Not verified: the cases listed under "What the check cannot see", which the check cannot tell from an id |
 | A refusal of a request record repeats no value | a sentinel string is placed under each key, in `not_recorded`, in the endpoint and as a key, and the message is read (`test_no_refusal_of_a_request_record_repeats_a_value`, `test_a_not_recorded_entry_is_checked_as_a_pointer_and_never_repeated`, `test_a_string_with_a_credential_prefix_is_refused_wherever_it_sits`) |
 | An integer in a URL is a component index or a layer number | bounded as described under *Resolving and linking*; `test_the_integers_of_a_url_are_bounded_so_a_hash_written_as_an_integer_is_refused` also builds no URL from any committed entry over layers 0 to 4095 and component ids up to 2**20 - 1 |
@@ -601,6 +876,6 @@ Conditions attached to the later rows.
 | A hosted model id names the study's Hugging Face repository | verified for 2026-11-10, from the service's model records (`hfRepoId`) |
 | Any hosted checkpoint equals a study pin | not verified. The service reported no revision for any model, dictionary, lens or basis, so no hosted revision is recorded anywhere |
 | What a live lens response reports | not read. The route runs a model and was not called |
-| Any page URL pattern | the feature page form was read in the documentation. None is recorded in the registry |
+| Any exact URL pattern | the feature page form was read in the documentation. It is not recorded in the registry as `url_pattern`: no real entry permits an exact link |
 | The graph contract | not verified. The validator page and its schema were fetched; the plan has not been reconciled with them and still lists the engine's reading |
 | That a fixture link works | not applicable. The fixture host is under `.invalid` |

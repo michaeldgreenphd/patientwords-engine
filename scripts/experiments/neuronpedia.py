@@ -14,11 +14,18 @@ What it holds:
   artifact, the label source and a verification status with its evidence. The seven representation types are
   different objects. Nothing here converts one into another.
 * ``resolve``: a study model id plus a representation type gives an entry or a typed "no mapping" result.
-* ``build_link`` and ``link_or_fallback``: a URL is returned only for an entry whose mapping is ``verified_exact``
-  and whose URL pattern is recorded in the registry with its source. A URL is assembled from recorded ids and
-  integers only. No prompt, no patient-style text and no other free text can enter one: the functions take no text
-  argument, refuse a non-integer component id, bound both integers (so a hash written as a decimal integer is
-  refused) and check the finished URL against a closed character set.
+* ``build_link`` and ``link_or_fallback``: an exact link (kind ``exact``) is returned only for an entry whose
+  mapping is ``verified_exact`` and whose URL pattern is recorded in the registry with its source. A URL is
+  assembled from recorded ids and integers only. No prompt, no patient-style text and no other free text can
+  enter one: the functions take no text argument, refuse a non-integer component id, bound both integers (so a
+  hash written as a decimal integer is refused) and check the finished URL against a closed character set.
+* ``build_reference_link``: a reference link (kind ``reference``) is a link to the service's page for a model,
+  for one layer's source or for a model's lens, shown as a reference to an external page. It is built from
+  the entry's reference status and a saved record of the service, which is read from a local file and hashed
+  again on every call. It is a different record from an exact link: it has its own function, its own key in
+  the result of ``link_or_fallback`` and a fixed label sentence. It never points at a feature page.
+* ``permissions`` and ``require_exact_identity``: an exact link, pooling of hosted and local results and a
+  parity statement each need ``verified_exact``. The reference status is not consulted for any of them.
 * Snapshot records for bulk exports and a request record for bounded API calls. Both are structures with
   validation. Somebody else performs the download or the request. A request record is checked by key name, by
   value type, by character class and by a credential screen, so that a credential or prompt text is refused
@@ -29,26 +36,29 @@ What it holds:
   source-set identity. This milestone has no graph exporter; ``docs/experiment_interface/neuronpedia.md`` holds
   the plan.
 
-A verification status says what was checked about the mapping, with evidence. An alias (the same checkpoint
-under another id) is not a verified checkpoint: ``verified_exact`` needs the hosted checkpoint revision recorded
-and equal to the study pin. Missing provenance is explicit: a field may be null only when its JSON pointer is in
+An entry carries two separate facts. The verification status says what is known about the identity of the
+hosted checkpoint, with evidence. An alias (the same checkpoint under another id) is not a verified checkpoint:
+``verified_exact`` needs the hosted checkpoint revision recorded and equal to the study pin. The reference
+status says whether the service's own record for the entry's ids was read and saved. A read record permits a
+reference link and nothing else; it does not change the verification status. Missing provenance is explicit: a field may be null only when its JSON pointer is in
 the record's ``not_recorded`` list, as in the run envelope.
 
 Refusal messages. A message names positions, counts, this module's own vocabularies and key names that are
 short identifiers. A value that failed its check is not repeated, and neither is a key that is not a short
 identifier or that starts like a credential (it is counted or given by position): the string that must not be
 stored must not reach a log either. A value is repeated only after it passed an id, hash, date or integer
-check. No refusal of a request record repeats any value. Two things are outside this rule: a local file path
+check. No refusal of a request record or of a reference link repeats any value. Two things are outside this rule: a local file path
 the caller passed to a snapshot function, and the registry's structural errors, which the shared schema checker
 (``common.require_structure``) words and which name the path of the offending key.
 """
 from __future__ import annotations
 
 import functools
+import json
 import math
 import re
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Callable, Iterable, Mapping, TypeVar
 
 from scripts.experiments.common import (
@@ -65,9 +75,19 @@ GRAPH_REF_KIND = "attribution_graph_ref/1"
 
 REGISTRY_PATH = ENGINE / "data" / "experiments" / "representation_registry.v1.json"
 
-# What was checked about a mapping. Only the first permits a link.
+# Fact one, identity: what is known about the hosted checkpoint. Only the first status permits an exact link,
+# pooling of hosted and local results, or a parity statement.
 VERIFIED = "verified_exact"
 VERIFICATION_STATUSES = (VERIFIED, "alias_unverified_checkpoint", "hosted_identity_unknown", "unverified")
+IDENTITY_USES = ("exact_link", "pooling", "parity_statement")
+# Fact two, reference: whether the service's own record for the entry's ids was read and saved. The first
+# status permits a reference link. It says nothing about the hosted checkpoint and permits nothing else.
+REFERENCE_READ = "service_record_read_revision_not_reported"
+REFERENCE_NONE = "no_service_record"
+REFERENCE_STATUSES = (REFERENCE_READ, REFERENCE_NONE)
+# The three kinds a link result can have. An exact link and a reference link are different records.
+EXACT, REFERENCE, NO_LINK = "exact", "reference", "none"
+LINK_KINDS = (EXACT, REFERENCE, NO_LINK)
 CALIBRATIONS = ("calibrated_reference", "not_calibrated", NOT_APPLICABLE)
 USES = ("calibrated_feature_source", "exploration_only", "landed_hosted_readouts", "named_not_used",
         "synthetic_fixture")
@@ -75,11 +95,48 @@ USES = ("calibrated_feature_source", "exploration_only", "landed_hosted_readouts
 URL_KINDS = ("feature_page", "component_page", "head_page")
 PLACEHOLDERS = ("model_id", "source_set", "source_id", "layer", "component")
 
-# The two reasons a link is withheld, and the reason no entry was found.
+# The two reasons an exact link is withheld, and the reason no entry was found.
 LINK_BUILT = "link built from the recorded pattern"
 REASON_NOT_VERIFIED = "mapping not verified"
 REASON_NO_PATTERN = "no recorded URL pattern"
 REASON_NO_MAPPING = "no mapping"
+
+# Reference links. The label is one fixed sentence; a page shows it beside every reference link, unchanged.
+REFERENCE_LABEL = ("Reference page on Neuronpedia, an external service: the service record this link was built "
+                   "from names no checkpoint revision, so the hosted checkpoint is not identified and the link is "
+                   "not evidence that the page shows the study's model or representation.")
+REFERENCE_BUILT = "reference link built from the recorded page form"
+REASON_NO_REFERENCE = "no reference link for this entry"
+REASON_REFERENCE_NOT_ASKED = "reference link not requested"
+REASON_REFERENCE_REFUSED = "reference link refused"
+REASON_EXACT_RETURNED = "not attempted: an exact link was built"
+# The page forms a reference link can have, each with the one path shape it may take. A real registry uses
+# REFERENCE_HOST and nothing else. No form has a feature index: a reference link names a model, one layer's
+# source or a model's lens, never one component.
+REFERENCE_HOST = "www.neuronpedia.org"
+REFERENCE_PAGES = {
+    "model_page": "/{model_id}",
+    "source_page": "/{model_id}/{layer}-{source_set}",
+    "lens_page": "/{model_id}/jlens",
+}
+REFERENCE_PAGE_KINDS = tuple(REFERENCE_PAGES)
+REFERENCE_URL = re.compile(r"https://[a-z0-9-]+(\.[a-z0-9-]+)+(/[A-Za-z0-9][A-Za-z0-9._-]{0,63}){1,2}\Z")
+# Where a saved record of the service may sit, relative to the repository root: one directory for a real
+# registry, one for a synthetic one. A path is segments of id characters, so it cannot leave its directory.
+EVIDENCE_ROOTS = {False: "data/experiments/neuronpedia_evidence/", True: "tests/fixtures/experiments/neuronpedia/"}
+EVIDENCE_PATH = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}(/[A-Za-z0-9][A-Za-z0-9_.-]{0,127}){1,7}\Z")
+RECORD_ID = re.compile(r"[a-z0-9][a-z0-9._-]{0,127}\Z")
+UTC_SECOND = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\Z")
+# A key of a service record that would name a revision, a commit or a content hash.
+REVISION_KEY = re.compile(r"revision|commit|checkpoint|sha256|sha1|hash", re.I)
+EVIDENCE_KEYS = ("index", "record_id", "path", "sha256", "bytes", "retrieved_utc")
+PAGE_RECORD_KEYS = ("index", "record_id", "sha256", "retrieved_utc")
+REFERENCE_LINK_KEYS = ("kind", "url", "label", "page", "registry_id", "evidence", "read_utc_date",
+                       "identity_status", "reason", "detail")
+# Refusals of build_reference_link that link_or_fallback turns into "no reference link", so that the local
+# record is still returned when a saved record is absent or no longer matches.
+REFERENCE_REFUSALS = ("reference_evidence_missing", "reference_evidence_hash", "reference_evidence_mismatch",
+                      "reference_ids_not_confirmed", "reference_form_not_confirmed", "reference_status")
 
 FIXTURE_PREFIX = "fixture/"
 FIXTURE_HOST_SUFFIX = ".invalid"  # a reserved top-level domain: a fixture link can never reach a real site
@@ -327,6 +384,76 @@ def _check_url_pattern(entry: Mapping[str, Any], where: str, synthetic: bool) ->
                 f"{where}: the template uses {{{name}}} and the entry records no usable neuronpedia.{name}")
 
 
+def _check_page_record(pointer: Any, keys: tuple[str, ...], prefix: str, where: str, code: str) -> None:
+    """A citation of one record of an evidence index: a path under ``prefix``, a record id, the SHA-256 and the
+    retrieval time the index gives for it. ``keys`` is the closed key set. Nothing is read here."""
+    require(isinstance(pointer, dict) and set(pointer) == set(keys), code,
+            f"{where} holds exactly {sorted(keys)}")
+    paths = [pointer[key] for key in ("index", "path") if key in keys]
+    require(all(isinstance(path, str) and bool(EVIDENCE_PATH.fullmatch(path)) and path.startswith(prefix)
+                and path.endswith((".json", ".jsonl")) for path in paths), code,
+            f"{where}: a path is segments of id characters under {prefix} and names a .json or .jsonl file")
+    require(isinstance(pointer["record_id"], str) and bool(RECORD_ID.fullmatch(pointer["record_id"]))
+            and isinstance(pointer["sha256"], str) and bool(HEX64.fullmatch(pointer["sha256"]))
+            and isinstance(pointer["retrieved_utc"], str) and bool(UTC_SECOND.fullmatch(pointer["retrieved_utc"])),
+            code, f"{where}: record_id is a record id, sha256 is 64 hex and retrieved_utc is a UTC time to the "
+            "second")
+    require("bytes" not in keys or integer(pointer["bytes"], 1), code, f"{where}: bytes is a positive integer")
+
+
+def _check_reference(entry: Mapping[str, Any], where: str, synthetic: bool) -> None:
+    """The reference block of one entry: the second fact, kept apart from the verification status.
+
+    ``status`` says whether the service's own record for the entry's ids was read and saved; ``evidence`` names
+    that record (index, record id, kept file, SHA-256, size, retrieval time); ``pages`` lists the page forms a
+    reference link may take, each with the template, the documentation record the form was read in and the
+    record of one fetched page of that form; ``enabled`` switches reference links on. This function reads no
+    file: ``verify_reference_evidence`` compares the block with the saved files."""
+    reference = entry["reference"]
+    status, evidence, pages = reference["status"], reference["evidence"], reference["pages"]
+    require(isinstance(status, str) and status in REFERENCE_STATUSES, "reference_status",
+            f"{where}: reference.status must be one of {list(REFERENCE_STATUSES)}")
+    require(text(reference["reason"]), "reference_entry", f"{where}: reference.reason says why reference links "
+            "are on or off for the entry")
+    if status == REFERENCE_NONE:
+        require(evidence is None and pages == [] and reference["enabled"] is False, "reference_links_without_record",
+                f"{where}: with reference status {REFERENCE_NONE} the entry names no evidence record and no page "
+                "form, and reference links are off")
+        return
+    require(entry["neuronpedia"] is not None and evidence is not None, "reference_links_without_record",
+            f"{where}: reference status {REFERENCE_READ} needs recorded Neuronpedia ids and the saved record of "
+            "the service that confirms them")
+    prefix = EVIDENCE_ROOTS[synthetic]
+    _check_page_record(evidence, EVIDENCE_KEYS, prefix, f"{where}: reference.evidence", "reference_entry")
+    require(not reference["enabled"] or bool(pages), "reference_links_without_record",
+            f"{where}: reference links are on and the entry records no page form")
+    kinds = [page["kind"] for page in pages]
+    require(all(isinstance(kind, str) and kind in REFERENCE_PAGES for kind in kinds) and len(set(kinds)) == len(kinds),
+            "reference_template", f"{where}: reference.pages holds at most one page of each kind in "
+            f"{list(REFERENCE_PAGE_KINDS)}. A feature page is not a reference page")
+    for number, page in enumerate(pages):
+        at = f"{where}: reference.pages[{number}]"
+        template, shape = page["template"], REFERENCE_PAGES[page["kind"]]
+        host = template[len("https://"):].split("/")[0] if isinstance(template, str) else ""
+        require(isinstance(template, str) and template == f"https://{host}{shape}"
+                and bool(ENDPOINT_HOST.fullmatch(host)) and host == host.lower(), "reference_template",
+                f"{at}: the template of a {page['kind']} is https, a fixed host and the path {shape}, with "
+                "nothing added. A query string, a fragment and any other path are refused")
+        require(host.endswith(FIXTURE_HOST_SUFFIX) == synthetic, "synthetic_label",
+                f"{at}: a synthetic registry links only to a {FIXTURE_HOST_SUFFIX} host, and a real registry never")
+        require(synthetic or host == REFERENCE_HOST, "reference_template",
+                f"{at}: the host of a reference page in a real registry is {REFERENCE_HOST} and no other")
+        require(text(page["source"]) and isinstance(page["read_utc_date"], str)
+                and bool(DATE.fullmatch(page["read_utc_date"])), "reference_template",
+                f"{at}: a page form needs the source it was read in and the date it was read")
+        require(page["kind"] != "source_page" or _usable_id(entry["neuronpedia"]["source_set"]),
+                "reference_template", f"{at}: a source page needs a recorded neuronpedia.source_set")
+        require(page["kind"] != "lens_page" or entry["representation_type"] == "workspace_readout",
+                "reference_template", f"{at}: a lens page is a reference for a workspace_readout entry only")
+        for key in ("form_record", "instance_record"):
+            _check_page_record(page[key], PAGE_RECORD_KEYS, prefix, f"{at}.{key}", "reference_template")
+
+
 def _check_entry(entry: Any, where: str, synthetic: bool) -> None:
     require(isinstance(entry, dict), "invalid_input", f"{where}: an entry must be an object")
     require(bool(REGISTRY_ID.fullmatch(str(entry["registry_id"]))), "registry_entry", f"{where}: registry_id")
@@ -398,22 +525,28 @@ def _check_entry(entry: Any, where: str, synthetic: bool) -> None:
                 f"{where}: verified_exact needs a recorded mapping and a hosted checkpoint revision equal to "
                 "the study revision. An alias with no checkpoint revision is alias_unverified_checkpoint")
     require(not entry["links_enabled"] or status == VERIFIED, "links_without_verification",
-            f"{where}: links_enabled is true and the status is {status!r}; only verified_exact permits a link")
+            f"{where}: links_enabled is true and the status is {status!r}; only verified_exact permits an exact "
+            "link. A reference link is switched on in the reference block and never here")
 
     _check_url_pattern(entry, where, synthetic)
+    _check_reference(entry, where, synthetic)
     nulls = [p for key in sorted(entry) if key != "not_recorded" for p in null_pointers(entry[key], f"/{key}")]
     _check_not_recorded(entry, nulls, where)
 
 
 @_guarded
 def validate_registry(doc: Any) -> dict[str, Any]:
-    """Validate a registry document and return it. Refuses a link flag without ``verified_exact``, an unlisted
-    null, an unknown vocabulary word, a duplicate id and a URL template that could carry text."""
+    """Validate a registry document and return it. Refuses an exact-link flag without ``verified_exact``, a
+    reference-link flag without a named evidence record, an unlisted null, an unknown vocabulary word, a
+    duplicate id and a URL template that could carry text. Reads no evidence file; see
+    ``verify_reference_evidence``."""
     require(isinstance(doc, dict) and doc.get("schema_version") == REGISTRY_SCHEMA, "schema_version",
             f"Expected {REGISTRY_SCHEMA}")
     require_structure(doc, "representation_registry")
     require(doc["verification_statuses"] == list(VERIFICATION_STATUSES), "verification_status",
             f"verification_statuses must repeat {list(VERIFICATION_STATUSES)}")
+    require(doc["reference_statuses"] == list(REFERENCE_STATUSES), "reference_status",
+            f"reference_statuses must repeat {list(REFERENCE_STATUSES)}")
     require(bool(DATE.fullmatch(doc["as_of"])), "registry_entry", "as_of must be a date")
     for number, item in enumerate(doc.get("sources_not_read", [])):
         # The URL is not repeated: one that fails this check may carry a query string.
@@ -521,10 +654,42 @@ def resolve(study_model_id: str, representation_type: str, layer: int | None = N
 
 @dataclass(frozen=True)
 class Link:
-    """A URL, or None with the reason. ``reason`` is one of the three module constants."""
+    """An exact link: a URL, or None with the reason. ``reason`` is one of the three module constants.
+
+    ``kind`` is always ``exact``. ``build_link`` returns this type and nothing else, so a reference link
+    (``ReferenceLink``, kind ``reference``) cannot come back from a call that asked for an exact link."""
     url: str | None
     reason: str
     detail: str
+    kind: str = EXACT
+
+
+@dataclass(frozen=True)
+class ReferenceLink:
+    """A reference link: a URL of a page of the external service, or None with the reason.
+
+    ``kind`` is always ``reference`` and ``label`` is always ``REFERENCE_LABEL``. With a URL, ``evidence`` is
+    the saved record of the service the link was built from (index, record id, kept file, SHA-256, size, retrieval
+    time), ``read_utc_date`` is the date that record was retrieved and ``page`` is the page form. The verification
+    status of the entry is repeated in ``identity_status``; a reference link does not change it."""
+    url: str | None
+    reason: str
+    detail: str
+    page: str | None
+    registry_id: str | None
+    evidence: dict[str, Any] | None
+    read_utc_date: str | None
+    identity_status: str
+    kind: str = REFERENCE
+    label: str = REFERENCE_LABEL
+
+    def as_record(self) -> dict[str, Any]:
+        """The record a bundle stores and a page renders: exactly the keys of ``REFERENCE_LINK_KEYS``."""
+        return {"kind": self.kind, "url": self.url, "label": self.label, "page": self.page,
+                "registry_id": self.registry_id,
+                "evidence": dict(self.evidence) if self.evidence is not None else None,
+                "read_utc_date": self.read_utc_date, "identity_status": self.identity_status,
+                "reason": self.reason, "detail": self.detail}
 
 
 def _check_ids(component_id: Any, layer: Any) -> None:
@@ -546,7 +711,11 @@ def _component_count(entry: Mapping[str, Any]) -> int | None:
 
 
 def build_link(entry: Mapping[str, Any], component_id: int, *, layer: int | None = None) -> Link:
-    """A link to the external page for one component, or ``Link(None, reason, detail)``.
+    """An exact link to the external page for one component, or ``Link(None, reason, detail)``.
+
+    The result is always a ``Link`` of kind ``exact``. This function never returns a reference link and never
+    reads the entry's reference block beyond validating it: an entry whose reference links are on and whose
+    status is not ``verified_exact`` gives ``Link(None, "mapping not verified", ...)`` here.
 
     A URL is returned only when the entry's ``links_enabled`` is true (which the validator allows only for
     ``verified_exact``) and the registry records a URL pattern with its source. The URL is the recorded template
@@ -567,7 +736,7 @@ def build_link(entry: Mapping[str, Any], component_id: int, *, layer: int | None
             "component of this representation")
     status = entry["verification"]["status"]
     if not entry["links_enabled"]:
-        return Link(None, REASON_NOT_VERIFIED, f"verification status is {status}; links are off for this entry")
+        return Link(None, REASON_NOT_VERIFIED, f"verification status is {status}; exact links are off for this entry")
     pattern = entry["url_pattern"]
     if pattern is None:
         return Link(None, REASON_NO_PATTERN, "the registry records no URL pattern for this entry")
@@ -585,6 +754,310 @@ def build_link(entry: Mapping[str, Any], component_id: int, *, layer: int | None
         url = url.replace("{" + name + "}", str(values[name]))
     require(bool(BUILT_URL.fullmatch(url)), "free_text_in_url", "the assembled URL left the id-only character set")
     return Link(url, LINK_BUILT, f"{pattern['kind']} pattern read in {pattern['source']} on {pattern['read_utc_date']}")
+
+
+def _entry_place(entry: Mapping[str, Any]) -> tuple[bool, str]:
+    """``(synthetic, where)`` for an entry given to a link function: whether its model is a fixture model, and
+    how a message names it (by registry id only when the id has the form of one)."""
+    synthetic = str(entry["model"]["hf_id"]).startswith(FIXTURE_PREFIX)
+    named = entry.get("registry_id")
+    return synthetic, f"entry {named!r}" if isinstance(named, str) and REGISTRY_ID.fullmatch(named) else "entry"
+
+
+# Parsed JSON of saved evidence files, by the SHA-256 of their bytes. A file is read and hashed on every call,
+# so a changed file is always seen; only the parse of bytes already seen is reused.
+_PARSED: dict[str, Any] = {}
+_PARSED_LIMIT = 64
+
+
+def _read_file(file: Path) -> tuple[str, int, Any]:
+    """SHA-256, size and parsed JSON (None when the bytes are not one JSON document) of a local file."""
+    data = file.read_bytes()
+    sha256 = sha256_bytes(data)
+    if sha256 not in _PARSED:
+        if len(_PARSED) >= _PARSED_LIMIT:
+            _PARSED.clear()
+        try:
+            _PARSED[sha256] = json.loads(data.decode("utf-8"))
+        except ValueError:
+            _PARSED[sha256] = None
+    return sha256, len(data), _PARSED[sha256]
+
+
+def _evidence_file(root: Path, relative: str, code: str, what: str) -> tuple[str, int, Any]:
+    """Read one saved file under ``root``. ``relative`` passed the path check of the entry, so it is printed."""
+    file = root / relative
+    require(file.is_file(), code, f"{what}: the file {relative} is not present")
+    return _read_file(file)
+
+
+def _index_record(root: Path, pointer: Mapping[str, Any], what: str, missing: str, mismatch: str) -> dict[str, Any]:
+    """The record of an evidence index that an entry cites, after it was compared with the entry's copy.
+
+    The index is a local JSON file with a ``records`` list. Exactly one record has the cited id; it answered
+    HTTP 200; its snapshot has the SHA-256 and the retrieval time the entry repeats."""
+    _sha, _size, index = _evidence_file(root, pointer["index"], missing, what)
+    records = index.get("records") if isinstance(index, dict) else None
+    require(isinstance(records, list), mismatch, f"{what}: the evidence index is not a JSON object with a records list")
+    found = [record for record in records if isinstance(record, dict) and record.get("id") == pointer["record_id"]]
+    require(len(found) == 1, missing if not found else mismatch,
+            f"{what}: the evidence index holds {len(found)} record(s) with the cited id; exactly one is needed")
+    snapshot = found[0].get("snapshot")
+    require(isinstance(snapshot, dict) and found[0].get("http_status") == 200
+            and snapshot.get("sha256") == pointer["sha256"] and snapshot.get("retrieved_utc") == pointer["retrieved_utc"],
+            mismatch, f"{what}: the cited record did not answer HTTP 200, or its SHA-256 or retrieval time in the "
+            "evidence index differs from the one the entry repeats")
+    return found[0]
+
+
+def _keys(node: Any) -> set[str]:
+    if isinstance(node, dict):
+        return {str(key) for key in node} | {key for value in node.values() for key in _keys(value)}
+    if isinstance(node, list):
+        return {key for value in node for key in _keys(value)}
+    return set()
+
+
+def _fill(template: str, model_id: str, source_set: Any, layer: int | None) -> str:
+    return (template.replace("{model_id}", model_id).replace("{source_set}", str(source_set))
+            .replace("{layer}", str(layer)))
+
+
+@_guarded
+def verify_reference_evidence(entry: Mapping[str, Any], *, root: Path | str | None = None) -> dict[str, Any]:
+    """Compare an entry's reference block with the saved files it names, and say what they confirm.
+
+    Reads local files only: the evidence index, the kept record of the service, and the index that holds the
+    page records. ``root`` is the directory the entry's paths are relative to (default: the repository root).
+    Refuses, in this order:
+
+    * ``reference_evidence_missing``: the entry names no evidence record, or the index, the cited record or
+      the kept file is absent;
+    * ``reference_evidence_mismatch``: the index's record differs from the entry's copy (SHA-256, size,
+      retrieval time, path of the kept file) or did not answer HTTP 200;
+    * ``reference_evidence_hash``: the kept file no longer has the recorded SHA-256 and size;
+    * ``reference_ids_not_confirmed``: the kept record does not name the entry's Neuronpedia model id, the
+      entry's Hugging Face repository or, for an entry with a source set, that model id and set name with at
+      least one source id of the form ``<layer>-<source set>``;
+    * ``reference_status``: the kept record has a key that names a revision, a commit or a hash, so the
+      status word ``service_record_read_revision_not_reported`` no longer describes it and the entry has to
+      be read again;
+    * ``reference_form_not_confirmed``: a page form's documentation record or its fetched-page record is
+      absent from its index or differs from the entry's copy, or the fetched page's URL is not a URL this
+      entry's template and ids produce.
+
+    What a pass means: on the retrieval date the service's record named these ids and this repository and no
+    revision, and one page of each recorded form answered under these ids. It does not identify the hosted
+    checkpoint and is not evidence about any later date. No message repeats a value of the entry or the files.
+    """
+    synthetic, where = _entry_place(entry)
+    _check_entry(entry, where, synthetic)
+    reference = entry["reference"]
+    evidence = reference["evidence"]
+    require(evidence is not None, "reference_evidence_missing",
+            f"{where}: the entry names no saved record of the service (reference status {reference['status']})")
+    base = Path(root) if root is not None else ENGINE
+    what = f"{where}: reference.evidence"
+    record = _index_record(base, evidence, what, "reference_evidence_missing", "reference_evidence_mismatch")
+    kept = record.get("body")
+    require(isinstance(kept, str) and (PurePosixPath(evidence["index"]).parent / kept).as_posix() == evidence["path"]
+            and record["snapshot"].get("bytes") == evidence["bytes"], "reference_evidence_mismatch",
+            f"{what}: the evidence index keeps no body for the cited record at the path the entry names, or "
+            "records another size")
+    sha256, size, body = _evidence_file(base, evidence["path"], "reference_evidence_missing", what)
+    require(size == evidence["bytes"] and sha256 == evidence["sha256"], "reference_evidence_hash",
+            f"{what}: the file {evidence['path']} no longer has the SHA-256 and the size the entry records")
+
+    hosted = entry["neuronpedia"]
+    model = body.get("model") if isinstance(body, dict) else None
+    require(isinstance(model, dict) and model.get("id") == hosted["model_id"], "reference_ids_not_confirmed",
+            f"{what}: the saved record's model record does not name the entry's Neuronpedia model id")
+    require(model.get("hfRepoId") == entry["model"]["hf_id"], "reference_ids_not_confirmed",
+            f"{what}: the saved record's model record does not name the entry's Hugging Face repository")
+    named = [key for key in _keys(body) if REVISION_KEY.search(key)]
+    require(not named, "reference_status",
+            f"{what}: the saved record has {len(named)} key(s) that name a revision, a commit or a hash. The "
+            f"status {REFERENCE_READ} says it has none: read the record again and re-enter the entry")
+    source_set, layers = hosted["source_set"], None
+    if _usable_id(source_set):
+        suffix = f"-{source_set}"
+        sources = body.get("sources")
+        ids = [source.get("id") for source in sources if isinstance(source, dict)] if isinstance(sources, list) else []
+        numbers = [name[:-len(suffix)] for name in ids if isinstance(name, str) and name.endswith(suffix)]
+        layers = sorted({int(number) for number in numbers if number.isascii() and number.isdigit()})
+        require(body.get("modelId") == hosted["model_id"] and body.get("name") == source_set and bool(layers),
+                "reference_ids_not_confirmed",
+                f"{what}: the saved record is not the record of the entry's model id and source set, or lists "
+                "no source id of the form <layer>-<source set>")
+
+    pages: dict[str, dict[str, str]] = {}
+    for number, page in enumerate(reference["pages"]):
+        at = f"{where}: reference.pages[{number}]"
+        code = "reference_form_not_confirmed"
+        form = _index_record(base, page["form_record"], f"{at}.form_record", code, code)
+        instance = _index_record(base, page["instance_record"], f"{at}.instance_record", code, code)
+        url = instance["snapshot"].get("source_url")
+        fillings = layers if "{layer}" in page["template"] else [None]
+        possible = {_fill(page["template"], hosted["model_id"], source_set, layer) for layer in fillings or []}
+        require(isinstance(url, str) and url in possible, code,
+                f"{at}: the fetched page the entry cites is not a page this template and the entry's ids produce")
+        pages[page["kind"]] = {"form_record": form["id"], "instance_record": instance["id"], "instance_url": url}
+    return {"status": "verified", "registry_id": entry["registry_id"], "reference_status": reference["status"],
+            "record_id": evidence["record_id"], "sha256": sha256, "bytes": size,
+            "retrieved_utc": evidence["retrieved_utc"], "model_id": hosted["model_id"],
+            "hf_repository": model["hfRepoId"], "source_set": source_set if layers is not None else None,
+            "layers": layers, "pages": pages, "names_a_revision": False}
+
+
+def build_reference_link(entry: Mapping[str, Any], page: str, *, layer: int | None = None,
+                         root: Path | str | None = None) -> ReferenceLink:
+    """A reference link to a page of the external service, or ``ReferenceLink(None, reason, detail, ...)``.
+
+    The result is always a ``ReferenceLink`` of kind ``reference`` with the fixed label ``REFERENCE_LABEL``. It
+    is a link to the service's page for the entry's model (``model_page``), for one layer's source
+    (``source_page``, which needs ``layer``) or for the model's lens (``lens_page``). It is not an exact link:
+    it says that the service has a page under these ids, not that the page shows the study's model or
+    representation, and it permits no pooling and no parity statement.
+
+    A URL is returned only when all of this holds:
+
+    * the entry's ``reference.enabled`` is true, which the validator allows only with the reference status
+      ``service_record_read_revision_not_reported`` and a named evidence record. Otherwise the result has no
+      URL and the reason ``no reference link for this entry``;
+    * ``page`` is one of ``REFERENCE_PAGE_KINDS`` and the entry records that page form with its source
+      (``reference_form_not_confirmed`` otherwise). There is no feature page: a reference link carries no
+      component index, so a component of a local fit is never shown beside a hosted feature of the same number;
+    * ``verify_reference_evidence`` passes: the saved record is present, still has its recorded SHA-256, names
+      the entry's ids and repository, and one page of the form was fetched (its refusals are raised here);
+    * for a source page, the saved record lists a source for ``layer`` (``reference_ids_not_confirmed``
+      otherwise) and the layer is inside the entry's recorded layers.
+
+    The URL is the recorded template with the entry's ids and, for a source page, the layer. The template is
+    https on a fixed host with one fixed path per page form and no query string. This function takes no free
+    text: ``page`` is checked against a closed vocabulary and is never put in a URL, ``layer`` is a bounded
+    integer, and ``root`` is the directory the evidence paths are relative to. It opens no socket.
+    """
+    require(layer is None or integer(layer), "free_text_in_url", "layer must be a non-negative integer or None")
+    require(layer is None or layer < MAX_LAYER, "free_text_in_url", f"layer must be below {MAX_LAYER}")
+    require(isinstance(page, str) and page in REFERENCE_PAGES, "reference_page_kind",
+            f"page must be one of {list(REFERENCE_PAGE_KINDS)}. A feature page is built only as an exact link")
+    synthetic, where = _entry_place(entry)
+    _guarded(_check_entry)(entry, where, synthetic)
+    reference, status = entry["reference"], entry["verification"]["status"]
+    if not reference["enabled"]:
+        return ReferenceLink(None, REASON_NO_REFERENCE,
+                             f"reference status is {reference['status']}; reference links are off for this entry",
+                             None, entry["registry_id"], None, None, status)
+    pattern = next((item for item in reference["pages"] if item["kind"] == page), None)
+    require(pattern is not None, "reference_form_not_confirmed",
+            f"{where}: the entry records no {page} form, so no saved record confirms one for it")
+    needs_layer = "{layer}" in pattern["template"]
+    require(needs_layer == (layer is not None), "link_arguments",
+            f"a {page} {'needs a layer' if needs_layer else 'takes no layer'}")
+    checked = verify_reference_evidence(entry, root=root)
+    if needs_layer:
+        require(layer in checked["layers"], "reference_ids_not_confirmed",
+                f"{where}: the saved record lists no source for this layer")
+        recorded = entry["site"]["layers"]
+        require(recorded is None or layer in recorded, "layer_metadata",
+                f"layer {layer} is outside the entry's recorded layers {recorded}")
+    hosted = entry["neuronpedia"]
+    url = _fill(pattern["template"], hosted["model_id"], hosted["source_set"], layer)
+    host = url[len("https://"):].split("/")[0]
+    require(bool(REFERENCE_URL.fullmatch(url)) and "{" not in url
+            and (host.endswith(FIXTURE_HOST_SUFFIX) if synthetic else host == REFERENCE_HOST), "free_text_in_url",
+            "the assembled reference URL left the fixed host or the id-only character set")
+    evidence = {key: reference["evidence"][key] for key in EVIDENCE_KEYS}
+    return ReferenceLink(url, REFERENCE_BUILT,
+                         f"{page} form read on {pattern['read_utc_date']} (record "
+                         f"{pattern['form_record']['record_id']}); ids confirmed by record {evidence['record_id']}, "
+                         f"retrieved {evidence['retrieved_utc']}; one page of this form was fetched for the entry "
+                         f"(record {pattern['instance_record']['record_id']})",
+                         page, entry["registry_id"], evidence, evidence["retrieved_utc"][:10], status)
+
+
+@_guarded
+def validate_reference_link(record: Any, registry: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    """Validate a reference link record (``ReferenceLink.as_record()``) and return it. For the code that stores
+    one in a bundle or renders one.
+
+    The key set is closed (``REFERENCE_LINK_KEYS``). ``kind`` is ``reference``, ``label`` is ``REFERENCE_LABEL``
+    unchanged, ``reason`` is the built-link reason, the URL is https on the fixed host (a ``.invalid`` host for
+    a fixture) with the path shape of its page form and no query string, and ``evidence`` names a saved record
+    with its SHA-256, size and retrieval time. An exact link is a URL string under another key and never has
+    this shape, so a record that passes here is not an exact link (``link_kind`` for any other kind). With
+    ``registry``, the record is compared with the entry: same evidence record, same verification status, and a
+    URL that starts with the entry's model page. No file is read; no message repeats a value of the record.
+    """
+    require(isinstance(record, dict) and record.get("kind") == REFERENCE, "link_kind",
+            f"Expected a record of kind {REFERENCE!r}. An exact link is not a record of this shape")
+    require(set(record) == set(REFERENCE_LINK_KEYS), "reference_link_record",
+            f"A reference link record has exactly {sorted(REFERENCE_LINK_KEYS)}")
+    require(record["label"] == REFERENCE_LABEL, "reference_link_record",
+            "label must be the fixed sentence REFERENCE_LABEL, unchanged")
+    url, page = record["url"], record["page"]
+    require(isinstance(page, str) and page in REFERENCE_PAGES, "reference_link_record",
+            f"page must be one of {list(REFERENCE_PAGE_KINDS)}")
+    require(isinstance(url, str) and bool(REFERENCE_URL.fullmatch(url)), "free_text_in_url",
+            "url must be https with a host and one or two path segments of id characters. A query string, a "
+            "fragment and text are refused")
+    host, *segments = url[len("https://"):].split("/")
+    require(host == REFERENCE_HOST or host.endswith(FIXTURE_HOST_SUFFIX), "free_text_in_url",
+            f"the host of a reference link is {REFERENCE_HOST}, or a {FIXTURE_HOST_SUFFIX} host for a fixture")
+    shaped = {"model_page": len(segments) == 1,
+              "source_page": len(segments) == 2 and bool(re.match(r"\d{1,4}-[A-Za-z0-9]", segments[-1])),
+              "lens_page": len(segments) == 2 and segments[-1] == "jlens"}[page]
+    require(shaped, "reference_link_record", f"the URL does not have the path shape of a {page}")
+    require(record["reason"] == REFERENCE_BUILT and text(record["detail"])
+            and isinstance(record["registry_id"], str) and bool(REGISTRY_ID.fullmatch(record["registry_id"]))
+            and isinstance(record["identity_status"], str) and record["identity_status"] in VERIFICATION_STATUSES,
+            "reference_link_record", "reason, detail, registry_id and identity_status")
+    evidence = record["evidence"]
+    prefix = EVIDENCE_ROOTS[host.endswith(FIXTURE_HOST_SUFFIX)]
+    _check_page_record(evidence, EVIDENCE_KEYS, prefix, "evidence", "reference_link_record")
+    require(record["read_utc_date"] == evidence["retrieved_utc"][:10], "reference_link_record",
+            "read_utc_date is the date of evidence.retrieved_utc")
+    if registry is not None:
+        entry = entry_by_id(registry, record["registry_id"])
+        require(entry is not None, "unknown_registry_id", "the registry has no entry with the record's registry_id")
+        hosted = entry["neuronpedia"] or {}
+        require(entry["reference"]["enabled"] and entry["reference"]["evidence"] == evidence
+                and entry["verification"]["status"] == record["identity_status"]
+                and segments[0] == hosted.get("model_id"), "reference_link_record",
+                "the record differs from the registry entry: reference links off, another evidence record, "
+                "another verification status or another model id")
+    return record
+
+
+def permissions(entry: Mapping[str, Any]) -> dict[str, Any]:
+    """What one entry permits, one key per use, with the status that decides each.
+
+    ``exact_link``, ``pooling`` and ``parity_statement`` are decided by the verification status alone: each
+    needs ``verified_exact`` (an exact link also needs ``links_enabled``). ``reference_link`` is decided by the
+    reference block alone. Neither fact stands in for the other: a reference link that is on makes none of the
+    first three true."""
+    status = entry["verification"]["status"]
+    exact = status == VERIFIED
+    return {"registry_id": entry["registry_id"], "identity_status": status,
+            "reference_status": entry["reference"]["status"],
+            "exact_link": exact and bool(entry["links_enabled"]), "pooling": exact, "parity_statement": exact,
+            "reference_link": bool(entry["reference"]["enabled"])}
+
+
+def require_exact_identity(entry: Mapping[str, Any], use: str) -> dict[str, Any]:
+    """Refuse ``use`` (one of ``IDENTITY_USES``: an exact link, pooling of hosted and local results, a parity
+    statement) unless the entry is ``verified_exact``; return ``permissions(entry)`` otherwise.
+
+    The reference block is not read. A confirmed id, a named repository and a reference link that is on do not
+    permit any of the three (``identity_not_verified``)."""
+    require(isinstance(use, str) and use in IDENTITY_USES, "invalid_input", f"use must be one of {list(IDENTITY_USES)}")
+    synthetic, where = _entry_place(entry)
+    _guarded(_check_entry)(entry, where, synthetic)
+    status = entry["verification"]["status"]
+    require(status == VERIFIED, "identity_not_verified",
+            f"{where}: {use} needs the verification status {VERIFIED}; this entry is {status}. A reference link, "
+            "a confirmed id and a named repository do not identify the hosted checkpoint")
+    return permissions(entry)
 
 
 def local_record(entry: Mapping[str, Any], component_id: int, layer: int | None,
@@ -605,6 +1078,7 @@ def local_record(entry: Mapping[str, Any], component_id: int, layer: int | None,
         "label_source": dict(entry["label_source"]),
         "verification": {"status": entry["verification"]["status"],
                          "checked_utc_date": entry["verification"]["checked_utc_date"]},
+        "reference": {"status": entry["reference"]["status"], "enabled": entry["reference"]["enabled"]},
         "not_recorded": list(entry["not_recorded"]),
         "record": dict(record) if record is not None else None,
         "inspectable_offline": True,
@@ -612,17 +1086,37 @@ def local_record(entry: Mapping[str, Any], component_id: int, layer: int | None,
 
 
 def link_or_fallback(target: Resolution | Mapping[str, Any], component_id: int, *, layer: int | None = None,
-                     record: Mapping[str, Any] | None = None) -> dict[str, Any]:
-    """``{"link": url | None, "reason": ..., "detail": ..., "local": {...}}`` for one component.
+                     record: Mapping[str, Any] | None = None, reference_page: str | None = None) -> dict[str, Any]:
+    """``{"kind", "link", "reason", "detail", "reference", "reference_reason", "reference_detail", "local"}``
+    for one component.
 
-    ``local`` is always present and never depends on the external site, so a bundle stays usable when the site
-    is unreachable, renamed or gone. ``target`` is a registry entry or a ``Resolution``; an unmapped resolution
-    gives ``link: None`` with the "no mapping" reason and a local record built from the query.
+    ``kind`` says what was returned: ``exact``, ``reference`` or ``none``.
+
+    * ``link`` is an exact link or None. It is never a reference link. ``reason`` and ``detail`` say why the
+      exact link was built or withheld, as before.
+    * ``reference`` is a reference link record (``ReferenceLink.as_record()``, kind ``reference``, with the
+      fixed label) or None. It is None unless the caller asked for one with ``reference_page`` (one of
+      ``REFERENCE_PAGE_KINDS``). Without that argument the result is what it was before reference links existed,
+      plus the keys that say no reference was requested. When an exact link is built no reference is
+      attempted, so ``link`` and ``reference`` are never both set.
+    * ``reference_reason`` and ``reference_detail`` say why a reference link was built, withheld, refused or
+      not requested. A refusal about the saved record (absent, changed, ids not confirmed, form not confirmed)
+      becomes ``reference link refused`` with the refusal code in the detail, and the local record is still
+      returned. A source page uses ``layer``; a model page and a lens page ignore it.
+    * ``local`` is always present and never depends on the external site, so a bundle stays usable when the
+      site is unreachable, renamed or gone.
+
+    ``target`` is a registry entry or a ``Resolution``; an unmapped resolution gives ``kind: "none"`` with the
+    "no mapping" reason and a local record built from the query.
     """
     _check_ids(component_id, layer)
+    require(reference_page is None or (isinstance(reference_page, str) and reference_page in REFERENCE_PAGES),
+            "reference_page_kind", f"reference_page must be None or one of {list(REFERENCE_PAGE_KINDS)}. A feature "
+            "page is built only as an exact link")
     if isinstance(target, Resolution):
         if target.entry is None:
-            return {"link": None, "reason": REASON_NO_MAPPING, "detail": target.reason,
+            return {"kind": NO_LINK, "link": None, "reason": REASON_NO_MAPPING, "detail": target.reason,
+                    "reference": None, "reference_reason": REASON_NO_MAPPING, "reference_detail": target.reason,
                     "local": {"registry_id": None, "query": dict(target.query), "candidates": list(target.candidates),
                               "layer": layer, "component_id": component_id,
                               "record": dict(record) if record is not None else None, "inspectable_offline": True}}
@@ -630,8 +1124,26 @@ def link_or_fallback(target: Resolution | Mapping[str, Any], component_id: int, 
     else:
         entry = target
     link = build_link(entry, component_id, layer=layer)
-    return {"link": link.url, "reason": link.reason, "detail": link.detail,
-            "local": local_record(entry, component_id, layer, record)}
+    result = {"kind": EXACT if link.url is not None else NO_LINK, "link": link.url, "reason": link.reason,
+              "detail": link.detail, "reference": None, "reference_reason": REASON_REFERENCE_NOT_ASKED,
+              "reference_detail": "the caller asked for an exact link only",
+              "local": local_record(entry, component_id, layer, record)}
+    if link.url is not None:
+        result.update(reference_reason=REASON_EXACT_RETURNED,
+                      reference_detail="an exact link was built, so no reference link was attempted")
+    elif reference_page is not None:
+        needs_layer = "{layer}" in REFERENCE_PAGES[reference_page]
+        try:
+            built = build_reference_link(entry, reference_page, layer=layer if needs_layer else None)
+        except Refusal as refusal:
+            if refusal.code not in REFERENCE_REFUSALS:
+                raise
+            result.update(reference_reason=REASON_REFERENCE_REFUSED, reference_detail=f"{refusal.code}: {refusal}")
+        else:
+            result.update(reference_reason=built.reason, reference_detail=built.detail)
+            if built.url is not None:
+                result.update(kind=REFERENCE, reference=built.as_record())
+    return result
 
 
 # ------------------------------------------------------------------------------------------------ snapshots

@@ -10,10 +10,18 @@
     "unverified"
   ],
   "verification_meaning": {
-    "verified_exact": "The Neuronpedia ids were read in a primary source and the hosted checkpoint revision is recorded and equals the study revision. The only status that permits a link.",
+    "verified_exact": "The Neuronpedia ids were read in a primary source and the hosted checkpoint revision is recorded and equals the study revision. The only status that permits an exact link, pooling of hosted and local results, or a parity statement. A reference link does not depend on this status and is not evidence for it.",
     "alias_unverified_checkpoint": "Another id is given for the same checkpoint by the source that the entry's id_source names. No record of the checkpoint revision behind that id was read. An alias alone verifies nothing.",
     "hosted_identity_unknown": "The engine uses these hosted ids and responses have landed. The engine records no model, dictionary or instrument revision for these responses. The entry's evidence names the records of the service that were read and says that none of them carries a revision, or says that none was read. What answered is therefore not identified by commit.",
     "unverified": "The representation is named in a source that was read. Its own manifest or page was not read."
+  },
+  "reference_statuses": [
+    "service_record_read_revision_not_reported",
+    "no_service_record"
+  ],
+  "reference_meaning": {
+    "service_record_read_revision_not_reported": "The service's own record for the entry's Neuronpedia ids was read and is saved; reference.evidence names it by path, SHA-256, size and retrieval time. The record names the entry's model id and a Hugging Face repository equal to the study's, and reports no revision, commit or hash. Permits a reference link to a page form listed in reference.pages. Says nothing about the hosted checkpoint: the verification status is unchanged by it, and it permits no exact link, no pooling and no parity statement.",
+    "no_service_record": "The entry names no saved record of the service for its ids: it records no Neuronpedia ids, or no record was saved. No reference link."
   },
   "sources_not_read": [],
   "entries": [
@@ -82,6 +90,57 @@
         "checked_utc_date": "2026-11-10"
       },
       "links_enabled": true,
+      "reference": {
+        "status": "service_record_read_revision_not_reported",
+        "enabled": true,
+        "evidence": {
+          "index": "tests/fixtures/experiments/neuronpedia/reference_evidence/index.v1.json",
+          "record_id": "source-set.toy-model-hosted.toy-ica-set",
+          "path": "tests/fixtures/experiments/neuronpedia/reference_evidence/bodies/source-set.toy-model-hosted.toy-ica-set.json",
+          "sha256": "c28dff8fedd055e9f00171983277cfe74a517b3eae9c36680a106b0a35a8dd80",
+          "bytes": 426,
+          "retrieved_utc": "2026-11-10T00:00:00Z"
+        },
+        "pages": [
+          {
+            "kind": "model_page",
+            "template": "https://registry-fixture.invalid/{model_id}",
+            "source": "synthetic fixture; no real page has this form",
+            "read_utc_date": "2026-11-10",
+            "form_record": {
+              "index": "tests/fixtures/experiments/neuronpedia/reference_evidence/index.v1.json",
+              "record_id": "docs.page-forms",
+              "sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+              "retrieved_utc": "2026-11-10T00:00:00Z"
+            },
+            "instance_record": {
+              "index": "tests/fixtures/experiments/neuronpedia/reference_evidence/index.v1.json",
+              "record_id": "page.model.toy-model-hosted",
+              "sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+              "retrieved_utc": "2026-11-10T00:00:00Z"
+            }
+          },
+          {
+            "kind": "source_page",
+            "template": "https://registry-fixture.invalid/{model_id}/{layer}-{source_set}",
+            "source": "synthetic fixture; no real page has this form",
+            "read_utc_date": "2026-11-10",
+            "form_record": {
+              "index": "tests/fixtures/experiments/neuronpedia/reference_evidence/index.v1.json",
+              "record_id": "docs.page-forms",
+              "sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+              "retrieved_utc": "2026-11-10T00:00:00Z"
+            },
+            "instance_record": {
+              "index": "tests/fixtures/experiments/neuronpedia/reference_evidence/index.v1.json",
+              "record_id": "page.source.toy-model-hosted.1-toy-ica-set",
+              "sha256": "7777777777777777777777777777777777777777777777777777777777777777",
+              "retrieved_utc": "2026-11-10T00:00:00Z"
+            }
+          }
+        ],
+        "reason": "SYNTHETIC. On, beside an exact link: the entry that shows a call for an exact link never returns the reference link, and the reverse."
+      },
       "not_recorded": [],
       "notes": "SYNTHETIC. The one verified_exact entry, so build_link returns a URL under test."
     },
@@ -143,6 +202,57 @@
         "checked_utc_date": "2026-11-10"
       },
       "links_enabled": false,
+      "reference": {
+        "status": "service_record_read_revision_not_reported",
+        "enabled": true,
+        "evidence": {
+          "index": "tests/fixtures/experiments/neuronpedia/reference_evidence/index.v1.json",
+          "record_id": "source-set.toy-model-other-name.toy-ica-alias-set",
+          "path": "tests/fixtures/experiments/neuronpedia/reference_evidence/bodies/source-set.toy-model-other-name.toy-ica-alias-set.json",
+          "sha256": "95c0488f8ade71239dd6140f41a604acd0238ac3e39b2b7166c85ec2a76b612d",
+          "bytes": 625,
+          "retrieved_utc": "2026-11-10T00:00:00Z"
+        },
+        "pages": [
+          {
+            "kind": "model_page",
+            "template": "https://registry-fixture.invalid/{model_id}",
+            "source": "synthetic fixture; no real page has this form",
+            "read_utc_date": "2026-11-10",
+            "form_record": {
+              "index": "tests/fixtures/experiments/neuronpedia/reference_evidence/index.v1.json",
+              "record_id": "docs.page-forms",
+              "sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+              "retrieved_utc": "2026-11-10T00:00:00Z"
+            },
+            "instance_record": {
+              "index": "tests/fixtures/experiments/neuronpedia/reference_evidence/index.v1.json",
+              "record_id": "page.model.toy-model-other-name",
+              "sha256": "6666666666666666666666666666666666666666666666666666666666666666",
+              "retrieved_utc": "2026-11-10T00:00:00Z"
+            }
+          },
+          {
+            "kind": "source_page",
+            "template": "https://registry-fixture.invalid/{model_id}/{layer}-{source_set}",
+            "source": "synthetic fixture; no real page has this form",
+            "read_utc_date": "2026-11-10",
+            "form_record": {
+              "index": "tests/fixtures/experiments/neuronpedia/reference_evidence/index.v1.json",
+              "record_id": "docs.page-forms",
+              "sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+              "retrieved_utc": "2026-11-10T00:00:00Z"
+            },
+            "instance_record": {
+              "index": "tests/fixtures/experiments/neuronpedia/reference_evidence/index.v1.json",
+              "record_id": "page.source.toy-model-other-name.2-toy-ica-alias-set",
+              "sha256": "8888888888888888888888888888888888888888888888888888888888888888",
+              "retrieved_utc": "2026-11-10T00:00:00Z"
+            }
+          }
+        ],
+        "reason": "SYNTHETIC. On, for an alias with no checkpoint revision: a reference link and no exact link."
+      },
       "not_recorded": [
         "/artifact",
         "/fitted_artifact_sha256",
@@ -207,6 +317,39 @@
         "checked_utc_date": "2026-11-10"
       },
       "links_enabled": true,
+      "reference": {
+        "status": "service_record_read_revision_not_reported",
+        "enabled": true,
+        "evidence": {
+          "index": "tests/fixtures/experiments/neuronpedia/reference_evidence/index.v1.json",
+          "record_id": "source-set.toy-model-hosted.toy-ica-set",
+          "path": "tests/fixtures/experiments/neuronpedia/reference_evidence/bodies/source-set.toy-model-hosted.toy-ica-set.json",
+          "sha256": "c28dff8fedd055e9f00171983277cfe74a517b3eae9c36680a106b0a35a8dd80",
+          "bytes": 426,
+          "retrieved_utc": "2026-11-10T00:00:00Z"
+        },
+        "pages": [
+          {
+            "kind": "lens_page",
+            "template": "https://registry-fixture.invalid/{model_id}/jlens",
+            "source": "synthetic fixture; no real page has this form",
+            "read_utc_date": "2026-11-10",
+            "form_record": {
+              "index": "tests/fixtures/experiments/neuronpedia/reference_evidence/index.v1.json",
+              "record_id": "docs.page-forms",
+              "sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+              "retrieved_utc": "2026-11-10T00:00:00Z"
+            },
+            "instance_record": {
+              "index": "tests/fixtures/experiments/neuronpedia/reference_evidence/index.v1.json",
+              "record_id": "page.jlens.toy-model-hosted",
+              "sha256": "9999999999999999999999999999999999999999999999999999999999999999",
+              "retrieved_utc": "2026-11-10T00:00:00Z"
+            }
+          }
+        ],
+        "reason": "SYNTHETIC. On, with the lens page form only; the evidence record is cited for its model record."
+      },
       "not_recorded": [
         "/artifact",
         "/url_pattern"
@@ -274,6 +417,13 @@
         "checked_utc_date": "2026-11-10"
       },
       "links_enabled": false,
+      "reference": {
+        "status": "no_service_record",
+        "enabled": false,
+        "evidence": null,
+        "pages": [],
+        "reason": "SYNTHETIC. Off: no saved record is named for this set."
+      },
       "not_recorded": [
         "/artifact/fit_model_hf_id",
         "/artifact/fit_model_revision",
@@ -286,6 +436,7 @@
         "/label_source/retrieved_utc",
         "/label_source/scorer",
         "/label_source/version",
+        "/reference/evidence",
         "/site/capture_site",
         "/url_pattern",
         "/verification/hosted_checkpoint_revision"
