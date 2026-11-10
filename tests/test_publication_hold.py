@@ -468,3 +468,62 @@ def test_the_timeline_and_the_audit_mirror_and_interp_skip_an_exploratory_set(en
     assert reads and not any(EXPLORATORY in p for p in reads)
     interp = _load("interp_analyses")
     assert {name for name, _ in interp.load_parts(engine_root / "trace_out")} == {BATCH, QWEN_PART.parent.name}
+
+
+# ---------------------------------------------------------------- pin advance: findings of the 2026-11-10 review
+
+def _commit(root: Path, message: str) -> None:
+    _git(root, "-c", "user.email=t@example.invalid", "-c", "user.name=t", "-c", "commit.gpgsign=false", "add", "-A")
+    _git(root, "-c", "user.email=t@example.invalid", "-c", "user.name=t", "-c", "commit.gpgsign=false", "commit",
+         "-qm", message)
+
+
+def test_a_scoped_advance_refuses_without_a_readable_pin_or_for_a_model_with_nothing_to_add(git_root, monkeypatch):
+    monkeypatch.delenv("PW_ROUTINE", raising=False)
+    _land_unreleased_original_part(git_root)
+    _commit(git_root, "landed")
+    before = (git_root / hold.RELEASE_MANIFEST).read_bytes()
+    with pytest.raises(SystemExit, match="have no unpinned committed logits part"):
+        release.main(["--repo", str(git_root), "--release", "--models", "olmo-2-1b"])
+    assert (git_root / hold.RELEASE_MANIFEST).read_bytes() == before
+    (git_root / hold.RELEASE_MANIFEST).write_text("<<<<<<< merge conflict", encoding="utf-8")
+    with pytest.raises(SystemExit, match="a scoped advance extends the existing pin and cannot read it"):
+        release.main(["--repo", str(git_root), "--release", "--models", "qwen3-4b"])
+    assert (git_root / hold.RELEASE_MANIFEST).read_text(encoding="utf-8") == "<<<<<<< merge conflict"
+
+
+def test_a_scoped_advance_never_drops_an_existing_pin(git_root, monkeypatch, capsys):
+    monkeypatch.delenv("PW_ROUTINE", raising=False)
+    manifest = json.loads((git_root / hold.RELEASE_MANIFEST).read_text())
+    manifest["parts"]["trace_out/pairs_gone__qwen3-4b/batch_summary.part_01.json"] = "0" * 64   # no longer committed
+    _write(git_root / hold.RELEASE_MANIFEST, manifest)
+    _land_unreleased_original_part(git_root)
+    _commit(git_root, "landed")
+    assert release.main(["--repo", str(git_root), "--release", "--models", "qwen3-4b"]) == 0
+    parts = json.loads((git_root / hold.RELEASE_MANIFEST).read_text())["parts"]
+    assert "trace_out/pairs_gone__qwen3-4b/batch_summary.part_01.json" in parts and len(parts) == 3
+    out = capsys.readouterr().out
+    assert "1 new part(s) pinned, 2 kept (1 of them name a part that is no longer committed or admissible" in out
+
+
+def test_no_advance_rewrites_the_hash_of_a_part_whose_committed_bytes_changed(git_root, monkeypatch):
+    """A recorded hash is never rewritten: before 2026-11-10 an unscoped release replaced it with the new
+    bytes' hash, which let a modified part stand in for the one that was pinned."""
+    monkeypatch.delenv("PW_ROUTINE", raising=False)
+    _write(git_root / QWEN_PART, _summary([1, 2, 3, 3], "qwen3-4b"))
+    _commit(git_root, "a pinned part rewritten and committed")
+    before = (git_root / hold.RELEASE_MANIFEST).read_bytes()
+    for argv in (["--release"], ["--release", "--models", "qwen3-4b"]):
+        with pytest.raises(SystemExit, match="differ from their recorded sha256"):
+            release.main(["--repo", str(git_root), *argv])
+    assert (git_root / hold.RELEASE_MANIFEST).read_bytes() == before
+
+
+def test_a_preview_override_cannot_let_the_routine_advance_the_pin(git_root, monkeypatch, tmp_path):
+    candidate = json.loads((ROOT / "data" / "results_policy" / "policy.v1.json").read_text(encoding="utf-8"))
+    candidate["analysis_pin"]["auto_advance"] = True
+    _write(tmp_path / "candidate.json", candidate)
+    monkeypatch.setenv("PW_ROUTINE", "1")
+    monkeypatch.setenv("PW_RESULTS_POLICY", str(tmp_path / "candidate.json"))
+    with pytest.raises(SystemExit, match="never the Routine's action while analysis_pin.auto_advance is false"):
+        release.main(["--repo", str(git_root), "--release"])

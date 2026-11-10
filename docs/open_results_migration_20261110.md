@@ -161,6 +161,23 @@ the membership would have pooled it into every aggregate. It was unreachable onl
 because the exporter refused such models. The fill loop now applies the membership's
 model rule; `tests/test_results_policy.py` has the regression test.
 
+The same loop has a second gap that was left in place on purpose. The published site
+payload carries 11 `qwen3-4b` rows at keys whose engine parts are outside the pin, and the
+loop takes them, so they are in the published statistics today (`qwen3-4b`: 1,121 unique
+phrases with them, 1,110 without). Dropping them is the consistent rule, and it would move
+a published number, so it was not done here: a first version of the fix did drop them, the
+byte-identity check failed, and the change was reverted. The collector now prints the count
+(`note: rows taken from the site payload at keys whose engine part this membership did not
+read ... qwen3-4b 11`). Decision for the owner: drop them in a new snapshot, or pin the
+parts they come from. The loop does refuse two things it did not before, neither of which
+occurs in today's payload: a scenario of an excluded stimulus class, and a model that no
+cohort declares.
+
+Two refusals were added to every analysis membership after review, and neither changes
+what is read today (the old gate and the default gate agree on all 1,235 parts): a part
+whose bytes differ from its ledger record, and a part whose own `graph_model` no cohort
+declares. Before, a new model's hosted parts would have joined the statistics on landing.
+
 Lens readers (`jlens_insights.py`, `export_jlens_loglens.py`,
 `export_jlens_transport.py`, `jlens_position_scan.py`) read only `__jlens_` and
 `__loglens_` directories and have no stimulus-class check. No hand-authored set has a
@@ -176,6 +193,9 @@ is unchanged from before and still open.
   `EXPLORATORY_STEM_PREFIXES`, `load_manifest`, `sha256_file`, `RELEASE_MANIFEST`,
   `MANIFEST_SCHEMA`).
 - `data/publication_release/logits_parts.json` is unchanged and still `logits_release/1`.
+- `scripts/publication_release.py --release` now refuses when a pinned or ledger-recorded
+  part's committed bytes differ from the record. Before, it rewrote the hash. `--models`
+  is new and only adds entries.
 - Collector stdout changed: the skip line now names the membership and the reason
   (`membership study-interim/1 (scripts/results_policy.py), parts not read: ...`), and
   the collector and exporter print the membership in force. Nothing parses those lines

@@ -41,6 +41,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from publication_hold import (  # noqa: E402  (script-style module)
     MANIFEST_SCHEMA, RELEASE_MANIFEST, ReleaseError, is_exploratory_run_dir, is_held, is_held_run_dir,
     load_manifest, load_policy, sha256_file)
+from results_policy import POLICY_PATH, load_ledger  # noqa: E402
 
 
 def _git(root: Path, *argv: str) -> str:
@@ -95,11 +96,15 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
     root = Path(args.repo).resolve()
     current = committed_logits_parts(root)
+    only = {m.strip() for m in args.models.split(",") if m.strip()}
     try:
         manifest = load_manifest(root)
     except ReleaseError as exc:
         if not args.release:
             raise SystemExit(f"refused: {exc}")
+        if only:
+            raise SystemExit(f"refused: a scoped advance extends the existing pin and cannot read it ({exc}); "
+                             "nothing was written")
         manifest = {}
     diff = compare(current, manifest)
     print(f"committed logits parts the membership could admit: {len(current)}; pinned: {len(manifest)}; "
@@ -111,8 +116,10 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  {key}: ... and {len(paths) - 20} more")
     if not args.release:
         return 0
-    pin = load_policy().doc.get("analysis_pin") or {}
-    if os.environ.get("PW_ROUTINE") and not pin.get("auto_advance"):
+    # The committed policy decides this, whatever PW_RESULTS_POLICY says: a preview override must not be
+    # able to let the Routine advance the pin.
+    pin = load_policy(ENGINE / POLICY_PATH).doc.get("analysis_pin") or {}
+    if os.environ.get("PW_ROUTINE") and pin.get("auto_advance") is not True:
         raise SystemExit("refused: never the Routine's action while analysis_pin.auto_advance is false in "
                          "data/results_policy/policy.v1.json (PW_ROUTINE is set). Release condition: "
                          + str(pin.get("release_condition")))
@@ -120,16 +127,34 @@ def main(argv: list[str] | None = None) -> int:
     if dirty:
         raise SystemExit("refused: tracked files under trace_out/ differ from HEAD, so a release would not describe "
                          "committed bytes; commit or restore them first:\n" + dirty)
-    only = {m.strip() for m in args.models.split(",") if m.strip()}
+    # A recorded hash is never rewritten. A pinned or ledger-recorded part whose committed bytes now differ
+    # is an integrity failure to resolve (restore the part, or land a new one under a new name), not
+    # something an advance may absorb.
+    ledger = load_ledger(root)
+    changed = sorted(p for p in current if (p in manifest and current[p] != manifest[p])
+                     or (p in ledger and current[p] != ledger[p]))
+    if changed:
+        raise SystemExit("refused: committed parts differ from their recorded sha256, and an advance would "
+                         "record the changed bytes as if they were the originals: " + ", ".join(changed[:5])
+                         + (f" and {len(changed) - 5} more" if len(changed) > 5 else "")
+                         + ". Nothing was written.")
     if only:
-        added = {p: h for p, h in current.items() if p not in manifest
-                 and Path(p).parent.name.partition("__")[2] in only}
-        changed = sorted(p for p in manifest if p in current and current[p] != manifest[p])
-        if changed:
-            raise SystemExit("refused: pinned parts differ from HEAD, so a scoped advance would keep stale "
-                             "hashes: " + ", ".join(changed[:5]))
-        current = {**{p: h for p, h in manifest.items() if p in current}, **added}
-        print(f"scoped to {sorted(only)}: {len(added)} new part(s) pinned, {len(manifest)} kept")
+        def part_model(rel: str) -> str:
+            summary = json.loads((root / rel).read_text(encoding="utf-8"))
+            return summary.get("graph_model") or Path(rel).parent.name.partition("__")[2]
+        by_model = {p: part_model(p) for p in current if p not in manifest}
+        unknown = sorted(only - set(by_model.values()))
+        if unknown:
+            raise SystemExit(f"refused: --models names {unknown}, which have no unpinned committed logits part "
+                             "the membership could admit; nothing was written")
+        added = {p: current[p] for p, model in by_model.items() if model in only}
+        gone = sorted(set(manifest) - set(current))
+        # Every existing entry is kept as it is, including one whose part is no longer admissible: a scoped
+        # advance only adds. Such entries are named so they are not mistaken for live pins.
+        current = {**manifest, **added}
+        print(f"scoped to {sorted(only)}: {len(added)} new part(s) pinned, {len(manifest)} kept"
+              + (f" ({len(gone)} of them name a part that is no longer committed or admissible: "
+                 f"{', '.join(gone[:3])})" if gone else ""))
     doc = {"schema": MANIFEST_SCHEMA,
            "released_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
            "released_at_commit": _git(root, "rev-parse", "HEAD").strip(),

@@ -63,11 +63,11 @@
       "exclude_stimulus_classes": ["hand_authored_exploratory"],
       "exclude_model_cohorts": ["post_registration_20261009"],
       "logits_manifest": "data/publication_release/logits_parts.json",
-      "note": "Reproduces the rule the collectors applied from 2026-10-09 to 2026-11-10 so that the published statistics keep their inputs. The logits manifest is this membership's input pin, not a publication gate."
+      "note": "Reproduces the rule the collectors applied from 2026-10-09 to 2026-11-10 so that the published statistics keep their inputs. It admits every stimulus family except the hand-authored sets (sentinels, translation arms, curated subsets and the generated study batches alike); each collector then keeps the families it analyses. The logits manifest is this membership's input pin, not a publication gate. A part whose bytes differ from its ledger record, or whose graph_model no cohort declares, is refused."
     },
     "exploratory-open/1": {
       "purpose": "analysis",
-      "label": "separately declared exploratory analysis over every intact study-batch part, all model cohorts",
+      "label": "separately declared exploratory analysis over every intact part of every declared model cohort, on the same stimulus families as the study membership",
       "exclude_stimulus_classes": ["hand_authored_exploratory"],
       "exclude_model_cohorts": [],
       "logits_manifest": null,

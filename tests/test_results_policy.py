@@ -344,3 +344,153 @@ def test_the_separately_declared_analysis_reads_new_parts_and_the_study_analysis
     assert ("gemma-4-e2b", BATCH, 1) in got and ("qwen3-4b", BATCH, 4) in got
     assert not any(batch.startswith("agscen_") for _, batch, _ in got)        # examples join no analysis
     assert "stimulus class hand_authored_exploratory (not a study batch) 1" in out
+
+
+# ---------------------------------------------------------------- findings of the 2026-11-10 adversarial review
+
+def test_an_undeclared_model_is_visible_and_enters_no_analysis(root):
+    """A model no cohort declares must not join a statistic by landing. Before 2026-11-10 the rule was a
+    deny-list, so a new model's hosted parts were pooled the moment they arrived."""
+    part = _part(root, f"{BATCH}__brand-new-model", _summary([1, 2], "brand-new-model", "hosted"))
+    d = _decide(root, part)
+    assert d.visibility == "public" and d.model_cohort is None and d.evidence_class == "unclassified"
+    assert d.analysis[rp.PUBLIC_DISPLAY]["eligible"] is True
+    for membership in (rp.STUDY_INTERIM, rp.EXPLORATORY_OPEN):
+        assert d.analysis[membership] == {"eligible": False,
+                                          "reason": "model brand-new-model is in no declared cohort"}
+        gate = rp.Gate(root, membership=membership)
+        assert gate.admit(part, json.loads(part.read_text(encoding="utf-8"))) is False
+        assert "model brand-new-model is in no declared cohort 1" in gate.report()
+    # a legacy part with no graph_model, and an instrument suffix, are not judged as undeclared models
+    legacy = _summary([1], "x", "hosted")
+    del legacy["graph_model"]
+    assert rp.Gate(root).admit(_part(root, "repeatability_r9", legacy), legacy) is True
+    patch = _summary([1], "gemma-2-2b", "activation_patch")
+    assert rp.Gate(root).admit(_part(root, f"{BATCH}__patch", patch), patch) is True
+
+
+def test_the_default_membership_refuses_a_part_changed_after_its_ledger_record(root):
+    """"Refused everywhere" has to include the membership the published statistics read. Hosted parts have no
+    pin, so before this check a hosted part rewritten in place kept feeding every collector."""
+    part = root / "trace_out" / BATCH / "batch_summary.part_01.json"
+    rel = part.relative_to(root).as_posix()
+    rp.record_parts(root, {rel: rp.sha256_file(part)}, recorded_utc="2026-11-10T00:00:00Z", recorded_at_commit=None)
+    summary = json.loads(part.read_text(encoding="utf-8"))
+    assert rp.Gate(root).admit(part, summary) is True
+    _write(part, _summary([1, 2, 3], "gemma-2-2b", "hosted", penalty=-0.9))
+    changed = json.loads(part.read_text(encoding="utf-8"))
+    gate = rp.Gate(root)
+    assert gate.admit(part, changed) is False
+    assert gate.report().endswith("parts not read: artifact integrity: changed_since_recorded 1")
+    d = _decide(root, part)
+    assert d.analysis[rp.STUDY_INTERIM] == {"eligible": False, "reason": "artifact integrity: changed_since_recorded"}
+
+
+def test_a_gate_and_the_classifier_give_the_same_answer_for_every_membership(root):
+    cases = [
+        _part(root, f"{BATCH}__gemma-4-e2b", _summary([1], "gemma-4-e2b")),
+        _part(root, f"{BATCH}__qwen3-4b", _summary([4], "qwen3-4b"), "batch_summary.part_04.json"),
+        _part(root, "agscen_20990101", _summary([1], "gemma-2-2b", "hosted")),
+        _part(root, "pabharvest_20200101T000000Z", _summary([1], "gemma-2-2b", "hosted")),
+        _part(root, "dialects_20200101T000000Z__olmo-2-1b", _summary([1], "olmo-2-1b")),
+        _part(root, f"{BATCH}__nobody-declared", _summary([1], "nobody-declared", "hosted")),
+        _part(root, f"{BATCH}__lenspairs__jlens_gemma-2-2b", _summary([1], "gemma-2-2b", "hosted")),
+        _part(root, f"{BATCH}__olmo-2-1b", {"graph_model": "olmo-2-1b", "backend": "hosted"}),   # no results list
+        root / "trace_out" / BATCH / "batch_summary.part_01.json",
+        root / "trace_out" / f"{BATCH}__qwen3-4b" / "batch_summary.part_01.json",
+    ]
+    for membership in (rp.STUDY_INTERIM, rp.EXPLORATORY_OPEN, rp.PUBLIC_DISPLAY):
+        for part in cases:
+            summary = json.loads(part.read_text(encoding="utf-8"))
+            verdict = _decide(root, part).analysis[membership]
+            if membership == rp.STUDY_INTERIM and "results" not in summary:
+                continue      # the 2026-10-09 rule never looked at results; the classifier lists the part unreadable
+            assert rp.Gate(root, membership=membership).admit(part, summary) is verdict["eligible"], (
+                membership, part.parent.name, verdict)
+
+
+def test_the_classifier_never_calls_a_logits_part_pinned_without_seeing_the_pin(root):
+    part = root / "trace_out" / f"{BATCH}__qwen3-4b" / "batch_summary.part_01.json"
+    summary = json.loads(part.read_text(encoding="utf-8"))
+    without = rp.classify_part(root, part, summary)                     # no manifest supplied
+    assert without.analysis[rp.STUDY_INTERIM] == {"eligible": False, "reason": "pinned manifest missing"}
+    assert without.analysis[rp.EXPLORATORY_OPEN]["eligible"] is True
+
+
+def test_a_hosted_part_outside_the_gate_root_is_read_as_before(root, tmp_path):
+    outside = tmp_path / "elsewhere" / "trace_out" / BATCH / "batch_summary.part_01.json"
+    _write(outside, _summary([1], "gemma-2-2b", "hosted"))
+    assert rp.Gate(root).admit(outside, json.loads(outside.read_text(encoding="utf-8"))) is True
+
+
+def test_an_override_is_announced_by_every_process_that_loads_it(root, tmp_path):
+    """The compatibility module evaluates the policy at import, so collectors that never print the gate's own
+    description would otherwise read a candidate policy silently."""
+    candidate = json.loads(POLICY_FILE.read_text(encoding="utf-8"))
+    candidate["memberships"][rp.STUDY_INTERIM]["exclude_model_cohorts"] = []
+    _write(tmp_path / "candidate.json", candidate)
+    code = ("import sys; sys.path.insert(0, %r); import publication_hold as ph; "
+            "print(sorted(ph.HELD_MODELS))" % str(SCRIPTS))
+    quiet = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=60,
+                           env={k: v for k, v in os.environ.items() if k != rp.POLICY_ENV})
+    assert quiet.returncode == 0 and "gemma-4-e2b" in quiet.stdout and quiet.stderr == ""
+    loud = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=60,
+                          env={**os.environ, rp.POLICY_ENV: str(tmp_path / "candidate.json")})
+    assert loud.returncode == 0 and loud.stdout.strip() == "[]"
+    assert f"{rp.POLICY_ENV} is set; reading {tmp_path / 'candidate.json'}" in loud.stderr
+
+
+@pytest.mark.parametrize("mutate, message", [
+    (lambda d: d["memberships"][rp.STUDY_INTERIM].pop("exclude_model_cohorts"), "as a list"),
+    (lambda d: d["memberships"][rp.STUDY_INTERIM].__setitem__("exclude_stimulus_classes", "agscen_"), "as a list"),
+    (lambda d: d["analysis_pin"].__setitem__("auto_advance", "false"), "JSON boolean"),
+    (lambda d: d.__setitem__("model_cohorts", []), "object of objects"),
+])
+def test_a_policy_the_gate_could_not_use_is_refused_at_load(tmp_path, mutate, message):
+    doc = json.loads(POLICY_FILE.read_text(encoding="utf-8"))
+    mutate(doc)
+    _write(tmp_path / "bad.json", doc)
+    with pytest.raises(rp.PolicyError, match=message):
+        rp.load_policy(tmp_path / "bad.json")
+
+
+def test_a_policy_rewritten_during_a_process_is_read_again(tmp_path):
+    doc = json.loads(POLICY_FILE.read_text(encoding="utf-8"))
+    path = tmp_path / "live.json"
+    _write(path, doc)
+    assert rp.load_policy(path).default_membership == rp.STUDY_INTERIM
+    doc["default_membership"] = rp.EXPLORATORY_OPEN
+    _write(path, {**doc, "summary": doc["summary"] + " (edited)"})        # a different size as well as content
+    assert rp.load_policy(path).default_membership == rp.EXPLORATORY_OPEN
+
+
+def test_payload_rows_of_excluded_classes_and_undeclared_models_do_not_enter_and_skipped_parts_are_reported(root):
+    """The payload fill applied only the excluded-model rule. It now also refuses a scenario of an excluded
+    stimulus class and a model no cohort declares. A row at a key whose engine part the gate skipped is still
+    added, because 11 such rows are in the published statistics today and dropping them needs a new snapshot;
+    the collector says how many it took."""
+    _part(root, f"{BATCH}__qwen3-4b", _summary([4], "qwen3-4b"), "batch_summary.part_04.json")   # outside the pin
+    _write(root / "tiers.json", _TIERS)
+    _write(root / "ops" / "dashboard.json", {"tierb": {"start_utc": "2026-07-10T01:14:38Z"}})
+    _write(root / "data" / "simulated" / f"{BATCH}.json",
+           [{"top_prompt": f"alpha prompt {i}", "generation": {"topic": "topic-a"}} for i in (1, 2, 3, 4)])
+    site = root.parent / "site_payload"
+    scenarios = [{"batch": BATCH, "batch_index": 4, "clinical_prompt": "alpha prompt 4",
+                  "models": {"qwen3-4b": _PAYLOAD_MODEL, "olmo-2-1b": _PAYLOAD_MODEL, "nobody-declared": _PAYLOAD_MODEL}},
+                 {"batch": "agscen_20990101", "batch_index": 1, "clinical_prompt": "alpha prompt 1",
+                  "models": {"olmo-2-1b": _PAYLOAD_MODEL}}]
+    _write(site / "data" / "simulated_scenarios.json", {"batches": [{"batch": BATCH}], "scenarios": scenarios})
+    rows = root.parent / "rows_payload.json"
+    proc = subprocess.run([sys.executable, str(SCRIPTS / "urgency_shift.py"), "--tiers", "tiers.json", "--out",
+                           str(rows), "--frontend", str(site)], cwd=root, capture_output=True, text=True, timeout=120)
+    assert proc.returncode == 0, proc.stderr
+    got = {(r["model"], r["batch"], r["index"]) for r in json.loads(rows.read_text(encoding="utf-8"))["rows"]}
+    assert ("olmo-2-1b", BATCH, 4) in got                                 # an ordinary payload-only row still fills
+    assert ("nobody-declared", BATCH, 4) not in got
+    assert ("qwen3-4b", BATCH, 4) in got                                  # kept, and reported below
+    assert not any(batch.startswith("agscen_") for _, batch, _ in got)
+    assert "at keys whose engine part this membership did not read" in proc.stdout
+    assert proc.stdout.rstrip().endswith("qwen3-4b 1")
+    for reason in ("site payload row of model nobody-declared (in no declared cohort) 1",
+                   "site payload scenario of a stimulus class outside this membership 1"):
+        assert reason in proc.stdout, reason

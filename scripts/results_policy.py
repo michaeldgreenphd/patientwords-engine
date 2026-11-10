@@ -16,18 +16,22 @@ batch_summary*.json`` part it reports six separate facts:
 A result does not have to be confirmatory, reviewed, significant or favourable to be shared. It has to be intact
 and unrestricted. Joining a statistic is a different decision, taken by a membership rule:
 
-* ``study-interim/1``    - the rule every collector applied from 2026-10-09: study batches only, the three
-  2026-10-09 post-registration models excluded, CPU-logits parts read only when the pinned manifest
+* ``study-interim/1``    - the rule every collector applied from 2026-10-09: every stimulus family except the
+  hand-authored sets (each collector then keeps the families it analyses), the three 2026-10-09
+  post-registration models excluded, CPU-logits parts read only when the pinned manifest
   (data/publication_release/logits_parts.json) lists their sha256. It is the default, so the published statistics
   keep their inputs until a new versioned snapshot is cut (scripts/results_snapshot.py).
-* ``exploratory-open/1`` - every intact study-batch part of every model cohort. A separately declared analysis
-  with its own multiple-testing family; its outputs go to their own files.
+* ``exploratory-open/1`` - every intact part of every declared model cohort, on the same stimulus families. A
+  separately declared analysis with its own multiple-testing family; its outputs go to their own files.
 * ``public-display/1``   - everything shareable. The results catalogue (scripts/export_results_catalogue.py)
   reads with this rule, so new parts become visible without anyone approving them one by one.
 
 A part that is absent from a manifest is not defective: it is only outside the membership that pins that
-manifest. A part whose bytes differ from a recorded sha256 is refused everywhere, so a modified file cannot
-stand in for the version that was recorded. Hashes are recorded automatically in an append-only ledger
+manifest. A part whose bytes differ from a recorded sha256 (the pin or the ledger) is refused by every
+membership, the default one included, so a modified file cannot stand in for the version that was recorded.
+What the ledger cannot show is a change made before a part was first recorded; git history is the record
+for that. A model that no cohort declares is listed in the catalogue and enters no analysis until it is
+declared: a new model cannot join a statistic by landing. Hashes are recorded automatically in an append-only ledger
 (data/results_policy/part_ledger.v1.json, written by the catalogue exporter); a recorded hash is never rewritten.
 
 ``Gate`` keeps the interface collectors already use (``admit``, ``held``, ``report``). A missing or unknown
@@ -41,6 +45,7 @@ import hashlib
 import json
 import os
 import re
+import sys
 from collections import Counter
 from dataclasses import asdict, dataclass, field
 from functools import lru_cache
@@ -197,6 +202,12 @@ def _validate_policy(doc: Any, path: Path) -> None:
                 "restrictions"):
         if key not in doc:
             raise bad(f"missing {key!r}")
+    for key in ("model_cohorts", "stimulus_classes", "memberships", "restrictions"):
+        if not isinstance(doc[key], dict) or not all(isinstance(v, dict) for v in doc[key].values()):
+            raise bad(f"{key!r} must be an object of objects")
+    pin = doc.get("analysis_pin")
+    if pin is not None and (not isinstance(pin, dict) or type(pin.get("auto_advance")) is not bool):
+        raise bad("analysis_pin.auto_advance must be the JSON boolean true or false")
     seen: dict[str, str] = {}
     for name, cohort in doc["model_cohorts"].items():
         if not isinstance(cohort.get("models"), list) or not isinstance(cohort.get("evidence_class"), str):
@@ -216,10 +227,13 @@ def _validate_policy(doc: Any, path: Path) -> None:
     for name, rule in doc["memberships"].items():
         if rule.get("purpose") not in ("analysis", "display"):
             raise bad(f"membership {name!r} needs purpose 'analysis' or 'display'")
-        for cls in rule.get("exclude_stimulus_classes", ()):
+        for key in ("exclude_stimulus_classes", "exclude_model_cohorts"):
+            if not isinstance(rule.get(key), list):
+                raise bad(f"membership {name!r} must state {key!r} as a list (empty when it excludes nothing)")
+        for cls in rule["exclude_stimulus_classes"]:
             if cls not in doc["stimulus_classes"]:
                 raise bad(f"membership {name!r} excludes unknown stimulus class {cls!r}")
-        for cohort in rule.get("exclude_model_cohorts", ()):
+        for cohort in rule["exclude_model_cohorts"]:
             if cohort not in doc["model_cohorts"]:
                 raise bad(f"membership {name!r} excludes unknown cohort {cohort!r}")
         if "logits_manifest" not in rule:
@@ -233,8 +247,9 @@ def _validate_policy(doc: Any, path: Path) -> None:
                           "responsible role and a release condition is a hold, and this policy has none")
 
 
-@lru_cache(maxsize=8)
-def _load_policy(path: str) -> Policy:
+@lru_cache(maxsize=16)
+def _load_policy(path: str, mtime_ns: int | None, size: int | None) -> Policy:
+    """Cached on the file's modification time and size, so a policy rewritten during a process is re-read."""
     file = Path(path)
     try:
         doc = json.loads(file.read_text(encoding="utf-8"))
@@ -247,17 +262,36 @@ def _load_policy(path: str) -> Policy:
 
 
 POLICY_ENV = "PW_RESULTS_POLICY"
+_OVERRIDE_ANNOUNCED: set[str] = set()
 
 
 def load_policy(path: Path | str | None = None) -> Policy:
     """The policy at ``path``, else at ``$PW_RESULTS_POLICY``, else this repository's own (resolved from this
     file, like tierb_split's seal inputs, so a collector run from another working directory or over a synthetic
-    root applies the same rules). The environment variable exists for offline previews and tests of a candidate
-    policy; ``Gate.describe`` names the file in use, and collectors print that line, so an override is visible
-    in the run's output and can never pass for the committed policy."""
+    root applies the same rules).
+
+    The environment variable exists for offline previews and tests of a candidate policy. Whenever it decides
+    which file is read, one line naming that file goes to stderr, once per process: every caller passes
+    through here (``publication_hold`` evaluates its compatibility names at import), so no collector can read
+    a candidate policy without saying so. ``Gate.describe`` names the file as well. To read the committed
+    policy whatever the environment says, pass its path: ``load_policy(ENGINE / POLICY_PATH)``."""
     if path is None:
-        path = os.environ.get(POLICY_ENV) or ENGINE / POLICY_PATH
-    return _load_policy(str(Path(path)))
+        override = os.environ.get(POLICY_ENV)
+        if override:
+            if override not in _OVERRIDE_ANNOUNCED:
+                _OVERRIDE_ANNOUNCED.add(override)
+                print(f"results policy: {POLICY_ENV} is set; reading {override} instead of the committed "
+                      f"{POLICY_PATH.as_posix()}", file=sys.stderr)
+            path = override
+        else:
+            path = ENGINE / POLICY_PATH
+    file = Path(path)
+    try:
+        stat = file.stat()
+        identity: tuple[int | None, int | None] = (stat.st_mtime_ns, stat.st_size)
+    except OSError:
+        identity = (None, None)
+    return _load_policy(str(file), *identity)
 
 
 # ---------------------------------------------------------------- recorded hashes: manifest and ledger
@@ -405,9 +439,20 @@ def _integrity(rel: str, part: Path, backend: Any, recorded: Iterable[Mapping[st
     return "recorded_match", None, digest
 
 
+def undeclared_graph_model(policy: Policy, summary: Mapping[str, Any]) -> str | None:
+    """The part's own ``graph_model`` when it names a model that no cohort declares, else None. Only the
+    part's explicit declaration is judged: a run-directory suffix can name a stimulus variant or an
+    instrument, and a part without ``graph_model`` is a legacy base-model trace."""
+    model = summary.get("graph_model")
+    if isinstance(model, str) and model and policy.cohort_of(model) is None and instrument_of(model) is None:
+        return model
+    return None
+
+
 def _membership_reason(policy: Policy, membership: str, *, stimulus_class: str, readings: list[str],
                        backend: Any, rel: str, integrity: str, visibility: str,
-                       manifest: Mapping[str, str] | None, digest: str | None) -> str | None:
+                       manifest: Mapping[str, str] | None, digest: str | None,
+                       undeclared_model: str | None = None) -> str | None:
     """None when the membership admits the part, else the one reason it does not. The order matches the rule
     the collectors applied before this module existed, so their counts keep their meaning."""
     rule = policy.membership(membership)
@@ -421,19 +466,23 @@ def _membership_reason(policy: Policy, membership: str, *, stimulus_class: str, 
         return "malformed part: no 'backend' key"
     if backend not in KNOWN_BACKENDS:
         return f"malformed part: unrecognized backend {backend!r}"
+    if rule["purpose"] == "analysis" and undeclared_model:
+        return f"model {undeclared_model} is in no declared cohort"
     pinned = rule["logits_manifest"]
     if pinned:
-        # The 2026-10-09 rule exactly: hosted and activation-patching parts are read as they are; a logits
-        # part is read only when the pinned manifest lists the sha256 of its bytes.
-        if backend in BACKENDS_WITHOUT_MANIFEST:
-            return None
-        if manifest is None:                                # manifest_optional and no manifest on disk
-            return None
-        want = manifest.get(rel)
-        if want is None:
-            return "logits part outside the pinned manifest"
-        if want != digest:
-            return "logits part changed since it was recorded"
+        # The 2026-10-09 rule: hosted and activation-patching parts are read as they are; a logits part is
+        # read only when the pinned manifest lists the sha256 of its bytes. Added 2026-11-10: a part whose
+        # bytes differ from its ledger record is refused here too.
+        if backend not in BACKENDS_WITHOUT_MANIFEST:
+            if manifest is None:
+                return "pinned manifest missing"
+            want = manifest.get(rel)
+            if want is None:
+                return "logits part outside the pinned manifest"
+            if want != digest:
+                return "logits part changed since it was recorded"
+        if integrity in INTEGRITY_FAILURES:
+            return f"artifact integrity: {integrity}"
         return None
     if integrity in INTEGRITY_FAILURES:
         return f"artifact integrity: {integrity}"
@@ -449,7 +498,9 @@ def classify_part(root: Path | str, part: Path | str, summary: Any, model: str |
     integrity state, so a catalogue can list the part and say what is wrong with it.
 
     ``manifest`` and ``ledger`` are the recorded hashes to compare against; pass ``load_manifest(root)`` and
-    ``load_ledger(root)``. With neither, integrity is ``unrecorded`` for every readable, well-formed part.
+    ``load_ledger(root)``. With neither, integrity is ``unrecorded`` for every readable, well-formed part,
+    and a logits part is outside any membership that pins a manifest (reason ``pinned manifest missing``):
+    this function has no optional-manifest mode, so it never calls a part pinned without seeing the pin.
     """
     policy = policy or load_policy()
     root = Path(root).resolve()
@@ -481,7 +532,8 @@ def classify_part(root: Path | str, part: Path | str, summary: Any, model: str |
     for membership in policy.doc["memberships"]:
         reason = _membership_reason(policy, membership, stimulus_class=stimulus_class, readings=readings,
                                     backend=backend, rel=rel, integrity=integrity, visibility=visibility,
-                                    manifest=manifest, digest=digest)
+                                    manifest=manifest, digest=digest,
+                                    undeclared_model=undeclared_graph_model(policy, summary_map))
         analysis[membership] = {"eligible": reason is None, "reason": reason}
 
     rows_exported = bool(entry["rows_exported"]) and visibility == "public" and not instrument
@@ -562,21 +614,35 @@ class Gate:
         if backend not in KNOWN_BACKENDS:
             raise ReleaseError(f"{part}: unrecognized backend {backend!r}; expected 'logits', 'hosted', or "
                                "'activation_patch'")
-        rel = self._rel(part)
-        if self.rule["logits_manifest"]:
-            if backend in BACKENDS_WITHOUT_MANIFEST:
-                return None
-            manifest = self._pinned_manifest()
-            if manifest is None:
-                return None
-            want = manifest.get(rel)
-            if want is None:
-                return "logits part outside the pinned manifest"
-            if want != sha256_file(part):
-                return "logits part changed since it was recorded"
-            return None
+        if self.rule["purpose"] == "analysis":
+            undeclared = undeclared_graph_model(self.policy, summary)
+            if undeclared:
+                return f"model {undeclared} is in no declared cohort"
         if self._ledger is None:
             self._ledger = load_ledger(self.root)
+        if self.rule["logits_manifest"]:
+            if backend not in BACKENDS_WITHOUT_MANIFEST:
+                manifest = self._pinned_manifest()
+                if manifest is None:
+                    return None                          # manifest_optional and no manifest on disk
+                want = manifest.get(self._rel(part))
+                if want is None:
+                    return "logits part outside the pinned manifest"
+                if want != sha256_file(part):
+                    return "logits part changed since it was recorded"
+            # The path is resolved against the root only when a ledger exists to consult, so a part outside
+            # the root is read as before the ledger existed.
+            if self._ledger:
+                try:
+                    recorded_sha = self._ledger.get(self._rel(part))
+                except ValueError:
+                    recorded_sha = None
+                if recorded_sha is not None and recorded_sha != sha256_file(part):
+                    return "artifact integrity: changed_since_recorded"
+            return None
+        if not isinstance(summary.get("results"), list):
+            return "artifact integrity: unreadable"
+        rel = self._rel(part)
         recorded = [self._ledger]
         legacy = self.root / RELEASE_MANIFEST
         if legacy.exists():

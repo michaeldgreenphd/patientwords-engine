@@ -32,16 +32,23 @@ pins that manifest. Missing provenance is recorded as missing.
 
 | Membership | Purpose | Admits |
 |---|---|---|
-| `study-interim/1` (default) | analysis | Study batches; every model cohort except the 2026-10-09 additions; hosted and activation-patching parts as they are; a CPU-logits part only when `data/publication_release/logits_parts.json` lists the sha256 of its bytes. This is the rule the collectors applied from 2026-10-09, so the published statistics keep their inputs. |
-| `exploratory-open/1` | analysis | Every intact part on a study batch, all model cohorts, no pin. A separately declared exploratory analysis with its own multiple-testing family. Its outputs go to their own files and replace nothing. |
+| `study-interim/1` (default) | analysis | Every stimulus family except the hand-authored sets (generated study batches, sentinels, translation arms, curated subsets); every declared model cohort except the 2026-10-09 additions; hosted and activation-patching parts as they are; a CPU-logits part only when `data/publication_release/logits_parts.json` lists the sha256 of its bytes. This is the rule the collectors applied from 2026-10-09, so the published statistics keep their inputs. Each collector then keeps the families it analyses (`paired_stats_rigor.py`, for example, keeps generated study batches only). |
+| `exploratory-open/1` | analysis | Every intact part of every declared model cohort on the same stimulus families, no pin. A separately declared exploratory analysis with its own multiple-testing family. Its outputs go to their own files and replace nothing. |
 | `public-display/1` | display | Every intact part with no named restriction, hand-authored sets included. The results catalogue reads with this rule. |
 
 Hand-authored sets (`agscen_`) are in no analysis membership: they are examples with
 equivalence and domain review pending.
 
+Two refusals hold in every membership, the default one included. A part whose bytes differ
+from a recorded sha256 (the pin or the ledger) is not read. A part whose own `graph_model`
+names a model that no cohort declares is listed in the catalogue and enters no analysis, so
+a new model cannot join a statistic by landing. The second refusal is new on 2026-11-10: the
+earlier rule only excluded named models. No part on disk that day was affected by either
+(the old gate and the default gate agree on all 1,235 parts).
+
 `Gate(root)` uses the default membership. `Gate(root, membership=...)` selects another.
-A collector prints the membership and policy it used and counts every part it did not
-read, by reason. `scripts/publication_hold.py` remains as the import path older callers
+Every collector counts and prints each part it did not read, by reason; the collector and
+the gallery exporter also print the membership and policy version in force. `scripts/publication_hold.py` remains as the import path older callers
 use; it holds no rule.
 
 ## What stays restricted
@@ -75,7 +82,9 @@ selects nothing. Sealed rows are counted and never written. The site publishes i
 public without anyone approving it individually. With `--record` the exporter appends
 the sha256 of each part it reads for the first time to
 `data/results_policy/part_ledger.v1.json`. A part whose bytes later differ from its
-record is refused everywhere and listed as `changed_since_recorded`.
+record is refused by every membership and listed as `changed_since_recorded`. The ledger
+cannot show a change made before a part was first recorded; git history is the record for
+that.
 
 **Analysis snapshots** (`scripts/results_snapshot.py`, files under
 `data/analysis_snapshots/`) are immutable. A snapshot fixes one membership at one
@@ -97,22 +106,27 @@ module write byte-identical output from the same inputs
 condition: statistics change only through a versioned snapshot. `auto_advance` is
 false, so the Routine does not advance the study pin. Advancing it is
 `scripts/publication_release.py --release` (optionally `--models`), followed by a new
-snapshot in the same change. Setting `auto_advance` to true, or changing
+snapshot in the same change. A scoped advance only adds entries. No advance rewrites a
+recorded hash: if a pinned or ledger-recorded part's committed bytes differ, the command
+refuses. Setting `auto_advance` to true, or changing
 `default_membership`, is a one-line reviewed edit; the migration record shows what the
 statistics would become.
 
 ## Preview route
 
 `PW_RESULTS_POLICY=/path/to/candidate.json` makes every collector read a candidate
-policy file. Each collector prints `policy file overridden: <path>` when it is set, so
-an override is visible in the run's output. It is for offline previews and tests.
+policy file. Every process that loads the policy while the variable is set writes one line
+naming that file to stderr, from the loader itself, so no collector can read a candidate
+policy silently. It is for offline previews and tests. The pin advance ignores it and reads
+the committed policy.
 `scripts/open_results_migration.py` uses it to compute the comparison in a temporary
 directory.
 
 ## Adding things
 
-- A model: add it to a cohort in the policy file. It is visible in the catalogue at the
-  next publish. It joins a statistic only when a membership admits its cohort.
+- A model: its results are visible in the catalogue at the next publish whether or not it
+  is declared. It joins a statistic only after it is added to a cohort in the policy file
+  and a membership admits that cohort; until then every analysis gate skips it and says so.
 - A stimulus family: add a `stimulus_classes` entry with its evidence class, review
   status and whether rows are exported. `tests/test_results_policy.py` checks the
   entries against the sidecars' own `status` fields.
