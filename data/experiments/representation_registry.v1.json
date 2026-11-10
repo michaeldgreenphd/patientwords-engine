@@ -1,0 +1,816 @@
+{
+  "schema_version": "patientwords.representation-registry/1",
+  "as_of": "2026-11-10",
+  "synthetic": false,
+  "description": "Representations the project uses or names, one entry per representation of one model. The model block is the engine's study identity (short id, Hugging Face id, pinned commit); it is not a statement about what a hosted service loads. A null means this registry holds no value and its pointer is listed in the entry's not_recorded. links_enabled is true only for verified_exact. On 2026-11-10 no real entry is verified_exact, so no real link is built. Representation types are different objects and are never interchangeable.",
+  "verification_statuses": [
+    "verified_exact",
+    "alias_unverified_checkpoint",
+    "hosted_identity_unknown",
+    "unverified"
+  ],
+  "verification_meaning": {
+    "verified_exact": "The Neuronpedia ids were read in a primary source and the hosted checkpoint revision is recorded and equals the study revision. The only status that permits a link.",
+    "alias_unverified_checkpoint": "Another id is reported for the same checkpoint. No record of the checkpoint revision behind that id was read. An alias alone verifies nothing.",
+    "hosted_identity_unknown": "The engine uses these hosted ids and responses have landed. The service reports no model, dictionary or instrument revision, so what answered is not identified.",
+    "unverified": "The representation is named in a source that was read. Its own manifest or page was not read."
+  },
+  "sources_not_read": [
+    {
+      "url": "https://www.neuronpedia.org/blog/neurons-ica",
+      "attempted_utc_date": "2026-11-10",
+      "result": "not read: host outside the session's allowed network domains (getaddrinfo ENOTFOUND)"
+    },
+    {
+      "url": "https://www.neuronpedia.org/blog",
+      "attempted_utc_date": "2026-11-10",
+      "result": "not read: host outside the session's allowed network domains (getaddrinfo ENOTFOUND)"
+    },
+    {
+      "url": "https://arxiv.org/abs/2606.11722v2",
+      "attempted_utc_date": "2026-11-10",
+      "result": "not read: host outside the session's allowed network domains (getaddrinfo ENOTFOUND)"
+    },
+    {
+      "url": "https://docs.neuronpedia.org/api-and-data/api",
+      "attempted_utc_date": "2026-11-10",
+      "result": "not read: host outside the session's allowed network domains (getaddrinfo ENOTFOUND)"
+    },
+    {
+      "url": "https://docs.neuronpedia.org/sparse-autoencoders/auto-interp",
+      "attempted_utc_date": "2026-11-10",
+      "result": "not read: host outside the session's allowed network domains (getaddrinfo ENOTFOUND)"
+    },
+    {
+      "url": "https://www.neuronpedia.org/graph/validator",
+      "attempted_utc_date": "2026-11-10",
+      "result": "not read: host outside the session's allowed network domains (getaddrinfo ENOTFOUND)"
+    },
+    {
+      "url": "https://www.neuronpedia.org/blog/circuit-tracer",
+      "attempted_utc_date": "2026-11-10",
+      "result": "not read: host outside the session's allowed network domains (getaddrinfo ENOTFOUND)"
+    },
+    {
+      "url": "https://www.neuronpedia.org/blog/interp-engine",
+      "attempted_utc_date": "2026-11-10",
+      "result": "not read: host outside the session's allowed network domains (getaddrinfo ENOTFOUND)"
+    },
+    {
+      "url": "https://www.neuronpedia.org/blog/headvis",
+      "attempted_utc_date": "2026-11-10",
+      "result": "not read: host outside the session's allowed network domains (getaddrinfo ENOTFOUND)"
+    },
+    {
+      "url": "https://www.neuronpedia.org/blog/nlas",
+      "attempted_utc_date": "2026-11-10",
+      "result": "not read: host outside the session's allowed network domains (getaddrinfo ENOTFOUND)"
+    },
+    {
+      "url": "https://www.neuronpedia.org/blog/assistant-axis",
+      "attempted_utc_date": "2026-11-10",
+      "result": "not read: host outside the session's allowed network domains (getaddrinfo ENOTFOUND)"
+    },
+    {
+      "url": "https://www.neuronpedia.org/blog/jpp-drift-ui",
+      "attempted_utc_date": "2026-11-10",
+      "result": "not read: host outside the session's allowed network domains (getaddrinfo ENOTFOUND)"
+    },
+    {
+      "url": "https://www.neuronpedia.org/blog/interp-explorer",
+      "attempted_utc_date": "2026-11-10",
+      "result": "not read: host outside the session's allowed network domains (getaddrinfo ENOTFOUND)"
+    },
+    {
+      "url": "https://www.neuronpedia.org/blog/fall-update",
+      "attempted_utc_date": "2026-11-10",
+      "result": "not read: host outside the session's allowed network domains (getaddrinfo ENOTFOUND)"
+    }
+  ],
+  "entries": [
+    {
+      "registry_id": "gemma-2-2b.transcoder-feature.gemmascope-transcoder-16k",
+      "representation_type": "transcoder_feature",
+      "method": "attribution_graph",
+      "model": {
+        "study_id": "gemma-2-2b",
+        "hf_id": "google/gemma-2-2b",
+        "revision": "c5ebcd40d208330abc697524c919956e692655cf"
+      },
+      "neuronpedia": {
+        "model_id": "gemma-2-2b",
+        "source_set": "gemmascope-transcoder-16k",
+        "source_id": "not_applicable",
+        "id_source": "medlang_circuits/neuronpedia_features.py:30,46 (DEFAULT_SOURCE_SET, MODEL_SOURCE_SETS); medlang_circuits/graph_client.py:53 (MODEL_REGISTRY)"
+      },
+      "site": {
+        "capture_site": null,
+        "layer_index_base": null,
+        "layers": null
+      },
+      "component_id": {
+        "form": "{layer}-{source_set}/{index}",
+        "index_kind": "non-negative integer feature index within one layer's source",
+        "source": "medlang_circuits/neuronpedia_features.py:155 (the feature API path the engine requests)"
+      },
+      "fitted_artifact_sha256": null,
+      "artifact": {
+        "id": "gemmascope-transcoder-16k",
+        "repository": null,
+        "revision": null,
+        "fit_model_hf_id": null,
+        "fit_model_revision": null
+      },
+      "calibration": "calibrated_reference",
+      "use": "calibrated_feature_source",
+      "label_source": {
+        "name": "neuronpedia_auto_interp",
+        "version": null,
+        "explanation_type": null,
+        "explanation_model": null,
+        "scorer": null,
+        "retrieved_utc": null
+      },
+      "url_pattern": null,
+      "verification": {
+        "status": "hosted_identity_unknown",
+        "hosted_checkpoint_revision": null,
+        "evidence": [
+          {
+            "source": "scripts/feature_models.py:31",
+            "date": "2026-11-10",
+            "states": "CALIBRATED_FEATURE_SOURCES holds exactly one pair: (gemma-2-2b, gemmascope-transcoder-16k)."
+          },
+          {
+            "source": "medlang_circuits/neuronpedia_features.py:155",
+            "date": "2026-11-10",
+            "states": "The engine requests /api/feature/<model>/<layer>-<source set>/<index> under these ids."
+          },
+          {
+            "source": "scripts/logits_eval.py:132",
+            "date": "2026-11-10",
+            "states": "The study pin of google/gemma-2-2b for the CPU lane. It is not a statement about the hosted service."
+          },
+          {
+            "source": "medlang_circuits/batch_eval.py:1288-1299",
+            "date": "2026-11-10",
+            "states": "The hosted summary dict has graph_model, source_set, generation_params and environment. It has no field for the served model commit or the dictionary weights commit."
+          }
+        ],
+        "checked_utc_date": "2026-11-10"
+      },
+      "links_enabled": false,
+      "not_recorded": [
+        "/artifact/fit_model_hf_id",
+        "/artifact/fit_model_revision",
+        "/artifact/repository",
+        "/artifact/revision",
+        "/fitted_artifact_sha256",
+        "/label_source/explanation_model",
+        "/label_source/explanation_type",
+        "/label_source/retrieved_utc",
+        "/label_source/scorer",
+        "/label_source/version",
+        "/site/capture_site",
+        "/site/layer_index_base",
+        "/site/layers",
+        "/url_pattern",
+        "/verification/hosted_checkpoint_revision"
+      ],
+      "notes": "The one calibrated feature source. The ids are the ones the hosted route answers to. Which model commit the service loads and which transcoder weights commit the set holds are not recorded, so the status is hosted_identity_unknown and links are off. README.md:51 links the Gemma Scope transcoders at google/gemma-scope-2b-pt-transcoders; no record ties the hosted set to a file or commit of that repository. Labels: the two features sampled on 2026-10-09 carried two explanations each (oai_token-act-pair and np_max-act, both from gemini-2.0-flash; docs/cross-model.md:66-71). A sample of two does not establish the explainer for the set, so explanation_type and explanation_model are not recorded. Layer numbering is inferred to be zero-based and is not recorded. No feature page pattern was read in a page or in source code."
+    },
+    {
+      "registry_id": "qwen3-4b.transcoder-feature.transcoder-hp",
+      "representation_type": "transcoder_feature",
+      "method": "attribution_graph",
+      "model": {
+        "study_id": "qwen3-4b",
+        "hf_id": "Qwen/Qwen3-4B",
+        "revision": "1cfa9a7208912126459214e8b04321603b3df60c"
+      },
+      "neuronpedia": {
+        "model_id": "qwen3-4b",
+        "source_set": "transcoder-hp",
+        "source_id": "not_applicable",
+        "id_source": "medlang_circuits/neuronpedia_features.py:55 (MODEL_SOURCE_SETS); medlang_circuits/graph_client.py:55 (MODEL_REGISTRY); docs/cross-model.md:33-40"
+      },
+      "site": {
+        "capture_site": null,
+        "layer_index_base": 0,
+        "layers": null
+      },
+      "component_id": {
+        "form": "{layer}-{source_set}/{index}",
+        "index_kind": "non-negative integer feature index within one layer's source; a schema-1 graph node holds the Cantor pairing of (layer, index)",
+        "source": "medlang_circuits/neuronpedia_features.py:11-13,155; medlang_circuits/schema_utils.py:30-36,56-57"
+      },
+      "fitted_artifact_sha256": null,
+      "artifact": {
+        "id": "transcoder-hp",
+        "repository": "mwhanna/qwen3-4b-transcoders",
+        "revision": null,
+        "fit_model_hf_id": null,
+        "fit_model_revision": null
+      },
+      "calibration": "not_calibrated",
+      "use": "exploration_only",
+      "label_source": {
+        "name": "neuronpedia_auto_interp",
+        "version": null,
+        "explanation_type": "np_max-act",
+        "explanation_model": "gemini-2.0-flash",
+        "scorer": null,
+        "retrieved_utc": "2026-10-09"
+      },
+      "url_pattern": null,
+      "verification": {
+        "status": "hosted_identity_unknown",
+        "hosted_checkpoint_revision": null,
+        "evidence": [
+          {
+            "source": "docs/cross-model.md:33-63",
+            "date": "2026-10-09",
+            "states": "Source set transcoder-hp, from mwhanna/qwen3-4b-transcoders, labelled by gemini-2.0-flash with explanation type np_max-act; it is the model's default graph source set; four features resolved through the feature API, one of them at layer 0."
+          },
+          {
+            "source": "scripts/feature_models.py:31",
+            "date": "2026-11-10",
+            "states": "The pair (qwen3-4b, transcoder-hp) is not in CALIBRATED_FEATURE_SOURCES."
+          },
+          {
+            "source": "scripts/logits_eval.py:134",
+            "date": "2026-11-10",
+            "states": "The study pin of Qwen/Qwen3-4B for the CPU lane. It is not a statement about the hosted service."
+          },
+          {
+            "source": "medlang_circuits/batch_eval.py:1288-1299",
+            "date": "2026-11-10",
+            "states": "The hosted summary dict has graph_model, source_set, generation_params and environment. It has no field for the served model commit or the dictionary weights commit."
+          }
+        ],
+        "checked_utc_date": "2026-11-10"
+      },
+      "links_enabled": false,
+      "not_recorded": [
+        "/artifact/fit_model_hf_id",
+        "/artifact/fit_model_revision",
+        "/artifact/revision",
+        "/fitted_artifact_sha256",
+        "/label_source/scorer",
+        "/label_source/version",
+        "/site/capture_site",
+        "/site/layers",
+        "/url_pattern",
+        "/verification/hosted_checkpoint_revision"
+      ],
+      "notes": "Labelled and not calibrated against the reference: exploration only. Exporters keep its clinical_mass null until an owner decision (scripts/feature_models.py:41-48). The label facts are the dated record of docs/cross-model.md, not a read of today. No scorer name appears in the engine. The hosted model commit and the transcoder weights commit are not recorded."
+    },
+    {
+      "registry_id": "gemma-2-2b.workspace-readout.hosted-jlens",
+      "representation_type": "workspace_readout",
+      "method": "j_lens",
+      "model": {
+        "study_id": "gemma-2-2b",
+        "hf_id": "google/gemma-2-2b",
+        "revision": "c5ebcd40d208330abc697524c919956e692655cf"
+      },
+      "neuronpedia": {
+        "model_id": "gemma-2-2b",
+        "source_set": "not_applicable",
+        "source_id": "not_applicable",
+        "id_source": "scripts/jlens_readout.py:44,52,60 (LENS_ENDPOINT, LENS_TYPES, modelId); 99 run directories trace_out/*__jlens_gemma-2-2b on 2026-11-10"
+      },
+      "site": {
+        "capture_site": null,
+        "layer_index_base": null,
+        "layers": null
+      },
+      "component_id": "not_applicable",
+      "fitted_artifact_sha256": null,
+      "artifact": {
+        "id": "neuronpedia-hosted:JACOBIAN_LENS",
+        "repository": null,
+        "revision": null,
+        "fit_model_hf_id": null,
+        "fit_model_revision": null
+      },
+      "calibration": "not_applicable",
+      "use": "landed_hosted_readouts",
+      "label_source": {
+        "name": "not_applicable",
+        "version": "not_applicable",
+        "explanation_type": "not_applicable",
+        "explanation_model": "not_applicable",
+        "scorer": "not_applicable",
+        "retrieved_utc": "not_applicable"
+      },
+      "url_pattern": null,
+      "verification": {
+        "status": "hosted_identity_unknown",
+        "hosted_checkpoint_revision": null,
+        "evidence": [
+          {
+            "source": "scripts/jlens_readout.py:310-324",
+            "date": "2026-11-10",
+            "states": "A lens summary records mode, backend, graph_model, lens_type, top_n, start_index, endpoint and method_credit. It records no lens artifact repository, revision or hash and no model or tokenizer revision."
+          },
+          {
+            "source": "scripts/export_jlens_depth.py:409-417",
+            "date": "2026-08-21",
+            "states": "Hosted readouts span up to three host-side instrument eras, with boundaries on 2026-07-31 and 2026-08-14 under byte-identical request parameters."
+          },
+          {
+            "source": "scripts/logits_eval.py:132",
+            "date": "2026-11-10",
+            "states": "The study pin of google/gemma-2-2b for the CPU lane. It is not a statement about the hosted service."
+          }
+        ],
+        "checked_utc_date": "2026-11-10"
+      },
+      "links_enabled": false,
+      "not_recorded": [
+        "/artifact/fit_model_hf_id",
+        "/artifact/fit_model_revision",
+        "/artifact/repository",
+        "/artifact/revision",
+        "/fitted_artifact_sha256",
+        "/site/capture_site",
+        "/site/layer_index_base",
+        "/site/layers",
+        "/url_pattern",
+        "/verification/hosted_checkpoint_revision"
+      ],
+      "notes": "A workspace readout is a per-layer reading of the residual stream over the vocabulary. It has no component index and no label source. No instrument revision is recorded, so the status is hosted_identity_unknown. Layer numbers come from the response's meta.layers_by_type, or from list position when that is absent (scripts/jlens_readout.py:164-170); the index base is not recorded. The only lens page pattern the engine holds puts the prompt in a query string (scripts/export_jlens_transport.py:151-156). This registry records no pattern for it and scripts/experiments/neuronpedia.py builds no such link."
+    },
+    {
+      "registry_id": "gemma-2-2b-it.workspace-readout.hosted-jlens",
+      "representation_type": "workspace_readout",
+      "method": "j_lens",
+      "model": {
+        "study_id": "gemma-2-2b-it",
+        "hf_id": "google/gemma-2-2b-it",
+        "revision": "299a8560bedf22ed1c72a8a11e7dce4a7f9f51f8"
+      },
+      "neuronpedia": {
+        "model_id": "gemma-2-2b-it",
+        "source_set": "not_applicable",
+        "source_id": "not_applicable",
+        "id_source": "scripts/jlens_readout.py:44,52,60 (LENS_ENDPOINT, LENS_TYPES, modelId); 39 run directories trace_out/*__jlens_gemma-2-2b-it on 2026-11-10"
+      },
+      "site": {
+        "capture_site": null,
+        "layer_index_base": null,
+        "layers": null
+      },
+      "component_id": "not_applicable",
+      "fitted_artifact_sha256": null,
+      "artifact": {
+        "id": "neuronpedia-hosted:JACOBIAN_LENS",
+        "repository": null,
+        "revision": null,
+        "fit_model_hf_id": null,
+        "fit_model_revision": null
+      },
+      "calibration": "not_applicable",
+      "use": "landed_hosted_readouts",
+      "label_source": {
+        "name": "not_applicable",
+        "version": "not_applicable",
+        "explanation_type": "not_applicable",
+        "explanation_model": "not_applicable",
+        "scorer": "not_applicable",
+        "retrieved_utc": "not_applicable"
+      },
+      "url_pattern": null,
+      "verification": {
+        "status": "hosted_identity_unknown",
+        "hosted_checkpoint_revision": null,
+        "evidence": [
+          {
+            "source": "scripts/jlens_readout.py:310-324",
+            "date": "2026-11-10",
+            "states": "A lens summary records mode, backend, graph_model, lens_type, top_n, start_index, endpoint and method_credit. It records no lens artifact repository, revision or hash and no model or tokenizer revision."
+          },
+          {
+            "source": "scripts/export_jlens_depth.py:409-417",
+            "date": "2026-08-21",
+            "states": "Hosted readouts span up to three host-side instrument eras, with boundaries on 2026-07-31 and 2026-08-14 under byte-identical request parameters."
+          },
+          {
+            "source": "scripts/logits_eval.py:143",
+            "date": "2026-11-10",
+            "states": "The study pin of google/gemma-2-2b-it for the CPU lane. It is not a statement about the hosted service."
+          }
+        ],
+        "checked_utc_date": "2026-11-10"
+      },
+      "links_enabled": false,
+      "not_recorded": [
+        "/artifact/fit_model_hf_id",
+        "/artifact/fit_model_revision",
+        "/artifact/repository",
+        "/artifact/revision",
+        "/fitted_artifact_sha256",
+        "/site/capture_site",
+        "/site/layer_index_base",
+        "/site/layers",
+        "/url_pattern",
+        "/verification/hosted_checkpoint_revision"
+      ],
+      "notes": "A workspace readout is a per-layer reading of the residual stream over the vocabulary. It has no component index and no label source. No instrument revision is recorded, so the status is hosted_identity_unknown. Layer numbers come from the response's meta.layers_by_type, or from list position when that is absent (scripts/jlens_readout.py:164-170); the index base is not recorded. The only lens page pattern the engine holds puts the prompt in a query string (scripts/export_jlens_transport.py:151-156). This registry records no pattern for it and scripts/experiments/neuronpedia.py builds no such link."
+    },
+    {
+      "registry_id": "qwen3.5-2b-base.ica-component.neuronpedia-alias",
+      "representation_type": "ica_component",
+      "method": "ica_lens",
+      "model": {
+        "study_id": "qwen3.5-2b-base",
+        "hf_id": "Qwen/Qwen3.5-2B-Base",
+        "revision": "b1485b2fa6dfa1287294f269f5fb618e03d52d7c"
+      },
+      "neuronpedia": {
+        "model_id": "qwen3.5-2b-pt",
+        "source_set": null,
+        "source_id": null,
+        "id_source": "The task brief of 2026-11-10 names this id, and a web-search result title recorded the same day carries it. A search result is not a page read. No Neuronpedia page was read. Unverified."
+      },
+      "site": {
+        "capture_site": null,
+        "layer_index_base": null,
+        "layers": null
+      },
+      "component_id": null,
+      "fitted_artifact_sha256": null,
+      "artifact": null,
+      "calibration": "not_applicable",
+      "use": "named_not_used",
+      "label_source": {
+        "name": null,
+        "version": null,
+        "explanation_type": null,
+        "explanation_model": null,
+        "scorer": null,
+        "retrieved_utc": null
+      },
+      "url_pattern": null,
+      "verification": {
+        "status": "alias_unverified_checkpoint",
+        "hosted_checkpoint_revision": null,
+        "evidence": [
+          {
+            "source": "scripts/logits_eval.py:109,147",
+            "date": "2026-11-10",
+            "states": "Engine id qwen3.5-2b-base is Qwen/Qwen3.5-2B-Base pinned at b1485b2fa6dfa1287294f269f5fb618e03d52d7c."
+          },
+          {
+            "source": "docs/model_matrix.md:285-293",
+            "date": "2026-10-09",
+            "states": "The pin was the head of main on 2026-10-09, read from the Hugging Face models API; the repository was last modified on 2026-04-23."
+          },
+          {
+            "source": "https://www.neuronpedia.org/blog/neurons-ica",
+            "date": "2026-11-10",
+            "states": "Not read: the host is outside this session's allowed network domains. It states nothing here about the checkpoint behind qwen3.5-2b-pt."
+          },
+          {
+            "source": "michaeldgreenphd/patientwords-ica-lens-paper@aa3b95c9e755e4374f8c9645a064e3f51d96066e: search for the engine pin and for 'neuronpedia'",
+            "date": "2026-11-10",
+            "states": "The ICA fork records no revision of Qwen/Qwen3.5-2B-Base, no Neuronpedia model id and no source id. It names no released basis for this checkpoint."
+          }
+        ],
+        "checked_utc_date": "2026-11-10"
+      },
+      "links_enabled": false,
+      "not_recorded": [
+        "/artifact",
+        "/component_id",
+        "/fitted_artifact_sha256",
+        "/label_source/explanation_model",
+        "/label_source/explanation_type",
+        "/label_source/name",
+        "/label_source/retrieved_utc",
+        "/label_source/scorer",
+        "/label_source/version",
+        "/neuronpedia/source_id",
+        "/neuronpedia/source_set",
+        "/site/capture_site",
+        "/site/layer_index_base",
+        "/site/layers",
+        "/url_pattern",
+        "/verification/hosted_checkpoint_revision"
+      ],
+      "notes": "An alias only. The two ids are reported to name the same base checkpoint. No record read today states which Hugging Face commit Neuronpedia serves under qwen3.5-2b-pt or which commit its ICA components were fitted on, so equality with the engine pin is unverified. The ICA source-set id, source ids, layers, component-id form and label source on Neuronpedia are unknown. To move this entry to verified_exact: read the Neuronpedia model record and the ICA release's manifest, record the checkpoint commit in hosted_checkpoint_revision, and confirm it equals the engine pin."
+    },
+    {
+      "registry_id": "gemma-2-2b.ica-component.sida-icalens-gemma-2-2b-pile10k",
+      "representation_type": "ica_component",
+      "method": "ica_lens",
+      "model": {
+        "study_id": "gemma-2-2b",
+        "hf_id": "google/gemma-2-2b",
+        "revision": "c5ebcd40d208330abc697524c919956e692655cf"
+      },
+      "neuronpedia": null,
+      "site": {
+        "capture_site": "resid_post",
+        "layer_index_base": 0,
+        "layers": null
+      },
+      "component_id": {
+        "form": "C{index}",
+        "index_kind": "non-negative integer, local to one layer of one fitted artifact",
+        "source": "michaeldgreenphd/patientwords-ica-lens-paper@aa3b95c9e755e4374f8c9645a064e3f51d96066e: notes/artifact-format.md:51-56"
+      },
+      "fitted_artifact_sha256": null,
+      "artifact": {
+        "id": "sida/icalens-gemma-2-2b-pile10k",
+        "repository": "sida/icalens-gemma-2-2b-pile10k",
+        "revision": null,
+        "fit_model_hf_id": null,
+        "fit_model_revision": null
+      },
+      "calibration": "not_applicable",
+      "use": "named_not_used",
+      "label_source": {
+        "name": null,
+        "version": null,
+        "explanation_type": null,
+        "explanation_model": null,
+        "scorer": null,
+        "retrieved_utc": null
+      },
+      "url_pattern": null,
+      "verification": {
+        "status": "unverified",
+        "hosted_checkpoint_revision": null,
+        "evidence": [
+          {
+            "source": "michaeldgreenphd/patientwords-ica-lens-paper@aa3b95c9e755e4374f8c9645a064e3f51d96066e: docs/fit-and-publish.md:289-292",
+            "date": "2026-11-10",
+            "states": "A plot command lists this basis by its published id."
+          },
+          {
+            "source": "michaeldgreenphd/patientwords-ica-lens-paper@aa3b95c9e755e4374f8c9645a064e3f51d96066e: experiments/reconstruction/official/results/gemma2/run.json:181-183 (resolved)",
+            "date": "2026-11-10",
+            "states": "A reconstruction run with status complete names lens sida/icalens-gemma-2-2b-pile10k, model google/gemma-2-2b at revision c5ebcd40d208330abc697524c919956e692655cf, activation site resid_post and 26 layers. It pins no lens revision."
+          },
+          {
+            "source": "scripts/logits_eval.py:132",
+            "date": "2026-11-10",
+            "states": "The engine pin of google/gemma-2-2b is the same commit as the run record's model revision."
+          }
+        ],
+        "checked_utc_date": "2026-11-10"
+      },
+      "links_enabled": false,
+      "not_recorded": [
+        "/artifact/fit_model_hf_id",
+        "/artifact/fit_model_revision",
+        "/artifact/revision",
+        "/fitted_artifact_sha256",
+        "/label_source/explanation_model",
+        "/label_source/explanation_type",
+        "/label_source/name",
+        "/label_source/retrieved_utc",
+        "/label_source/scorer",
+        "/label_source/version",
+        "/neuronpedia",
+        "/site/layers",
+        "/url_pattern",
+        "/verification/hosted_checkpoint_revision"
+      ],
+      "notes": "The basis manifest icalens.json on Hugging Face was not read: huggingface.co is blocked from development containers. The basis revision, the tensor hashes, the layer list and the model revision the basis was fitted on are therefore not recorded. No Neuronpedia mapping is known for this basis. The site and layer base are the ICA fork's saved-lens convention (resid_post, zero-based transformer blocks; notes/artifact-format.md:71-72). The paper's reconstruction run loaded the model at the engine's pinned commit. That is a statement about one evaluation run. It is not the fit revision stored in the basis, and the run does not pin which basis revision it loaded."
+    },
+    {
+      "registry_id": "gpt2.ica-component.sida-icalens-gpt2-small-pile10k",
+      "representation_type": "ica_component",
+      "method": "ica_lens",
+      "model": {
+        "study_id": null,
+        "hf_id": "openai-community/gpt2",
+        "revision": null
+      },
+      "neuronpedia": null,
+      "site": {
+        "capture_site": "resid_post",
+        "layer_index_base": 0,
+        "layers": null
+      },
+      "component_id": {
+        "form": "C{index}",
+        "index_kind": "non-negative integer, local to one layer of one fitted artifact",
+        "source": "michaeldgreenphd/patientwords-ica-lens-paper@aa3b95c9e755e4374f8c9645a064e3f51d96066e: notes/artifact-format.md:51-56"
+      },
+      "fitted_artifact_sha256": null,
+      "artifact": {
+        "id": "sida/icalens-gpt2-small-pile10k",
+        "repository": "sida/icalens-gpt2-small-pile10k",
+        "revision": null,
+        "fit_model_hf_id": null,
+        "fit_model_revision": null
+      },
+      "calibration": "not_applicable",
+      "use": "named_not_used",
+      "label_source": {
+        "name": null,
+        "version": null,
+        "explanation_type": null,
+        "explanation_model": null,
+        "scorer": null,
+        "retrieved_utc": null
+      },
+      "url_pattern": null,
+      "verification": {
+        "status": "unverified",
+        "hosted_checkpoint_revision": null,
+        "evidence": [
+          {
+            "source": "michaeldgreenphd/patientwords-ica-lens-paper@aa3b95c9e755e4374f8c9645a064e3f51d96066e: README.md:23; docs/fit-and-publish.md:289-292",
+            "date": "2026-11-10",
+            "states": "The README loads this basis by its published id and a plot command lists it."
+          },
+          {
+            "source": "michaeldgreenphd/patientwords-ica-lens-paper@aa3b95c9e755e4374f8c9645a064e3f51d96066e: experiments/reconstruction/official/results/gpt2/run.json:100-102 (resolved)",
+            "date": "2026-11-10",
+            "states": "A reconstruction run with status complete names lens sida/icalens-gpt2-small-pile10k, model openai-community/gpt2 at revision 607a30d783dfa663caf39e06633721c8d4cfcd7e, activation site resid_post and 12 layers. It pins no lens revision."
+          }
+        ],
+        "checked_utc_date": "2026-11-10"
+      },
+      "links_enabled": false,
+      "not_recorded": [
+        "/artifact/fit_model_hf_id",
+        "/artifact/fit_model_revision",
+        "/artifact/revision",
+        "/fitted_artifact_sha256",
+        "/label_source/explanation_model",
+        "/label_source/explanation_type",
+        "/label_source/name",
+        "/label_source/retrieved_utc",
+        "/label_source/scorer",
+        "/label_source/version",
+        "/model/revision",
+        "/model/study_id",
+        "/neuronpedia",
+        "/site/layers",
+        "/url_pattern",
+        "/verification/hosted_checkpoint_revision"
+      ],
+      "notes": "The basis manifest icalens.json on Hugging Face was not read: huggingface.co is blocked from development containers. The basis revision, the tensor hashes, the layer list and the model revision the basis was fitted on are therefore not recorded. No Neuronpedia mapping is known for this basis. The site and layer base are the ICA fork's saved-lens convention (resid_post, zero-based transformer blocks; notes/artifact-format.md:71-72). Not a model in the engine registry (scripts/logits_eval.py HF_IDS), so there is no study id and no study pin."
+    },
+    {
+      "registry_id": "qwen3.5-9b-base.ica-component.sida-icalens-qwen3.5-9b-base-pile10k",
+      "representation_type": "ica_component",
+      "method": "ica_lens",
+      "model": {
+        "study_id": null,
+        "hf_id": "Qwen/Qwen3.5-9B-Base",
+        "revision": null
+      },
+      "neuronpedia": null,
+      "site": {
+        "capture_site": "resid_post",
+        "layer_index_base": 0,
+        "layers": null
+      },
+      "component_id": {
+        "form": "C{index}",
+        "index_kind": "non-negative integer, local to one layer of one fitted artifact",
+        "source": "michaeldgreenphd/patientwords-ica-lens-paper@aa3b95c9e755e4374f8c9645a064e3f51d96066e: notes/artifact-format.md:51-56"
+      },
+      "fitted_artifact_sha256": null,
+      "artifact": {
+        "id": "sida/icalens-qwen3.5-9b-base-pile10k",
+        "repository": "sida/icalens-qwen3.5-9b-base-pile10k",
+        "revision": null,
+        "fit_model_hf_id": null,
+        "fit_model_revision": null
+      },
+      "calibration": "not_applicable",
+      "use": "named_not_used",
+      "label_source": {
+        "name": null,
+        "version": null,
+        "explanation_type": null,
+        "explanation_model": null,
+        "scorer": null,
+        "retrieved_utc": null
+      },
+      "url_pattern": null,
+      "verification": {
+        "status": "unverified",
+        "hosted_checkpoint_revision": null,
+        "evidence": [
+          {
+            "source": "michaeldgreenphd/patientwords-ica-lens-paper@aa3b95c9e755e4374f8c9645a064e3f51d96066e: docs/fit-and-publish.md:289-292",
+            "date": "2026-11-10",
+            "states": "A plot command lists this basis by its published id."
+          },
+          {
+            "source": "michaeldgreenphd/patientwords-ica-lens-paper@aa3b95c9e755e4374f8c9645a064e3f51d96066e: experiments/reconstruction/official/results/qwen35-9b/run.json:179-181 (resolved)",
+            "date": "2026-11-10",
+            "states": "A reconstruction run with status complete names lens sida/icalens-qwen3.5-9b-base-pile10k, model Qwen/Qwen3.5-9B-Base at revision 68c46c4b3498877f3ef123c856ecfde50c39f404, activation site resid_post and 32 layers. It pins no lens revision."
+          }
+        ],
+        "checked_utc_date": "2026-11-10"
+      },
+      "links_enabled": false,
+      "not_recorded": [
+        "/artifact/fit_model_hf_id",
+        "/artifact/fit_model_revision",
+        "/artifact/revision",
+        "/fitted_artifact_sha256",
+        "/label_source/explanation_model",
+        "/label_source/explanation_type",
+        "/label_source/name",
+        "/label_source/retrieved_utc",
+        "/label_source/scorer",
+        "/label_source/version",
+        "/model/revision",
+        "/model/study_id",
+        "/neuronpedia",
+        "/site/layers",
+        "/url_pattern",
+        "/verification/hosted_checkpoint_revision"
+      ],
+      "notes": "The basis manifest icalens.json on Hugging Face was not read: huggingface.co is blocked from development containers. The basis revision, the tensor hashes, the layer list and the model revision the basis was fitted on are therefore not recorded. No Neuronpedia mapping is known for this basis. The site and layer base are the ICA fork's saved-lens convention (resid_post, zero-based transformer blocks; notes/artifact-format.md:71-72). Not a model in the engine registry (scripts/logits_eval.py HF_IDS), so there is no study id and no study pin."
+    },
+    {
+      "registry_id": "qwen3.5-2b-instruct.ica-component.sida-icalens-qwen3.5-2b-ultrachat-1m",
+      "representation_type": "ica_component",
+      "method": "ica_lens",
+      "model": {
+        "study_id": null,
+        "hf_id": "Qwen/Qwen3.5-2B",
+        "revision": null
+      },
+      "neuronpedia": null,
+      "site": {
+        "capture_site": "resid_post",
+        "layer_index_base": 0,
+        "layers": null
+      },
+      "component_id": {
+        "form": "C{index}",
+        "index_kind": "non-negative integer, local to one layer of one fitted artifact",
+        "source": "michaeldgreenphd/patientwords-ica-lens-paper@aa3b95c9e755e4374f8c9645a064e3f51d96066e: notes/artifact-format.md:51-56"
+      },
+      "fitted_artifact_sha256": null,
+      "artifact": {
+        "id": "sida/icalens-qwen3.5-2b-ultrachat-1m",
+        "repository": "sida/icalens-qwen3.5-2b-ultrachat-1m",
+        "revision": null,
+        "fit_model_hf_id": null,
+        "fit_model_revision": null
+      },
+      "calibration": "not_applicable",
+      "use": "named_not_used",
+      "label_source": {
+        "name": null,
+        "version": null,
+        "explanation_type": null,
+        "explanation_model": null,
+        "scorer": null,
+        "retrieved_utc": null
+      },
+      "url_pattern": null,
+      "verification": {
+        "status": "unverified",
+        "hosted_checkpoint_revision": null,
+        "evidence": [
+          {
+            "source": "michaeldgreenphd/patientwords-ica-lens-paper@aa3b95c9e755e4374f8c9645a064e3f51d96066e: README.md:53",
+            "date": "2026-11-10",
+            "states": "Loads the published basis by this id."
+          },
+          {
+            "source": "michaeldgreenphd/patientwords-ica-lens-paper@aa3b95c9e755e4374f8c9645a064e3f51d96066e: docs/fit-and-publish.md:167-176",
+            "date": "2026-11-10",
+            "states": "The fit command for this basis names the model Qwen/Qwen3.5-2B and the UltraChat dataset."
+          }
+        ],
+        "checked_utc_date": "2026-11-10"
+      },
+      "links_enabled": false,
+      "not_recorded": [
+        "/artifact/fit_model_hf_id",
+        "/artifact/fit_model_revision",
+        "/artifact/revision",
+        "/fitted_artifact_sha256",
+        "/label_source/explanation_model",
+        "/label_source/explanation_type",
+        "/label_source/name",
+        "/label_source/retrieved_utc",
+        "/label_source/scorer",
+        "/label_source/version",
+        "/model/revision",
+        "/model/study_id",
+        "/neuronpedia",
+        "/site/layers",
+        "/url_pattern",
+        "/verification/hosted_checkpoint_revision"
+      ],
+      "notes": "The basis manifest icalens.json on Hugging Face was not read: huggingface.co is blocked from development containers. The basis revision, the tensor hashes, the layer list and the model revision the basis was fitted on are therefore not recorded. No Neuronpedia mapping is known for this basis. The site and layer base are the ICA fork's saved-lens convention (resid_post, zero-based transformer blocks; notes/artifact-format.md:71-72). This basis was fitted on the instruction-tuned model Qwen/Qwen3.5-2B. It is not a basis for the engine's qwen3.5-2b-base (Qwen/Qwen3.5-2B-Base), and nothing here maps one to the other."
+    }
+  ]
+}

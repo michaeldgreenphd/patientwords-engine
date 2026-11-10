@@ -1,0 +1,130 @@
+{
+  "schema_version": "patientwords.feature-explanations/1",
+  "registry_id": "toy-model.ica-component.fixture-verified",
+  "layer": 1,
+  "component": 3,
+  "labels": [
+    {
+      "label_id": "label-a",
+      "text": "placeholder label alpha",
+      "basis": "activation_examples",
+      "flags": [],
+      "status": "hypothesis",
+      "source": {
+        "name": "fixture_labels",
+        "version": "1",
+        "explanation_type": "fixture_type",
+        "explanation_model": "fixture/explainer",
+        "retrieved_utc": "2026-11-10T00:00:00Z"
+      },
+      "scorer": {
+        "name": "fixture_scorer",
+        "version": "1"
+      }
+    },
+    {
+      "label_id": "label-b",
+      "text": "placeholder label beta",
+      "basis": "activation_examples",
+      "flags": [],
+      "status": "hypothesis",
+      "source": {
+        "name": "fixture_labels_second",
+        "version": "1",
+        "explanation_type": "fixture_type",
+        "explanation_model": null,
+        "retrieved_utc": "2026-11-10T00:00:00Z"
+      },
+      "scorer": null
+    },
+    {
+      "label_id": "label-c",
+      "text": "alpha | beta | gamma",
+      "tokens": [
+        "alpha",
+        "beta",
+        "gamma"
+      ],
+      "basis": "token_list_only",
+      "flags": [
+        "not_a_clinical_concept_name"
+      ],
+      "status": "hypothesis",
+      "source": {
+        "name": "fixture_labels",
+        "version": "1",
+        "explanation_type": "token_list",
+        "explanation_model": "fixture/explainer",
+        "retrieved_utc": "2026-11-10T00:00:00Z"
+      },
+      "scorer": null
+    }
+  ],
+  "quantities": {
+    "feature_interpretability_score": [
+      {
+        "kind": "feature_interpretability_score",
+        "value": 0.5,
+        "scale": "fixture scale 0 to 1",
+        "source": "synthetic fixture",
+        "scorer": {
+          "name": "fixture_scorer",
+          "version": "1"
+        }
+      }
+    ],
+    "label_prediction_score": [
+      {
+        "kind": "label_prediction_score",
+        "value": 0.25,
+        "scale": "fixture scale 0 to 1",
+        "source": "synthetic fixture",
+        "scorer": {
+          "name": "fixture_scorer",
+          "version": "1"
+        },
+        "label_id": "label-a"
+      },
+      {
+        "kind": "label_prediction_score",
+        "value": null,
+        "missing_reason": "the fixture scorer was not run on it",
+        "scale": "fixture scale 0 to 1",
+        "source": "synthetic fixture",
+        "scorer": {
+          "name": "fixture_scorer",
+          "version": "1"
+        },
+        "label_id": "label-b"
+      }
+    ],
+    "lens_token_rank": [
+      {
+        "kind": "lens_token_rank",
+        "value": 4,
+        "source": "synthetic fixture",
+        "lens": "logit_lens",
+        "layer": 1,
+        "token_id": 5,
+        "rank_base": 1,
+        "filtered": false
+      }
+    ],
+    "clinical_outcome": [
+      {
+        "kind": "clinical_outcome",
+        "value": null,
+        "missing_reason": "synthetic fixture: no outcome exists",
+        "scale": "not applicable to a fixture",
+        "source": "synthetic fixture",
+        "outcome_id": "fixture-outcome-1",
+        "owner": "patientwords"
+      }
+    ]
+  },
+  "not_recorded": [
+    "/labels/1/scorer",
+    "/labels/1/source/explanation_model",
+    "/labels/2/scorer"
+  ]
+}
