@@ -1,6 +1,7 @@
 # Ecosystem map
 
-Current as of 2026-11-10. The machine-readable form is
+Current as of 2026-11-11. The five fork heads and every upstream tip were read on that date; the mapping pass is
+of 2026-11-10. The machine-readable form is
 [`data/ecosystem/repositories.v1.json`](../data/ecosystem/repositories.v1.json); `python scripts/ecosystem_status.py`
 compares it with the checkouts and pin files on disk and writes nothing. Rules are not restated here: the
 invariants are in [AGENTS.md](../AGENTS.md), the checks in [verify.md](../verify.md), sharing and membership in
@@ -16,8 +17,9 @@ of its tests have run here.
 **The short answer.** The project is two core repositories, five method forks and three repositories whose identity
 is resolved from engine source. The engine executes code from two of the forks only, and in both cases not from
 the fork's current head: interp-engine as the PyPI distribution 1.5.1 (the fork source declares 1.14.3), and
-inspect_petri at commit `e199ec1a` (the fork head is `de5dad81` and needs newer Inspect packages than the lock
-holds). The owner's fork sync of 2026-11-10 changed source only. No pin moved and no run used the new source.
+inspect_petri at commit `e199ec1a` (the fork head is `5ee1f549` and needs newer Inspect packages than the lock
+holds). The owner's fork sync of 2026-11-10 and README merges of 2026-11-11 changed source only. No pin moved and
+no run used the new source.
 
 How to read the status words. **VERIFIED (doc, read)**: the file was read at the cited line while writing this
 document. **VERIFIED (doc, ran)**: a read-only command was run for this document. **VERIFIED (map, read)** or
@@ -32,11 +34,11 @@ where they exist.
 |---|---|---|---|
 | `patientwords-engine` | generation, measurement, analysis, export | itself | `d8d0855d` (base of this change set) |
 | `patientwords` | public static site | `generated_files`: its `data/*.json`, read back by later publish steps; `source_checkout`: page HTML for the checkers. No pin | `b7da4530` |
-| `patientwords-ica-lens-paper` | ICA Lens paper (arXiv:2606.11722v2) and `icalens` library | `none` today. An optional offline adapter was added in this change set; fixtures only | `aa3b95c9` |
-| `patient-words-jpp_lens` | J++ Lens plus the owner's `lens_interop` contract | `fitted_artifact`: the released Qwen3-4B J++ file, sha256 `893f7da2…`, fit identity unknown, inspected and never used. `source_checkout`: `lens_interop` in one manual script, no pin | `e74e7228` |
-| `patientwords-interp-engine` | interpretability runtime | `installed_distribution`: `interp-engine==1.5.1` from PyPI (`constraints.txt`). Not the fork source | `2afe000d` |
-| `patientwords-inspect_petri` | conversation-audit harness | `source_checkout` at `e199ec1a`, installed from git under `docs/framework/petri_environment.lock.json` | `de5dad81` |
-| `jacobian-lens-patientwords` | original J-Lens reference | `none`: method description and credit strings | `581d3986` |
+| `patientwords-ica-lens-paper` | ICA Lens paper (arXiv:2606.11722v2) and `icalens` library | `none` today. An optional offline adapter was added in this change set; fixtures only | `103aadab` |
+| `patient-words-jpp_lens` | J++ Lens plus the owner's `lens_interop` contract | `fitted_artifact`: the released Qwen3-4B J++ file, sha256 `893f7da2…`, fit identity unknown, inspected and never used. `source_checkout`: `lens_interop` in one manual script, no pin | `2672473d` |
+| `patientwords-interp-engine` | interpretability runtime | `installed_distribution`: `interp-engine==1.5.1` from PyPI (`constraints.txt`). Not the fork source | `758220c4` |
+| `patientwords-inspect_petri` | conversation-audit harness | `source_checkout` at `e199ec1a`, installed from git under `docs/framework/petri_environment.lock.json` | `5ee1f549` |
+| `jacobian-lens-patientwords` | original J-Lens reference | `none`: method description and credit strings | `29ff70ea` |
 | `patientwords-traces` (outside the seven) | public render site | `none` read back. The engine copies renders into it and stamps its URLs | `96bd3cd6` (remote tip, not an owner anchor) |
 | `patient-words-causalab` (outside the seven) | intervention library, staged | `source_checkout` at a commit that is not set (`causalab_commit: null`); never run | `1db3b8ce` (remote tip, not an owner anchor) |
 | `patientwords-verify` (outside the seven) | private physician-rating app | `generated_files`: one ratings export, read from outside the checkout | not recorded (private) |
@@ -47,12 +49,19 @@ with no lens artifact, lens revision or model revision recorded. Model weights c
 40-hex revision per model (`HF_REVISIONS`, `scripts/logits_eval.py:131`), type `model_weights`. The manifest
 lists both under `external_services`.
 
-Heads of the seven were confirmed with `git rev-parse` on the local clones on 2026-11-10. `git ls-remote` on the
-same day showed four forks at their upstream's tip (ICA, interp-engine, Petri, J-Lens) and the J++ fork seven
-commits ahead of `safety-research/jpp_lens` and none behind (checked in the local clone, which holds full
-history). The numbers of upstream commits the sync brought in (55 for interp-engine, 13 for Petri) are
-owner-reported: the clones are depth 1, so they cannot be re-derived. The default branches of the two core
-repositories had moved past the recorded heads by the time of the check (`61b33f96`, `f1504ce9`).
+Heads of the two core repositories were confirmed with `git rev-parse` on the local clones on 2026-11-10. The five
+fork heads were confirmed on 2026-11-11, after the owner merged one README orientation note into each fork. Each
+merge added two commits: the note and its merge commit. No hand-written code, dependency or pin changed.
+`git ls-remote` on 2026-11-10 showed four forks at their upstream's tip (ICA, interp-engine, Petri, J-Lens). The
+J++ fork was seven commits ahead of `safety-research/jpp_lens` and none behind, checked that day in a local clone
+with full history. The two commits of 2026-11-11 raise the counts ahead to two and nine. On 2026-11-11
+`git ls-remote` returned the same upstream tip for J++, interp-engine and J-Lens, so those three stay none behind.
+It returned another tip for ICA (`9b7d1cbd`) and for Petri (`797c7c12` at 21:52 UTC, then `adf985b8` at 21:54
+UTC). For those two the commits behind were not counted, and the registry records `behind` as null. Their count
+ahead is from the 2026-11-10 tip: whether a new tip descends from it was not checked. The numbers of upstream
+commits the sync brought in (55 for interp-engine, 13 for Petri) are owner-reported: those two clones are shallow,
+so they cannot be re-derived. The default branches of the two core repositories had moved past the recorded heads
+by the time of the 2026-11-10 check (`61b33f96`, `f1504ce9`).
 
 ## 2. Each repository
 
@@ -94,10 +103,10 @@ Facts below were read in the engine or fork files for the manifest, or are marke
 ### patientwords-ica-lens-paper
 
 - **Purpose.** The ICA Lens paper repository around the installable library `icalens` 0.4.0. The paper is Sida Liu, Feijiang Han, Sarah Wiegreffe and Furong Huang, "Non-Gaussianity Reveals Interpretable Directions in Language Models", arXiv:2606.11722v2 (version 2 submitted 2026-10-19). VERIFIED (doc, ran): title, version, authors and date read on the arXiv abstract page on 2026-11-10 (record `arxiv.2606.11722v2` in `data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json`).
-- **Fork relationship.** Fork of `liusida/ica-lens-paper`; same commit as upstream; no owner commit. Project URLs and the model-framing registry URL still point upstream.
+- **Fork relationship.** Fork of `liusida/ica-lens-paper`. On 2026-11-10 the fork and the upstream were at the same tip, `aa3b95c9`. On 2026-11-11 the fork is two commits ahead of that tip: one README orientation note and the owner's merge commit for it, both of 2026-11-11. They change `README.md` only. On 2026-11-11 `git ls-remote` returned another upstream tip, `9b7d1cbd`. The commits behind were not counted. Whether the new tip descends from `aa3b95c9` was not checked. Project URLs and the model-framing registry URL still point upstream.
 - **Runtime role.** None in any engine lane. The adapter `scripts/experiments/adapters/ica.py` applies a saved basis with numpy and uses `icalens` only where it imports. It fits nothing.
 - **Licence.** MIT. `THIRD_PARTY_NOTICES.md` carries the FastICA_torch notice for `_fastica.py`; copied code must carry both.
-- **Maintenance.** Upstream authors; head dated 2026-11-10.
+- **Maintenance.** Upstream authors; the upstream commit the fork holds (`aa3b95c9`) is dated 2026-11-10.
 - **Entry points.** `icalens.ICALens` and `ActivationDataset`; the `icalens` CLI, whose fit and capture commands require CUDA.
 - **Formats.** ActivationDataset: `activations.json`, `samples.safetensors`, `layer_NN.safetensors`. Lens artifact: `icalens.json` plus per-layer safetensors. Site `resid_post` only; zero-based layers.
 - **Environment.** Python `>=3.10`; `transformers==5.14.1` exactly, equal to the engine's pin; `uv.lock`.
@@ -110,7 +119,7 @@ Facts below were read in the engine or fork files for the manifest, or are marke
 ### patient-words-jpp_lens
 
 - **Purpose.** J++ Lens fitting and evaluation, plus the owner's `src/lens_interop/`: verify a lens file by hash, check geometry, refuse transport when the fit identity is unknown.
-- **Fork relationship.** Fork of `safety-research/jpp_lens`; seven commits ahead (five owner commits of 2026-10-15, two merges), none behind. The whole delta is nine added files; no upstream file is modified (map, ran `git diff --stat`).
+- **Fork relationship.** Fork of `safety-research/jpp_lens`. It is nine commits ahead: five owner commits of 2026-10-15, two merges, and the README orientation note of 2026-11-11 with the owner's merge commit for it. It is none behind the upstream tip `d7efc0de`, read on 2026-11-10 and again on 2026-11-11. The whole delta is nine added files and one modified upstream file, `README.md` (`git diff --name-status` against `d7efc0de`, run 2026-11-11).
 - **Runtime role.** None in a measurement. `tests/manual/exploratory_bridge.py` imports `lens_interop` on synthetic tensors and needs torch.
 - **Licence.** Apache-2.0 with `NOTICE`: `src/jlens/` is vendored from `anthropics/jacobian-lens` at `581d3986`; the LRP rules are adapted from R-Lens.
 - **Maintenance.** Upstream authors for the method; the owner for `lens_interop`.
@@ -118,7 +127,7 @@ Facts below were read in the engine or fork files for the manifest, or are marke
 - **Formats.** Interchange manifest: `schemas/lens-interop-v1.schema.json` there. Lens files are `torch.save` archives loaded with `weights_only=True`.
 - **Environment.** Python `>=3.12`; every dependency pinned exactly, `transformers==5.14.1` among them.
 - **Tests and CI.** Two test modules under `src/lens_interop/tests/`; one skips without torch. No CI: there is no `.github` directory.
-- **Active versus historical.** `data/exploratory/method_sources.v1.json` records fork commit `93f02cd6` (2026-10-15), eight commits behind the head. It is a dated receipt and is not edited.
+- **Active versus historical.** `data/exploratory/method_sources.v1.json` records fork commit `93f02cd6` (2026-10-15), ten commits behind the head. It is a dated receipt and is not edited.
 - **Stable identifiers.** Artifact sha256; Hugging Face repository revision `e166deb5`; model and tokenizer revision of the fit, which are unknown for the released Qwen3-4B file.
 - **Publication boundary.** Nothing from it is published. The released artifact stays outside Git.
 - **Depends on.** The J-Lens reference (vendored); Hugging Face for released lens files.
@@ -126,7 +135,7 @@ Facts below were read in the engine or fork files for the manifest, or are marke
 ### patientwords-interp-engine
 
 - **Purpose.** Standardized capture, steering, lens and generation over Hugging Face models, with eager and vLLM backends.
-- **Fork relationship.** Fork of `decoderesearch/interp-engine`; same commit as upstream. The package directory is byte-identical to the PyPI 1.14.3 wheel (map, ran `diff -rq`).
+- **Fork relationship.** Fork of `decoderesearch/interp-engine`. It is two commits ahead of the upstream tip `2afe000d`, read on 2026-11-10 and again on 2026-11-11. The two commits are one README orientation note and the owner's merge commit for it, both of 2026-11-11. They change `README.md` and the generated `visualizer-web/knowledge/bundle.generated.ts` that embeds it. The package directory is byte-identical to the PyPI 1.14.3 wheel (map, ran `diff -rq` at `2afe000d`; the two later commits do not touch `interp_engine/`).
 - **Runtime role.** The engine's `mode: depth` and `mode: verify` install `interp-engine==1.5.1` from PyPI on Python 3.11, eager backend on CPU (`.github/workflows/logits_evaluation.yml:303-306`). The fork is not installed anywhere.
 - **Licence.** Apache-2.0; no NOTICE file.
 - **Maintenance.** Upstream, active (v1.14.3, 2026-10-27).
@@ -142,7 +151,7 @@ Facts below were read in the engine or fork files for the manifest, or are marke
 ### patientwords-inspect_petri
 
 - **Purpose.** Multi-turn audit harness on Inspect and Scout.
-- **Fork relationship.** Fork of `meridianlabs-ai/inspect_petri`; same commit as upstream.
+- **Fork relationship.** Fork of `meridianlabs-ai/inspect_petri`. On 2026-11-10 the fork and the upstream were at the same tip, `de5dad81`. On 2026-11-11 the fork is two commits ahead of that tip: one README orientation note and the owner's merge commit for it, both of 2026-11-11. They change `README.md` only. On 2026-11-11 `git ls-remote` returned another upstream tip: `797c7c12` at 21:52 UTC, then `adf985b8` at 21:54 UTC. The commits behind were not counted. Whether either tip descends from `de5dad81` was not checked.
 - **Runtime role.** The Petri lane installs every package in the lock with `==`, then the harness with `--no-deps` from git at the locked commit, then runs `verify-lock` (`.github/workflows/petri_audit.yml:426-443`). The engine supplies its own scripted controller and attaches no Petri scorer.
 - **Licence.** MIT; no NOTICE file.
 - **Maintenance.** Upstream, active (release 3.1.1).
@@ -158,7 +167,7 @@ Facts below were read in the engine or fork files for the manifest, or are marke
 ### jacobian-lens-patientwords
 
 - **Purpose.** Companion code for the Jacobian-lens paper. README: "Reference implementation. Not maintained and not accepting contributions."
-- **Fork relationship.** Fork of `anthropics/jacobian-lens`; one commit, identical to upstream.
+- **Fork relationship.** Fork of `anthropics/jacobian-lens`, whose one commit is `581d3986` (read on 2026-11-10 and again on 2026-11-11). The fork is two commits ahead of it: one README orientation note and the owner's merge commit for it, both of 2026-11-11. They change `README.md` only.
 - **Runtime role.** None. The engine never ran it. The commit string does not occur in the engine.
 - **Licence.** Apache-2.0; no NOTICE file; `data/` is synthetic and under the same licence.
 - **What the engine takes.** The method description and the authors' limitations (`docs/jlens_evaluation.md`) and the credit string in every lens summary (`scripts/jlens_readout.py:319-321`).
