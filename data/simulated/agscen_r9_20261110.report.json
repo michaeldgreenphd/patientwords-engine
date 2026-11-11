@@ -57,8 +57,26 @@
     "seed": 20261111,
     "unit": "case family",
     "assigned_utc": "2026-11-11",
-    "method": "python random.Random(seed); for right_care in (4, 3, 2): sort the family ids, rng.shuffle, first half discovery, next quarter validation, rest fresh_test",
+    "method": "python random.Random(seed); for right_care in (4, 3, 2), taken from strata: sort the family ids, rng.shuffle, first half discovery, next quarter validation, rest fresh_test",
     "assigned_before_any_measurement": true,
+    "strata": {
+      "r9-01": 4,
+      "r9-02": 4,
+      "r9-03": 4,
+      "r9-04": 4,
+      "r9-05": 4,
+      "r9-06": 4,
+      "r9-07": 4,
+      "r9-08": 4,
+      "r9-09": 3,
+      "r9-10": 3,
+      "r9-11": 3,
+      "r9-12": 3,
+      "r9-13": 2,
+      "r9-14": 2,
+      "r9-15": 2,
+      "r9-16": 2
+    },
     "splits": {
       "r9-06": "discovery",
       "r9-01": "discovery",
@@ -78,6 +96,7 @@
       "r9-16": "fresh_test"
     }
   },
+  "edits": "swap_spans is one enclosing stretch per pair, not one edit: a register swap, a paraphrase and a mixed-register wording each rewrite a clause and keep some of its words. differing_stretch is the stretch left after removing the common leading and trailing words; word_edit_regions counts the separate word-level edits inside it (difflib.SequenceMatcher, autojunk off). Equality of facts across a pair rests on the owner's read, not on these fields.",
   "excluded_by_owner": [],
   "retiered_by_owner": {},
   "generator": "hand-authored (Antigravity); no API call",

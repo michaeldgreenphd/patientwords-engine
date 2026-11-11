@@ -11,6 +11,7 @@ and the holdout seal.
 from __future__ import annotations
 
 import collections
+import difflib
 import importlib.util
 import json
 import random
@@ -83,6 +84,39 @@ def test_families_and_pair_kinds() -> None:
     assert report["excluded_by_owner"] == [] and report["cost_usd"] == 0.0 and "run_timestamp" not in report
 
 
+def _differing_stretch(top: str, bottom: str) -> tuple[str, str]:
+    """What is left of each side after removing the common leading and trailing words."""
+    a, b = top.split(), bottom.split()
+    i = 0
+    while i < min(len(a), len(b)) and a[i] == b[i]:
+        i += 1
+    j = 0
+    while j < min(len(a), len(b)) - i and a[len(a) - 1 - j] == b[len(b) - 1 - j]:
+        j += 1
+    return " ".join(a[i:len(a) - j]), " ".join(b[i:len(b) - j])
+
+
+def test_spans_are_derived_from_the_prompts_not_trusted() -> None:
+    """The stretch the two prompts differ in is recomputed here. A computed span must equal it; an author's span
+    must enclose it. One span is one enclosing stretch, not one edit: every kind rewrites a clause and keeps some
+    of its words, so each pair has several word-level edit regions, and the count is recorded per pair."""
+    for pair in _pairs():
+        gen, top, bottom = pair["generation"], pair["top_prompt"], pair["bottom_prompt"]
+        clin, pat = _differing_stretch(top, bottom)
+        assert clin and pat and gen["differing_stretch"] == {"clinical_span": clin, "patient_span": pat}, gen["id"]
+        spans = gen["swap_spans"]
+        if gen["swap_spans_source"].startswith("computed"):
+            assert gen["pair_kind"] in {"within_register_paraphrase", "syntax_only", "lexicon_only"}
+            assert spans == gen["differing_stretch"], gen["id"]
+        else:
+            assert gen["pair_kind"] in {"register", "changed_fact"} and gen["swap_spans_source"].startswith("author")
+            assert clin in spans["clinical_span"] and pat in spans["patient_span"], gen["id"]
+        regions = sum(op[0] != "equal" for op in difflib.SequenceMatcher(
+            a=top.split(), b=bottom.split(), autojunk=False).get_opcodes())
+        assert gen["word_edit_regions"] == regions >= 1, gen["id"]
+    assert "one enclosing stretch per pair, not one edit" in _report()["edits"]
+
+
 def test_each_declared_edit_turns_the_top_side_into_the_bottom_side() -> None:
     for pair in _pairs():
         gen, top, bottom = pair["generation"], pair["top_prompt"], pair["bottom_prompt"]
@@ -117,8 +151,10 @@ def test_the_split_is_the_seeded_assignment_recorded_before_measurement() -> Non
     assert record["seed"] == 20261111 and record["unit"] == "case family"
     assert record["assigned_before_any_measurement"] is True
     gens = [p["generation"] for p in _pairs()]
-    care = {g["family_id"]: g["tier_given"] for g in gens}
-    care["r9-14"] = 2                                   # pending a second read; assigned with the others
+    care = record["strata"]                             # every family's care level, the pending one included
+    assert len(care) == 16 and set(care) == {f"r9-{n:02d}" for n in range(1, 17)}
+    assert all(care[g["family_id"]] == g["tier_given"] for g in gens)
+    assert collections.Counter(care.values()) == {4: 8, 3: 4, 2: 4}
     rng = random.Random(record["seed"])
     expected: dict[str, str] = {}
     for level in (4, 3, 2):
