@@ -57,6 +57,33 @@ python scripts/export_frontend_simulated.py --frontend ../patientwords \
   could surprise you; the first publish after 2026-09-23 prunes about 235 orphans.
   A `refusing:` line means nothing was written. Fix the cause it names (for a
   sparse checkout, precondition 3) and re-run; it is not success-with-no-change.
+- **Published measurements (since 2026-11-11).** Before its first write, copy or
+  prune, the exporter compares what it would write with the payload in the site's HEAD
+  commit (`scripts/payload_dispositions.py`). A difference is a measured value that
+  changed at a published `(batch, batch_index, model)`, a published measurement that
+  is no longer there (a model gone from a row, a row gone), or a changed capability
+  label (`models_meta[].graphs`, `features`, `source_set`; `traced_by_model[].backend`).
+  New rows, new batches, a new model on existing rows, display order, joins, trace
+  links, render lists and the `summary` block are not differences. With a difference
+  that has no accepting owner disposition it prints one `REFUSED` line per difference
+  (identities, field names and numbers; no token or prompt text) and exits 1 with
+  `refusing: this export changes N published measurement(s) or capability label(s)`.
+  `--dry-run` does the same. There is no flag that skips it.
+  This refusal is not fixed in the engine and not retried. A difference passes only
+  when the committed record `data/results_policy/payload_dispositions.v1.json` holds an
+  entry for exactly it with `"disposition": "accept_candidate"`, `"decided_by": "owner"`
+  and a `decision_ref` naming the committed document that records the decision. You
+  do not write or change a disposition: the decision is the owner's. When it happens:
+  1. Stop the gallery payload for this cycle: do not run steps 2, 3b and 4. They are
+     steps of the same payload publish, and without the export they publish joins
+     computed from parts whose values the published payload does not hold.
+  2. Put the printed `REFUSED` lines in the digest and in `decisions_pending`, as they
+     are.
+  3. Continue with what does not depend on the export: step 3 and step 5 when their
+     own inputs landed, then steps 6, 6b, 7, 8, 8b and 9. When step 6b's catalogue is
+     the only thing that changed, that is the *Catalogue-only publish* below.
+  Lines marked `accepted` are differences the owner has disposed; report them in the
+  digest and continue the chain.
 
 **2. Urgency collector.**
 ```
@@ -227,6 +254,13 @@ the current snapshot of its membership, and a directory holding a file the index
 not list. It reads the committed policy whatever `PW_RESULTS_POLICY` says. It does not
 recompute the statistics (`--recomputed-statistics` records a comparison when the
 owner has recomputed `model_stats.json`). Never edit or delete a landed snapshot.
+It also refuses, with the same exit and one line per difference, when the gallery
+payload at the site's HEAD changes a published measurement or capability label since
+the superseded snapshot's site commit without an accepting owner disposition committed
+in the engine (step 1's rule, applied to the two committed payloads): a snapshot would
+otherwise record the changed file as a new sha256 with the change undecided. That is
+a `decisions_pending` item, not something to supersede past; undo the local site
+commit as the *Recovery* table says.
 
 **9d. Snapshot commit, local.** Commit the new snapshot file and
 `data/analysis_snapshots/index.json` in a second engine commit. Do not push.
@@ -243,7 +277,11 @@ snapshot is the current one of its membership and verifies; the engine commit it
 records is an ancestor of the engine HEAD; the site has no uncommitted change under
 `data/` or `modes/simulated/`; every file the snapshot records has the recorded sha256
 in the site's HEAD commit; every published statistics file this release changes
-(relative to the fetched `origin/main`) is recorded by the snapshot; and no changed
+(relative to the fetched `origin/main`) is recorded by the snapshot; the gallery
+payload at the site's HEAD changes no published measurement and no capability label
+relative to that base without an accepting owner disposition in the engine's HEAD
+commit (step 1's rule; it covers every writer of the payload, not only the exporter);
+and no changed
 data file is unclassified. An unclassified file is one that is in neither
 `STATISTICS_FILES` nor the commented lists of files a snapshot does not version; do
 not classify it yourself: put the `REFUSED:` line in `blockers` and stop. Report the
@@ -276,7 +314,9 @@ Exit 1 goes in `blockers` with its `REFUSED:` lines.
 ## Catalogue-only publish
 
 For a cycle whose only new results are parts outside the default analysis membership
-(precondition 4). Run, in order: step 6b, step 7, step 8, step 8b, then steps 9a, 9b,
+(precondition 4), and for a cycle in which step 1 refused over published measurements
+and nothing but the catalogue is left to publish. It does not run the exporter, so the
+published payload stays byte for byte as it is. Run, in order: step 6b, step 7, step 8, step 8b, then steps 9a, 9b,
 9e, 9f, 9g and 9h without `--record`. Nothing else. It needs no new snapshot: the
 statistics files do not change in such a cycle, because the collectors behind them
 read under `study-interim/1`, and the results catalogue is not versioned by a
@@ -294,6 +334,8 @@ record.
 
 | What failed | State it leaves | Continue | Undo |
 |---|---|---|---|
+| Step 1 refuses over published measurements or capability labels (`refusing: this export changes N ...`) | Nothing written, copied or pruned. Nothing committed. | Not by re-running: the differences need the owner's dispositions. Put the `REFUSED` lines in `decisions_pending`, skip steps 2, 3b and 4, and continue as step 1 says (the *Catalogue-only publish* when only the catalogue changed). | None needed. |
+| 9c `create` or 9e `check-release` refuses a published-measurement difference (a payload written by another route, or a disposition that is not committed) | Commits 9a and 9b are local. No snapshot file was written by the refused `create`. Nothing was pushed. | Put the lines in `decisions_pending` and `blockers`. Do not create a snapshot past it and do not push the site commit. | `git -C ../patientwords reset --hard origin/main` drops the local site commit. |
 | A gate stops the publish (step 7 errors, step 8b exit 1 or 2, an exporter's exit 2) | Nothing committed. The site working tree holds the chain's writes. | Fix the cause in the engine and run the chain again from step 1. | `git -C ../patientwords checkout -- data modes/simulated`, then `git -C ../patientwords clean -fd data modes/simulated` for new files. Leave the engine's ledger additions: they are true whether or not the publish completes. |
 | 9c `create` refuses (exit 2) | Commits 9a and 9b are local. No snapshot file was written. | Fix the cause the message names and run 9c again. | `git -C ../patientwords reset --hard origin/main` drops the local site commit. Nothing was published. |
 | 9c `create` is interrupted | Possibly a snapshot file the index does not list; `results_snapshot.py list` prints `NOT INDEXED`. | Remove that one file, then run 9c again. | The same removal. |
@@ -317,6 +359,10 @@ the snapshot's commit, 9e says so and names the remedy (`git fetch --deepen=<n>`
 - Never remove or soften the urgency-tier review label. It comes from
   `vocabulary_status` in the data (step 2), and only the vocabulary's approval changes it.
 - Never hand-edit an exported payload, invent a number, or patch past an exporter refusal.
+- Never write, change or remove a disposition in
+  `data/results_policy/payload_dispositions.v1.json`, never export into a copy of the
+  site and move the payload across, and never remove the site's payload to get past
+  step 1: a changed or removed published measurement is the owner's decision.
 - Never change depth-exporter pins or render-cap/PNG defaults without owner instruction.
 - Never let holdout phrase text reach any output or committed file.
 - Never run `scripts/publication_release.py --release` from this chain while

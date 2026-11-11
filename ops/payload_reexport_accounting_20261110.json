@@ -1606,5 +1606,318 @@
    "base_d8d0855d_theirs_origin_main": "git merge-file exit 1 (one conflict) at this position and at the position one line earlier: origin/main (e7692171, and the remote head 5b3a5b5b) already holds the 2026-11-10 row, which d8d0855d does not",
    "base_09d726eb_theirs_origin_main": "git merge-file exit 0 at this position; 09d726eb is git merge-base HEAD origin/main"
   }
+ },
+ "addendum_20261111": {
+  "what_this_is": "Two additions of 2026-11-11, made without a new full-chain regeneration. Nothing above this key was changed. Nothing was published and no measurement was made.",
+  "engine_commit": "930bd6bc20b9b9b1386af7e89b722582cf872b73",
+  "engine_note": "plus the uncommitted change that adds scripts/payload_dispositions.py and the exporter's label rule",
+  "site_commit": "2bf3c1ef81eb3c02ad07f170c2ff8663333b4e66",
+  "site_payload_sha256": "b75735997140e1947f3af476c770e6d071d06c30521d0dd0aa4b1d773a2a918d",
+  "label_rule": {
+   "change": "scripts/export_frontend_simulated.py sets a model's traced_by_model backend, and through it models_meta graphs, from the backend of the part each exported row was read from: logits when any exported row is a logits row (decision D3). No measured value is computed differently.",
+   "qwen3_4b_rows_by_backend": {
+    "hosted": 2,
+    "logits": 1248
+   },
+   "exporter_writes_for_qwen3_4b": {
+    "models_meta": {
+     "id": "qwen3-4b",
+     "label": "Qwen3 4B",
+     "graph_model": "qwen3-4b",
+     "source_set": null,
+     "features": false,
+     "attention_replacement": false,
+     "graphs": false,
+     "available": true,
+     "n_traced": 1250,
+     "default": false
+    },
+    "traced_by_model": {
+     "graph_model": "qwen3-4b",
+     "mode": "2panel",
+     "backend": "logits"
+    }
+   },
+   "paths_of_the_2026-11-10_diff_that_no_longer_differ": [
+    "/models_meta/2/graphs",
+    "/traced_by_model/qwen3-4b/backend"
+   ],
+   "differences_reported_by_scripts_payload_dispositions": {
+    "row": 13,
+    "metadata": 0
+   },
+   "verified_by": "one export of the 27 published stamps and the 4 published models into an empty scratch directory, compared with the payload in the site's HEAD commit; and the exporter's --dry-run against the site checkout, which refused with the same 13 lines and wrote nothing",
+   "exporter_is_deterministic": "two exports of the same inputs gave byte-identical payloads"
+  },
+  "d4_choices": {
+   "method": "scripts/urgency_shift.py run on 2026-11-11 gives the collector rows (rows 1 and 2 from the hosted part, the 11 legacy rows from the payload). The published-value rows for (b) are the rows the same script computes from the published payload when no engine part is read. Each state replaces or removes whole collector rows in a scratch copy; scripts/paired_stats_rigor.py then runs with --site '' and its defaults. No committed file was written.",
+   "seed": 7,
+   "boot": 5000,
+   "collector_rows_sha256": "5a8364b1f02302ee17b4ecb81f37fda8cbaa6589a140c31e0edcb8a7bf918c0c",
+   "validation": "the state b_logits_both__keep11 equals the published data/model_stats.json in every top-level key except _provenance, source and the keys only the site copy carries",
+   "other_nine_models": "identical to the published file in every state",
+   "states_qwen3_4b": {
+    "published_model_stats": {
+     "choice": "published data/model_stats.json (2026-08-29)",
+     "n_rows": 1152,
+     "n_unique_phrases": 1121,
+     "mean_penalty": -0.0466,
+     "ci95": [
+      -0.0595,
+      -0.0334
+     ],
+     "ci95_simultaneous": [
+      -0.0661,
+      -0.028
+     ],
+     "n_flips": 497,
+     "downgrades": 65,
+     "upgrades": 14,
+     "downgrade_rate": 0.1308,
+     "sign_test_p_raw": 5.194941262584352e-09,
+     "sign_test_p_bh": 2.0779765050337407e-08
+    },
+    "a_hosted_both__drop11": {
+     "choice": "(a) rows 1 and 2 at the hosted values",
+     "eleven_legacy_rows": "dropped (D1 = drop)",
+     "n_rows": 1141,
+     "n_unique_phrases": 1110,
+     "mean_penalty": -0.047,
+     "ci95": [
+      -0.0605,
+      -0.034
+     ],
+     "ci95_simultaneous": [
+      -0.066,
+      -0.0287
+     ],
+     "n_flips": 491,
+     "downgrades": 65,
+     "upgrades": 14,
+     "downgrade_rate": 0.1324,
+     "sign_test_p_raw": 5.194941262584352e-09,
+     "sign_test_p_bh": 2.0779765050337407e-08
+    },
+    "a_hosted_both__keep11": {
+     "choice": "(a) rows 1 and 2 at the hosted values",
+     "eleven_legacy_rows": "kept (D1 open)",
+     "n_rows": 1152,
+     "n_unique_phrases": 1121,
+     "mean_penalty": -0.0465,
+     "ci95": [
+      -0.0594,
+      -0.0333
+     ],
+     "ci95_simultaneous": [
+      -0.066,
+      -0.0279
+     ],
+     "n_flips": 498,
+     "downgrades": 65,
+     "upgrades": 14,
+     "downgrade_rate": 0.1305,
+     "sign_test_p_raw": 5.194941262584352e-09,
+     "sign_test_p_bh": 2.0779765050337407e-08
+    },
+    "b1_row1_logits_row2_hosted__drop11": {
+     "choice": "(b) for row 1 only; row 2 at the hosted value",
+     "eleven_legacy_rows": "dropped (D1 = drop)",
+     "n_rows": 1141,
+     "n_unique_phrases": 1110,
+     "mean_penalty": -0.047,
+     "ci95": [
+      -0.0605,
+      -0.0341
+     ],
+     "ci95_simultaneous": [
+      -0.066,
+      -0.0287
+     ],
+     "n_flips": 491,
+     "downgrades": 65,
+     "upgrades": 14,
+     "downgrade_rate": 0.1324,
+     "sign_test_p_raw": 5.194941262584352e-09,
+     "sign_test_p_bh": 2.0779765050337407e-08
+    },
+    "b1_row1_logits_row2_hosted__keep11": {
+     "choice": "(b) for row 1 only; row 2 at the hosted value",
+     "eleven_legacy_rows": "kept (D1 open)",
+     "n_rows": 1152,
+     "n_unique_phrases": 1121,
+     "mean_penalty": -0.0465,
+     "ci95": [
+      -0.0594,
+      -0.0333
+     ],
+     "ci95_simultaneous": [
+      -0.066,
+      -0.028
+     ],
+     "n_flips": 498,
+     "downgrades": 65,
+     "upgrades": 14,
+     "downgrade_rate": 0.1305,
+     "sign_test_p_raw": 5.194941262584352e-09,
+     "sign_test_p_bh": 2.0779765050337407e-08
+    },
+    "b_logits_both__drop11": {
+     "choice": "(b) rows 1 and 2 at the published logits-lane values",
+     "eleven_legacy_rows": "dropped (D1 = drop)",
+     "n_rows": 1141,
+     "n_unique_phrases": 1110,
+     "mean_penalty": -0.0471,
+     "ci95": [
+      -0.0607,
+      -0.0342
+     ],
+     "ci95_simultaneous": [
+      -0.066,
+      -0.0289
+     ],
+     "n_flips": 490,
+     "downgrades": 65,
+     "upgrades": 14,
+     "downgrade_rate": 0.1327,
+     "sign_test_p_raw": 5.194941262584352e-09,
+     "sign_test_p_bh": 2.0779765050337407e-08
+    },
+    "b_logits_both__keep11": {
+     "choice": "(b) rows 1 and 2 at the published logits-lane values",
+     "eleven_legacy_rows": "kept (D1 open)",
+     "n_rows": 1152,
+     "n_unique_phrases": 1121,
+     "mean_penalty": -0.0466,
+     "ci95": [
+      -0.0595,
+      -0.0334
+     ],
+     "ci95_simultaneous": [
+      -0.0661,
+      -0.028
+     ],
+     "n_flips": 497,
+     "downgrades": 65,
+     "upgrades": 14,
+     "downgrade_rate": 0.1308,
+     "sign_test_p_raw": 5.194941262584352e-09,
+     "sign_test_p_bh": 2.0779765050337407e-08
+    },
+    "c2_row1_absent_row2_logits__drop11": {
+     "choice": "(c) row 1 not measured; row 2 at the published logits-lane value",
+     "eleven_legacy_rows": "dropped (D1 = drop)",
+     "n_rows": 1140,
+     "n_unique_phrases": 1109,
+     "mean_penalty": -0.0472,
+     "ci95": [
+      -0.0605,
+      -0.0336
+     ],
+     "ci95_simultaneous": [
+      -0.0655,
+      -0.0283
+     ],
+     "n_flips": 490,
+     "downgrades": 65,
+     "upgrades": 14,
+     "downgrade_rate": 0.1327,
+     "sign_test_p_raw": 5.194941262584352e-09,
+     "sign_test_p_bh": 2.0779765050337407e-08
+    },
+    "c2_row1_absent_row2_logits__keep11": {
+     "choice": "(c) row 1 not measured; row 2 at the published logits-lane value",
+     "eleven_legacy_rows": "kept (D1 open)",
+     "n_rows": 1151,
+     "n_unique_phrases": 1120,
+     "mean_penalty": -0.0466,
+     "ci95": [
+      -0.0598,
+      -0.0336
+     ],
+     "ci95_simultaneous": [
+      -0.0654,
+      -0.0285
+     ],
+     "n_flips": 497,
+     "downgrades": 65,
+     "upgrades": 14,
+     "downgrade_rate": 0.1308,
+     "sign_test_p_raw": 5.194941262584352e-09,
+     "sign_test_p_bh": 2.0779765050337407e-08
+    },
+    "c_row1_absent_row2_hosted__drop11": {
+     "choice": "(c) row 1 not measured; row 2 at the hosted value",
+     "eleven_legacy_rows": "dropped (D1 = drop)",
+     "n_rows": 1140,
+     "n_unique_phrases": 1109,
+     "mean_penalty": -0.0471,
+     "ci95": [
+      -0.0604,
+      -0.0336
+     ],
+     "ci95_simultaneous": [
+      -0.0651,
+      -0.0282
+     ],
+     "n_flips": 491,
+     "downgrades": 65,
+     "upgrades": 14,
+     "downgrade_rate": 0.1324,
+     "sign_test_p_raw": 5.194941262584352e-09,
+     "sign_test_p_bh": 2.0779765050337407e-08
+    },
+    "c_row1_absent_row2_hosted__keep11": {
+     "choice": "(c) row 1 not measured; row 2 at the hosted value",
+     "eleven_legacy_rows": "kept (D1 open)",
+     "n_rows": 1151,
+     "n_unique_phrases": 1120,
+     "mean_penalty": -0.0465,
+     "ci95": [
+      -0.0597,
+      -0.0336
+     ],
+     "ci95_simultaneous": [
+      -0.0654,
+      -0.0285
+     ],
+     "n_flips": 498,
+     "downgrades": 65,
+     "upgrades": 14,
+     "downgrade_rate": 0.1305,
+     "sign_test_p_raw": 5.194941262584352e-09,
+     "sign_test_p_bh": 2.0779765050337407e-08
+    }
+   },
+   "target_reads": {
+    "audit": "scripts/audit_target_reads.py over the 1 trace root holding the qwen3-4b study-batch directories only (1757 results), 2026-11-11, in a scratch copy of those summaries",
+    "hosted_part": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_01.json",
+    "hosted_part_results_with_a_target_read_record": 0,
+    "row_1": {
+     "fields_differing_from_the_published_row": [
+      "target_token",
+      "prob_clinical",
+      "prob_patient"
+     ],
+     "wordpiece_read_of_a_token_the_model_returns_whole": true,
+     "side_findings": false,
+     "published_target_token_chars": 8,
+     "hosted_target_token_chars": 5
+    },
+    "row_2": {
+     "fields_differing_from_the_published_row": [
+      "prob_clinical",
+      "prob_patient"
+     ],
+     "wordpiece_read_of_a_token_the_model_returns_whole": false,
+     "side_findings": false,
+     "same_target_token_in_both_lanes": true,
+     "abs_difference_between_backends": {
+      "prob_clinical": 0.2059,
+      "prob_patient": 0.0774
+     }
+    },
+    "note": "the full-tree audit refuses today (10 hand-authored agscen parts carry a target_read block without a patient record), so the compact file data/audits/target_reads_20261007.json was not regenerated; it holds the count published_stale: 2 and not the keys"
+   }
+  }
  }
 }

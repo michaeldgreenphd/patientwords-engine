@@ -248,7 +248,29 @@ new analysis snapshot whenever any published statistics file changed
 `python scripts/results_snapshot.py check-release --site ../patientwords`
 (exit 0 required), the engine push, the site push, then
 `check-release --site ../patientwords --published`. A catalogue-only publish
-needs no new snapshot and still runs both checks. When nothing landed, skip this
+needs no new snapshot and still runs both checks.
+
+**A refusal over published measurements (2026-11-11) is not a failed cycle.**
+The exporter (the skill's step 1) compares what it would write with the payload
+the site's HEAD commit holds. It refuses, before writing, copying or pruning
+anything, when the export would change a measured value at a published
+`(batch, batch_index, model)`, drop a published measurement, or change a
+model's capability label, unless the owner's disposition for exactly that
+difference is committed in `data/results_policy/payload_dispositions.v1.json`.
+It prints one `REFUSED` line per difference (identities, field names and
+numbers, never phrase text) and ends with `refusing: this export changes N
+published measurement(s) or capability label(s)`. New rows, new batches and
+new models are not differences and are published as before.
+`results_snapshot.py create` and `check-release` apply the same rule to the
+committed site, so no other route publishes such a change either. When the
+exporter refuses this way: do not re-run it, do not run the skill's steps 2,
+3b and 4, and never write a disposition (it is the owner's decision). Copy the
+`REFUSED` lines into the digest and `decisions_pending`. Then publish what does
+not depend on the export, as the skill's step 1 lists: its catalogue-only chain
+for newly landed parts, and the skill's steps 3 and 5 when their own inputs
+landed. The published payload stays as it is until the owner decides.
+
+When nothing landed, skip this
 section entirely — do not republish unchanged data. The site checkout is
 `main`, which GitHub Pages serves: a data-payload push there is a live
 publish, so the gates above are the last check before the public sees

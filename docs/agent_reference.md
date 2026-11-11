@@ -174,6 +174,12 @@ them: add the skip before any lens fire on such a set. A published statistic cha
 snapshot (`scripts/results_snapshot.py`); `scripts/results_snapshot.py check-release` must exit 0 before a
 publish pushes anything, and `check-release --published` is run after the site push; advancing the study pin is `scripts/publication_release.py
 --release`, refused in the Routine while the policy file's `analysis_pin.auto_advance` is false.
+The exporter labels a model's `traced_by_model` backend, and with it `graphs`, from its exported rows:
+`logits` when any exported row was read from a logits part. Before its first write it refuses an export that
+changes or removes a published measurement or changes a capability label without the owner's committed
+disposition (`scripts/payload_dispositions.py`, `data/results_policy/payload_dispositions.v1.json`); a site
+directory that is not a git checkout is reported and not enforced. `results_snapshot.py create` and
+`check-release` apply the same rule to the committed site.
 `scripts/publication_hold.py` is the import path older callers use and holds no rule.
 
 **Publishing (`scripts/export_frontend_simulated.py`).** Merges every model's trace dir per

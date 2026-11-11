@@ -9,6 +9,9 @@ temporary directory and pin:
   site data, recorded bytes that differ at the site's HEAD commit);
 * the coverage rule: a changed published statistics file the snapshot does not record, and a changed data
   file that nobody classified, are refused; a catalogue-only publish passes without a new snapshot;
+* the published-measurement rule: ``create`` refuses, and the check before the pushes refuses, a gallery
+  payload that changes or removes a published measurement or flips a capability label without the owner's
+  committed disposition (scripts/payload_dispositions.py); new rows, models and batches pass;
 * what a superseding snapshot records about the change, read from the two site commits;
 * the difference between a snapshot that was created and one that was published, without editing the
   snapshot file;
@@ -31,6 +34,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "scripts"))
 
+import payload_dispositions as pd  # noqa: E402
 import results_policy as rp  # noqa: E402
 import results_snapshot as snap  # noqa: E402
 import tierb_split  # noqa: E402
@@ -248,6 +252,163 @@ def test_a_catalogue_only_publish_passes_without_a_new_snapshot(repos):
     assert sorted(c["path"] for c in report["changed"]["outside_snapshot"]) == [
         "data/results_catalogue/index.json", "data/results_catalogue/rows/x.json"]
     assert "evolving public record" in report["changed"]["outside_snapshot"][0]["reason"]
+    differences = report["payload_differences"]                     # the payload did not change: nothing to dispose
+    assert differences["compared"] is True and differences["differences"] == 0 and differences["refused"] == []
+
+
+# ---------------------------------------------------------------- published measurements and capability labels
+
+def _measured(p_clinical: float = 0.4, p_patient: float = 0.2) -> dict:
+    """One model object with the thirteen measured fields; tokens are placeholders."""
+    return {"prob_clinical": p_clinical, "prob_patient": p_patient,
+            "language_penalty": round(p_patient - p_clinical, 4), "anchor_fallback": False,
+            "top_clinical": ["zqalpha", p_clinical], "top_patient": ["zqbeta", 0.3],
+            "spread_clinical": [["zqalpha", p_clinical]], "spread_patient": [["zqbeta", 0.3]],
+            "target_token": "zqalpha", "flipped": True, "screening": None, "circuit_diff": None,
+            "clinical_mass": None}
+
+
+def _gallery(rows: dict[int, dict], n_phrases: int = 10, graphs: bool = False, batch: str = BATCH) -> dict:
+    return {"batches": [batch],
+            "scenarios": [{"index": i, "batch": batch, "batch_index": i, "models": models}
+                          for i, models in sorted(rows.items())],
+            "models_meta": [{"id": "gemma-2-2b", "graphs": True, "n_traced": len(rows)},
+                            {"id": "qwen3-4b", "graphs": graphs, "n_traced": len(rows)}],
+            "traced_by_model": {"qwen3-4b": {"backend": "hosted" if graphs else "logits"}},
+            "summary": {"model": "gemma-2-2b",
+                        "penalty": {"population": "public_payload", "n_phrases": n_phrases,
+                                    "mean_phrase_deduped": -0.05}}}
+
+
+def _both(qwen_clinical: float = 0.5) -> dict[int, dict]:
+    return {1: {"gemma-2-2b": _measured(), "qwen3-4b": _measured(qwen_clinical, 0.1)},
+            2: {"gemma-2-2b": _measured(0.3, 0.3), "qwen3-4b": _measured(0.6, 0.2)}}
+
+
+def _publish_gallery(engine: Path, site: Path) -> dict:
+    """The site's HEAD and remote hold a gallery payload with measured rows, recorded by a published snapshot."""
+    _write(site / PAYLOAD, _gallery(_both()))
+    _commit_all(site, "gallery")
+    return _published(engine, site)
+
+
+def _record(engine: Path, entries: list[dict], commit: bool = True) -> None:
+    _write(engine / pd.RECORD_REL, {"schema": pd.SCHEMA, "entries": entries})
+    if commit:
+        _commit_all(engine, "disposition record")
+
+
+def _accept(difference: dict, **over) -> dict:
+    return {**pd.pending_entry(difference), "disposition": "accept_candidate", "decided_by": "owner",
+            "decision_ref": "docs/decision.md#row-1", **over}
+
+
+def test_a_changed_published_measurement_is_refused_by_create_and_by_the_release_check(repos, capsys):
+    """A snapshot would record the changed payload as a new sha256. Neither it nor the pushes go ahead until
+    the owner's disposition for exactly this change is committed in the engine."""
+    engine, site = repos
+    _publish_gallery(engine, site)
+    before, after = _gallery(_both()), _gallery(_both(qwen_clinical=0.55), n_phrases=9)
+    _write(site / PAYLOAD, after)
+    _commit_all(site, "re-export with a changed row")
+    [difference] = pd.scientific_differences(before, after)
+    identity = f"({BATCH}, 1, qwen3-4b) values_changed: prob_clinical 0.5 -> 0.55"
+
+    def refused(status: str) -> None:
+        with pytest.raises(snap.SnapshotError, match="without an accepting owner disposition") as err:
+            _snapshot(engine, site, "study-interim-20200102", supersedes="study-interim-20200101")
+        assert identity in str(err.value) and f"[{status}:" in str(err.value)
+        assert snap.unindexed_files(engine) == []                   # nothing was written
+        assert snap.load_index(engine)["current"] == {rp.STUDY_INTERIM: "study-interim-20200101"}
+        report = snap.check_release(engine, site)
+        assert report["ok"] is False and report["payload_differences"]["differences"] == 1
+        [line] = [p for p in report["problems"] if "published measurement or capability label" in p]
+        assert identity in line and f"[{status}:" in line and "zq" not in line
+
+    refused("no_disposition")
+    assert snap.main(["--engine", str(engine), "check-release", "--site", str(site)]) == 1
+    out = capsys.readouterr().out
+    assert "REFUSED: the release changes a published measurement or capability label" in out and identity in out
+    _record(engine, [pd.pending_entry(difference)])
+    refused("pending")
+    _record(engine, [_accept(difference)])
+    refused("invalid_entry")                                         # docs/decision.md is not a committed file
+    _write(engine / "docs" / "decision.md", "the owner accepts the re-measured row 1")
+    wrong = _accept(difference)
+    wrong["candidate"] = {**wrong["candidate"], "values": {**wrong["candidate"]["values"], "prob_clinical": 0.56}}
+    _record(engine, [wrong])
+    refused("values_do_not_match")
+    _record(engine, [pd.pending_entry(difference)])
+    _record(engine, [_accept(difference)], commit=False)             # edited, not committed: HEAD still says pending
+    refused("pending")
+    _commit_all(engine, "the owner's disposition")
+    doc = _snapshot(engine, site, "study-interim-20200102", supersedes="study-interim-20200101")
+    recorded = doc["outputs"]["changed_since_superseded"]["payload_measurement_differences"]
+    assert recorded["differences"] == 1 and recorded["record"] == pd.RECORD_REL
+    assert identity in recorded["accepted_by_owner_disposition"][0]
+    report = snap.check_release(engine, site)
+    assert report["ok"] is True, report["problems"]
+    assert snap.main(["--engine", str(engine), "check-release", "--site", str(site)]) == 0
+    out = capsys.readouterr().out
+    assert "this release changes: 1 (1 accepted by an owner disposition" in out and f"accepted: {identity}" in out
+
+
+def test_a_removed_model_a_removed_row_and_a_capability_label_flip_are_refused(repos):
+    engine, site = repos
+    _publish_gallery(engine, site)
+    rows = _both()
+    del rows[1]["qwen3-4b"]                                          # the model leaves row 1
+    del rows[2]                                                      # row 2 leaves the payload
+    _write(site / PAYLOAD, _gallery(rows, graphs=True))              # and qwen3-4b is now labelled as having graphs
+    _commit_all(site, "re-export")
+    with pytest.raises(snap.SnapshotError, match="changes 5 published measurement"):
+        _snapshot(engine, site, "study-interim-20200102", supersedes="study-interim-20200101")
+    problems = _problems(snap.check_release(engine, site))
+    for expected in (f"({BATCH}, 1, qwen3-4b) model_removed", f"({BATCH}, 2, gemma-2-2b) row_removed",
+                     f"({BATCH}, 2, qwen3-4b) row_removed", "models_meta.qwen3-4b.graphs: false -> true",
+                     "traced_by_model.qwen3-4b.backend: logits -> hosted"):
+        assert expected in problems, expected
+    # a payload that is gone is every measurement gone
+    _git(site, "rm", "-q", PAYLOAD)
+    _commit_all(site, "payload removed")
+    assert "every published measurement would be removed" in _problems(snap.check_release(engine, site))
+
+
+def test_new_rows_a_new_model_a_new_batch_and_a_restamped_summary_need_no_disposition(repos):
+    engine, site = repos
+    _publish_gallery(engine, site)
+    rows = _both()
+    rows[1]["olmo-2-1b"] = _measured(0.7, 0.6)                       # a new model on a published row
+    rows[3] = {"gemma-2-2b": _measured(0.2, 0.1)}                    # a new row
+    after = _gallery(rows, n_phrases=7)                              # the summary block restamped
+    after["scenarios"].append({"index": 9, "batch": "pairs_20200102T000000Z", "batch_index": 1,
+                               "models": {"gemma-2-2b": _measured()}})          # a new batch
+    after["scenarios"][0]["index"] = 5                               # display order
+    after["scenarios"][0]["models"]["gemma-2-2b"]["urgency"] = {"flip_class": "downgrade"}   # a later step's join
+    after["models_meta"].append({"id": "olmo-2-1b", "graphs": True, "n_traced": 1})
+    _write(site / PAYLOAD, after)
+    _commit_all(site, "re-export with additions")
+    doc = _snapshot(engine, site, "study-interim-20200102", supersedes="study-interim-20200101")
+    recorded = doc["outputs"]["changed_since_superseded"]["payload_measurement_differences"]
+    assert recorded["differences"] == 0 and recorded["accepted_by_owner_disposition"] == []
+    report = snap.check_release(engine, site)
+    assert report["ok"] is True, report["problems"]
+    assert report["payload_differences"]["differences"] == 0 and report["changed"]["statistics"] == [PAYLOAD]
+
+
+def test_an_unreadable_payload_or_record_is_a_refusal_not_a_pass(repos):
+    engine, site = repos
+    _publish_gallery(engine, site)
+    (site / PAYLOAD).write_text("{truncated", encoding="utf-8")
+    _commit_all(site, "a truncated payload")
+    assert "cannot be compared with what was published" in _problems(snap.check_release(engine, site))
+    _write(site / PAYLOAD, _gallery(_both(qwen_clinical=0.55)))
+    _commit_all(site, "re-export")
+    (engine / pd.RECORD_REL).parent.mkdir(parents=True, exist_ok=True)
+    (engine / pd.RECORD_REL).write_text("{not a record", encoding="utf-8")
+    _commit_all(engine, "a damaged record")
+    problems = _problems(snap.check_release(engine, site))
+    assert "cannot be compared with what was published" in problems and "is not JSON" in problems
 
 
 def test_uncommitted_engine_inputs_and_an_uncommitted_snapshot_are_refused(repos):

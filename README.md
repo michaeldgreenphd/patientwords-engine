@@ -489,6 +489,12 @@ MB of HTML and PNG, so it is bundled and attached to a **GitHub Release** on
 this engine repo instead of bloating the site or git. The export prints a
 ready-to-fire archive trigger whenever a publish exceeds 100 scenarios.
 
+Publish only through `.claude/skills/publish-site-data/SKILL.md`: `--stamps` must list every
+published stamp, and since 2026-11-11 the exporter refuses an export that drops or changes
+published measurements without the owner's recorded disposition
+(`scripts/payload_dispositions.py`). The command below shows the flags; run as written against
+the site checkout it is refused, because it would remove the other published stamps' rows.
+
 ```bash
 # demo: numbers for all, interactive renders for the top 200 (site stays light)
 python scripts/export_frontend_simulated.py --frontend ../patientwords \

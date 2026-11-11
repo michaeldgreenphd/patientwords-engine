@@ -7,6 +7,12 @@ and the site at `13ece51` (published payload sha256 `5bcd3eac…`). The machine-
 record is `ops/payload_reexport_accounting_20261110.json`. No stimulus text appears here
 or there; rows are named by `(batch, batch_index)`.
 
+Updated 2026-11-11, with nothing published and no measurement made: sections 2 to 6 stand
+as the record of the 2026-11-10 regeneration. Section 4.4 has a dated note on the label
+rule, section 7 says what closed the risk it named, section 8 is the decision record, and
+sections 9 to 11 name the check. The numbers added that day are in the accounting file
+under `addendum_20261111`.
+
 ## 1. Answer
 
 The exporter cannot publish the summary correction alone. `scripts/export_frontend_simulated.py`
@@ -241,6 +247,16 @@ describe `qwen3-4b` as a model with hosted attribution graphs and stop marking i
 Authorisation: none applies; this is a side effect, and the result misdescribes 1,248
 rows. Decision D3. It is not caused by the summary correction.
 
+Note of 2026-11-11: the exporter no longer reads the label from the first stamp's
+directory. It counts, per model, the backend of the part each exported row was read
+from, and states "logits" when any exported row is a logits row
+(`model_backend` in `scripts/export_frontend_simulated.py`). Verified with one export of
+the 27 published stamps into an empty scratch directory: `qwen3-4b` has 2 hosted rows and
+1,248 logits rows, `traced_by_model.qwen3-4b` is `{"graph_model": "qwen3-4b", "mode":
+"2panel", "backend": "logits"}` and `models_meta` has `graphs: false`, both as published.
+The two metadata paths of section 2 no longer differ. No measured value is computed
+differently.
+
 ## 5. Expanded analysis population
 
 Not part of a re-export. It happens only through
@@ -273,7 +289,8 @@ Stated once, as a list:
 3. Through 2, the published statistics lose 11 rows: `qwen3-4b` 1,121 → 1,110 unique
    phrases once `data/model_stats.json` is regenerated; `urgency_meta` and site
    `data/urgency_shift.json` change at once.
-4. `qwen3-4b` is labelled as a graph model (`graphs: true`, backend "hosted").
+4. `qwen3-4b` is labelled as a graph model (`graphs: true`, backend "hosted"). This item
+   no longer happens with the exporter's label rule of 2026-11-11 (section 4.4, note).
 5. Site `data/urgency_shift.json` also gains the `drift_sentinel_20261106` rows.
 6. 235 unlisted render files are deleted from the site.
 7. A new run stamp in `traces_site._provenance`.
@@ -312,8 +329,8 @@ under `study-interim/1` with the pin unchanged would contain:
 - site `data/urgency_shift.json` from the same collector run;
 - site `data/model_stats.json` regenerated from the same collector output (decision D2);
 - the render prune;
-- `qwen3-4b` still described as "next-token only", through an exporter change made and
-  reviewed before the export (decision D3);
+- `qwen3-4b` still described as "next-token only", through the exporter's label rule of
+  2026-11-11 (decision D3; section 4.4, note);
 - its own superseding snapshot, created after the local commits and before any push, as
   the publish skill's step 9 orders.
 
@@ -327,20 +344,121 @@ Regenerating `data/model_stats.json` in the same release keeps the three statist
 files consistent with one collector output; left alone it would state 1,121 phrases
 computed partly from rows no input holds.
 
-**A risk that exists today, whatever is decided.** The publish chain runs the full
-exporter. A routine full-chain publish before the owner decides D1 to D4 makes the
-changes of section 6 by default, without a decision. Until the decisions are recorded,
-a cycle that would publish site data should stop at the exporter's dry run and put the
-section 6 list in `decisions_pending`.
+**The risk named here on 2026-11-10 is closed by a check, not by this note.** On
+2026-11-10 a routine full-chain publish would have made the changes of section 6 by
+default, with no decision. Since 2026-11-11 three places refuse them
+(`scripts/payload_dispositions.py` is the one definition all three use):
 
-## 8. Owner decisions
+- `scripts/export_frontend_simulated.py` compares what it would write with the payload
+  in the site's HEAD commit and refuses before its first write, copy or prune. A dry run
+  refuses the same way.
+- `scripts/results_snapshot.py create` refuses to record a payload that differs this way
+  from the superseded snapshot's site commit.
+- `scripts/results_snapshot.py check-release` prints one `REFUSED:` line per difference
+  between the site's HEAD and its base and exits 1, whichever tool wrote the payload.
 
-| | Decision | Exact change | Consequence |
-|---|---|---|---|
-| D1 | Drop the 11 legacy `qwen3-4b` rows | Run the re-export; set the 11 entries of `data/results_policy/legacy_payload_rows.v1.json` to `"state": "retired"` with `retired_by` naming the new snapshot | `qwen3-4b`: rows 1,152 → 1,141, unique phrases 1,121 → 1,110, mean penalty -0.0466 → -0.0470, flips 497 → 491, downgrade rate 0.1308 → 0.1324; downgrades / upgrades 65 / 14 and the sign test unchanged; payload `n_traced` 1261 → 1250. Alternative: `scripts/publication_release.py --release --models qwen3-4b` (15 parts, 317 rows; section 5), which is an expanded population and replaces the 11 values with the 2026-10-31 ones |
-| D2 | Regenerate site `data/model_stats.json` in the same release | After the collector step: `python scripts/paired_stats_rigor.py --rows urgency_shift.json --site ../patientwords` (seed 7, 5,000 resamples, the defaults) | The file states the third column of the table in 4.3 and a new provenance stamp; the command also rewrites the engine's `paired_stats_rigor.json`. Without it the file keeps the 2026-08-29 values and the next snapshot's comparison lists the differences |
-| D3 | Keep `qwen3-4b` described as next-token only | A reviewed change to `scripts/export_frontend_simulated.py` before the export: set a model's `traced_by_model` backend, and with it `graphs`, from all parts read for the model over the exported stamps, "logits" when any of them is a logits part, instead of from the first stamp's directory. A regression test with a first-stamp directory that holds a hosted part and an unread logits part | `models_meta.qwen3-4b.graphs` stays false and `traced_by_model.qwen3-4b.backend` stays "logits"; the payload diff of section 2 loses 2 paths. The rule gives the published `graphs` value for all four payload models (checked against the parts on disk: `gemma-2-2b` 269 hosted parts; `gemma-3-4b-it` 25 and `qwen3-1.7b` 22 logits parts; `qwen3-4b` 1 hosted and 21 logits). Without it three pages describe `qwen3-4b` as having hosted graphs |
-| D4 | Accept row `(pairs_20260706T201750Z, 1)` at its hosted value | None; state it in the snapshot's change sentence | The public row shows a probability read on a leading piece of the target where it showed the whole target. A re-trace with the exact read is a new measurement and a separate owner decision |
+A difference is a changed measured value at a published `(batch, batch_index, model)`, a
+published measurement that is no longer there, or a changed capability label. New rows,
+new batches, new models, the summary restamp of this release and a catalogue-only publish
+are not differences and are published as before: this is not a hold on publication. A
+difference passes only with the owner's `accept_candidate` entry for exactly it in
+`data/results_policy/payload_dispositions.v1.json`, committed in the engine. The record
+holds the 13 rows of section 4 as `pending`. Verified on 2026-11-11: the exporter's dry
+run against the site checkout printed those 13 lines, exited 1 and wrote nothing;
+`check-release` on this release (the summary correction alone) exits 0. What a cycle does
+at such a refusal is in the publish skill, step 1, and in
+`docs/routine_standing_prompt.md`, section 5.
+
+## 8. Owner decisions (decision record, 2026-11-11)
+
+Nothing here is decided or published. Each of the 13 row differences of section 4 is a
+`pending` entry in `data/results_policy/payload_dispositions.v1.json`, and until the owner
+disposes it the exporter, `results_snapshot.py create` and `check-release` refuse it
+(section 7). A publish that touches none of these rows is not held.
+
+| | Decides | Affected | Published → after | Proposed | What it needs |
+|---|---|---|---|---|---|
+| D1 | Whether the 11 legacy rows stay | `qwen3-4b` at `(pairs_20260706T201750Z, 3…13)` | 11 rows and 11 phrases fewer; mean lower by 0.0005 to 0.0006; 7 fewer flips; downgrades / upgrades 65 / 14 unchanged; payload `n_traced` 1261 → 1250 (table below, right column against left) | Drop. The membership does not read their part, and no part on the branch holds the published values | The 11 entries set to `accept_candidate`; after the export, the 11 entries of `legacy_payload_rows.v1.json` set to `retired`. To keep them instead: `keep_reference`, and an exporter that copies declared legacy rows from the published payload (not written) |
+| D2 | Whether `data/model_stats.json` is regenerated in that release | one site file | the table cell that matches D1 and D4, and a new provenance stamp | Regenerate, from the same collector output | `python scripts/paired_stats_rigor.py --rows urgency_shift.json --site ../patientwords` (seed 7, 5,000 resamples, the defaults); it also rewrites the engine's `paired_stats_rigor.json`. Not a difference of the payload, so it has no entry; the snapshot records the file |
+| D3 | How a model with rows from two backends is labelled | `qwen3-4b`: 2 hosted rows, 1,248 logits rows | `graphs` false and backend "logits", as published (true and "hosted" without the rule) | Adopt the rule of section 4.4's note | Review of the exporter change. No entry: with the rule the export makes no label difference. Known cost: a model with many hosted rows and one logits row reads "next-token only" |
+| D4 | What rows 1 and 2 show for `qwen3-4b` | `(…, 1)` and `(…, 2)` | the table below | Row 1: withhold (c). Row 2: accept the hosted value (a) | Row 1: `withhold`, and an exporter and collector that leave one named read out (not written). Row 2: `accept_candidate` |
+
+D4 in numbers. `qwen3-4b` in `scripts/paired_stats_rigor.py` (seed 7, 5,000 resamples),
+on scratch copies of the collector rows; each cell is rows / unique phrases, mean penalty
+[95% interval], flips. Downgrades / upgrades are 65 / 14 and the raw sign test p is
+5.19e-09 in every cell. The other nine models equal the published file in every cell.
+
+| Rows 1 and 2 | 11 legacy rows kept | 11 legacy rows dropped (D1) |
+|---|---|---|
+| Published file (2026-08-29) | 1152 / 1121, -0.0466 [-0.0595, -0.0334], 497 | |
+| (a) both at the hosted values, as exported today | 1152 / 1121, -0.0465 [-0.0594, -0.0333], 498 | 1141 / 1110, -0.0470 [-0.0605, -0.0340], 491 |
+| (b) both at the published logits-lane values | 1152 / 1121, -0.0466 [-0.0595, -0.0334], 497 | 1141 / 1110, -0.0471 [-0.0607, -0.0342], 490 |
+| (b) for row 1 only; row 2 hosted | 1152 / 1121, -0.0465 [-0.0594, -0.0333], 498 | 1141 / 1110, -0.0470 [-0.0605, -0.0341], 491 |
+| (c) row 1 not measured; row 2 hosted | 1151 / 1120, -0.0465 [-0.0597, -0.0336], 498 | 1140 / 1109, -0.0471 [-0.0604, -0.0336], 491 |
+| (c) row 1 not measured; row 2 at the logits-lane value | 1151 / 1120, -0.0466 [-0.0598, -0.0336], 497 | 1140 / 1109, -0.0472 [-0.0605, -0.0336], 490 |
+
+Verified: the cell "(b), 11 kept" equals the published `data/model_stats.json` in every
+field a run with `--site ''` writes, except `_provenance` and `source`, so the method
+reproduces the published file. No choice
+moves the mean by more than 0.0006 or changes a downgrade or upgrade count. D4 decides
+what two public rows show; it does not decide the aggregate.
+
+Row 1 (verified). The published value is the logits lane's read of the whole 8-character
+target, by token id. The hosted value is a read of a 5-character leading piece.
+`scripts/audit_target_reads.py`, run on 2026-11-11 over the `qwen3-4b` study parts (1,757
+results), lists it as a wordpiece read of a token the model returns whole: a misread. The
+hosted part has no `target_read` record. A known misread does not become an acceptable
+measurement because an export reproduces it, so (a) is not proposed for row 1. Between
+(b) and (c) the choice follows D1: (b) keeps a correct value that only git history holds
+(engine `1162e9215`), which is what D1's "drop" declines for rows 3 to 13; (c) shows the
+row as not measured until an exact read exists.
+
+Row 2. Verified: both lanes read the same 4-character token, the first piece of a
+10-character target; the audit lists no finding for it. Inferred, because the hosted part
+has no `target_read` record: the hosted read is the exact first-token read. Verified and
+unexplained: the two backends give 0.4239 against 0.218 (clinical) and 0.1804 against
+0.103 (patient) for that token, differences of 0.206 and 0.077, where the one measured
+backend disagreement (`gemma-2-2b`) is at most 0.032. Accepting row 2 puts two hosted rows
+among 1,248 logits rows of one model; the last table row gives the numbers without it.
+
+(d) A re-trace of row 1 is a new measurement. It was not run, and it is a separate owner
+decision. What it needs:
+
+- Lane: `logits-eval` (`indices: [1]`). It reads by token id, so the read is exact; it
+  is the lane, model id and dtype (`Qwen/Qwen3-4B`, bfloat16) of the published value.
+  The 2026-07-07 part records no weights revision; runs now pin `1cfa9a72…`.
+  `circuit-trace` cannot promise an exact read: the hosted path reads the intended token
+  only when the service returns it among at most 15 logits, and in the logits lane this
+  target is rank 9 on the clinical side (p 0.0118) and outside the top 10 on the patient
+  side (p 0.0063). Whether the service would return it was not tested.
+- Output: `trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_01.json`, the
+  name the hosted part has. `scripts/logits_eval.py` names a part for its first index and
+  writes without checking, and the workflow's commit step adds the file as it is, so the
+  run replaces the landed hosted part (rows 1 and 2) unless the naming is changed first.
+  The engine rule is that landed summaries are measurements, not caches.
+- Runner time: about 3 to 4 minutes for one pair. This is an estimate from the lane's
+  recorded rates for this model (median 76 s per pair, slowest 156 s, plus about 90 s of
+  setup; `scripts/backfill_planner.py`, `docs/model_matrix.md`). Provider cost: $0; no
+  model API is called and the weights are ungated (`docs/agent_reference.md`, *Cost
+  discipline*).
+- Membership: the new part is a logits part outside the pin. It enters the payload and
+  the statistics only through `scripts/publication_release.py --release --models
+  qwen3-4b`, which pins every unpinned `qwen3-4b` part (16 parts, 361 rows on
+  2026-11-11; 15 and 317 the day before): the expanded population of section 5, with its
+  own snapshot.
+- Approval: not a paid fire, so no spend ceiling applies. It still needs the owner's
+  instruction: the Routine fires only what its section 3 lists, and a re-trace of a
+  published row is not in it (`docs/routine_standing_prompt.md`, section 4); a fire goes
+  only through `scripts/fire_trigger.py`; and re-measuring and republishing are the
+  owner's decision (`AGENTS.md`, *Known measurement limitations*).
+
+To record a decision, the owner (or a session quoting the owner's words) edits the
+entries: `"disposition"` to `accept_candidate`, `keep_reference` or `withhold`,
+`"decided_by": "owner"`, and `"decision_ref"` naming the committed decision document.
+Only `accept_candidate` lets an export through, and only while the export's values are
+the recorded ones. A row marked `withhold` is refused until the exporter leaves the read
+out; its removal is then a new difference with its own entry
+(`python scripts/payload_dispositions.py propose` writes it as `pending`).
 
 ## 9. The superseding snapshot
 
@@ -355,7 +473,11 @@ and that no input, pin, membership or other statistics file changed.
 `summary.penalty` at both site commits. `data/model_stats.json` is untouched, so the
 snapshot repeats the earlier finding that it does not reproduce from the inputs.
 
-For the later full re-export, the snapshot that supersedes that one must record:
+For the later full re-export, `results_snapshot.py create` refuses until every row
+difference the export makes has the owner's `accept_candidate` entry committed in the
+engine (section 7); it then lists the accepted differences under
+`outputs.changed_since_superseded.payload_measurement_differences`. The snapshot that
+supersedes that one must record:
 
 - `--supersedes` naming the snapshot then current, and a change sentence that names
   the input change (13
@@ -382,7 +504,17 @@ For the later full re-export, the snapshot that supersedes that one must record:
   at `1162e9215`). The engine rule is that landed summaries are measurements, not
   caches. Whether a hosted run can still overwrite another backend's part was not
   examined.
-- `traced_by_model` and `graphs` depend on the first stamp's directory (section 4.4).
+- `traced_by_model` and `graphs` depended on the first stamp's directory (section 4.4).
+  Changed on 2026-11-11 in the exporter; see the note there.
+- The reverse overwrite is possible today: `scripts/logits_eval.py` writes
+  `batch_summary.part_NN.json` for its first index without checking for a part of
+  another backend at that name (section 8, (d)). Not changed.
+- `scripts/audit_target_reads.py` refuses on the tree of 2026-11-11: ten parts of the
+  hand-authored `agscen_` sets carry a `target_read` block with no record for the patient
+  side. The compact audit file could therefore not be regenerated; the two rows were
+  audited on a scratch copy of the `qwen3-4b` study parts. Not changed.
+- The hosted and the logits-lane values of `qwen3-4b` differ by 0.206 and 0.077 on the
+  one row where both read the same token (section 8, row 2). Cause not examined.
 - The published payload is internally inconsistent on row `(pairs_20260706T201750Z, 2)`
   since 2026-11-06 (section 4.1). The re-export removes it.
 - The local engine clone is shallow (history from `09d726eb`). Part history was read
@@ -403,3 +535,22 @@ sha256sum /tmp/u.json   # 8b3068a5ffdeb1f8c9885a5e04674a1cd1fe7b5528bfa892418a15
 
 against the published payload `5bcd3eac…` and the parts of 2026-11-10. `/tmp/keys.json`
 then lists the 11 keys of section 4.2.
+
+The 13 row differences alone need no site copy (about 20 MB). Export into an empty
+directory, where there is no published payload to compare with, then compare the two
+files. `--max-renders 1` copies one render and changes render paths only.
+
+```bash
+mkdir -p /tmp/pw-export/data
+python scripts/export_frontend_simulated.py --engine . --frontend /tmp/pw-export \
+    --stamps <the 27 published stamps> --models gemma-2-2b,gemma-3-4b-it,qwen3-4b,qwen3-1.7b \
+    --steered-stamps "" --archive-url <the payload's archive.release_url> --max-renders 1
+python scripts/payload_dispositions.py check \
+    --reference ../patientwords/data/simulated_scenarios.json \
+    --candidate /tmp/pw-export/data/simulated_scenarios.json    # exit 1: 13 pending, 0 metadata
+```
+
+The same list comes from the exporter's own dry run against the site checkout
+(`--frontend ../patientwords --dry-run`), which exits 1 and writes nothing. In the copy
+that `verify.md`'s temporary-regeneration block makes, which has no `.git`, the exporter
+prints the differences and does not refuse.

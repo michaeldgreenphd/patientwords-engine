@@ -46,7 +46,13 @@ naming each problem) unless the snapshot is committed, current and verifying, it
 in the engine HEAD, every file it records has the recorded sha256 at the site's HEAD commit, and every
 published statistics file the site's HEAD changes relative to its base ref is one the snapshot records. A
 changed data file that is neither in the statistics set nor in the list of files a snapshot does not version
-is refused as unclassified. ``--published`` compares the remote site branch instead and, with ``--record``,
+is refused as unclassified. Since 2026-11-11 it also refuses, one line per difference, a gallery payload whose
+HEAD version changes a measured value at a published (batch, batch_index, model), drops a published
+measurement or changes a model's capability label relative to the base, unless the disposition record
+committed in the engine accepts exactly that difference (``scripts/payload_dispositions.py``, the rule the
+exporter applies before it writes); ``create`` refuses the same against the superseded snapshot's site
+commit, so a snapshot never records such a change as a bare new sha256. New rows, batches and models, and
+the ``summary`` block, are not differences. ``--published`` compares the remote site branch instead and, with ``--record``,
 appends a publication record to the index. A snapshot with no publication record was created and not (yet)
 published; the snapshot file itself is never edited to say so.
 
@@ -75,6 +81,7 @@ except ImportError:                     # pragma: no cover
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import payload_dispositions as pd  # noqa: E402
 import results_policy as rp  # noqa: E402
 from export_results_catalogue import CatalogueError, sealed_pair_keys  # noqa: E402
 
@@ -647,6 +654,53 @@ def change_record(engine: Path, site: Path, index: dict[str, Any], supersedes: s
     }
 
 
+def payload_difference_review(engine: Path, site: Path, reference_commit: str,
+                              candidate_commit: str) -> dict[str, Any]:
+    """The gallery payload in two site commits, compared for changes to what the reference publishes: a
+    measured value at a published (batch, batch_index, model), a measurement that is no longer there, a
+    model's capability label (scripts/payload_dispositions.py, the definition the exporter uses too). New
+    rows, batches and models, and the ``summary`` block, are not differences.
+
+    ``refused`` holds one line per difference that the engine's committed disposition record does not accept;
+    ``accepted`` one per difference it does. Both sides and the record are read from git (the record from
+    the engine's HEAD commit, so an edit that is not committed accepts nothing); an engine directory that
+    is not a git checkout is read from disk. A payload or record that cannot be read is a refusal."""
+    report: dict[str, Any] = {"path": SITE_PAYLOAD, "reference_commit": reference_commit,
+                              "candidate_commit": candidate_commit, "record": pd.RECORD_REL, "compared": False,
+                              "differences": 0, "accepted": [], "refused": []}
+    before = _bytes_at(site, reference_commit, SITE_PAYLOAD)
+    after = _bytes_at(site, candidate_commit, SITE_PAYLOAD)
+    if before is None:
+        report["reason"] = "the reference commit holds no payload, so nothing published is compared"
+        return report
+    report["compared"] = True
+    if before == after:
+        return report
+    if after is None:
+        report["refused"] = [f"{SITE_PAYLOAD} is absent in the candidate commit: every published measurement "
+                             "would be removed"]
+        return report
+    engine_head = _commit(engine, "HEAD") if (engine / ".git").exists() else None
+    try:
+        if engine_head is not None:
+            record = pd.parse_record(
+                _bytes_at(engine, engine_head, pd.RECORD_REL), source=f"{pd.RECORD_REL} in the engine's HEAD commit",
+                committed=True, exists=lambda rel: bool(rel) and _bytes_at(engine, engine_head, rel) is not None)
+        else:
+            record = pd.load_record(engine)
+        reviewed = pd.review_payloads(before, after, record,
+                                      reference_name=f"{SITE_PAYLOAD} at {reference_commit[:12]}",
+                                      candidate_name=f"{SITE_PAYLOAD} at {candidate_commit[:12]}")
+    except pd.DispositionError as exc:
+        report["refused"] = [f"the payload cannot be compared with what was published: {exc}"]
+        return report
+    report["differences"] = len(reviewed)
+    for verdict in reviewed:
+        line = f"{pd.describe(verdict['difference'])} [{verdict['status']}: {verdict['reason']}]"
+        report["accepted" if verdict["passes"] else "refused"].append(line)
+    return report
+
+
 _ABSENT = object()
 
 # Top-level keys that only the site copy of the statistics file carries: paired_stats_rigor.py adds them when
@@ -755,6 +809,26 @@ def create(engine: Path, snapshot_id: str, membership: str, change: str, *, site
                 changes = {"compared_with": None, "reason": "a preview of uncommitted bytes; nothing was read"}
             else:
                 changes = change_record(engine, site.resolve(), index, supersedes, site_commit)
+                if changes.get("site_commit_before"):
+                    # A snapshot records the payload's new sha256. It must not record a changed or removed
+                    # published measurement, or a changed capability label, that the owner has not decided.
+                    reviewed = payload_difference_review(engine, site.resolve(), changes["site_commit_before"],
+                                                         site_commit)
+                    if reviewed["refused"]:
+                        raise SnapshotError(
+                            f"{SITE_PAYLOAD} at the site HEAD changes {len(reviewed['refused'])} published "
+                            f"measurement(s) or capability label(s) since snapshot {changes['compared_with']} "
+                            f"without an accepting owner disposition in {pd.RECORD_REL} (committed in the "
+                            "engine); a snapshot would record them as a new sha256 with the change undecided:\n  "
+                            + "\n  ".join(reviewed["refused"][:pd.MAX_TABLE_ROWS])
+                            + (f"\n  ... and {len(reviewed['refused']) - pd.MAX_TABLE_ROWS} more"
+                               if len(reviewed["refused"]) > pd.MAX_TABLE_ROWS else ""))
+                    changes["payload_measurement_differences"] = {
+                        "record": pd.RECORD_REL, "differences": reviewed["differences"],
+                        "accepted_by_owner_disposition": reviewed["accepted"],
+                        "note": "changes to published measurements and capability labels between the two site "
+                                "commits (scripts/payload_dispositions.py); new rows, batches and models are "
+                                "not listed"}
             body["outputs"]["changed_since_superseded"] = changes
         doc = {"schema": SCHEMA, "id": snapshot_id,
                "created_utc": created_utc or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -906,6 +980,9 @@ def check_release(engine: Path, site: Path, snapshot_id: str | None = None, *,
     * a file the snapshot records does not have the recorded sha256 in the site's HEAD commit;
     * the site's HEAD changes a published statistics file the snapshot does not record, or a data file that
       is in neither the statistics set nor the list of files a snapshot does not version;
+    * the gallery payload at the site's HEAD changes or removes a published measurement, or changes a
+      capability label, relative to the merge base with the base ref, and the disposition record in the
+      engine's HEAD commit does not accept exactly that difference (``payload_difference_review``);
     * the base ref changed a published statistics file after the commit the site's HEAD started from.
 
     The site commit a snapshot records is not compared with HEAD: a rejected site push is rebased and the
@@ -995,6 +1072,7 @@ def check_release(engine: Path, site: Path, snapshot_id: str | None = None, *,
     changed: dict[str, Any] = {"statistics": [], "outside_snapshot": [], "unclassified": [],
                                "on_base_since_merge_base": []}
     merge_base = None
+    payload_differences: dict[str, Any] | None = None
     if base_commit is None:
         problems.append(f"the site has no commit at the base ref {site_base!r}; fetch it "
                         f"(git -C {site} fetch origin) or name the published branch with --site-base")
@@ -1019,6 +1097,15 @@ def check_release(engine: Path, site: Path, snapshot_id: str | None = None, *,
                     problems.append(f"{rel} is changed by this release and is not classified: add it to "
                                     "STATISTICS_FILES or to the OUTSIDE_SNAPSHOT lists in "
                                     "scripts/results_snapshot.py, with its reason, in a reviewed change")
+            # A snapshot that records the payload's new sha256 does not say whether a published measurement
+            # changed underneath it. Each such change needs the owner's recorded disposition.
+            payload_differences = payload_difference_review(engine, site, merge_base, site_head)
+            for line in payload_differences["refused"][:pd.MAX_TABLE_ROWS]:
+                problems.append("the release changes a published measurement or capability label without an "
+                                f"accepting owner disposition in {pd.RECORD_REL}: {line}")
+            if len(payload_differences["refused"]) > pd.MAX_TABLE_ROWS:
+                problems.append(f"... and {len(payload_differences['refused']) - pd.MAX_TABLE_ROWS} more such "
+                                "difference(s); --json lists every one")
             if merge_base != base_commit:
                 notes.append(f"{site_base} ({base_commit[:12]}) has commits the site HEAD does not contain; "
                              f"the changed files are listed from the merge base ({merge_base[:12]}), and a "
@@ -1035,6 +1122,7 @@ def check_release(engine: Path, site: Path, snapshot_id: str | None = None, *,
             "site": {"commit": site_head, "base_ref": site_base, "base_commit": base_commit,
                      "merge_base": merge_base},
             "changed": changed,
+            "payload_differences": payload_differences,
             "snapshot_required": bool(changed["statistics"]),
             "verify": {k: report[k] for k in ("ok", "stale", "config_changed", "policy_changed_since")}}
 
@@ -1166,6 +1254,13 @@ def _print_release(report: dict[str, Any]) -> None:
             print(f"  changed, not versioned by a snapshot: {item['path']}")
         if len(changed["outside_snapshot"]) > 10:
             print(f"  ... and {len(changed['outside_snapshot']) - 10} more file(s) not versioned by a snapshot")
+        differences = report.get("payload_differences")
+        if differences is not None and differences["compared"]:
+            print(f"  published measurements or capability labels this release changes: "
+                  f"{differences['differences']} ({len(differences['accepted'])} accepted by an owner "
+                  f"disposition in {differences['record']})")
+            for line in differences["accepted"][:pd.MAX_TABLE_ROWS]:
+                print(f"  accepted: {line}")
     for record in report["publications"]:
         print(f"  publication recorded: site {record['site_commit']} on {record['site_ref']}, "
               f"{record['recorded_utc']}")
