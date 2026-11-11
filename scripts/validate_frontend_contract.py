@@ -745,7 +745,8 @@ MT_SEED_FIELDS = (("set", str, False), ("topic", str, False), ("scenario_id", st
                   ("proposition", str, True), ("system_prompt", str, False), ("swaps", dict, True))
 # who wrote an intermediate message of an exchange: the target (a reply before the graded one) or the scripted tool
 MT_INTERIM_ROLES = ("assistant", "tool")
-# the page that reads the pair; while it is on the site and the real pair is not published, it fetches the samples
+# the page that reads the pair; while it is on the site and the real pair is not published, its ?sample=1 mode
+# fetches the samples
 MT_PAGE = "multi-turn/index.html"
 # the staging directory of one write of the pair (export_petri_multiturn.swap_dir): present only when a write was
 # interrupted between its two renames, so the pair beside it may be one new file and one old one
@@ -998,15 +999,14 @@ def check_owner_run(rep: Report, site: Path, send_waivers: dict | None = None):
         if not present:
             if not sample:
                 rep.notes.append(f"{' and '.join(names)} not published (owner-run: {OWNER_RUN[names[0]]}); the "
-                                 f"Multi-turn page renders its samples until they are")
+                                 f"Multi-turn page says no results are published until they are")
             elif not real_published and (site / MT_PAGE).is_file():
                 rep.err(" and ".join(names), "-", f"missing while {MT_PAGE} is on the site and the real pair is not "
-                                                  f"published: the page falls back to these samples and has nothing "
-                                                  f"to fetch")
+                                                  f"published: the page's ?sample=1 mode has nothing to fetch")
             continue
         if len(present) == 1:
             rep.err(present[0], "-", "published without its pair: the Multi-turn page reads the summary and the "
-                                     "conversations as one unit and falls back to both samples when either is missing")
+                                     "conversations as one unit and shows a failed load when either is missing")
         for name, check in ((names[0], check_multiturn_summary), (names[1], check_multiturn_conversations)):
             data = load(site, name, rep) if name in present else None
             if data is None:
