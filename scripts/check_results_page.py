@@ -79,7 +79,9 @@ COLUMNS = ("experiment", "model", "measurements", "run status", "study context")
 ORDER_DEFAULT, ORDER_DATE, ORDER_NEVER = "run id, A to Z", "batch date, newest first", "never by effect"
 SEALED_IN_RUN = "withheld by the Tier B seal (counted, never shown)"
 METHODS_SOURCE = "Methods & source"
-RUN_LABELS = ("simulated stimuli", "evidence:", "clinical review:", "not a claim")
+# An open run states its own labels. Until 2026-11-11 a fifth label read "a listing, not a claim"; the statement is
+# made once, in About this catalogue (ABOUT_STATEMENTS), and an open run prints whether an analysis includes it.
+RUN_LABELS = ("simulated stimuli", "evidence:", "clinical review:", "sampling:")
 # The wordings, as the page names them, and the order of the difference it prints. The files call the two
 # wordings clinical and patient; ``language_penalty`` is the patient value minus the clinical one.
 ROW_HEADS = ("index", "medical wording", "everyday wording", "target token", "target-token probability",
@@ -149,7 +151,7 @@ CHECKS: tuple[str, ...] = (
     "sealed_row_count_is_shown_in_the_open_run",
     "sealed_row_count_is_shown_in_the_run_row",
     "rendered_rows_are_exactly_the_public_rows_of_the_rows_file",
-    "open_run_carries_its_evidence_review_and_not_a_claim_labels",
+    "open_run_carries_its_stimulus_evidence_review_and_sampling_labels",
     "wordings_are_named_and_every_difference_is_everyday_minus_medical_with_its_sign",
     "difference_and_status_text_is_neutral_and_no_alert_colour_is_shown",
     "open_run_has_a_closed_methods_and_source",

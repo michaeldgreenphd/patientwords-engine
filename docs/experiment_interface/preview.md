@@ -104,9 +104,8 @@ before its machinery:
 1. **One line under the title.** The protocol id and version, and a plain link that
    downloads the bundle file.
 2. **The synthetic label,** when the bundle is synthetic: "Synthetic fixture: not a
-   measurement", with "hand-written numbers · no model was loaded · nothing here is a
-   finding". The line is `position: sticky`, so it stays at the top of the window while
-   the page scrolls.
+   measurement", with "hand-written numbers · no model was run". The line is
+   `position: sticky`, so it stays at the top of the window while the page scrolls.
 3. **Cases.** One block per case. The first case is open; a case named by the address
    (`&case=<family id>`) is the open one instead. Every case, open or closed, has a heading
    line with the synthetic label when it applies, the model, the endpoint ("target-token

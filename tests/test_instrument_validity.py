@@ -840,7 +840,11 @@ def test_a_scorer_that_ignores_the_description_gets_no_equivalence_verdict(state
     assert (summary["mean_difference"], summary["interval"], summary["margin"]) == (0.0, [0.0, 0.0], 0.125)
     assert iv.equivalence_verdict(summary["interval"], summary["margin"]) == "equivalent_within_margin"
     assert (summary["verdict"], summary["control_state"], summary["verdict_issued"]) == (
-        "scorer_does_not_read_description", "scorer_does_not_read_description", False)
+        iv.NO_ADVANTAGE_OVER_DESCRIPTION, iv.NO_ADVANTAGE_OVER_DESCRIPTION, False)
+    # The state names the comparison, not a cause: this fixture's scorer does ignore the description, and the
+    # same state is returned whenever the matched description does not outscore a control by the margin.
+    assert iv.NO_ADVANTAGE_OVER_DESCRIPTION == "no_advantage_over_control_description"
+    assert "does_not_read" not in json.dumps(iv.CONTROL_STATES) and "does not establish why" in iv.CONTROL_RULE
     state = control_of(states, "score", "validation")
     for control in ("shuffled", "irrelevant"):
         for register in ("medical", "everyday"):
@@ -854,7 +858,7 @@ def test_a_scorer_that_ignores_the_description_gets_no_equivalence_verdict(state
     assert state["failed_comparisons"] == ["matched_minus_shuffled:medical", "matched_minus_shuffled:everyday",
                                            "matched_minus_irrelevant:medical", "matched_minus_irrelevant:everyday"]
     assert states["stages"]["score"]["description_controls"]["state_by_analysis_set"]["validation"] == (
-        "scorer_does_not_read_description")
+        iv.NO_ADVANTAGE_OVER_DESCRIPTION)
 
 
 def test_a_cue_only_rule_that_matches_the_real_score_blocks_the_verdict(states: dict) -> None:
@@ -1312,7 +1316,7 @@ def test_named_control_refusals(bundle: dict, mutate, code: str) -> None:
 def test_no_failed_or_missing_control_ends_in_an_equivalence_verdict(states: dict) -> None:
     # every set below has a zero difference in each family: interval [0, 0], inside the 0.125 margin, which the
     # verdict rule alone calls equivalent_within_margin
-    withheld = {("score", "validation"): "scorer_does_not_read_description",
+    withheld = {("score", "validation"): "no_advantage_over_control_description",
                 ("score", "fresh_test"): "baseline_not_beaten",
                 ("score", "held_out"): "description_reading_not_shown",
                 ("score", "all"): "baseline_advantage_not_shown",

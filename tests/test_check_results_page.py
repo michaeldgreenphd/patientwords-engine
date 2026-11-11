@@ -433,7 +433,7 @@ def test_the_page_carries_the_ids_and_strings_the_checker_reads() -> None:
     for text in (crp.ORDER_DEFAULT, crp.ORDER_DATE, crp.ORDER_NEVER, crp.SEALED_IN_RUN, "'Methods & source'",
                  crp.NO_ROWS_RESTRICTED, crp.NO_ROWS_NONE, "' public '+(nPub===1?'row':'rows')", "' sealed'",
                  "could not be loaded ('+failLabel(e)+')", "'HTTP '+r.status", *crp.RUN_LABELS[:1],
-                 "'evidence: '", "'clinical review: '", "a listing, not a claim"):
+                 "'evidence: '", "'clinical review: '", "'sampling: '"):
         assert text in script, text
     # The wordings, the order of the difference and the shared status, as the checks compare them.
     for text in ("'Medical wording'", "'Everyday wording'", "['Target-token probability','num','medical wording']",

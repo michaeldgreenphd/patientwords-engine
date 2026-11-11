@@ -266,7 +266,7 @@ is returned:
 |---|---|
 | `control_not_run` | The bundle has no control plan, no evaluation items, no shuffle mapping for the stage, no fitted baseline, or no score at all for one of the three controls in this set |
 | `control_incomplete` | A control, or an item cue, is recorded for some of the set's artifacts or items and missing for others |
-| `scorer_does_not_read_description` | In some register the shuffled or the irrelevant description is `control_not_beaten` |
+| `no_advantage_over_control_description` | In some register the shuffled or the irrelevant description is `control_not_beaten`: the matched description did not outscore it by the margin. The state names the comparison and does not establish why (it was named `scorer_does_not_read_description` until 2026-11-11) |
 | `baseline_not_beaten` | In some register the frozen baseline is `control_not_beaten` |
 | `description_reading_not_shown` | The advantage over the shuffled or the irrelevant description is `advantage_not_shown` |
 | `baseline_advantage_not_shown` | The advantage over the frozen baseline is `advantage_not_shown` |
@@ -433,18 +433,26 @@ description. The stage then carries one state per analysis set, the first that a
 |---|---|
 | `arms_not_run` | The bundle has no arm rows for the stage, or no row at all for one of the two arms in this set |
 | `arms_incomplete` | An arm row, a fact status, or the actual-artifact row it is compared with is missing for some family of the set |
-| `system_does_not_read_artifact` | In some register the control artifact is `control_not_beaten`: another family's artifact earns as much |
-| `recoverable_from_wording_alone` | In some register the wording alone is `control_not_beaten`: the same credit is earned without the artifact |
+| `no_advantage_over_control_artifact` | In some register the control artifact is `control_not_beaten`: the actual artifact did not outperform another family's artifact by the margin |
+| `no_advantage_over_wording_alone` | In some register the wording alone is `control_not_beaten`: the actual artifact did not outperform the wording alone by the margin |
 | `artifact_specificity_not_shown` | The advantage over the control artifact is `advantage_not_shown` |
 | `artifact_contribution_not_shown` | The advantage over the wording alone is `advantage_not_shown` |
 | `artifact_contributes` | All four comparisons are `control_beaten` |
 
 - A stage's fact recovery is described as coming from the artifact only in the state
-  `artifact_contributes`. In every other state it is evidence about how the system reads the wording. That
-  is still a property of the instrument, and it is reported as one.
-- The report gives the medical-minus-everyday difference under each arm, and the artifact arm's difference
-  minus the `input_only` arm's difference with its interval. A register difference that is equally large
-  with the wording alone was not produced by the representation. That last quantity gets no verdict.
+  `artifact_contributes`. Every other state says that the advantage was not demonstrated at the margin,
+  and nothing more. It does not establish that the system ignores the artifact, and it does not establish
+  that the output comes from the wording. When no arm recovers any fact, every difference is zero: the
+  state is `no_advantage_over_control_artifact` where an interval is computed, and
+  `artifact_specificity_not_shown` where the set has too few families for one. Where every family of the
+  set has a rate in every arm and every rate is zero, the report sets `no_fact_recovered_in_any_arm` and
+  says the comparison is uninformative; a set with an arm that was not run or is partly recorded does not
+  get the flag. A missing or unsuccessful measurement is not evidence for either explanation. (Until 2026-11-11 the two `no_advantage` states were named `system_does_not_read_artifact`
+  and `recoverable_from_wording_alone`, which stated a cause the comparison cannot show.)
+- The report gives each arm's mean rate (`mean_rates`) beside the state, the medical-minus-everyday
+  difference under each arm, and the artifact arm's difference minus the `input_only` arm's difference
+  with its interval. A register difference that is equally large with the wording alone is not evidence
+  about the representation. That last quantity gets no verdict.
 - The state does not replace the stage's fact-recovery verdict, which is computed as before. It is printed
   beside it (`artifact_arm_state`), as the description-control state is.
 - Missing arm data is recorded as missing with its reason. It is never read as zero or as a pass.

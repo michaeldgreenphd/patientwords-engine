@@ -121,3 +121,76 @@ runs in site CI.
 - The site's `docs/agent_reference.md` says 16 canonical tags; 18 authored pages carry one.
 - The message of engine commit `bf26567d` misstates how far the site fix is from the snapshot's site
   commit. The fix is site commit `6c5ef90a`, three commits after `2bf3c1e`.
+
+## Addendum, later on 2026-11-11: the restoration pass
+
+The owner merged engine 171 at 03:10 UTC with a merge commit (`21ad6657`), so `a40520d1` is an
+ancestor of `main`. 169 and 170 are closed as superseded. Steps 1 and 4 of *Release order* are done.
+
+Two statements above are superseded.
+
+- **Start here.** The owner rejected the redesign of that page listed under *Completed implementation*.
+  Site 29 now restores the page from its design of 2026-10-27 (site `ac82473`), corrects specific claims
+  in place, and adds a second drawing of each wide diagram for narrow screens. The standing preference
+  (preserve the diagram-led narrative and its interactions; make small, justified edits) is recorded in
+  the site's `docs/agent_reference.md`. The homepage, Results and Compare methods were shortened; no data
+  file changed.
+- **The instrument-validity scorer's state names.** `system_does_not_read_artifact` and
+  `recoverable_from_wording_alone` named a cause the comparison cannot show. Engine 172 renames them
+  (`no_advantage_over_control_artifact`, `no_advantage_over_wording_alone`) and corrects the rule. It
+  makes the same correction to `scorer_does_not_read_description`, in a separate commit.
+
+Remaining order:
+
+1. Merge site 29. Any merge method works for the site.
+2. Merge engine 172 in the same sitting. The two are a pair: engine 172 holds the claim entries, the
+   Start here tests, the boundary fixture's sentences and the Results check that match the site's new
+   pages. Between the two merges the engine tests that read the sibling site disagree with site `main`
+   in either order. With the site merged first, engine `main` still expects the old Results labels and
+   the old home page sentence. With the engine merged first, its claim test reports snippet warnings
+   for `start-here/index.html` and its Start here tests fail. Nothing in CI runs these tests.
+3. Record the publication with the command in step 3 of *Release order* and commit the one-file index
+   change.
+
+**Review of the candidates.** Codex reviewed both pull requests, and nine read-only review agents read
+the candidates (four areas, each finding checked by a second reader, and one re-derivation of the
+numbers in the pull request descriptions). Codex found one defect on the site (the figures' text
+alternatives were fixed text beside values that update) and none on the engine. Of the agents' 30
+findings, 17 were confirmed (one defect was reported from two areas); all were low or medium, and 12
+came from this pass's own commits. All 17 are fixed in the commits after engine `5067007e` and site
+`60c2d8e`: a phrase in a Start here drawing that
+ran over its connector under wider serif fonts, two drawings whose phone version carried different
+words, step 2's wording about its three sentences, the home page aggregate that had lost its population
+("in the published file"), the scorer's meaning text for a set with no interval, its zero-recovery flag
+on a partly recorded set, and smaller items. One number in the first descriptions was wrong: the claims
+manifest held ten Start here entries, not eleven (it holds fourteen now).
+
+Checked on the final candidates (heads in the pull request descriptions), Python 3.12.3 unless stated:
+
+| Check | Result |
+|---|---|
+| Full engine suite | 7,803 passed, 33 skipped, 0 failed (the skips are the ones listed above) |
+| `tests/test_start_here_page.py` | 10 passed; 7 of them fail on the site page as it was at `60c2d8e` |
+| Boundary check, Python 3.13.18, with `--browser` set to the installed Chromium | exit 0, 21 checks. Without `--browser` it stopped before any check: that environment's Playwright expects a browser build that is not installed |
+| Results page check / comparison preview check | 69 of 69 / 56 of 56 (synthetic fixture) |
+| Page load check, contract gate `--strict`, claim check, seal check | 23 pages, 0 failing; 0 errors and 0 warnings; all claims verified; clean (183 sealed phrases) |
+| `check-release` | exit 0: one statistics file changes, the snapshot covers it, 0 published measurements change. No file under the site's `data/` or `modes/` changed after the snapshot's site commit `2bf3c1e` |
+| Site CI | both `checks` runs succeeded at `60c2d8e`; the later head is in the pull request |
+
+Found in this pass and not changed:
+
+- Whole-percent rounding differs between pages for one record. `translation_cases.icecream_antacid`
+  holds 0.285 for the everyday wording. Start here prints 29%, as its October page did; the Translation
+  page prints 28% (it rounds the binary product). The ladder on Start here prints 57% for a recorded
+  0.575 for the same reason. One rule should be chosen; no displayed value was changed here.
+- On a phone the ladder's tier labels (9.3 px at 390 px) and the cycle diagram's curved labels (8.7 px)
+  are as in October. Between 601 and about 720 px the wide drawings are still scaled down, as in October.
+- Without scripts, step 3 of Start here shows no bars and two of the cycle's three panels are hidden, as
+  in October.
+- Start here's footer says the pairs "across this site" are written by a language model; the Results
+  catalogue also lists hand-authored and third-party sets. The home page notice was corrected; the
+  Start here footer is the October text.
+- The site's `data/provenance.json` gives the translation outcome twice and the two do not agree. `translation_cases.summary` says 8 recovered of 20 downgrades (7
+unrecovered, 5 unclassifiable). `translation_cases.all.cases` lists 18 cases: 8 recovered, 4 already
+correct, 3 unrecovered, 3 worsened. The Translation page prints the first. The restored Start here page
+prints neither count. An earlier review recorded the same disagreement (`docs/referee_panel_20260714.md`).
