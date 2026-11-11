@@ -47,9 +47,12 @@ Methods, all recorded in the report:
   is fixed by seeded_derangement over the family ids with the label "<seed>:control_artifact:<stage>"). Per register
   and analysis set, the family-clustered bootstrap interval of the mean of (actual-artifact rate minus arm rate) is
   compared with the arm's prespecified margin, as for a description control. The stage then carries one arm state
-  (ARM_STATES). Only artifact_contributes supports reading the stage's fact recovery as coming from the artifact;
-  recoverable_from_wording_alone means the same credit is earned without it. The medical-minus-everyday difference is
-  reported for each arm, and the artifact arm's difference minus the input-only arm's difference with its interval.
+  (ARM_STATES). Each state names what was measured. Only artifact_contributes supports reading the stage's fact
+  recovery as coming from the artifact. The two no_advantage states say that the actual artifact did not outperform
+  an arm by the margin; they do not say that the system ignored the artifact or that its output came from the wording
+  (when no arm recovers anything, no arm outperforms another, and nothing is shown about either). The mean rate of
+  every arm is reported beside the state. The medical-minus-everyday difference is reported for each arm, and the
+  artifact arm's difference minus the input-only arm's difference with its interval.
 * Calibration record (--calibrate --quantile Q). For a bundle that holds discovery families only, per stage: the
   absolute difference between each within-register paraphrase and its base variant, in fact-recovery rate and in
   representation_value, averaged within family; then the median, the nearest-rank quantile Q and the maximum over
@@ -140,22 +143,44 @@ ARM_MARGINS = {arm: f"artifact_minus_{arm}" for arm in ARMS}
 ARTIFACT_CONTRIBUTES = "artifact_contributes"
 ARMS_NOT_RUN = "arms_not_run"
 ARMS_INCOMPLETE = "arms_incomplete"
-ARTIFACT_NOT_READ = "system_does_not_read_artifact"
-FROM_WORDING = "recoverable_from_wording_alone"
+# The two states below were named system_does_not_read_artifact and recoverable_from_wording_alone until
+# 2026-11-11. Those names stated a cause. The comparison measures an advantage, and its absence does not establish
+# one: with no fact recovered in any arm, no arm outperforms another and the old name still said the system did not
+# read the artifact.
+NO_ADVANTAGE_OVER_CONTROL = "no_advantage_over_control_artifact"
+NO_ADVANTAGE_OVER_WORDING = "no_advantage_over_wording_alone"
 SPECIFICITY_NOT_SHOWN = "artifact_specificity_not_shown"
 CONTRIBUTION_NOT_SHOWN = "artifact_contribution_not_shown"
-ARM_STATES = (ARTIFACT_CONTRIBUTES, ARMS_NOT_RUN, ARMS_INCOMPLETE, ARTIFACT_NOT_READ, FROM_WORDING,
-              SPECIFICITY_NOT_SHOWN, CONTRIBUTION_NOT_SHOWN)
+ARM_STATES = (ARTIFACT_CONTRIBUTES, ARMS_NOT_RUN, ARMS_INCOMPLETE, NO_ADVANTAGE_OVER_CONTROL,
+              NO_ADVANTAGE_OVER_WORDING, SPECIFICITY_NOT_SHOWN, CONTRIBUTION_NOT_SHOWN)
+ARM_STATE_MEANING = {
+    ARTIFACT_CONTRIBUTES: "in each register the actual artifact outperformed the control artifact and the wording "
+                          "alone by the prespecified margin",
+    ARMS_NOT_RUN: "an arm has no data in this set, so nothing is compared",
+    ARMS_INCOMPLETE: "arm data, or the actual-artifact row it is compared with, is missing for some family",
+    NO_ADVANTAGE_OVER_CONTROL: "in some register the actual artifact did not outperform the control artifact by the "
+                               "margin; this is no demonstrated advantage, not a finding that the system ignores "
+                               "the artifact",
+    NO_ADVANTAGE_OVER_WORDING: "in some register the actual artifact did not outperform the wording alone by the "
+                               "margin; this is no demonstrated advantage, not a finding that the output came from "
+                               "the wording",
+    SPECIFICITY_NOT_SHOWN: "the interval of the advantage over the control artifact contains the margin",
+    CONTRIBUTION_NOT_SHOWN: "the interval of the advantage over the wording alone contains the margin",
+}
+NOTHING_RECOVERED_NOTE = ("no arm recovered any fact in this set, so no arm could outperform another; the comparison "
+                          "is uninformative about the artifact and about the wording")
 ARM_RULE = (
     "A label or score stage whose instrument reads an activation artifact is described as reading that artifact only "
     "in the state artifact_contributes: in each register, the whole family-clustered bootstrap interval of the mean of "
     "(fact-recovery rate with the actual artifact minus the rate of the arm) lies above the prespecified arm margin, "
     "for the matched control artifact and for the wording alone. The first state that applies is returned: "
-    "arms_not_run, arms_incomplete, system_does_not_read_artifact (the control artifact is not beaten), "
-    "recoverable_from_wording_alone (the wording alone is not beaten), artifact_specificity_not_shown, "
-    "artifact_contribution_not_shown. In every state but artifact_contributes the stage's fact-recovery result is "
-    "evidence about how the system reads the wording, not about the representation. Missing arm data is never read "
-    "as zero or as a pass.")
+    "arms_not_run, arms_incomplete, no_advantage_over_control_artifact (the control artifact is not beaten), "
+    "no_advantage_over_wording_alone (the wording alone is not beaten), artifact_specificity_not_shown, "
+    "artifact_contribution_not_shown. A state other than artifact_contributes means that the advantage was not "
+    "demonstrated at the margin. It establishes nothing more: not that the system ignores the artifact, and not that "
+    "its output comes from the wording. An arm that recovers nothing, or was not measured, is not evidence for "
+    "either. The mean rate of every arm is reported with the state. Missing arm data is never read as zero or as a "
+    "pass.")
 CONTROL_RULE = (
     "The held-artifact endpoint of a description stage gets a verdict only in the state controls_passed: in each "
     "register, the whole family-clustered bootstrap interval of the mean of (matched score minus control score) lies "
@@ -1250,10 +1275,17 @@ def _verbalizer_arms(stage: str, index: dict[str, Any], sets: dict[str, Any], bu
                 incomplete.append(arm)
         outcomes = {arm: [entry["outcome"] for entry in comparisons[arm].values()] for arm in ARMS}
         state = (ARMS_NOT_RUN if not_run else ARMS_INCOMPLETE if incomplete else
-                 ARTIFACT_NOT_READ if NOT_BEATEN in outcomes["control_artifact"] else
-                 FROM_WORDING if NOT_BEATEN in outcomes["input_only"] else
+                 NO_ADVANTAGE_OVER_CONTROL if NOT_BEATEN in outcomes["control_artifact"] else
+                 NO_ADVANTAGE_OVER_WORDING if NOT_BEATEN in outcomes["input_only"] else
                  SPECIFICITY_NOT_SHOWN if NOT_SHOWN in outcomes["control_artifact"] else
                  CONTRIBUTION_NOT_SHOWN if NOT_SHOWN in outcomes["input_only"] else ARTIFACT_CONTRIBUTES)
+        # What each arm recovered, so that a state is never read without it: an advantage cannot be shown
+        # where there is nothing to have an advantage in.
+        mean_rates = {arm: {register: _mean([rate[fid, register, arm] for fid in members
+                                             if rate[fid, register, arm] is not None])
+                            for register in PAIRED_REGISTERS} for arm in ("artifact", *ARMS)}
+        recovered = [value for per_register in mean_rates.values() for value in per_register.values()]
+        nothing_recovered = bool(recovered) and None not in recovered and all(value == 0 for value in recovered)
         by_arm = {}
         for arm in ("artifact", *ARMS):
             summary = summarize_paired({fid: register_difference(arm, fid) for fid in members}, {}, members,
@@ -1266,13 +1298,19 @@ def _verbalizer_arms(stage: str, index: dict[str, Any], sets: dict[str, Any], bu
         summary = summarize_paired(beyond, {}, members, margin=None, plan=plan,
                                    seed_label=f"{seed}:register_difference_beyond_input_only:{name}")
         by_set[name] = {
-            "state": state, "arms_not_run": not_run, "arms_incomplete": incomplete,
+            "state": state,
+            "state_meaning": ARM_STATE_MEANING[state] + ("; " + NOTHING_RECOVERED_NOTE if nothing_recovered else ""),
+            "arms_not_run": not_run, "arms_incomplete": incomplete,
+            "mean_rates": {"note": "mean fact-recovery rate per arm and register, over the families of the set that "
+                                   "have one; null where none has",
+                           **mean_rates},
+            "no_fact_recovered_in_any_arm": nothing_recovered,
             "failed_comparisons": [f"{ARM_MARGINS[arm]}:{register}" for arm in ARMS
                                    for register, entry in comparisons[arm].items() if entry["outcome"] != BEATEN],
             "comparisons": comparisons,
             "medical_minus_everyday_by_arm": {
                 "note": "the paired register difference in fact-recovery rate under each arm; a difference that is "
-                        "also present with the wording alone is a property of how the system reads the wording",
+                        "equally large with the wording alone is not evidence about the representation",
                 **by_arm},
             "register_difference_beyond_input_only": {
                 "note": "per family, the artifact arm's medical-minus-everyday difference minus the input_only "
@@ -1404,7 +1442,8 @@ def _score(bundle: dict[str, Any], schema: dict[str, Any] | None) -> dict[str, A
                 "applies_to": "a stage whose instrument reads an activation artifact (a verbalizer or a scorer)",
                 **arms,
                 "rule": "this stage's fact recovery is described as coming from the artifact only where the state "
-                        "is artifact_contributes; the fact-recovery verdict above is computed as before"}
+                        "is artifact_contributes; any other state says the advantage was not demonstrated and "
+                        "establishes no cause; the fact-recovery verdict above is computed as before"}
     for stage in DESCRIPTION_STAGES:
         if stages[stage]["status"] == "scored":
             stages[stage]["description_controls"] = {

@@ -117,7 +117,7 @@ def test_artifact_contributes_only_when_both_arms_are_beaten_in_each_register() 
 
 def test_credit_earned_from_the_wording_alone_is_named_and_is_not_a_pass() -> None:
     state, arms = _state(_with_arms(ALL, NONE))
-    assert state == iv.FROM_WORDING
+    assert state == iv.NO_ADVANTAGE_OVER_WORDING
     entry = arms["analysis_sets"]["held_out"]["comparisons"]["input_only"]["medical"]
     assert (entry["mean_difference"], entry["interval"], entry["outcome"]) == (0.0, [0.0, 0.0], iv.NOT_BEATEN)
     assert arms["analysis_sets"]["held_out"]["failed_comparisons"] == [
@@ -125,10 +125,9 @@ def test_credit_earned_from_the_wording_alone_is_named_and_is_not_a_pass() -> No
 
 
 def test_a_control_artifact_that_scores_as_well_is_reported_first() -> None:
-    # Both arms fail; the state names the control artifact, because a system that ignores the artifact cannot
-    # show anything about it, whatever the wording alone earns.
-    assert _state(_with_arms(ALL, ALL))[0] == iv.ARTIFACT_NOT_READ
-    assert _state(_with_arms(NONE, ALL))[0] == iv.ARTIFACT_NOT_READ
+    # Both comparisons fail; the state names the control artifact, the first comparison in the order of the rule.
+    assert _state(_with_arms(ALL, ALL))[0] == iv.NO_ADVANTAGE_OVER_CONTROL
+    assert _state(_with_arms(NONE, ALL))[0] == iv.NO_ADVANTAGE_OVER_CONTROL
 
 
 @pytest.mark.parametrize("input_only, control, expected", [
@@ -141,6 +140,41 @@ def test_an_interval_that_contains_the_margin_is_not_shown(input_only, control, 
     arm = "control_artifact" if expected == iv.SPECIFICITY_NOT_SHOWN else "input_only"
     entry = arms["analysis_sets"]["held_out"]["comparisons"][arm]["medical"]
     assert (entry["mean_difference"], entry["interval"], entry["outcome"]) == (0.5, [0.0, 1.0], iv.NOT_SHOWN)
+
+
+def test_zero_recovery_in_every_arm_is_no_demonstrated_advantage_and_says_nothing_about_the_cause() -> None:
+    """Regression, 2026-11-11. With no fact recovered by the actual artifact, by the wording alone or by the
+    control artifact, every difference is 0 - 0 = 0 and the interval [0, 0] is at or below the margin. The state
+    was named system_does_not_read_artifact and the rule attributed the stage's result to the wording. Neither
+    follows: nothing was recovered, so nothing can be said about where recovery comes from."""
+    bundle = _with_arms(NONE, NONE)
+    paired = {v["variant_id"] for f in bundle["families"] for v in f["variants"]
+              if v["register"] in iv.PAIRED_REGISTERS}
+    for row in bundle["stages"][STAGE]["observations"]:
+        if row["variant_id"] in paired:
+            row["fact_recovery"] = dict.fromkeys(row["fact_recovery"], NONE)
+    report = iv.score_bundle(bundle)
+    arms = report["stages"][STAGE]["verbalizer_arms"]
+    body = arms["analysis_sets"]["held_out"]
+    assert body["state"] == iv.NO_ADVANTAGE_OVER_CONTROL == "no_advantage_over_control_artifact"
+    assert body["no_fact_recovered_in_any_arm"] is True
+    assert body["mean_rates"]["artifact"] == body["mean_rates"]["input_only"] == body["mean_rates"][
+        "control_artifact"] == {"medical": 0.0, "everyday": 0.0}
+    for arm in iv.ARMS:                                        # the calculation is unchanged: 0 against 0.125
+        for register in iv.PAIRED_REGISTERS:
+            entry = body["comparisons"][arm][register]
+            assert (entry["mean_difference"], entry["interval"], entry["outcome"]) == (0.0, [0.0, 0.0], iv.NOT_BEATEN)
+    meaning = body["state_meaning"]
+    assert "no demonstrated advantage" in meaning and iv.NOTHING_RECOVERED_NOTE in meaning
+    # No state name, meaning or rule says the system does not read the artifact or that recovery came from wording.
+    text = json.dumps({"states": iv.ARM_STATES, "meanings": iv.ARM_STATE_MEANING, "rule": iv.ARM_RULE, "arms": arms})
+    for claim in ("does_not_read", "does not read", "recoverable_from_wording", "evidence about how the system reads"):
+        assert claim not in text, claim
+    assert "establishes nothing more" in iv.ARM_RULE and "is not evidence for either" in iv.ARM_RULE
+    # A set where something was recovered does not carry the note.
+    recovered = iv.score_bundle(_with_arms(ALL, NONE))["stages"][STAGE]["verbalizer_arms"]["analysis_sets"]["held_out"]
+    assert recovered["no_fact_recovered_in_any_arm"] is False and iv.NOTHING_RECOVERED_NOTE not in recovered["state_meaning"]
+    assert recovered["mean_rates"]["input_only"] == {"medical": 1.0, "everyday": 1.0}
 
 
 def test_missing_arm_data_is_incomplete_or_not_run_and_never_a_pass() -> None:
@@ -203,7 +237,7 @@ def test_a_register_difference_that_the_wording_alone_also_shows_is_reported_bes
     # The stage's own fact-recovery verdict still says "different" (1/2 against a margin of 0.2); the arm state
     # says the same difference is earned from the wording alone.
     primary = report["primary_results"]["fact_recovery_rate_difference"][STAGE]
-    assert primary["verdict"] == iv.DIFFERENT and primary["artifact_arm_state"] == iv.FROM_WORDING
+    assert primary["verdict"] == iv.DIFFERENT and primary["artifact_arm_state"] == iv.NO_ADVANTAGE_OVER_WORDING
 
 
 def _unknown_arm(b: dict) -> None:
@@ -282,6 +316,7 @@ def test_the_same_phrase_in_two_families_is_refused_as_one_unit() -> None:
 
 def test_no_state_but_artifact_contributes_is_described_as_reading_the_artifact() -> None:
     assert iv.ARM_STATES[0] == iv.ARTIFACT_CONTRIBUTES and len(set(iv.ARM_STATES)) == 7
+    assert set(iv.ARM_STATE_MEANING) == set(iv.ARM_STATES)
     text = (ROOT / "docs" / "protocols" / "instrument_validity_benchmark.md").read_text(encoding="utf-8")
     for state in iv.ARM_STATES:
         assert f"`{state}`" in text, state

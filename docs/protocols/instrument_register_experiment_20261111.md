@@ -98,12 +98,14 @@ used. A synthetic fixture is labelled `synthetic_fixture` and is never a measure
 | Within-register paraphrase | A, C | the endpoint moves as much when the register does not change; a cross-register difference of that size is not attributed to register |
 | Changed-fact control | A, C | the endpoint or instrument does not respond to a real change of clinical content; an "equivalent" result is then uninformative |
 | Shuffled description, irrelevant description, explanation-free baseline | B1 | the scorer was not shown to read the description; the held-artifact verdict is withheld and the named control state is reported |
-| Wording alone (`input_only`) | B2 | the instrument's report is recoverable without the artifact; its register difference is a property of how it reads wording |
-| Control artifact (`control_artifact`) | B2 | the instrument's report does not depend on which artifact it is given |
+| Wording alone (`input_only`) | B2 | no demonstrated advantage of the actual artifact over the wording alone; the stage's result is then not attributed to the artifact |
+| Control artifact (`control_artifact`) | B2 | no demonstrated advantage over another family's artifact; specificity to the artifact is then not shown |
 | Cue checks (length, formatting, order, span position and marking) | B1 | a cue that a scorer could use without reading the description is associated with the score |
 
 A failed or missing control is reported under its own state name. It is never folded into another score,
-and no table says that an instrument "passes" because a different score exists.
+and no table says that an instrument "passes" because a different score exists. A control that is not
+beaten shows no demonstrated advantage. It does not establish a cause, and an arm that recovered nothing
+is not evidence about the artifact or the wording.
 
 ## 8. Endpoints
 
