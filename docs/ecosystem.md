@@ -225,7 +225,7 @@ A path is listed as exercised only where a test runs it. Files existing is not e
 | Forks' own suites | none run for this document | all of them: no interpreter here has torch, and no Inspect package is installed |
 | Experiment interface and ICA adapter | `tests/test_experiments_*.py` on synthetic fixtures (not run for this document) | any real model, real activation capture or parity with `icalens` |
 | This manifest | `tests/test_ecosystem_manifest.py`: schema, pin agreement with the pointer files, the status command on a synthetic git layout, the read-only guard | the remote mode against the network (a fake `ls-remote` is used); sibling checkouts, which CI does not have |
-| Whole suite | baseline at `d8d0855d`, 2026-11-10: 6506 passed, 4 failed, 20 skipped in 712 s (finding 2) | a hosted run: this is a local result from before `.github/workflows/pr_checks.yml` existed (added 2026-11-11, not yet run on a hosted runner on that date) |
+| Whole suite | local baseline at `d8d0855d`, 2026-11-10: 6506 passed, 4 failed, 20 skipped in 712 s (finding 2). First hosted run of `.github/workflows/pr_checks.yml`, 2026-11-11, engine `02ce6e8a`: standalone 7913 passed, 65 skipped; paired beside site `e13b7aa`: 7950 passed, 28 skipped | in both hosted jobs, 18 tests that need `icalens` and torch, `inspect_petri` or `inspect_ai` skip; a manual run of the workflow with a `site_ref` has not been made |
 
 ## 6. Findings
 

@@ -223,9 +223,11 @@ two in `tests/test_export_jev_calibration.py` and, for the site's history, one i
 `tests/test_validate_frontend_contract.py`. The engine checkout leaves the renders
 under `trace_out/` (`*.html` and `*.png`, 7.8 GB) off disk. On 2026-11-11 the suite
 passed in a clone without them, and no skip reason named a missing render. The
-workflow was rehearsed in a local clone on that date. It had not yet run on a hosted
-runner: the event payload, the merge ref, the two checkouts and the browser
-download were not exercised.
+workflow first ran on hosted runners on that date, on the pull request that added it
+(run 43083538251: engine head `02ce6e8a`, tested merge `b1c54d73`, site `e13b7aa`
+chosen by rule 2). Standalone: 7913 passed, 65 skipped. Paired: 7950 passed, 28
+skipped, the four gates clean, the boundary's 21 checks passed. A manual run with
+`site_ref` has not been made, and no pull request from a fork has run it.
 
 To reproduce the standalone job, use an engine checkout with no `../patientwords`
 beside it and `PW_SITE_ROOT` unset. Run the setup block, then the block under
