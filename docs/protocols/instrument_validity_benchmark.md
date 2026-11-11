@@ -266,7 +266,7 @@ is returned:
 |---|---|
 | `control_not_run` | The bundle has no control plan, no evaluation items, no shuffle mapping for the stage, no fitted baseline, or no score at all for one of the three controls in this set |
 | `control_incomplete` | A control, or an item cue, is recorded for some of the set's artifacts or items and missing for others |
-| `scorer_does_not_read_description` | In some register the shuffled or the irrelevant description is `control_not_beaten` |
+| `no_advantage_over_control_description` | In some register the shuffled or the irrelevant description is `control_not_beaten`: the matched description did not outscore it by the margin. The state names the comparison and does not establish why (it was named `scorer_does_not_read_description` until 2026-11-11) |
 | `baseline_not_beaten` | In some register the frozen baseline is `control_not_beaten` |
 | `description_reading_not_shown` | The advantage over the shuffled or the irrelevant description is `advantage_not_shown` |
 | `baseline_advantage_not_shown` | The advantage over the frozen baseline is `advantage_not_shown` |

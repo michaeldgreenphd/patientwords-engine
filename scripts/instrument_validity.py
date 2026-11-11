@@ -126,12 +126,15 @@ DESCRIPTION_CUES = {"description_length": "description_token_count", "descriptio
 CONTROLS_PASSED = "controls_passed"
 CONTROL_NOT_RUN = "control_not_run"
 CONTROL_INCOMPLETE = "control_incomplete"
-NOT_READ = "scorer_does_not_read_description"
+# Named scorer_does_not_read_description until 2026-11-11. The comparison shows that the matched description did
+# not outscore a control description by the margin; it does not show why, and it is also the result when every
+# condition scores the same for another reason.
+NO_ADVANTAGE_OVER_DESCRIPTION = "no_advantage_over_control_description"
 BASELINE_NOT_BEATEN = "baseline_not_beaten"
 READING_NOT_SHOWN = "description_reading_not_shown"
 BASELINE_NOT_SHOWN = "baseline_advantage_not_shown"
-CONTROL_STATES = (CONTROLS_PASSED, CONTROL_NOT_RUN, CONTROL_INCOMPLETE, NOT_READ, BASELINE_NOT_BEATEN, READING_NOT_SHOWN,
-               BASELINE_NOT_SHOWN)
+CONTROL_STATES = (CONTROLS_PASSED, CONTROL_NOT_RUN, CONTROL_INCOMPLETE, NO_ADVANTAGE_OVER_DESCRIPTION,
+                  BASELINE_NOT_BEATEN, READING_NOT_SHOWN, BASELINE_NOT_SHOWN)
 BEATEN, NOT_BEATEN, NOT_SHOWN = "control_beaten", "control_not_beaten", "advantage_not_shown"
 CONTROL_OUTCOMES = (BEATEN, NOT_BEATEN, NOT_SHOWN)
 EXPOSED, NOT_EXPOSED, PARTLY_RECORDED = "exposed", "not_exposed", "partly_recorded"
@@ -186,6 +189,9 @@ CONTROL_RULE = (
     "register, the whole family-clustered bootstrap interval of the mean of (matched score minus control score) lies "
     "above the prespecified control margin, for the shuffled description, the irrelevant description and the frozen "
     "explanation-free baseline, on the same items. In every other state the state name replaces the verdict. "
+    "A state names the comparison that was not passed. It does not establish why: "
+    "no_advantage_over_control_description says the matched description did not outscore the shuffled or the "
+    "irrelevant description by the margin, not that the scorer ignores descriptions. "
     "control_not_run and control_incomplete record missing control data; missing is never read as zero or as a pass. "
     "The report holds no verdict that a stage passes.")
 LIMITATIONS = [
@@ -1130,7 +1136,7 @@ def _control_state(stage: str, name: str, members: list[str], included: dict[str
     outcomes = {control: [body["outcome"] for body in comparisons[control].values()] for control in CONTROLS}
     reading = outcomes["shuffled"] + outcomes["irrelevant"]
     state = (CONTROL_NOT_RUN if not_run else CONTROL_INCOMPLETE if incomplete or partly else
-             NOT_READ if NOT_BEATEN in reading else
+             NO_ADVANTAGE_OVER_DESCRIPTION if NOT_BEATEN in reading else
              BASELINE_NOT_BEATEN if NOT_BEATEN in outcomes["explanation_free"] else
              READING_NOT_SHOWN if NOT_SHOWN in reading else
              BASELINE_NOT_SHOWN if NOT_SHOWN in outcomes["explanation_free"] else CONTROLS_PASSED)
