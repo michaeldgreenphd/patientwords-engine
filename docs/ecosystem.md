@@ -7,6 +7,12 @@ invariants are in [AGENTS.md](../AGENTS.md), the checks in [verify.md](../verify
 [open_results_policy.md](open_results_policy.md), and the upgrade procedure in
 [upgrade_checklist.md](upgrade_checklist.md).
 
+**Where to start.** Work on PatientWords starts from an engine checkout.
+[start_here.md](start_here.md) has the reading paths by role and the offline quickstart
+([Procedure A](start_here.md#procedure-a-offline-quickstart)), which needs no fork checkout. The table in
+section 1 gives each repository's role. Section 2 records what the engine consumes from each repository and which
+of its tests have run here.
+
 **The short answer.** The project is two core repositories, five method forks and three repositories whose identity
 is resolved from engine source. The engine executes code from two of the forks only, and in both cases not from
 the fork's current head: interp-engine as the PyPI distribution 1.5.1 (the fork source declares 1.14.3), and

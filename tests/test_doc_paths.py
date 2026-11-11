@@ -44,21 +44,50 @@ main; ``render_archive.py fetch --in-place`` writes an untracked, unignored PNG)
 Those may start to resolve without failing, because failing would turn the
 suite red on a data commit or a local fetch, not on a change to the docs.
 
-The root README.md is out of scope until it is rewritten: it names about
-thirty runtime and upstream paths (eval_out/, medlang_out/, apps/...).
+The root README.md has been in scope since its entrance was rewritten on
+2026-11-11. The runtime and upstream paths it names (eval_out/, medlang_out/,
+apps/...) have a first segment that is not a top-level entry here, so they are
+skipped like any other foreign name.
 
 The new verify/reference guides in both repositories also check Markdown file
 links and explicitly named companion paths. Engine-local guide references always
 run; paired checks visibly skip only when the default companion checkout is absent.
-An existing companion must contain its guides. Anchor/prose validation stays out of scope.
+An existing companion must contain its guides.
+
+The contributor entry points (``ONBOARDING``: the root README, the documents it
+routes a new collaborator to, and the two indexes) get three further checks,
+because a route that ends at a missing file or heading is a broken route:
+
+* every local Markdown link outside fenced code resolves, relative to the
+  document that holds it;
+* a ``#fragment`` on a link to a Markdown file is the anchor of a heading in
+  that file. The anchor is GitHub's: the heading text lower-cased, every
+  character that is not a letter, a digit, a space, a hyphen or an underscore
+  removed, each space turned into a hyphen, and ``-1``, ``-2`` appended to a
+  repeated heading. Inline code and link syntax contribute their text only.
+  An explicit ``<a id="...">`` or ``<a name="...">`` also counts;
+* a link whose label is one backticked repository path points to that path,
+  which keeps the docs/ index's labels and targets together.
+
+``ROUTES`` then pins the routes themselves: from the root README the page for
+each role and the offline entry procedure are one link away, and that
+procedure's setup and check blocks are one more. The ecosystem map must also
+keep a heading for each core repository and method fork that
+``data/ecosystem/repositories.v1.json`` lists, because a repository's README
+can link to that section for its role. Known gaps: emphasis written
+with underscores inside a heading, setext headings and non-ASCII digits are
+not handled; prose and external URLs are not validated; links from other
+documents are not followed.
 """
 from __future__ import annotations
 
 import fnmatch
+import json
 import os
 import posixpath
 import re
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
 from typing import NamedTuple
 
@@ -77,11 +106,54 @@ DOCS: tuple[str, ...] = (
     "docs/archiving.md",
     "docs/pilot_runs.md",
     "docs/README.md",
+    # the contributor entry points (2026-11-11)
+    "README.md",
+    "docs/start_here.md",
+    "docs/ecosystem.md",
+    "docs/contributing_a_method.md",
 )
 
 # These paired guides additionally use ordinary Markdown links and explicit
 # ../patientwords[-engine]/ references. Keep the older operating-doc gate intact.
 GUIDES = ("verify.md", "docs/agent_reference.md")
+
+# The contributor entry points: the root README, the documents it routes a new collaborator to, and the two
+# indexes. Their Markdown links and heading anchors are followed (module docstring). scripts/README.md is here for
+# its links only: its rows name site and runtime outputs by the dozen, and tests/test_scripts_readme.py owns them.
+ONBOARDING: tuple[str, ...] = (
+    "README.md",
+    "docs/README.md",
+    "docs/start_here.md",
+    "docs/ecosystem.md",
+    "docs/contributing_a_method.md",
+    "docs/operators_handbook.md",
+    "scripts/README.md",
+    "verify.md",
+)
+
+# (source document, target document, heading anchor or "") -> a link the source must carry. Owner acceptance,
+# 2026-11-11: from each repository README a new collaborator finds the repository's role and the offline entry
+# procedure within two links. Here that is one link from the root README to the role's reading path and to the
+# procedure, and one more from the procedure to the setup and check blocks it runs. The ecosystem map is where a
+# reader arriving from a fork or the site lands, so it carries the same link to the procedure.
+ROUTES: tuple[tuple[str, str, str], ...] = (
+    ("README.md", "docs/start_here.md", "new-researcher"),
+    ("README.md", "docs/start_here.md", "frontend-contributor"),
+    ("README.md", "docs/start_here.md", "method-developer"),
+    ("README.md", "docs/start_here.md", "operator"),
+    ("README.md", "docs/start_here.md", "procedure-a-offline-quickstart"),
+    ("README.md", "verify.md", "setup-and-sources-of-truth"),
+    ("README.md", "verify.md", "quick-path"),
+    ("README.md", "docs/ecosystem.md", ""),
+    ("README.md", "docs/README.md", ""),
+    ("README.md", "scripts/README.md", ""),
+    ("docs/start_here.md", "verify.md", "setup-and-sources-of-truth"),
+    ("docs/start_here.md", "verify.md", "quick-path"),
+    ("docs/ecosystem.md", "docs/start_here.md", "procedure-a-offline-quickstart"),
+    ("docs/contributing_a_method.md", "docs/start_here.md", "procedure-a-offline-quickstart"),
+    ("docs/README.md", "docs/start_here.md", ""),
+    ("scripts/README.md", "docs/start_here.md", ""),
+)
 
 # Runtime outputs may appear after a documented run; unlike stored source paths,
 # their absence is expected. Each exception must still be named by its guide.
@@ -158,6 +230,15 @@ ALLOWED_MISSING: dict[tuple[str, str], str] = {
     ("docs/README.md", "data/jlens_insights.json"): _SITE,
     ("docs/README.md", ".github/workflows/build.yml"):
         "the traces site build, in michaeldgreenphd/patientwords-traces, which the index points to",
+    # The ecosystem map describes the other repositories with their own files.
+    ("docs/ecosystem.md", "SITE_COPY_OUTLINE.md"): _SITE,
+    ("docs/ecosystem.md", "docs/boundary-check.yml.example"): _SITE,
+    ("docs/ecosystem.md", "data/simulated_scenarios.json"): _SITE,
+    ("docs/ecosystem.md", ".github/workflows/site_checks.yml"): _SITE,
+    ("docs/ecosystem.md", "THIRD_PARTY_NOTICES.md"):
+        "a file in the ICA Lens fork (patientwords-ica-lens-paper), which the map's section on that fork describes",
+    ("docs/ecosystem.md", "schemas/lens-interop-v1.schema.json"):
+        "a file in the J++ Lens fork (patient-words-jpp_lens), which the map's section on that fork describes",
     **{name: _PILOT_LOGITS for name in PILOT_LOGITS_NAMES},
     **PILOT_OTHER_NAMES,
     **JEV_RUN_NAMES,
@@ -185,6 +266,12 @@ _ROOT_FILE = re.compile(r"^[A-Z][A-Z0-9_]*\.(?:md|cff)$|^(?:pyproject\.toml|veri
 _GLOB_CHARS = set("*?")
 _MARKDOWN_LINK = re.compile(r"\[[^\]\n]*\]\(([^\s)]+)(?:\s+[^)]*)?\)")
 _COMPANIONS = ("../patientwords/", "../patientwords-engine/")
+# The onboarding checks: a link with its label (which may wrap onto the next line), an ATX heading with any
+# closing hashes dropped, an explicit HTML anchor, and a label that is one backticked token.
+_LABELLED_LINK = re.compile(r"\[([^\]]*)\]\(([^\s)]+)(?:\s+[^)]*)?\)")
+_HEADING_LINE = re.compile(r"^ {0,3}#{1,6}[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$")
+_EXPLICIT_ANCHOR = re.compile(r"""<a\s[^>]*?\b(?:id|name)\s*=\s*["']([^"']+)["']""")
+_PATH_LABEL = re.compile(r"^`([^`\s]+)`$")
 
 
 def _listed_paths(root: Path = ROOT, *, required: bool = False) -> list[str]:
@@ -352,6 +439,82 @@ def stale_allowlist_entries(doc: str, text: str, repo: Repo, allowed: dict[tuple
             if d == doc and (p not in named or ((d, p) not in may_appear and resolves(p, repo)))]
 
 
+def _unfenced_lines(text: str) -> list[str]:
+    """The lines of `text` outside fenced code blocks; the fence lines themselves are dropped."""
+    lines: list[str] = []
+    fenced = False
+    for line in text.splitlines():
+        if _FENCE.match(line):
+            fenced = not fenced
+        elif not fenced:
+            lines.append(line)
+    return lines
+
+
+def heading_slug(heading: str) -> str:
+    """GitHub's anchor for one heading's text (module docstring), before any repeat suffix."""
+    text = _LABELLED_LINK.sub(r"\1", heading).replace("`", "").strip().lower()
+    return "".join("-" if ch == " " else ch for ch in text if ch.isalnum() or ch in " -_")
+
+
+def heading_anchors(text: str) -> set[str]:
+    """Every anchor a Markdown document offers: its ATX headings outside fenced code, and explicit <a> ids."""
+    anchors: set[str] = set()
+    seen: dict[str, int] = {}
+    for line in _unfenced_lines(text):
+        heading = _HEADING_LINE.match(line)
+        if heading:
+            slug = heading_slug(heading.group(1))
+            repeat = seen.get(slug, 0)
+            seen[slug] = repeat + 1
+            anchors.add(slug if repeat == 0 else f"{slug}-{repeat}")
+        anchors.update(_EXPLICIT_ANCHOR.findall(line))
+    return anchors
+
+
+class Link(NamedTuple):
+    """One local Markdown link: its label, the repository-relative path it points to, and its anchor or ''."""
+    label: str
+    path: str
+    anchor: str
+
+
+def local_links(doc: str, text: str) -> list[Link]:
+    """The local Markdown links of `doc` outside fenced code, in order, each target resolved against the
+    document's directory. A bare `#fragment` points at `doc` itself. A URL with a scheme and an absolute path are
+    not local and are left out."""
+    links = []
+    for label, target in _LABELLED_LINK.findall("\n".join(_unfenced_lines(text))):
+        if target.startswith("/") or re.match(r"[A-Za-z][A-Za-z0-9+.-]*:", target):
+            continue
+        path, _, anchor = target.partition("#")
+        links.append(Link(label, posixpath.normpath(posixpath.join(posixpath.dirname(doc), path)) if path else doc,
+                          anchor))
+    return links
+
+
+def link_problems(doc: str, text: str, repo: Repo, anchors_of: Callable[[str], set[str]]) -> list[str]:
+    """Every local link of `doc` that fails an onboarding check (module docstring), one readable line each.
+    `anchors_of` gives the anchors of a repository-relative Markdown file."""
+    problems = []
+    for link in local_links(doc, text):
+        shown = f"[{' '.join(link.label.split())}]({link.path}{'#' + link.anchor if link.anchor else ''})"
+        if not resolves(link.path, repo):
+            problems.append(f"{shown}: no such file")
+            continue
+        if link.anchor and link.path.endswith(".md") and link.anchor not in anchors_of(link.path):
+            problems.append(f"{shown}: no heading with that anchor")
+        labelled = _PATH_LABEL.match(link.label.strip())
+        named = named_paths(link.label, repo.top_level) if labelled else []
+        if named and named[0].rstrip("/") != link.path:
+            problems.append(f"{shown}: the label names {named[0]}")
+    return problems
+
+
+def _anchors_in_checkout(path: str) -> set[str]:
+    return heading_anchors((ROOT / path).read_text(encoding="utf-8"))
+
+
 @pytest.fixture(scope="module")
 def repo() -> Repo:
     return make_repo(_listed_paths())
@@ -378,6 +541,41 @@ def test_allowlist_entries_are_still_needed(doc: str, repo: Repo) -> None:
 def test_allowlist_names_only_scanned_documents() -> None:
     assert {d for d, _ in ALLOWED_MISSING} <= set(DOCS)
     assert MAY_APPEAR <= set(ALLOWED_MISSING)
+
+
+@pytest.mark.parametrize("doc", ONBOARDING)
+def test_onboarding_links_and_anchors_resolve(doc: str, repo: Repo) -> None:
+    text = (ROOT / doc).read_text(encoding="utf-8")
+    problems = link_problems(doc, text, repo, _anchors_in_checkout)
+    assert not problems, f"{doc} has links that lead nowhere:\n" + "\n".join(problems)
+
+
+@pytest.mark.parametrize(("source", "target", "anchor"), ROUTES)
+def test_onboarding_route_is_linked(source: str, target: str, anchor: str) -> None:
+    """The route exists as a link. That its file and heading exist is the test above, which reads every source."""
+    links = local_links(source, (ROOT / source).read_text(encoding="utf-8"))
+    found = any(link.path == target and (not anchor or link.anchor == anchor) for link in links)
+    assert found, (
+        f"{source} no longer links to {target}{'#' + anchor if anchor else ''}. A new collaborator reaches a role's "
+        "reading path and the offline entry procedure through this link; restore it, or change ROUTES in the same "
+        "change that moves the route.")
+
+
+def test_every_route_starts_in_a_document_whose_links_are_checked() -> None:
+    assert {source for source, _, _ in ROUTES} <= set(ONBOARDING)
+    assert len(set(ONBOARDING)) == len(ONBOARDING)
+
+
+def test_ecosystem_map_has_a_section_for_each_core_repository_and_method_fork() -> None:
+    """A repository's README can link to `docs/ecosystem.md#<repository id>` for its role in the project. The
+    registry is the list of ids; the map must keep a heading for each of the two core repositories and each
+    method fork. The repositories outside the seven share one section and are not required here."""
+    registry = json.loads((ROOT / "data/ecosystem/repositories.v1.json").read_text(encoding="utf-8"))
+    ids = [entry["id"] for entry in registry["repositories"] if entry["group"] in ("core", "method_fork")]
+    assert ids, "the registry lists no core repository or method fork; the test is reading the wrong field"
+    anchors = _anchors_in_checkout("docs/ecosystem.md")
+    missing = [name for name in ids if heading_slug(name) not in anchors]
+    assert not missing, f"docs/ecosystem.md has no heading for {missing}; a README linking to that section breaks"
 
 
 def guidance_site_root() -> Path:
@@ -530,3 +728,62 @@ def test_engine_only_gate_rejects_stale_guide_exceptions(
     monkeypatch.setattr(__import__(__name__, fromlist=["ROOT"]), "ROOT", tmp_path)
     with pytest.raises(AssertionError, match="unused"):
         test_engine_guidance_local_references_without_companion("verify.md", repo)
+
+
+# ---- the onboarding link and anchor checks, on synthetic text
+
+def test_heading_slug_follows_the_github_rule() -> None:
+    assert heading_slug("The Python 3.12 line") == "the-python-312-line"
+    assert heading_slug("Procedure A: offline quickstart") == "procedure-a-offline-quickstart"
+    assert heading_slug("1 · The system in one paragraph") == "1--the-system-in-one-paragraph"
+    assert heading_slug("`prune`: keeping git lean") == "prune-keeping-git-lean"
+    assert heading_slug("patient-words-jpp_lens") == "patient-words-jpp_lens"
+    assert heading_slug("Read [the guide](verify.md#setup) first") == "read-the-guide-first"
+
+
+def test_heading_anchors_skip_fenced_code_number_repeats_and_keep_explicit_ids() -> None:
+    text = ("# Title\n\n## Setup\n\n```bash\n# a shell comment\n## not a heading\n```\n\n## Setup\n\n"
+            "### Setup ###\n\n<a id=\"kept\"></a> and <a name='also'></a>\n\nNot # a heading\n#NoSpace\n")
+    assert heading_anchors(text) == {"title", "setup", "setup-1", "setup-2", "kept", "also"}
+
+
+def test_local_links_resolve_against_the_document_and_leave_out_what_is_not_local() -> None:
+    text = ("[guide](../verify.md#quick-path) [`docs/x.md`](x.md) [here](#top) [dir](framework/)\n"
+            "[wrapped\nlabel](sub/y.md \"a title\") [site](https://example.invalid/a#b) [abs](/etc/hosts) "
+            "[mail](mailto:a@example.invalid)\n\n```bash\necho \"[not](a-link.md)\"\n```\n")
+    assert local_links("docs/index.md", text) == [
+        Link("guide", "verify.md", "quick-path"), Link("`docs/x.md`", "docs/x.md", ""),
+        Link("here", "docs/index.md", "top"), Link("dir", "docs/framework", ""),
+        Link("wrapped\nlabel", "docs/sub/y.md", "")]
+
+
+def test_link_problems_names_each_defect_and_passes_a_sound_document() -> None:
+    """The cases the onboarding check exists for: a moved file, a renamed heading, a label that no longer
+    matches its target, and a link that leaves the repository."""
+    fake = make_repo(["README.md", "verify.md", "docs/index.md", "docs/x.md", "docs/framework/seeds.json"])
+    anchors = {"verify.md": {"quick-path"}, "docs/index.md": {"top"}, "docs/x.md": set(), "README.md": set()}
+    sound = ("[guide](../verify.md#quick-path) [`docs/x.md`](x.md) [here](#top) [`docs/framework/`](framework/) "
+             "[`python -m pytest`](x.md) [data](framework/seeds.json#L3)")
+    assert link_problems("docs/index.md", sound, fake, anchors.__getitem__) == []
+    broken = ("[guide](../verify.md#quick-pth) [gone](gone.md) [`docs/x.md`](../README.md) "
+              "[out](../../elsewhere/a.md) [here](#bottom)")
+    assert link_problems("docs/index.md", broken, fake, anchors.__getitem__) == [
+        "[guide](verify.md#quick-pth): no heading with that anchor",
+        "[gone](docs/gone.md): no such file",
+        "[`docs/x.md`](README.md): the label names docs/x.md",
+        "[out](../elsewhere/a.md): no such file",
+        "[here](docs/index.md#bottom): no heading with that anchor"]
+
+
+def test_a_renamed_heading_breaks_the_route_that_points_at_it(repo: Repo) -> None:
+    """On the real entry page: renaming the offline procedure's heading must fail the README's link to it."""
+    start_here = (ROOT / "docs/start_here.md").read_text(encoding="utf-8")
+    assert "## Procedure A: offline quickstart" in start_here
+    renamed = heading_anchors(start_here.replace("## Procedure A: offline quickstart", "## Offline quickstart"))
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+
+    def anchors_of(path: str) -> set[str]:
+        return renamed if path == "docs/start_here.md" else _anchors_in_checkout(path)
+
+    problems = link_problems("README.md", readme, repo, anchors_of)
+    assert problems and all("docs/start_here.md#procedure-a-offline-quickstart" in p for p in problems), problems

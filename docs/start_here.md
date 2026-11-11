@@ -11,6 +11,10 @@ The project measures how language models respond to the same clinical situation 
 in clinical and in everyday wording. It is not a clinical tool and gives no medical advice
 ([README.md](../README.md)).
 
+A reader who arrives from the site or from a method fork: the
+[ecosystem map](ecosystem.md#1-repositories-at-a-glance) says what each repository is
+for. Both procedures below are run from an engine checkout.
+
 ## Reading paths
 
 Each path is the shortest set of documents for one kind of work. Read them in order.
@@ -66,7 +70,7 @@ Each path is the shortest set of documents for one kind of work. Read them in or
    nothing paid or networked runs locally; the lane table.
 2. [docs/triggers.md](triggers.md): every lane, its trigger keys and what it spends.
 3. [Operators handbook](operators_handbook.md): procedures, degradation drills and incident
-   records. Read [Known stale navigation](#known-stale-navigation) first.
+   records.
 4. [fire-trigger-safe skill](../.claude/skills/fire-trigger-safe/SKILL.md): the queue,
    settle-window and budget checks before any fire.
 5. [publish-site-data skill](../.claude/skills/publish-site-data/SKILL.md): the publication
@@ -102,7 +106,7 @@ Steps:
    (
    set -euo pipefail
    # From the engine root, with the environment active.
-   PW_SLICE_DIR=$(mktemp -d /tmp/patientwords-slice.XXXXXX)
+   PW_SLICE_DIR=$(mktemp -d "${TMPDIR:-/tmp}/patientwords-slice.XXXXXX")
    PW_SLICE_PROTOCOL=tests/fixtures/experiments/protocol_synthetic_ica.json
    python -m scripts.experiments.cli validate --protocol "$PW_SLICE_PROTOCOL"
    python -m scripts.experiments.cli plan --protocol "$PW_SLICE_PROTOCOL" --out "$PW_SLICE_DIR/plan.json"
@@ -116,7 +120,8 @@ Steps:
    ```
 
    The run directory is outside the checkout on purpose: the run store refuses a path inside
-   a Git checkout. A refusal prints a JSON object with `"status": "refused"` and exits 2.
+   a Git checkout. It is created under `$TMPDIR`, or under `/tmp` when that is unset. A
+   refusal prints a JSON object with `"status": "refused"` and exits 2.
 
 Status on 2026-11-10: steps 1 and 2 were executed from a clean copy; the outcomes are in the
 [migration record](migration_record_20261110.md#clean-copy-run). Step 3 was executed in the
@@ -124,6 +129,12 @@ working tree and is pinned by `tests/test_experiments_slice.py`: 45 planned task
 27 are ready, 9 unavailable and 9 unsupported, each with its reason; a second
 `run-fixture` executes nothing and reuses all 27. To see an interruption and a resume, add
 `--stop-after 5` to the first `run-fixture` and run it again without the flag.
+
+Status on 2026-11-11: the three steps were run again as written, in the working tree, with
+a new Python 3.12.3 environment kept outside the checkout (the one substitution: the
+environment's path). The install resolved pytest 9.1.1, ruff 0.16.10 and PyYAML 6.0.3. The
+quick path passed with no skip (125 tests; the site checkout was present). The slice gave
+the counts above, and the second `run-fixture` reused all 27.
 
 To see the bundle in a browser, run the preview check described in
 [experiment_interface/preview.md](experiment_interface/preview.md). It needs the site checkout
@@ -155,19 +166,22 @@ Preparing an offline plan or a fixture run is not authorization to spend or to p
 
 ## Known stale navigation
 
-These documents disagree today. Each row names the canonical source. The stale lines were
-not edited by the change that added this page. Line numbers are those of the working tree
-on 2026-11-10 and move when the files change.
+These documents disagree today. Each row names the canonical source. The documentation
+change of 2026-11-11 fixed the three rows of 2026-11-10 that were in
+`docs/operators_handbook.md` (the lane count, the site data contract, the latest owner
+decision record) and the install sentence in `docs/fresh_session_bootstrap.md`, which now
+points at `verify.md`. It did not edit the files below: the environment setup script and
+the guard files are the owner's, and sessions cannot write under `.github/trigger/`. Line
+numbers are those of the working tree on 2026-11-11 and move when the files change.
 
 | Fact | Stale statement | Canonical source |
 |---|---|---|
-| Number of push-to-run lanes | `docs/operators_handbook.md:40-41` says nine lanes are parked and names a tenth. `scripts/fire_trigger.py:64-77` lists 12 trigger names; one, `pab-probe`, has no workflow on this branch. | `AGENTS.md:125` ("11 lanes.") and its lane table, which `tests/test_trigger_docs.py` compares with the wired workflows. `docs/agent_reference.md:108` agrees. For trigger names the code knows, `scripts/fire_trigger.py`. |
-| Developer install command | `ops/environment_setup.sh:28` installs unpinned `pytest ruff pillow pyyaml`. `docs/fresh_session_bootstrap.md:235-236` names `pytest matplotlib networkx pillow` with no editable install, no ruff and no PyYAML. | `verify.md:34`, whose ranges match `pyproject.toml`. `pillow` is declared in neither. |
-| Where the site data contract is described | `docs/operators_handbook.md:92` and `:294` point to a *Data contracts* section of the site's `AGENTS.md`. That file has no such section. | `../patientwords/docs/agent_reference.md:25` (*Data contracts (what page JS reads)*). |
-| Latest owner decision record | `docs/operators_handbook.md:300` names `docs/decisions_20260821_owner.md`. | `docs/decisions_20261014_owner.md`, as `AGENTS.md` and `docs/agent_reference.md` name it. |
-| Where the dev install is documented | `.claude/hooks/README.md:53` cites `AGENTS.md` (*Commands*). `AGENTS.md` has no *Commands* section. | `verify.md:11` (*Setup and sources of truth*). The hooks README is owner-only. |
-| Lanes described under the trigger directory | `.github/trigger/README.md:3` describes two lanes. Sessions cannot edit that directory. | `docs/triggers.md`. |
+| Developer install command | `ops/environment_setup.sh:28` installs unpinned `pytest ruff pillow pyyaml`. | `verify.md:34`, whose ranges match `pyproject.toml`. `pillow` is declared in neither. |
+| Where the dev install is documented | `.claude/hooks/README.md:53` and `ops/environment_setup.sh:21` cite `AGENTS.md` (*Commands*). `AGENTS.md` has no *Commands* section. | `verify.md:11` (*Setup and sources of truth*). The hooks README is owner-only. |
+| Where a guard refusal points | `.claude/hooks/guard_paths.py:51,54`, `.claude/hooks/guard_git.py:96` and `.githooks/pre-commit:13` cite `AGENTS.md` (*Ops tooling*, *Single-writer*). `AGENTS.md` has neither paragraph. | `docs/agent_reference.md:70` (*Ops tooling*) and `:306` (*Single-writer invariants*). The guard files are owner-only. |
+| Lanes described under the trigger directory | `.github/trigger/README.md:3` describes two lanes. Sessions cannot edit that directory. | `docs/triggers.md`, and the lane table in `AGENTS.md`, which `tests/test_trigger_docs.py` compares with the wired workflows. |
 
-Cost of leaving these: a reader who follows the handbook alone counts the wrong number of
-lanes, looks for a section that does not exist, and does not find the latest owner decision
-record. The fix for each is a one-line edit in the stale file, made by whoever owns that file.
+Cost of leaving these: a reader who follows the setup script installs unpinned tools,
+not the ranges `verify.md` and `pyproject.toml` give, and a reader who
+follows a refusal message or the hooks README looks for a section that does not exist. The
+fix for each is a one-line edit in the stale file, made by whoever owns that file.

@@ -15,6 +15,10 @@ A contribution is offline by default. It loads no model weights, calls no provid
 writes nothing under `trace_out/`, `data/`, `pilot/`, `ops/` or the site's data directory.
 Real-model execution is a separate, approved step ([start_here.md](start_here.md#procedure-b-model-execution)).
 
+Before a first change, run the [offline quickstart](start_here.md#procedure-a-offline-quickstart).
+It installs the developer environment and runs this interface on a synthetic fixture. The
+reading order for a method developer is in [start_here.md](start_here.md#method-developer).
+
 ## 1. Required metadata: the run envelope
 
 Every result is one envelope, schema `patientwords.experiment-envelope/1`, around one typed

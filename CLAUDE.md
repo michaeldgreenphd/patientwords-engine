@@ -5,14 +5,21 @@ the files cannot drift. The line above imports it into every Claude Code session
 
 ## Claude Code specifics
 
-- After opening a pull request, follow it until it is merged or closed. How
-  depends on whether the session has the cloud tools `subscribe_pr_activity`
-  and `send_later`. (The daily-cycle session is the exception: it opens no PRs
-  and schedules nothing.)
+- After opening a pull request, follow it through its events until it is merged
+  or closed. How depends on whether the session has the cloud tools
+  `subscribe_pr_activity` and `send_later`. (The daily-cycle session is the
+  exception: it opens no PRs and schedules nothing.)
   - Cloud session (it has both): subscribe to the PR's activity
-    (`subscribe_pr_activity`) so Codex's review wakes the session, and schedule
-    a fallback check-in about an hour out (`send_later`) until the PR is merged
-    or closed; re-arm it silently if nothing changed.
+    (`subscribe_pr_activity`). Reviews, review comments, CI results and the
+    merge or close then wake the session; keep the subscription until the PR
+    is merged or closed, then unsubscribe. A fallback check-in (`send_later`,
+    about an hour out) covers a Codex review or CI result that produced no
+    wake. Schedule at most two per pull request: one after opening it, and
+    one more only if the first found something to act on. A check-in that
+    finds nothing changed ends the turn without a message and schedules
+    nothing further. Never schedule a recurring check-in, and never start a
+    turn only to report an unchanged status. If the subscription result says
+    another session holds the PR's events, tell the owner instead of polling.
   - Local session (it has neither, so no PR event wakes it): before ending a
     turn, read all of the PR's feedback and its CI, then tell the owner when to
     check again. Run all three commands; none of them replaces another:
