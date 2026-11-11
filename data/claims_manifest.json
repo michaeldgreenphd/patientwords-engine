@@ -254,7 +254,7 @@
   },
   {
    "page": "start-here/index.html",
-   "snippet": "hold 732 and 787 features and share 465",
+   "snippet": "data-rec=\"s5-counts\">hold 732 and 787 features and share 465</span>",
    "source": "data/simulated_scenarios.json",
    "expr": "[next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==12)['circuit_diff'][k] for k in ('shared_features','unique_to_a','unique_to_b')]",
    "expected": [
@@ -288,7 +288,7 @@
   },
   {
    "page": "start-here/index.html",
-   "snippet": "come out as ice at 29% and apple",
+   "snippet": "come out as \u201cice\u201d 29% and \u201capple\u201d.",
    "source": "data/provenance.json",
    "expr": "[d['translation_cases']['icecream_antacid']['patient'][0], round(round(d['translation_cases']['icecream_antacid']['patient'][1]*1000)/10+0.01), d['ladder_digestive']['baseline_top'][0].strip()]",
    "expected": [
@@ -296,18 +296,62 @@
     29,
     "apple"
    ],
-   "_": "Step 6, the first diagram's text alternative. A script does not rewrite it, so this entry is its only check."
+   "_": "Step 6, the first diagram's text alternative. Since 2026-11-11 the page rebuilds it from the values the figure shows (a review finding: it was fixed text beside values that update); this entry guards its static copy."
   },
   {
    "page": "start-here/index.html",
-   "snippet": "comes out as the start of antacid at 31%",
+   "snippet": "comes out as \u201cant\u201d 31%.",
    "source": "data/provenance.json",
    "expr": "[d['translation_cases']['icecream_antacid']['translated'][0], round(round(d['translation_cases']['icecream_antacid']['translated'][1]*1000)/10+0.01)]",
    "expected": [
     "ant",
     31
    ],
-   "_": "Step 6, the second diagram's text alternative; not rewritten by a script."
+   "_": "Step 6, the second diagram's text alternative; rebuilt at load like the first, and this entry guards its static copy."
+  },
+  {
+   "page": "start-here/index.html",
+   "snippet": "predictions: \u201cant\u201d (the start of \u201cantacid\u201d), \u201cice\u201d and",
+   "source": "data/simulated_scenarios.json",
+   "expr": "[next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==12)['top_clinical'][0].strip(), next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==12)['intended_target'].strip(), next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==12)['intended_target'].strip().startswith(next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==12)['top_clinical'][0].strip()), next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==12)['top_patient'][0].strip()]",
+   "expected": [
+    "ant",
+    "antacid",
+    true,
+    "ice"
+   ],
+   "_": "Step 2's text alternative. The two tokens are rebuilt at load from the values the figure shows; the clause that the first token is the start of the target word is fixed text, so this entry also checks that the recorded token is a prefix of the recorded target."
+  },
+  {
+   "page": "start-here/index.html",
+   "snippet": "&ldquo;ant&rdquo; begins &ldquo;antacid&rdquo;",
+   "source": "data/simulated_scenarios.json",
+   "expr": "[next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==12)['top_clinical'][0].strip(), next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==12)['intended_target'].strip(), next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==12)['intended_target'].strip().startswith(next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==12)['top_clinical'][0].strip())]",
+   "expected": [
+    "ant",
+    "antacid",
+    true
+   ],
+   "_": "Step 2's caption and the note beside the token in both drawings ('start of \u201cantacid\u201d'): fixed text. The check fails if the recorded top token stops being the start of the recorded target word."
+  },
+  {
+   "page": "start-here/index.html",
+   "snippet": "and \u201capple\u201d.",
+   "source": "data/provenance.json",
+   "expr": "d['ladder_digestive']['baseline_top'][0].strip()",
+   "expected": "apple",
+   "_": "The formal-term row's token in the text alternatives of step 2 and of step 6's first diagram (static copy; rebuilt at load)."
+  },
+  {
+   "page": "start-here/index.html",
+   "snippet": "leads to \u201cant\u201d. The everyday phrase stomach on fire lights up dark everyday nodes and leads to \u201cice\u201d.",
+   "source": "data/simulated_scenarios.json",
+   "expr": "[next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==12)['top_clinical'][0].strip(), next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==12)['top_patient'][0].strip()]",
+   "expected": [
+    "ant",
+    "ice"
+   ],
+   "_": "Step 5's text alternative (static copy; rebuilt at load)."
   }
  ]
 }

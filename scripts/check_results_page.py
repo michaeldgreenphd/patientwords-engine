@@ -151,7 +151,7 @@ CHECKS: tuple[str, ...] = (
     "sealed_row_count_is_shown_in_the_open_run",
     "sealed_row_count_is_shown_in_the_run_row",
     "rendered_rows_are_exactly_the_public_rows_of_the_rows_file",
-    "open_run_carries_its_evidence_review_and_not_a_claim_labels",
+    "open_run_carries_its_stimulus_evidence_review_and_sampling_labels",
     "wordings_are_named_and_every_difference_is_everyday_minus_medical_with_its_sign",
     "difference_and_status_text_is_neutral_and_no_alert_colour_is_shown",
     "open_run_has_a_closed_methods_and_source",

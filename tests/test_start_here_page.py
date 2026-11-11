@@ -6,13 +6,14 @@ preference is recorded in the site's ``docs/agent_reference.md``: preserve the n
 and the interactions; later work makes small, justified edits. These tests are the executable part of
 that preference:
 
-* the nine steps, the seven diagrams with a second drawing for narrow screens, the wording toggle and
-  the three-stage cycle are present;
+* the nine steps, the seven diagrams with a second drawing for narrow screens, the wording toggle, the
+  care-urgency ladder and the three-stage cycle are present, and the two drawings of a diagram carry
+  the same words;
 * the specific claims corrected in the restoration do not return (a next token described as an answer
   or as advice, a trace described as showing the reasoning, an invented completed word where the
   record holds a word piece);
-* every recorded value printed in a diagram has a claim entry and is replaced from the data files
-  when they load.
+* every recorded value printed in a diagram has its own claim entry, is replaced from the data files
+  when they load, and is named in the figure's text alternative with the value the figure shows.
 
 The browser tests serve the site's real page from a temporary directory with placeholder data, so no
 study value is involved. Skipped where the sibling site checkout, Playwright or a Chromium is missing.
@@ -26,6 +27,7 @@ import re
 import shutil
 import socket
 import sys
+from collections import Counter
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -47,6 +49,8 @@ WITHDRAWN = (
     "right answer",                                # the measured quantity is the target token
     "ice cream 29%",                               # the record holds the word piece "ice"
     "antacid 31%",                                 # the record holds the word piece "ant"
+    "can answer each one differently",             # the page description: a prediction, not an answer
+    "the same complaint in three phrasings",       # the three rows are shortened, and one is another sentence
 )
 KEPT = (
     "Watch wording change the prediction",
@@ -55,27 +59,45 @@ KEPT = (
     "It is not an assistant’s advice",
     "a readout, not proof of a cause",
     "say it the other way",
+    "sentences shortened",
 )
 PLACEHOLDER_PAYLOAD = {
-    "featured": {"tap_demo": {
-        "clinical": {"swap": "placeholder one", "bars": [{"label": "alpha", "p": 0.5, "role": "target"},
-                                                         {"label": "beta", "p": 0.25, "role": "other"}]},
-        "patient": {"swap": "placeholder two", "bars": [{"label": "gamma", "p": 0.125, "role": "top"},
-                                                        {"label": "alpha (4th)", "p": 0.0625, "role": "target"}]}}},
-    "scenarios": [{"batch": "pairs_20260707T171223Z", "batch_index": 12,
-                   "top_clinical": [" one", 0.5], "top_patient": [" two", 0.25],
-                   "circuit_diff": {"shared_features": 10, "unique_to_a": 3, "unique_to_b": 4}}],
+    "featured": {
+        "tap_demo": {
+            "clinical": {"swap": "placeholder one", "bars": [{"label": "alpha", "p": 0.5, "role": "target"},
+                                                             {"label": "beta", "p": 0.25, "role": "other"}]},
+            "patient": {"swap": "placeholder two", "bars": [{"label": "gamma", "p": 0.125, "role": "top"},
+                                                            {"label": "alpha (4th)", "p": 0.0625, "role": "target"}]}},
+        "care_ladder": [{"batch": "placeholder_batch", "batch_index": 7, "model": "gemma-2-2b", "x": 330}]},
+    "scenarios": [
+        {"batch": "pairs_20260707T171223Z", "batch_index": 12,
+         "top_clinical": [" one", 0.5], "top_patient": [" two", 0.25],
+         "circuit_diff": {"shared_features": 10, "unique_to_a": 3, "unique_to_b": 4}},
+        # the ladder prints the exported token as it is; the exporter writes tokens without a leading space
+        {"batch": "placeholder_batch", "batch_index": 7, "top_clinical": ["up", 0.6], "top_patient": ["down", 0.2],
+         "clinical_prompt": "A placeholder term goes", "clinical_term": "placeholder term",
+         "patient_prompt": "A plain phrase goes", "patient_term": "plain phrase"}],
 }
 # 0.285 and 0.125 both sit on a rounding boundary in binary; the page rounds the recorded decimal half up.
 PLACEHOLDER_PROVENANCE = {
     "ladder_digestive": {"baseline_top": ["three", 0.2]},
     "translation_cases": {"icecream_antacid": {"patient": ["two", 0.285], "translated": ["one", 0.125]}},
 }
+PLACEHOLDER_URGENCY = {
+    "tiers": {"0": "tier zero", "1": "tier one", "2": "tier two", "3": "tier three", "4": "tier four"},
+    "rows": [{"batch": "placeholder_batch", "index": 7, "model": "gemma-2-2b",
+              "tier_top_clinical": 3, "tier_top_patient": 1}],
+    "summary": {"per_model_deduped": {"gemma-2-2b": {"downgrades": 5, "upgrades": 2, "n_phrases": 40}}},
+    "vocabulary_status": "placeholder status",
+}
 FROM_PLACEHOLDERS = {
     "s2-clin": "“one”", "s2-pat": "“two”", "s2-formal": "“three”",
     "s5-counts": "hold 13 and 14 features and share 10",
     "s6-pat": "“two” 29%", "s6-trans": "“one” 13%",
 }
+# The figures whose text alternative names recorded values, by the step they are in.
+LABELLED_FIGURES = 4
+PENDING_LADDER = "figure pending: the urgency measurements have not loaded"
 
 
 def _source() -> str:
@@ -89,6 +111,14 @@ def _static_copies(source: str) -> dict[str, set[str]]:
     for key, text in re.findall(r'data-rec="([^"]+)">([^<]*)<', source):
         copies.setdefault(key, set()).add(html.unescape(text))
     return copies
+
+
+def _figures(source: str) -> list[str]:
+    return re.findall(r'<div class="fig"[^>]*>.*?</div>', source, flags=re.S)
+
+
+def _fill(template: str, values: dict[str, str]) -> str:
+    return re.sub(r"\{([a-z0-9-]+)\}", lambda match: values[match.group(1)], template)
 
 
 def _load(name: str):
@@ -111,13 +141,12 @@ def test_the_page_keeps_its_nine_steps_its_diagrams_and_its_interactions() -> No
     numbered = [s for s in steps if s[:1].isdigit()]
     assert numbered == [f"{n} · {title}" for n, title in enumerate(STEPS, start=1)]
     # Seven wide diagrams, each with a second drawing of the same content for narrow screens, in one figure.
-    figures = re.findall(r'<div class="fig"[^>]*>(.*?)</div>', source, flags=re.S)
-    paired = [f for f in figures if 'class="fig-wide"' in f]
+    paired = [f for f in _figures(source) if 'class="fig-wide"' in f]
     assert len(paired) == 7
     assert all(f.count('class="fig-wide"') == 1 and f.count('class="fig-narrow"') == 1 for f in paired)
     # The wording toggle, the care-urgency ladder and the three-stage cycle with its panels.
     assert 'id="tg-btn"' in source and 'id="tg-swap"' in source and 'id="tg-bars" aria-live="polite"' in source
-    assert 'id="care-ladder"' in source
+    assert 'id="care-ladder"' in source and PENDING_LADDER in source
     tabs = re.findall(r'class="cyc-tab" id="tab-(\w+)" role="tab" aria-selected="(true|false)" aria-controls="panel-\1"',
                       source)
     assert tabs == [("measure", "true"), ("mend", "false"), ("maintain", "false")]
@@ -127,17 +156,37 @@ def test_the_page_keeps_its_nine_steps_its_diagrams_and_its_interactions() -> No
     assert "People say the same thing many ways." in source          # the opening question
 
 
+def test_the_two_drawings_of_a_diagram_carry_the_same_words() -> None:
+    """A narrow drawing reflows the wide one: a label may wrap onto two lines or move, but no word is added,
+    dropped or changed. (Review finding, 2026-11-11: two pairs differed; comparing only the recorded values
+    did not see it.)"""
+    paired = [f for f in _figures(_source()) if 'class="fig-wide"' in f]
+
+    def words(figure: str, cls: str) -> Counter:
+        svg = re.search(rf'<svg class="{cls}".*?</svg>', figure, flags=re.S).group(0)
+        texts = [html.unescape(re.sub(r"<[^>]+>", "", t)) for t in re.findall(r"<text[^>]*>(.*?)</text>", svg, flags=re.S)]
+        return Counter(" ".join(texts).split())
+
+    for figure in paired:
+        wide, narrow = words(figure, "fig-wide"), words(figure, "fig-narrow")
+        assert wide == narrow, (sorted((wide - narrow).elements()), sorted((narrow - wide).elements()))
+
+
 def test_the_corrected_claims_stay_corrected() -> None:
     text = html.unescape(_source())
     for phrase in WITHDRAWN:
         assert phrase.lower() not in text.lower(), phrase
     for phrase in KEPT:
         assert phrase in text, phrase
-    # Conceptual diagrams are labelled where they stand, not in a separate warning panel.
-    assert text.count("Illustration") >= 2 and "Research direction" in text
+    # Conceptual diagrams are labelled where they stand, not in a separate warning panel: steps 1, 5 and 8 as
+    # illustrations, steps 7 and 9 as research directions.
+    captions = [html.unescape(re.sub(r"<[^>]+>", "", c)) for c in re.findall(r'<p class="cap[^"]*"[^>]*>(.*?)</p>', _source(),
+                                                                             flags=re.S)]
+    assert sum(c.startswith("Illustration") for c in captions) == 3
+    assert sum(c.startswith("Research direction") for c in captions) == 2
 
 
-def test_every_recorded_value_in_a_diagram_has_one_static_copy_and_a_claim_entry() -> None:
+def test_every_recorded_value_in_a_diagram_has_one_static_copy_and_its_own_claim_entry() -> None:
     source = _source()
     copies = _static_copies(source)
     assert set(copies) == set(FROM_PLACEHOLDERS)
@@ -147,13 +196,37 @@ def test_every_recorded_value_in_a_diagram_has_one_static_copy_and_a_claim_entry
               if c["page"] == REL]
     for claim in claims:
         assert claim["snippet"] in source, claim["snippet"]
+    # Each key has an entry of its own. Matching the bare text would let the entry for “ant” 31% stand in for
+    # the entry for “ant”, which reads another file.
     for key, texts in copies.items():
         (text,) = texts
-        assert any(text in c["snippet"] for c in claims), f"no claim entry guards the static copy of {key}"
-    # The step-3 bars and the two text alternatives no script rewrites.
-    for snippet in ("bars:[['inhaler',0.692,", "bars:[['shirt',0.183,", "come out as ice at 29% and apple",
-                    "comes out as the start of antacid at 31%"):
+        wanted = f'data-rec="{key}">{text}<'
+        assert any(html.unescape(c["snippet"]).startswith(wanted) for c in claims), f"no claim entry for {key}"
+    # The step-3 bars, the static copies of the four text alternatives, and the fixed note that the recorded
+    # token is the start of the target word.
+    for snippet in ("bars:[['inhaler',0.692,", "bars:[['shirt',0.183,", "come out as “ice” 29% and “apple”.",
+                    "comes out as “ant” 31%.", "predictions: “ant” (the start of “antacid”), “ice” and",
+                    "leads to “ant”.", "&ldquo;ant&rdquo; begins &ldquo;antacid&rdquo;"):
         assert any(snippet in c["snippet"] for c in claims), snippet
+
+
+def test_a_figure_that_prints_recorded_values_names_them_in_its_text_alternative() -> None:
+    """The static text alternative is the template filled with the static copies, so a reader without scripts
+    hears what the drawing shows. (Codex finding, 2026-11-11: the alternatives were fixed text beside values
+    that the page replaces from the data files.)"""
+    source = _source()
+    static = {key: next(iter(texts)) for key, texts in _static_copies(source).items()}
+    labelled = re.findall(r'<div class="fig" role="img" data-label="([^"]*)" aria-label="([^"]*)">', source)
+    assert len(labelled) == LABELLED_FIGURES
+    for template, label in labelled:
+        keys = re.findall(r"\{([a-z0-9-]+)\}", template)
+        assert keys and set(keys) <= set(static), keys
+        assert html.unescape(label) == _fill(html.unescape(template), static)
+    # No other figure names a recorded token or percentage in fixed text.
+    for figure in _figures(source):
+        opening = figure.split(">", 1)[0]
+        if "data-label=" not in opening:
+            assert not re.search(r"“|\d+%", html.unescape(opening)), opening[:120]
 
 
 @pytest.fixture(scope="module")
@@ -183,7 +256,8 @@ def served(tmp_path_factory: pytest.TempPathFactory) -> Iterator[tuple[object, s
             server.terminate()
 
 
-def _open(browser, url: str, *, payload: dict | None, provenance: dict | None, width: int = 1280, height: int = 900):
+def _open(browser, url: str, *, payload: dict | None, provenance: dict | None, urgency: dict | None = None,
+          width: int = 1280, height: int = 900):
     """A page with the three data files answered from the test. ``None`` answers 404."""
     page = browser.new_page(viewport={"width": width, "height": height})
     errors: list[str] = []
@@ -196,7 +270,7 @@ def _open(browser, url: str, *, payload: dict | None, provenance: dict | None, w
 
     page.route("**/data/simulated_scenarios.json", answer(payload))
     page.route("**/data/provenance.json", answer(provenance))
-    page.route("**/data/urgency_shift.json", answer(None))
+    page.route("**/data/urgency_shift.json", answer(urgency))
     page.goto(url, wait_until="networkidle")
     return page, errors
 
@@ -212,6 +286,11 @@ def _bars(page) -> list[list[str]]:
         [r.querySelector('.bar-lbl').textContent, r.querySelector('.bar-val').textContent])""")
 
 
+def _labels(page) -> list[list[str]]:
+    return page.evaluate("""() => [...document.querySelectorAll('.fig[data-label]')].map(f =>
+        [f.getAttribute('data-label'), f.getAttribute('aria-label')])""")
+
+
 def test_recorded_values_follow_the_data_files_and_keep_their_checked_copies_without_them(served) -> None:
     browser, url = served
     page, errors = _open(browser, url, payload=PLACEHOLDER_PAYLOAD, provenance=PLACEHOLDER_PROVENANCE)
@@ -219,15 +298,34 @@ def test_recorded_values_follow_the_data_files_and_keep_their_checked_copies_wit
     assert {key: set(values) for key, values in shown.items()} == {k: {v} for k, v in FROM_PLACEHOLDERS.items()}
     assert page.inner_text("#tg-swap") == "placeholder one"
     assert _bars(page) == [["alpha", "50%"], ["beta", "25%"]]
+    # Each text alternative names the values the figure now shows, and none of the page's own copies.
+    labels = _labels(page)
+    assert len(labels) == LABELLED_FIGURES
+    for template, label in labels:
+        assert label == _fill(template, FROM_PLACEHOLDERS)
+        assert "“ice”" not in label and "“apple”" not in label and "29%" not in label.replace("“two” 29%", "")
     assert errors == []
     page.close()
 
-    static = {key: texts for key, texts in _static_copies(PAGE.read_text(encoding="utf-8")).items()}
-    # No file, an empty record, and a record whose values are not numbers: the checked copy stays.
+    source = PAGE.read_text(encoding="utf-8")
+    static = _static_copies(source)
+    static_labels = [html.unescape(label) for _, label in
+                     re.findall(r'<div class="fig" role="img" data-label="([^"]*)" aria-label="([^"]*)">', source)]
+    # No file, an empty record, a record whose values are not numbers, empty tokens, and a toggle record with
+    # one bad bar: the checked copy stays, whole.
     not_numbers = {"translation_cases": {"icecream_antacid": {"patient": ["two", None], "translated": ["one"]}}}
-    for payload, provenance in ((None, None), ({}, {}), ({"scenarios": []}, not_numbers)):
+    empty_tokens = {"scenarios": [{"batch": "pairs_20260707T171223Z", "batch_index": 12,
+                                   "top_clinical": ["", 0.5], "top_patient": [" ", 0.25]}],
+                    "featured": {"tap_demo": {
+                        "clinical": {"swap": "other", "bars": [{"label": "alpha", "p": "0.5", "role": "target"},
+                                                               {"label": "beta", "p": 0.25, "role": "other"}]},
+                        "patient": PLACEHOLDER_PAYLOAD["featured"]["tap_demo"]["patient"]}}}
+    blank = {"ladder_digestive": {"baseline_top": ["", 0.2]},
+             "translation_cases": {"icecream_antacid": {"patient": ["\n", 0.285], "translated": ["", 0.125]}}}
+    for payload, provenance in ((None, None), ({}, {}), ({"scenarios": []}, not_numbers), (empty_tokens, blank)):
         page, errors = _open(browser, url, payload=payload, provenance=provenance)
         assert {key: set(values) for key, values in _recorded(page).items()} == static
+        assert [label for _, label in _labels(page)] == static_labels
         assert page.inner_text("#tg-swap") == "asthma flares"
         assert _bars(page) == [["inhaler", "69%"], ["mask", "6%"], ["set", "3%"]]
         assert errors == []
@@ -237,6 +335,9 @@ def test_recorded_values_follow_the_data_files_and_keep_their_checked_copies_wit
 def test_the_wording_toggle_and_the_cycle_tabs_work_by_pointer_and_by_keyboard(served) -> None:
     browser, url = served
     page, errors = _open(browser, url, payload=PLACEHOLDER_PAYLOAD, provenance=PLACEHOLDER_PROVENANCE)
+    # The button's accessible name contains its visible label, and the sentence that changes is announced.
+    assert page.get_attribute("#tg-btn", "aria-label").lower().startswith(page.inner_text("#tg-btn").strip().lower())
+    assert page.get_attribute(".tg-sentence", "aria-live") == "polite"
     page.click("#tg-btn")
     assert page.inner_text("#tg-swap") == "placeholder two"
     assert _bars(page) == [["gamma", "13%"], ["alpha (4th)", "6%"]]
@@ -245,6 +346,16 @@ def test_the_wording_toggle_and_the_cycle_tabs_work_by_pointer_and_by_keyboard(s
     assert page.inner_text("#tg-swap") == "placeholder one"
     page.keyboard.press("Space")
     assert page.inner_text("#tg-swap") == "placeholder two"
+    # A data file equal to what the bars already show does not redraw them (the bars would replay and the live
+    # region would announce the same text again); a different one does.
+    page.keyboard.press("Space")
+    same = PLACEHOLDER_PAYLOAD["featured"]["tap_demo"]
+    other = {"clinical": {"swap": "placeholder three", "bars": [{"label": "delta", "p": 0.75, "role": "target"}]},
+             "patient": same["patient"]}
+    redrawn = """(demo) => { const first = document.querySelector('#tg-bars .bar-row'); first.dataset.kept = 'yes';
+        window.pwTapDemo(demo); return document.querySelector('#tg-bars .bar-row').dataset.kept !== 'yes'; }"""
+    assert page.evaluate(redrawn, same) is False
+    assert page.evaluate(redrawn, other) is True and _bars(page) == [["delta", "75%"]]
 
     def cycle() -> tuple[list[str], list[bool], list[str]]:
         return tuple(page.evaluate("""() => { const tabs = [...document.querySelectorAll('.cyc-tab')];
@@ -269,26 +380,106 @@ def test_the_wording_toggle_and_the_cycle_tabs_work_by_pointer_and_by_keyboard(s
     page.close()
 
 
+def test_the_care_urgency_ladder_draws_from_its_data_and_stays_pending_without_it(served) -> None:
+    """No other check renders the ladder: the page load check does not notice one left pending, and the
+    ladder's own errors are caught by the page."""
+    browser, url = served
+    page, errors = _open(browser, url, payload=PLACEHOLDER_PAYLOAD, provenance=None, urgency=PLACEHOLDER_URGENCY)
+    drawn = page.evaluate("""() => { const svg = document.querySelector('#care-ladder svg');
+        return {circles: svg ? svg.querySelectorAll('circle').length : 0,
+                texts: svg ? [...svg.querySelectorAll('text')].map(t => t.textContent) : [],
+                sentences: [...document.querySelectorAll('#care-ladder .ladder-sent p')].map(p => p.textContent),
+                caption: document.getElementById('ladder-cap').textContent,
+                captionHidden: document.getElementById('ladder-cap').hidden}; }""")
+    assert drawn["circles"] == 2                                     # the medical wording's rung and the everyday one
+    assert {"tier zero", "tier one", "tier two", "tier three", "tier four"} <= set(drawn["texts"])
+    assert "“up” 60%" in drawn["texts"] and "“down” 20%" in drawn["texts"]
+    assert any("placeholder term" in s and "“up” 60%" in s for s in drawn["sentences"])
+    assert any("plain phrase" in s and "“down” 20%" in s for s in drawn["sentences"])
+    assert drawn["captionHidden"] is False
+    assert "5 of 40 measured phrases" in drawn["caption"] and "2 move up" in drawn["caption"]
+    assert "placeholder status" in drawn["caption"] and "model-generated prompts" in drawn["caption"]
+    assert errors == []
+    page.close()
+    # Without the urgency file, and with a pair the urgency file does not hold: the pending notice stays.
+    for urgency in (None, {**PLACEHOLDER_URGENCY, "rows": []}):
+        page, errors = _open(browser, url, payload=PLACEHOLDER_PAYLOAD, provenance=None, urgency=urgency)
+        assert page.inner_text("#care-ladder").strip() == PENDING_LADDER
+        assert page.evaluate("document.getElementById('ladder-cap').hidden") is True and errors == []
+        page.close()
+
+
 def test_each_diagram_is_drawn_once_at_either_width_and_stays_readable_on_a_phone(served) -> None:
     browser, url = served
     measure = """() => { const shown = sel => [...document.querySelectorAll(sel)].filter(n => n.getClientRects().length);
-        const narrow = shown('.fig .fig-narrow');
-        const sizes = narrow.flatMap(svg => { const scale = svg.getBoundingClientRect().width / svg.viewBox.baseVal.width;
+        const wide = shown('.fig .fig-wide'), narrow = shown('.fig .fig-narrow');
+        const sizes = [...wide, ...narrow].flatMap(svg => {
+            const scale = svg.getBoundingClientRect().width / svg.viewBox.baseVal.width;
             return [...svg.querySelectorAll('text')].map(t => parseFloat(getComputedStyle(t).fontSize) * scale); });
-        return {wide: shown('.fig .fig-wide').length, narrow: narrow.length,
+        return {wide: wide.length, narrow: narrow.length,
                 overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
                 smallest: sizes.length ? Math.min(...sizes) : null}; }"""
-    page, errors = _open(browser, url, payload=None, provenance=None, width=1280, height=900)
-    desktop = page.evaluate(measure.replace("shown('.fig .fig-narrow');", "shown('.fig .fig-wide');"))
-    assert (desktop["wide"], desktop["narrow"]) == (7, 7) and desktop["overflow"] <= 0 and errors == []
-    assert page.evaluate("[...document.querySelectorAll('.fig .fig-narrow')].filter(n => n.getClientRects().length).length") == 0
-    page.close()
-    page, errors = _open(browser, url, payload=None, provenance=None, width=390, height=844)
-    phone = page.evaluate(measure)
-    assert (phone["wide"], phone["narrow"]) == (0, 7) and phone["overflow"] <= 0 and errors == []
-    # The narrow drawings reflow the nodes and labels; they do not shrink the wide drawing. Their smallest
-    # label is as large on a 390 px phone as the wide drawings' smallest label is on a desktop (about 10 px;
-    # ``smallest`` on the desktop page is measured over the wide drawings). A wide drawing scaled to the
-    # phone's width would put the same label below 5 px.
-    assert phone["smallest"] >= 10 and phone["smallest"] >= desktop["smallest"] - 0.01, (phone, desktop)
-    page.close()
+
+    def at(width: int) -> dict:
+        page, errors = _open(browser, url, payload=None, provenance=None, width=width, height=900)
+        found = page.evaluate(measure)
+        page.close()
+        assert errors == [] and found["overflow"] <= 0, (width, found, errors)
+        return found
+
+    desktop = at(1280)
+    assert (desktop["wide"], desktop["narrow"]) == (7, 0)
+    # One drawing of each diagram is shown at every width; the narrow ones up to 600 px.
+    assert (at(601)["wide"], at(601)["narrow"]) == (7, 0) and (at(600)["wide"], at(600)["narrow"]) == (0, 7)
+    # The narrow drawings reflow the nodes and labels; they do not shrink the wide drawing. On a 390 px phone
+    # their smallest label is as large as the wide drawings' smallest label on a desktop (about 10 px); a wide
+    # drawing scaled to that width would put the same label below 5 px. The floors at 360 and 320 px are what
+    # the page measures today (9.2 and 8.0 px), stated so that a change that shrinks them is noticed.
+    floors = {390: 10.0, 360: 9.0, 320: 8.0}
+    for width, floor in floors.items():
+        phone = at(width)
+        assert (phone["wide"], phone["narrow"]) == (0, 7)
+        assert phone["smallest"] >= floor, (width, phone["smallest"])
+    assert at(390)["smallest"] >= desktop["smallest"] - 0.01
+
+
+def test_no_label_runs_over_a_connector_or_a_box_edge_also_under_a_wider_serif_font(served) -> None:
+    """The page's serif stack resolves to fonts of different widths (Iowan Old Style, Palatino, Georgia, the
+    platform serif). A label that fits under the narrowest must not reach its connector under a wider one.
+    (Review finding, 2026-11-11: the rewritten phrase of step 6 fitted only under Times metrics.) The check runs
+    under the default serif and under each wider serif that is installed where the test runs."""
+    browser, url = served
+    installed = """(names) => { const c = document.createElement('canvas').getContext('2d'); const probe = 'mmmmllllWWWiii';
+        c.font = '40px monospace'; const base = c.measureText(probe).width;
+        return names.filter(n => { c.font = '40px "' + n + '", monospace'; return c.measureText(probe).width !== base; }); }"""
+    overlaps = """() => { const out = [];
+        const hit = (a, b) => a.x < b.x + b.width - 0.5 && b.x < a.x + a.width - 0.5 && a.y < b.y + b.height - 0.5 && b.y < a.y + a.height - 0.5;
+        const inside = (a, b) => a.x >= b.x && a.y >= b.y && a.x + a.width <= b.x + b.width && a.y + a.height <= b.y + b.height;
+        [...document.querySelectorAll('.fig svg')].filter(s => s.getClientRects().length).forEach((svg, i) => {
+            const vb = svg.viewBox.baseVal;
+            const texts = [...svg.querySelectorAll('text')].map(t => ({t: t.textContent.trim(), b: t.getBBox()}));
+            const lines = [...svg.querySelectorAll('path, line')].map(e => e.getBBox()).filter(b => b.width < 3 || b.height < 3)
+                .map(b => ({x: b.x - 0.5, y: b.y - 0.5, width: b.width + 1, height: b.height + 1}));
+            const boxes = [...svg.querySelectorAll('rect')].map(e => e.getBBox()).filter(b => b.width > 20 && b.height > 14);
+            texts.forEach((a, p) => {
+                if (a.b.x < -0.5 || a.b.x + a.b.width > vb.width + 0.5) out.push([i, 'outside the drawing', a.t]);
+                texts.slice(p + 1).forEach(o => { if (hit(a.b, o.b)) out.push([i, 'over another label', a.t, o.t]); });
+                lines.forEach(l => { if (hit(a.b, l)) out.push([i, 'over a connector', a.t]); });
+                boxes.forEach(b => { if (hit(a.b, b) && !inside(a.b, b)) out.push([i, 'over a box edge', a.t]); });
+            });
+        });
+        return out; }"""
+    checked = []
+    for width in (1280, 390):
+        page, errors = _open(browser, url, payload=None, provenance=None, width=width, height=900)
+        fonts = [None, *page.evaluate(installed, ["DejaVu Serif", "Noto Serif", "Georgia", "Gelasio", "Palatino Linotype"])]
+        for font in fonts:
+            if font:
+                page.add_style_tag(content=':root{--serif:"%s",serif}' % font)
+                page.wait_for_timeout(200)
+            found = page.evaluate(overlaps)
+            assert found == [], (width, font or "default serif", found)
+            checked.append((width, font or "default serif"))
+        assert errors == []
+        page.close()
+    assert len(checked) >= 2
