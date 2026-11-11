@@ -134,8 +134,12 @@
    "page": "index.html",
    "snippet": "0.45 after translation (clinical baseline 0.26) \u00b7 July 7 trace",
    "source": "data/provenance.json",
-   "expr": "round(d['translation_cases']['grandma_laxative']['translated'][1],2)",
-   "expected": 0.45
+   "expr": "[round(d['translation_cases']['grandma_laxative']['translated'][1],2), round(d['translation_cases']['grandma_laxative']['clinical'][1],2)]",
+   "expected": [
+    0.45,
+    0.26
+   ],
+   "_": "both numbers of the sentence since 2026-11-11 (the clinical baseline was not compared before); the page also reads both from this record when it loads, and this entry guards its static copy"
   },
   {
    "page": "dialect-differences/index.html",
