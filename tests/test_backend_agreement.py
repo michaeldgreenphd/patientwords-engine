@@ -152,3 +152,126 @@ def test_part_ordering_helper_is_numeric_and_stable():
     got = [n.split("/")[-1] for n in _part_sorted(names)]
     assert got == ["batch_summary.json", "batch_summary.part_09.json", "batch_summary.part_11.json",
                    "batch_summary.part_36.json", "batch_summary.part_100.json", "batch_summary.part_351.json"]
+
+
+# ------------------------------------------------------------------ verdict from criteria written before a run
+
+import copy  # noqa: E402
+
+from scripts import backend_agreement as ba  # noqa: E402
+
+ROOT = Path(__file__).resolve().parents[1]
+PREVIEW = ROOT / "data" / "experiments" / "protocols" / "first_run_stage_a.preview.v1.json"
+HELD = [{"name": "placeholder precondition", "holds": True, "detail": ""}]
+
+
+def labelled(index, probs, label='Output " tok"'):
+    return {**result(index, (f"c{index}", f"p{index}"), probs), "target_token": label}
+
+
+def joined(reference, candidate):
+    rows, mismatched = join({r["index"]: r for r in reference}, {r["index"]: r for r in candidate})
+    assert mismatched == []
+    return rows
+
+
+def test_verdict_passes_fails_and_stays_inconclusive_by_the_declared_thresholds():
+    criteria = {"pass_max": 0.0005, "fail_above": 0.001,
+                "comparable_sides": [{"batch_index": 1, "side": "clinical"}, {"batch_index": 1, "side": "patient"}]}
+    reference = [labelled(1, (0.123, 0.456))]
+    # 0.1235 - 0.123 is 0.0005000000000000004 in binary; it is on the grid at exactly the pass threshold.
+    passing = ba.stage_verdict(joined(reference, [labelled(1, (0.1235, 0.4558))]), criteria, HELD)
+    assert (passing["verdict"], passing["sides_compared"], passing["max_abs_delta"]) == ("pass", 2, 0.0005)
+    between = ba.stage_verdict(joined(reference, [labelled(1, (0.1238, 0.456))]), criteria, HELD)
+    assert between["verdict"] == "inconclusive" and "above 0.0005 and none above 0.001" in between["reason"]
+    failing = ba.stage_verdict(joined(reference, [labelled(1, (0.1241, 0.456))]), criteria, HELD)
+    assert failing["verdict"] == "fail" and failing["reason"] == "1 side(s) above 0.001"
+    assert failing["outcomes"] == ["pass", "fail", "inconclusive"]
+
+
+def test_a_side_read_on_another_token_is_set_aside_and_never_counted_as_a_disagreement():
+    criteria = {"pass_max": 0.0005, "fail_above": 0.001}                       # no list: every side of every row
+    reference = [labelled(1, (0.5, 0.4)), labelled(2, (0.5, 0.4), label='Output " other"')]
+    candidate = [labelled(1, (0.5, 0.4)), labelled(2, (0.9, 0.1))]
+    verdict = ba.stage_verdict(joined(reference, candidate), criteria, HELD)
+    assert verdict["verdict"] == "inconclusive" and verdict["sides_compared"] == 2 and verdict["max_abs_delta"] == 0.0
+    assert verdict["set_aside"] == [{"index": 2, "side": side, "reason": "target_labels_differ"} for side in ba.SIDES]
+    # With row 2 outside the declared set, the same data give a verdict, and the 0.4 difference is not in it.
+    declared = {**criteria, "comparable_sides": [{"batch_index": 1, "side": side} for side in ba.SIDES]}
+    assert ba.stage_verdict(joined(reference, candidate), declared, HELD)["verdict"] == "pass"
+
+
+def test_a_failed_an_unchecked_or_a_missing_precondition_gives_inconclusive_whatever_the_values():
+    criteria = {"consistent_max": 0.0311, "fail_above": 0.063}
+    rows = joined([labelled(1, (0.5, 0.4))], [labelled(1, (0.9, 0.4))])        # 0.4 apart: a fail on values alone
+    assert ba.stage_verdict(rows, criteria, HELD)["verdict"] == "fail"
+    for holds, phrase in ((False, "does not hold"), (None, "was not checked")):
+        verdict = ba.stage_verdict(rows, criteria, [{"name": "identity", "holds": holds, "detail": ""}])
+        assert verdict["verdict"] == "inconclusive" and phrase in verdict["reason"]
+    missing = joined([labelled(1, (0.5, None))], [labelled(1, (0.5, 0.4))])
+    verdict = ba.stage_verdict(missing, criteria, HELD)
+    assert verdict["verdict"] == "inconclusive" and verdict["set_aside"][0]["reason"] == "value_missing_or_not_finite"
+    assert ba.stage_verdict(joined([labelled(1, (0.5, 0.4))], [labelled(1, (0.5, 0.4))]), criteria, HELD)[
+        "verdict"] == "consistent"
+
+
+def _constructed_candidate(tmp_path, source_part, overrides=None, **inference):
+    """A verify summary assembled from a landed part's rows. It is constructed for this test and measures nothing."""
+    preview = json.loads(PREVIEW.read_text(encoding="utf-8"))
+    model = json.loads((ROOT / preview["protocol"]["path"]).read_text(encoding="utf-8"))["model"]
+    results = copy.deepcopy(json.loads((ROOT / source_part).read_text(encoding="utf-8"))["results"])
+    for row in results:
+        row["token_parity"] = {side: {"match": True} for side in ba.SIDES}
+        for side, value in (overrides or {}).get(row["index"], {}).items():
+            row["probabilities"][side] = value
+    block = {"dtype": model["dtype"], "revision": model["revision"], "revision_pinned": model["revision"],
+             "environment": {"interp_engine": ba.criteria_engine_version(ROOT)}, **inference}
+    directory = tmp_path / "verify_constructed"
+    directory.mkdir()
+    (directory / "verify_summary.part_01.json").write_text(
+        json.dumps({"backend": "interp-engine", "completed": True, "inference": block, "results": results}),
+        encoding="utf-8")
+    return directory, preview
+
+
+def _run(tmp_path, candidate, comparison, reference_part, capsys):
+    out = tmp_path / f"{comparison}.json"
+    ba.main(["--reference", str((ROOT / reference_part).parent), "--candidate", str(candidate),
+             "--criteria", str(PREVIEW), "--comparison", comparison, "--out", str(out)])
+    capsys.readouterr()
+    return json.loads(out.read_text(encoding="utf-8"))["verdict"]
+
+
+def test_the_stage_a_criteria_run_on_the_landed_references_with_a_constructed_candidate(tmp_path, capsys):
+    """Real reference parts, read-only; the candidate is the landed CPU part's rows relabelled as a verify run.
+    The expected numbers are the baseline the run packet records for those two landed parts (section 6.2)."""
+    preview = json.loads(PREVIEW.read_text(encoding="utf-8"))
+    hosted, cpu = (preview["inputs"][name]["path"] for name in ("landed_hosted_part", "landed_cpu_part"))
+    if not (ROOT / hosted).is_file() or not (ROOT / cpu).is_file():
+        pytest.skip("the landed reference parts are not in this checkout")
+    baseline = preview["parity_criteria"]["stage_a"]["landed_baseline_hosted_vs_cpu_bfloat16"]
+    candidate, _ = _constructed_candidate(tmp_path, cpu)
+    verdict = _run(tmp_path, candidate, "hosted", hosted, capsys)
+    assert all(item["holds"] is True for item in verdict["preconditions"]), verdict["preconditions"]
+    assert (verdict["sides_declared"], verdict["sides_compared"]) == (9, baseline["sides"])
+    assert verdict["max_abs_delta"] == baseline["max"] and round(verdict["mean_abs_delta"], 5) == baseline["mean"]
+    assert verdict["verdict"] == "fail"                    # bfloat16 against a 3-decimal reference: 0.0124 > 0.001
+    assert verdict["criteria_status"] == "proposed_before_any_run_not_approved"
+    # Against the CPU part itself the same candidate is identical on all 20 sides.
+    same = _run(tmp_path, candidate, "cpu_bfloat16", cpu, capsys)
+    assert (same["verdict"], same["sides_compared"], same["max_abs_delta"]) == ("consistent", 20, 0.0)
+
+
+def test_a_constructed_candidate_without_the_pinned_identity_gets_no_verdict(tmp_path, capsys):
+    preview = json.loads(PREVIEW.read_text(encoding="utf-8"))
+    hosted, cpu = (preview["inputs"][name]["path"] for name in ("landed_hosted_part", "landed_cpu_part"))
+    if not (ROOT / hosted).is_file() or not (ROOT / cpu).is_file():
+        pytest.skip("the landed reference parts are not in this checkout")
+    candidate, _ = _constructed_candidate(tmp_path, cpu, revision=None)       # as the older landed verify parts
+    verdict = _run(tmp_path, candidate, "hosted", hosted, capsys)
+    assert verdict["verdict"] == "inconclusive" and "pinned revision" in verdict["reason"]
+    held = {item["name"]: item["holds"] for item in verdict["preconditions"]}
+    assert held["the candidate records the pinned revision as loaded and as pinned"] is False
+    assert held["landed_hosted_part has the recorded SHA-256"] is True
+    with pytest.raises(SystemExit):
+        ba.main(["--reference", str((ROOT / hosted).parent), "--candidate", str(candidate), "--criteria", str(PREVIEW)])

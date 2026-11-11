@@ -1,0 +1,535 @@
+{
+ "schema": "patientwords.legacy-payload-rows/1",
+ "recorded_utc": "2026-11-10",
+ "what_this_is": "The rows that scripts/urgency_shift.py takes from the site gallery payload (data/simulated_scenarios.json in the sibling site repository) at keys whose engine part the analysis membership in force does not read. They enter the collector output and therefore the published statistics. The record declares them one by one. It grants nothing: whether they stay is an owner decision recorded in a superseding analysis snapshot.",
+ "what_it_is_not": "Not a membership rule and not a pin. scripts/results_policy.py does not read this file.",
+ "membership": "study-interim/1",
+ "policy_version": "open-results/1",
+ "collector": "scripts/urgency_shift.py (payload fill; --fallback-keys-out lists the keys)",
+ "checked_by": "tests/test_legacy_payload_rows.py",
+ "site_payload": {
+  "path": "data/simulated_scenarios.json",
+  "sha256": "5bcd3eac2bc347f181d92c0f33cf4a74390ec0ad36740e4c624199f0b3e01ef7",
+  "site_commit": "13ece510019965db02fb631a4ffd8a8a67ff9166",
+  "last_full_export_utc": "2026-08-29"
+ },
+ "row_hashes": {
+  "payload_row_sha256": "sha256 of the payload object scenarios[..].models[model], serialised as UTF-8 JSON with sorted keys, separators \",\" and \":\" and ensure_ascii false",
+  "payload_measurement_sha256": "the same over the object without its \"urgency\" key, which a later publish step writes and rewrites"
+ },
+ "omitted": "Token strings and both prompts are not copied here. The two hashes cover the tokens; payload_row gives numbers, booleans, counts and the urgency join.",
+ "states": {
+  "taken_by_collector": "the collector takes this row today",
+  "retired": "the collector no longer takes it; retired_by names the snapshot that recorded the change"
+ },
+ "count": 11,
+ "parts": {
+  "payload_values_measured_by": {
+   "path": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_01.json",
+   "engine_commit": "1162e921557aa5eb1a3fa90a078d73e9a3209de2",
+   "committed_utc": "2026-07-07T15:01:04Z",
+   "sha256": "198192f90e30d441998b531d187d4b8e22dba4f2253ebb2830d1d1c5aef5d6cd",
+   "backend": "logits",
+   "result_indices": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13
+   ],
+   "inference": {
+    "method": "logits",
+    "hf_id": "Qwen/Qwen3-4B",
+    "dtype": "bfloat16"
+   },
+   "on_branch_today": false,
+   "replaced_by": {
+    "engine_commit": "d0e47884939182dc40f2170ccbde03dee7be926f",
+    "committed_utc": "2026-09-02T12:15:47Z",
+    "what": "a hosted trace of pairs 1-2 written to the same file name (the 2026-09-02 qwen3-4b re-probe, docs/cross-model.md)"
+   },
+   "verified": "the file was read at that commit through the GitHub contents API on 2026-11-10; all 13 of its results equal the published payload rows in target token, both probabilities, the penalty and both spreads"
+  },
+  "engine_part_at_these_keys_today": {
+   "path": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_03.json",
+   "sha256": "9e2144892900ca8e63d06b9ea38cc077f63501fbb7e4bea034bc419c53876bcf",
+   "backend": "logits",
+   "result_indices": [
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13
+   ],
+   "engine_commit": "b4451bed4b3c7381567a26402dc1af2273108481",
+   "committed_utc": "2026-10-31T05:18:04Z",
+   "inference": {
+    "method": "logits",
+    "hf_id": "Qwen/Qwen3-4B",
+    "dtype": "bfloat16",
+    "revision": "1cfa9a7208912126459214e8b04321603b3df60c",
+    "revision_pinned": "1cfa9a7208912126459214e8b04321603b3df60c",
+    "environment": {
+     "python": "3.11.17",
+     "platform": "Linux-7.0.0-1017-azure-x86_64-with-glibc2.39",
+     "engine_sha": "a3ddbc52586c",
+     "runner_image": "20261026.354.1",
+     "torch": "2.13.0+cpu",
+     "transformers": "5.14.1",
+     "accelerate": "1.14.0"
+    }
+   },
+   "membership": "study-interim/1",
+   "membership_reason": "logits part outside the pinned manifest",
+   "not_read_because": "pin",
+   "pin": {
+    "path": "data/publication_release/logits_parts.json",
+    "released_utc": "2026-10-09T21:29:14Z",
+    "sha256": "540b58a36fbb003917a879ee33a4b435f0c97ab1fa83de96b9eeda150b4b553a"
+   }
+  }
+ },
+ "effect_on_published_statistics": {
+  "file": "data/model_stats.json (site)",
+  "model": "qwen3-4b",
+  "with_these_rows": {
+   "n_rows": 1152,
+   "n_unique_phrases": 1121
+  },
+  "without_these_rows": {
+   "n_rows": 1141,
+   "n_unique_phrases": 1110
+  },
+  "detail": "ops/payload_reexport_accounting_20261110.json; docs/corrections/payload_summary_dedupe_20261110.md"
+ },
+ "decision_pending": "Owner: drop these rows in a superseding snapshot, or advance the pin for qwen3-4b (scripts/publication_release.py --release --models qwen3-4b; no single-part option exists). Neither keeps the values recorded here: the part that produced them is no longer on the branch.",
+ "entries": [
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 3,
+   "state": "taken_by_collector",
+   "payload_row": {
+    "prob_clinical": 0.3228,
+    "prob_patient": 0.8118,
+    "language_penalty": 0.489,
+    "flipped": false,
+    "anchor_fallback": false,
+    "screening": null,
+    "clinical_mass": null,
+    "circuit_diff_present": false,
+    "top_clinical_p": 0.3228,
+    "top_patient_p": 0.8118,
+    "spread_clinical_n": 10,
+    "spread_patient_n": 9,
+    "target_token_chars": 3,
+    "urgency": {
+     "flip_class": null,
+     "tier_top_clinical": 1,
+     "tier_top_patient": 1,
+     "tier_shift": 0.048
+    }
+   },
+   "payload_row_sha256": "91cabf9c38bba98c5cd0418892f8d725b5d4415004b0e8462bb2264b8b561aee",
+   "payload_measurement_sha256": "221f67f798520bd3804c6a3b0142c0a17c560356b8d4fba61634e79a22c4d128",
+   "payload_values_measured_by": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_01.json@1162e921557a",
+   "engine_part": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_03.json",
+   "not_read_because": "pin",
+   "membership_reason": "logits part outside the pinned manifest",
+   "engine_part_values": {
+    "prob_clinical": 0.3489,
+    "prob_patient": 0.8404,
+    "language_penalty": 0.4915
+   }
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 4,
+   "state": "taken_by_collector",
+   "payload_row": {
+    "prob_clinical": 0.0829,
+    "prob_patient": 0.0914,
+    "language_penalty": 0.0085,
+    "flipped": false,
+    "anchor_fallback": false,
+    "screening": null,
+    "clinical_mass": null,
+    "circuit_diff_present": false,
+    "top_clinical_p": 0.1549,
+    "top_patient_p": 0.1507,
+    "spread_clinical_n": 10,
+    "spread_patient_n": 10,
+    "target_token_chars": 8,
+    "urgency": {
+     "flip_class": null,
+     "tier_top_clinical": null,
+     "tier_top_patient": null,
+     "tier_shift": 0.123
+    }
+   },
+   "payload_row_sha256": "b1206fe54b609639d74a1f795c86b4e95595942865d68fca5486a0b2c4f20143",
+   "payload_measurement_sha256": "fa6d5fcbc63350db008a15cd5ae8aff1fc944cd4584790da07020a389bc0789c",
+   "payload_values_measured_by": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_01.json@1162e921557a",
+   "engine_part": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_03.json",
+   "not_read_because": "pin",
+   "membership_reason": "logits part outside the pinned manifest",
+   "engine_part_values": {
+    "prob_clinical": 0.0857,
+    "prob_patient": 0.0997,
+    "language_penalty": 0.014
+   }
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 5,
+   "state": "taken_by_collector",
+   "payload_row": {
+    "prob_clinical": 0.0004,
+    "prob_patient": 0.0002,
+    "language_penalty": -0.0002,
+    "flipped": false,
+    "anchor_fallback": false,
+    "screening": null,
+    "clinical_mass": null,
+    "circuit_diff_present": false,
+    "top_clinical_p": 0.2679,
+    "top_patient_p": 0.3598,
+    "spread_clinical_n": 9,
+    "spread_patient_n": 9,
+    "target_token_chars": 4,
+    "urgency": null
+   },
+   "payload_row_sha256": "cbb5d3f15b97f1c89df4f7cb96624a1b0c36e4126dd657d94fe2c85034ea7dad",
+   "payload_measurement_sha256": "cbb5d3f15b97f1c89df4f7cb96624a1b0c36e4126dd657d94fe2c85034ea7dad",
+   "payload_values_measured_by": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_01.json@1162e921557a",
+   "engine_part": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_03.json",
+   "not_read_because": "pin",
+   "membership_reason": "logits part outside the pinned manifest",
+   "engine_part_values": {
+    "prob_clinical": 0.0003,
+    "prob_patient": 0.0002,
+    "language_penalty": -0.0001
+   }
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 6,
+   "state": "taken_by_collector",
+   "payload_row": {
+    "prob_clinical": 0.0295,
+    "prob_patient": 0.0139,
+    "language_penalty": -0.0156,
+    "flipped": true,
+    "anchor_fallback": false,
+    "screening": null,
+    "clinical_mass": null,
+    "circuit_diff_present": false,
+    "top_clinical_p": 0.3599,
+    "top_patient_p": 0.1803,
+    "spread_clinical_n": 9,
+    "spread_patient_n": 9,
+    "target_token_chars": 6,
+    "urgency": {
+     "flip_class": "uninformative",
+     "tier_top_clinical": null,
+     "tier_top_patient": null,
+     "tier_shift": null
+    }
+   },
+   "payload_row_sha256": "c2b9ac9664f78b96a743d246c298ff920d80e8b532f5a5a68cbcde63ad6aa73e",
+   "payload_measurement_sha256": "69e50dc1f9664432570cac0d919450cc66f83d47664a2aaaa358a7ed0d66c642",
+   "payload_values_measured_by": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_01.json@1162e921557a",
+   "engine_part": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_03.json",
+   "not_read_because": "pin",
+   "membership_reason": "logits part outside the pinned manifest",
+   "engine_part_values": {
+    "prob_clinical": 0.0304,
+    "prob_patient": 0.0144,
+    "language_penalty": -0.016
+   }
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 7,
+   "state": "taken_by_collector",
+   "payload_row": {
+    "prob_clinical": 0.0788,
+    "prob_patient": 0.5402,
+    "language_penalty": 0.4614,
+    "flipped": true,
+    "anchor_fallback": false,
+    "screening": null,
+    "clinical_mass": null,
+    "circuit_diff_present": false,
+    "top_clinical_p": 0.2426,
+    "top_patient_p": 0.5402,
+    "spread_clinical_n": 9,
+    "spread_patient_n": 9,
+    "target_token_chars": 4,
+    "urgency": {
+     "flip_class": "uninformative",
+     "tier_top_clinical": null,
+     "tier_top_patient": 1,
+     "tier_shift": 0.045
+    }
+   },
+   "payload_row_sha256": "1b23e79923f3f91806d2aea326d2eb358456bb3063f2fba34a6b6ee43e082ecc",
+   "payload_measurement_sha256": "2350283911b510ad2cdd19f5c5981f2b040093b8b79b1ccf2f6d18a5a7bbbfee",
+   "payload_values_measured_by": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_01.json@1162e921557a",
+   "engine_part": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_03.json",
+   "not_read_because": "pin",
+   "membership_reason": "logits part outside the pinned manifest",
+   "engine_part_values": {
+    "prob_clinical": 0.0726,
+    "prob_patient": 0.5323,
+    "language_penalty": 0.4597
+   }
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 8,
+   "state": "taken_by_collector",
+   "payload_row": {
+    "prob_clinical": 0.0289,
+    "prob_patient": 0.0001,
+    "language_penalty": -0.0288,
+    "flipped": true,
+    "anchor_fallback": false,
+    "screening": null,
+    "clinical_mass": null,
+    "circuit_diff_present": false,
+    "top_clinical_p": 0.2419,
+    "top_patient_p": 0.3754,
+    "spread_clinical_n": 9,
+    "spread_patient_n": 9,
+    "target_token_chars": 3,
+    "urgency": {
+     "flip_class": "uninformative",
+     "tier_top_clinical": null,
+     "tier_top_patient": null,
+     "tier_shift": null
+    }
+   },
+   "payload_row_sha256": "901f3cdaddaf938a76fdf8e944c609f2d9b60a24ec7dd0f0137c3ad0968fcb2e",
+   "payload_measurement_sha256": "ba6f02193d1a0b918936b7e5a347c314a6a5aad966cf8c5344914106b0ad71a3",
+   "payload_values_measured_by": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_01.json@1162e921557a",
+   "engine_part": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_03.json",
+   "not_read_because": "pin",
+   "membership_reason": "logits part outside the pinned manifest",
+   "engine_part_values": {
+    "prob_clinical": 0.0297,
+    "prob_patient": 0.0001,
+    "language_penalty": -0.0296
+   }
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 9,
+   "state": "taken_by_collector",
+   "payload_row": {
+    "prob_clinical": 0.0,
+    "prob_patient": 0.0041,
+    "language_penalty": 0.0041,
+    "flipped": true,
+    "anchor_fallback": false,
+    "screening": null,
+    "clinical_mass": null,
+    "circuit_diff_present": false,
+    "top_clinical_p": 0.3835,
+    "top_patient_p": 0.2892,
+    "spread_clinical_n": 10,
+    "spread_patient_n": 10,
+    "target_token_chars": 5,
+    "urgency": {
+     "flip_class": "uninformative",
+     "tier_top_clinical": null,
+     "tier_top_patient": null,
+     "tier_shift": null
+    }
+   },
+   "payload_row_sha256": "b92fc53f7dea49d182fff1376c72a87c2bfc18b3a73b6569a2c95256d238f31f",
+   "payload_measurement_sha256": "d88463edb1340d7b3614a2355052e357e3ef269959df207d052fa774265fe72e",
+   "payload_values_measured_by": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_01.json@1162e921557a",
+   "engine_part": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_03.json",
+   "not_read_because": "pin",
+   "membership_reason": "logits part outside the pinned manifest",
+   "engine_part_values": {
+    "prob_clinical": 0.0,
+    "prob_patient": 0.0041,
+    "language_penalty": 0.0041
+   }
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 10,
+   "state": "taken_by_collector",
+   "payload_row": {
+    "prob_clinical": 0.0725,
+    "prob_patient": 0.0034,
+    "language_penalty": -0.0691,
+    "flipped": true,
+    "anchor_fallback": false,
+    "screening": null,
+    "clinical_mass": null,
+    "circuit_diff_present": false,
+    "top_clinical_p": 0.0772,
+    "top_patient_p": 0.1656,
+    "spread_clinical_n": 10,
+    "spread_patient_n": 9,
+    "target_token_chars": 8,
+    "urgency": {
+     "flip_class": "uninformative",
+     "tier_top_clinical": 1,
+     "tier_top_patient": null,
+     "tier_shift": -0.852
+    }
+   },
+   "payload_row_sha256": "08a469789a1f682cf8d9ba46375051960a22120c6d9a03ddf4a04eb3e5317944",
+   "payload_measurement_sha256": "b24aa0895e7d855072b85a8a3e3b6cb2747e23a4e685c652ad1c5adea0dcb7ee",
+   "payload_values_measured_by": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_01.json@1162e921557a",
+   "engine_part": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_03.json",
+   "not_read_because": "pin",
+   "membership_reason": "logits part outside the pinned manifest",
+   "engine_part_values": {
+    "prob_clinical": 0.079,
+    "prob_patient": 0.0037,
+    "language_penalty": -0.0753
+   }
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 11,
+   "state": "taken_by_collector",
+   "payload_row": {
+    "prob_clinical": 0.409,
+    "prob_patient": 0.2271,
+    "language_penalty": -0.1819,
+    "flipped": false,
+    "anchor_fallback": false,
+    "screening": null,
+    "clinical_mass": null,
+    "circuit_diff_present": false,
+    "top_clinical_p": 0.5252,
+    "top_patient_p": 0.3744,
+    "spread_clinical_n": 10,
+    "spread_patient_n": 10,
+    "target_token_chars": 3,
+    "urgency": {
+     "flip_class": null,
+     "tier_top_clinical": 1,
+     "tier_top_patient": 1,
+     "tier_shift": 0.023
+    }
+   },
+   "payload_row_sha256": "09d0008c460fc939a930efdc8839307e33cdc8adff7c653e2001dda633529d85",
+   "payload_measurement_sha256": "dcff80bd8b7e92f3c1391b9f7ed7aa142b1b9034da65242306681acf0c1316be",
+   "payload_values_measured_by": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_01.json@1162e921557a",
+   "engine_part": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_03.json",
+   "not_read_because": "pin",
+   "membership_reason": "logits part outside the pinned manifest",
+   "engine_part_values": {
+    "prob_clinical": 0.4375,
+    "prob_patient": 0.2594,
+    "language_penalty": -0.1781
+   }
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 12,
+   "state": "taken_by_collector",
+   "payload_row": {
+    "prob_clinical": 0.0251,
+    "prob_patient": 0.0959,
+    "language_penalty": 0.0708,
+    "flipped": true,
+    "anchor_fallback": false,
+    "screening": null,
+    "clinical_mass": null,
+    "circuit_diff_present": false,
+    "top_clinical_p": 0.2384,
+    "top_patient_p": 0.1581,
+    "spread_clinical_n": 10,
+    "spread_patient_n": 10,
+    "target_token_chars": 4,
+    "urgency": {
+     "flip_class": "lateral",
+     "tier_top_clinical": 0,
+     "tier_top_patient": 0,
+     "tier_shift": 0.23
+    }
+   },
+   "payload_row_sha256": "7163565b88cbeb9ce8098b568edc4370156976803dd8543c380bd2df3ab8919d",
+   "payload_measurement_sha256": "ecb87bfc3ef9696198c504201de6a5c98bac72c5faec392832a35133a9a7739d",
+   "payload_values_measured_by": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_01.json@1162e921557a",
+   "engine_part": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_03.json",
+   "not_read_because": "pin",
+   "membership_reason": "logits part outside the pinned manifest",
+   "engine_part_values": {
+    "prob_clinical": 0.0261,
+    "prob_patient": 0.0892,
+    "language_penalty": 0.0631
+   }
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 13,
+   "state": "taken_by_collector",
+   "payload_row": {
+    "prob_clinical": 0.6523,
+    "prob_patient": 0.0084,
+    "language_penalty": -0.6439,
+    "flipped": true,
+    "anchor_fallback": false,
+    "screening": null,
+    "clinical_mass": null,
+    "circuit_diff_present": false,
+    "top_clinical_p": 0.6523,
+    "top_patient_p": 0.5206,
+    "spread_clinical_n": 10,
+    "spread_patient_n": 10,
+    "target_token_chars": 3,
+    "urgency": {
+     "flip_class": "uninformative",
+     "tier_top_clinical": 1,
+     "tier_top_patient": null,
+     "tier_shift": null
+    }
+   },
+   "payload_row_sha256": "2009367a3c9a73f008e2033dbcc855475c447842a0a0e3e229eb8eb306baa7bf",
+   "payload_measurement_sha256": "9f32e1f1cecdfd06d7c3c7028c3e558477b858b2f57178ecffb3f40bf7c63997",
+   "payload_values_measured_by": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_01.json@1162e921557a",
+   "engine_part": "trace_out/pairs_20260706T201750Z__qwen3-4b/batch_summary.part_03.json",
+   "not_read_because": "pin",
+   "membership_reason": "logits part outside the pinned manifest",
+   "engine_part_values": {
+    "prob_clinical": 0.6288,
+    "prob_patient": 0.0068,
+    "language_penalty": -0.622
+   }
+  }
+ ]
+}

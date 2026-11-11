@@ -34,6 +34,20 @@ site already has a copy (a partial engine checkout that restored only the
 batch_summary files, or --with-pngs with the PNGs in Releases): unlisted, the
 copy would be pruned.
 
+Refuses too (since 2026-11-11), before its first write, copy or prune, when the
+export would change what the site already publishes: a measured value at a
+published (batch, batch_index, model), a published measurement that is no
+longer there, or a model's capability label (scripts/payload_dispositions.py
+defines the comparison; new rows, new batches and new models are not
+differences). The reference is data/simulated_scenarios.json in the site
+checkout's HEAD commit. A difference passes only when the committed record
+data/results_policy/payload_dispositions.v1.json holds the owner's
+accept_candidate disposition for exactly it. There is no option that skips the
+check, and --dry-run applies it. In a site directory that is not a git checkout
+(a disposable copy: nothing is published from one) the differences from the
+file on disk are printed and not enforced; results_snapshot.py check-release
+enforces them on the committed site.
+
 Usage:
   python scripts/export_frontend_simulated.py --frontend ../patientwords \\
       --stamps 20260706T201750Z[,<later-stamp>...] [--engine .] \\
@@ -49,12 +63,18 @@ import json
 import re
 import shutil
 import sys
+from collections import Counter
 from pathlib import Path
 
 try:
     from scripts.tierb_split import is_holdout, is_tierb_batch, tierb_start_stamp
 except ImportError:  # invoked as `python scripts/export_frontend_simulated.py`
     from tierb_split import is_holdout, is_tierb_batch, tierb_start_stamp
+
+try:
+    from scripts import payload_dispositions
+except ImportError:
+    import payload_dispositions
 
 try:
     from scripts.payload_summary import build_summary
@@ -258,8 +278,9 @@ def read_trace_dir(trace_dir, expected_model=None):
     set per model, so the export refuses a model whose hosted parts disagree.
     Logits and activation-patching parts have no graph, so their null source
     set is not a tagging claim and is left out. ``tagged_by`` maps each index to
-    the (graph_model, source_set) of the part its result came from, which decides
-    whether that row's clinical_mass is published."""
+    the (graph_model, source_set, backend) of the part its result came from: the
+    first two decide whether that row's clinical_mass is published, the third
+    which backend the model's published rows were measured by."""
     results = {}
     tagged_by = {}
     meta = {}
@@ -288,8 +309,38 @@ def read_trace_dir(trace_dir, expected_model=None):
             graph_source_sets.add(summary.get("source_set"))
         for r in summary.get("results", []):
             results[r["index"]] = r
-            tagged_by[r["index"]] = (summary.get("graph_model"), summary.get("source_set"))
+            tagged_by[r["index"]] = (summary.get("graph_model"), summary.get("source_set"), summary.get("backend"))
     return results, meta, screen, graph_source_sets, tagged_by
+
+
+NO_GRAPH_BACKEND = "logits"         # the CPU next-token lane: probabilities, no attribution graph
+
+
+def model_backend(rows_by_backend, first_stamp_backend):
+    """The backend a model's ``traced_by_model`` entry states, and through it ``models_meta[].graphs``.
+
+    ``rows_by_backend`` counts the model's exported rows by the backend of the summary part each was read
+    from; ``first_stamp_backend`` is what the first stamp's directory metadata states, which until
+    2026-11-11 was the answer on its own. That read one directory for a label that describes every row:
+    qwen3-4b's first-stamp directory holds a hosted two-pair probe (read) beside a logits part the
+    membership does not read, so the model's 1,248 logits rows would have been labelled as having hosted
+    graphs (docs/corrections/payload_summary_dedupe_20261110.md, section 4.4 and decision D3).
+
+    The rule: "logits" when any exported row of the model was read from a logits part. ``graphs: true``
+    makes the scenario page tell the reader, for every row without a published render, that its circuit
+    render exists and was left out of the demonstration set, and offer the archive of full renders; that
+    must hold for every row the model publishes, so one logits row is enough to withhold it. A model whose rows all come from graph-bearing parts states the backend of
+    those parts, and a model with only logits rows states "logits": both as before. The cost is known: a
+    model with many hosted rows and one logits row reads "next-token only" on the site. One boolean per
+    model cannot state a mix, and of the two wrong statements this one claims less."""
+    if rows_by_backend.get(NO_GRAPH_BACKEND):
+        return NO_GRAPH_BACKEND
+    if first_stamp_backend == NO_GRAPH_BACKEND:
+        # the directory metadata says logits and no exported row is a logits row (its logits rows were
+        # all read again from a later part, or withheld): state what the exported rows' parts state
+        stated = sorted(b for b in rows_by_backend if b)
+        return "hosted" if "hosted" in stated else (stated[0] if stated else first_stamp_backend)
+    return first_stamp_backend
 
 
 def build_model_obj(r, pair, featured):
@@ -329,6 +380,8 @@ def build_model_obj(r, pair, featured):
 batches = []
 scenarios = []
 traced_by_model = {}
+# model -> Counter of the backend of the part each of its exported rows was read from (model_backend)
+rows_by_backend = {}
 # model -> {source set of its hosted parts (None = untagged) -> [trace dirs]}
 graph_sets_by_model = {}
 display_index = 0
@@ -387,6 +440,8 @@ for stamp in STAMPS:
         models_obj = {m: build_model_obj(res[index], pair, clinical_mass_publishable(
                           tagged_by_model[m][index][0] or m, tagged_by_model[m][index][1]))
                       for m, res in results_by_model.items() if index in res}
+        for m in models_obj:
+            rows_by_backend.setdefault(m, Counter())[tagged_by_model[m][index][2]] += 1
         base = models_obj.get(BASE_MODEL) or next(iter(models_obj.values()))
 
         entry = {
@@ -442,6 +497,15 @@ if _mixed:
                          for m, sets in sorted(_mixed.items()))
              + ". Export stamps whose traces share one source set (or leave the model out with --models), "
                "or re-trace the rest on the same set. Nothing was written or pruned.")
+
+# A model's backend label follows its exported rows, not its first stamp's directory (model_backend).
+mixed_backends = {}
+for m, counts in rows_by_backend.items():
+    label = model_backend(counts, traced_by_model[m].get("backend"))
+    if label is not None:
+        traced_by_model[m]["backend"] = label
+    if len(counts) > 1:
+        mixed_backends[m] = counts
 
 # Public site keeps interactive renders only for the most consequential
 # scenarios (flips first, then largest |wording gap|); every scenario
@@ -521,25 +585,14 @@ if stranded:
              f"{src0}); the prune would delete that copy. Materialize the engine renders (HTML: "
              f"`git -C {ENGINE} restore --source=HEAD -- 'trace_out/*/*.html'`; PNGs: "
              f"scripts/render_archive.py fetch), then re-run. Nothing was written or pruned.")
-if not DRY:
-    for src, rel in copies:
-        (FRONTEND / rel).parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src, FRONTEND / rel)
 
 # Every render path this export lists; with every other site file's references
 # it is the keep-set for pruning (the payload being replaced is not consulted).
+# Computed before the copies below: every file they write is listed here, so
+# the candidates are the same either way.
 listed_renders = {obj[k] for e in scenarios for obj in [e, *e.get("models", {}).values()]
                   for k in ("html", "png") if isinstance(obj.get(k), str)}
 prune_list = prune_candidates(FRONTEND, listed_renders, referenced=_site_references)
-
-if first_preview is not None and not DRY:
-    shutil.copy2(first_preview, FRONTEND / "modes/simulated/preview.html")
-    # one raster survives --no-pngs: the og:image for link unfurls
-    for stamp in STAMPS:
-        candidate = ENGINE / f"trace_out/pairs_{stamp}" / first_preview.name.replace(".html", ".png")
-        if candidate.is_file():
-            shutil.copy2(candidate, FRONTEND / "modes/simulated/preview.png")
-            break
 
 def _graph_source_set(m):
     """The one source set of the model's graphs (enforced above); a model with no
@@ -558,11 +611,12 @@ models_meta = [
         # true only for a calibrated (model, source set) pair, as each row's mass
         "features": clinical_mass_publishable(m, _graph_source_set(m)),
         "attention_replacement": m in QK,
-        # whether this model has an attribution graph at all. The logits backend
-        # (models Neuronpedia can't render) measures next-token behavior only, so
-        # the front end tells the reader there is no circuit graph rather than
-        # implying one is hidden in the archive.
-        "graphs": traced_by_model.get(m, {}).get("backend") != "logits",
+        # whether every row this model publishes has an attribution graph
+        # (model_backend). The logits backend (models Neuronpedia can't render)
+        # measures next-token behavior only, so the front end tells the reader
+        # there is no circuit graph rather than implying one is hidden in the
+        # archive.
+        "graphs": traced_by_model.get(m, {}).get("backend") != NO_GRAPH_BACKEND,
         "available": True,
         "n_traced": sum(1 for s in scenarios if m in s.get("models", {})),
         "default": m == BASE_MODEL,
@@ -596,8 +650,53 @@ if STEERED:
 if args.archive_url:
     payload["archive"] = {"release_url": args.archive_url}
 out_data = FRONTEND / OUT_DATA_REL
+payload_text = json.dumps(payload, indent=2) + "\n"
+
+# The last refusal. Nothing has been written, copied or pruned up to here; the
+# block after it holds every write of this script. An export must not change what
+# the site already publishes without the owner's recorded decision:
+# a measured value at a published (batch, batch_index, model), a published
+# measurement that is no longer there, a model's capability label
+# (scripts/payload_dispositions.py; new rows, batches and models are not
+# differences). On 2026-11-10 an ordinary full export would have changed two
+# published qwen3-4b rows to another backend's values, one of them a read of
+# another token, and removed qwen3-4b from eleven rows, with nothing to stop it.
+try:
+    _reference, _enforced, _reference_name = payload_dispositions.site_reference(FRONTEND, OUT_DATA_REL)
+    _reviewed = ([] if _reference is None else payload_dispositions.review_payloads(
+        _reference, json.loads(payload_text), payload_dispositions.load_record(ENGINE),
+        reference_name=_reference_name))
+except payload_dispositions.DispositionError as exc:
+    sys.exit(f"refusing: the export cannot be compared with what the site publishes ({exc}). "
+             "Nothing was written or pruned.")
+_refused = payload_dispositions.refused(_reviewed)
+if _reviewed:
+    print(f"{len(_reviewed)} difference(s) from {_reference_name} in published measurements or capability "
+          f"labels: {len(_refused)} without an accepting owner disposition, "
+          f"{len(_reviewed) - len(_refused)} accepted ({payload_dispositions.RECORD_REL})")
+    for _line in payload_dispositions.format_table(_reviewed, limit=60 if _enforced else 20, enforced=_enforced):
+        print(_line)
+if _refused and _enforced:
+    sys.exit(f"refusing: this export changes {len(_refused)} published measurement(s) or capability label(s) "
+             f"without an accepting owner disposition in {payload_dispositions.RECORD_REL} (listed above). "
+             "A decision is the owner's: put the list in decisions_pending. Nothing was written or pruned.")
+if _refused:
+    print(f"  not enforced: {FRONTEND} is not a git checkout, so nothing is published from it; "
+          "results_snapshot.py check-release enforces these on committed site data")
+
 if not DRY:
-    out_data.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    for src, rel in copies:
+        (FRONTEND / rel).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, FRONTEND / rel)
+    if first_preview is not None:
+        shutil.copy2(first_preview, FRONTEND / "modes/simulated/preview.html")
+        # one raster survives --no-pngs: the og:image for link unfurls
+        for stamp in STAMPS:
+            candidate = ENGINE / f"trace_out/pairs_{stamp}" / first_preview.name.replace(".html", ".png")
+            if candidate.is_file():
+                shutil.copy2(candidate, FRONTEND / "modes/simulated/preview.png")
+                break
+    out_data.write_text(payload_text, encoding="utf-8")
 pruned = prune(FRONTEND, prune_list, dry_run=DRY)
 measured_n = sum(1 for s in scenarios
                  if not (s.get("screening") or {}).get("status") == "screened_out")
@@ -606,6 +705,12 @@ model_line = ", ".join(f"{mm['id']} ({mm['n_traced']})" for mm in models_meta) o
 print(f"{len(scenarios)} scenarios ({measured_n} measured) across {len(batches)} batch(es) "
       f"-> {out_data} ({withheld_holdout} confirmatory-holdout pairs withheld)")
 print(f"  models: {model_line}")
+for m, counts in sorted(mixed_backends.items()):
+    # one label per model cannot state a mix (model_backend): say it here, where the operator reads it
+    print(f"  {m}: rows read from parts of more than one backend ("
+          + ", ".join(f"{b or 'unstated'} {n}" for b, n in sorted(counts.items(), key=lambda kv: str(kv[0])))
+          + f"); labelled {traced_by_model[m].get('backend')}, graphs "
+          + ("false" if traced_by_model[m].get("backend") == NO_GRAPH_BACKEND else "true"))
 print(f"  {GATE.describe()}")
 if GATE.report():
     print(f"  {GATE.report()}")

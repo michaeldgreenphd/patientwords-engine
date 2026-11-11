@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "instrument_validity.v1.schema.json",
   "title": "PatientWords interpretability-instrument validity benchmark bundle, v1",
-  "description": "Structural contract for one benchmark bundle. Written in the keyword subset that scripts/frontend_contract_schema.check_schema_subset accepts ($ref, type, required, properties, items, additionalProperties), so the same file is both documentation and the executed structural check. Value sets (register names, fact statuses, split names, stage names) and every cross-field rule are enforced by scripts/instrument_validity.py and named in docs/protocols/instrument_validity_benchmark.md. A bundle states what an interpretability instrument reported about matched case families; it never states what the model understood. All case and description text in a synthetic bundle is an abstract placeholder.",
+  "description": "Structural contract for one benchmark bundle. Written in the keyword subset that scripts/frontend_contract_schema.check_schema_subset accepts ($ref, type, required, properties, items, additionalProperties), so the same file is both documentation and the executed structural check. Value sets (register names, fact statuses, split names, stage names) and every cross-field rule are enforced by scripts/instrument_validity.py and named in docs/protocols/instrument_validity_benchmark.md. The optional description_controls and evaluation_items carry the label and score controls (shuffled and irrelevant descriptions, an explanation-free baseline and cue fields); a bundle without them stays valid and its held-artifact endpoint gets no verdict. A bundle states what an interpretability instrument reported about matched case families; it never states what the model understood. All case and description text in a synthetic bundle is an abstract placeholder.",
   "type": "object",
   "required": [
     "schema_version",
@@ -68,10 +68,23 @@
       }
     },
     "held_artifact": {
-      "description": "Description-register manipulation records: the underlying artifact is held fixed and only the register of a meaning-equivalent description varies.",
+      "description": "Description-register manipulation records: the underlying artifact is held fixed and only the register of a meaning-equivalent description varies. Optional per-record fields record each description's token count, formatting class and presentation order.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/held_artifact_record"
+      }
+    },
+    "description_controls": {
+      "$ref": "#/definitions/description_controls"
+    },
+    "verbalizer_arms": {
+      "$ref": "#/definitions/verbalizer_arms"
+    },
+    "evaluation_items": {
+      "description": "Optional. The evaluation items of the held artifacts: one row per item, with its truth label, the cues its construction exposes and the scorer's verdict under each description condition. Without them the description controls report control_not_run and the held-artifact endpoint gets no verdict.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/evaluation_item"
       }
     }
   },
@@ -450,7 +463,235 @@
           "type": [
             "number",
             "null"
+          ],
+          "description": "The score the description received. Where the artifact's evaluation items carry this register's verdicts, it must equal their balanced accuracy."
+        },
+        "description_token_count": {
+          "description": "Optional. Token count of the description under the pinned tokenizer. Reported with every medical-minus-everyday difference; a pair whose counts differ is flagged length_confounded.",
+          "type": [
+            "integer",
+            "null"
           ]
+        },
+        "formatting_class": {
+          "description": "Optional. Formatting class of the description, in words fixed by the study protocol (for example plain_sentence, bulleted_list). A pair whose classes differ is flagged formatting_differs.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "presentation_order": {
+          "description": "Optional. 1 when this description of the artifact was scored first, 2 when second.",
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      }
+    },
+    "verbalizer_arms": {
+      "description": "Optional. For a label or score stage whose instrument reads an activation artifact (a verbalizer, a scorer): what the same system reports for the family's medical and everyday variants when it is given the wording alone (arm input_only) and when it is given a matched control artifact, the same-register artifact of another family fixed by a seeded derangement (arm control_artifact). The stage's own observations are the actual-artifact arm. Added on 2026-11-11; a bundle without it stays valid and the stage's arm state is arms_not_run.",
+      "type": "object",
+      "required": ["prespecified", "fixed_before_data", "margins", "stages"],
+      "additionalProperties": false,
+      "properties": {
+        "prespecified": {"type": "boolean"},
+        "fixed_before_data": {"description": "Where and when the two arm margins were fixed.", "type": "string"},
+        "margins": {
+          "description": "artifact_minus_input_only and artifact_minus_control_artifact, in fact-recovery rate.",
+          "type": "object",
+          "additionalProperties": {"type": "number"}
+        },
+        "stages": {
+          "description": "Keyed by stage name: label or score.",
+          "type": "object",
+          "additionalProperties": {"$ref": "#/definitions/verbalizer_arm_stage"}
+        }
+      }
+    },
+    "verbalizer_arm_stage": {
+      "type": "object",
+      "required": ["control_artifact_rule", "observations"],
+      "additionalProperties": false,
+      "properties": {
+        "control_artifact_rule": {"description": "How a control artifact is matched to the actual one (model revision, hook, layer, position class, register), written before data.", "type": "string"},
+        "observations": {"type": "array", "items": {"$ref": "#/definitions/verbalizer_arm_observation"}}
+      }
+    },
+    "verbalizer_arm_observation": {
+      "description": "What the system reported for one paired-register variant under one arm. A null fact status is a missing value and is never read as zero.",
+      "type": "object",
+      "required": ["family_id", "variant_id", "arm", "fact_recovery"],
+      "additionalProperties": false,
+      "properties": {
+        "family_id": {"type": "string"},
+        "variant_id": {"description": "The family's medical or everyday variant.", "type": "string"},
+        "arm": {"description": "input_only or control_artifact.", "type": "string"},
+        "control_family_id": {"description": "control_artifact rows only: the family whose same-register artifact was supplied.", "type": "string"},
+        "fact_recovery": {"type": "object", "additionalProperties": {"type": ["string", "null"]}}
+      }
+    },
+    "description_controls": {
+      "description": "Optional. The plan of the description controls at the label and score stages, fixed before data. The scorer refuses a plan that is not prespecified, that names another rule family or another irrelevant description than the rubric's, or whose shuffle mapping is not the seeded derangement.",
+      "type": "object",
+      "required": [
+        "prespecified",
+        "fixed_before_data",
+        "score_metric",
+        "margins",
+        "shuffle",
+        "irrelevant_description",
+        "explanation_free_rules",
+        "cue_association"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "prespecified": {
+          "description": "Must be true.",
+          "type": "boolean"
+        },
+        "fixed_before_data": {
+          "description": "Where and when the control margins were fixed.",
+          "type": "string"
+        },
+        "score_metric": {
+          "description": "Must equal balanced_accuracy in version 1.",
+          "type": "string"
+        },
+        "margins": {
+          "description": "One positive margin for each of matched_minus_shuffled, matched_minus_irrelevant and matched_minus_explanation_free.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "number"
+          }
+        },
+        "shuffle": {
+          "type": "object",
+          "required": [
+            "seed",
+            "mapping"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "seed": {
+              "description": "Non-negative integer. The derangement of stage S is drawn by random.Random('<seed>:shuffle:<S>').",
+              "type": "integer"
+            },
+            "mapping": {
+              "description": "Keyed by stage (label, score), then by artifact_id: the artifact whose description was used as this artifact's shuffled description. A stage without an entry has no shuffled control.",
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "irrelevant_description": {
+          "description": "The rubric's fixed placeholder, copied: placeholder_id and text.",
+          "type": "object",
+          "required": [
+            "placeholder_id",
+            "text"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "placeholder_id": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            }
+          }
+        },
+        "explanation_free_rules": {
+          "description": "The closed rule family, in the rubric's order.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cue_association": {
+          "type": "object",
+          "required": [
+            "permutations",
+            "alpha"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "permutations": {
+              "description": "Positive integer.",
+              "type": "integer"
+            },
+            "alpha": {
+              "description": "Strictly between 0 and 1. An association is reported as detected when the permutation p-value is at or below it.",
+              "type": "number"
+            }
+          }
+        }
+      }
+    },
+    "evaluation_item": {
+      "description": "One evaluation item of one held artifact. A cue that the scoring task does not expose is omitted or null; it is then reported as not_exposed, never as a pass. A null verdict is a missing value.",
+      "type": "object",
+      "required": [
+        "artifact_id",
+        "item_id",
+        "label"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {
+          "description": "An artifact_id that has held_artifact records.",
+          "type": "string"
+        },
+        "item_id": {
+          "description": "Unique within the artifact.",
+          "type": "string"
+        },
+        "label": {
+          "description": "The truth: true when the artifact is active on the scored span.",
+          "type": "boolean"
+        },
+        "span_position": {
+          "description": "Position class of the scored span in its window.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "span_marking": {
+          "description": "How the scored span is marked for the scorer.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "window_token_count": {
+          "description": "Token count of the window shown.",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "presentation_index": {
+          "description": "1-based position of the item in the order the scorer saw the artifact's items.",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "verdicts": {
+          "description": "The scorer's yes or no for this item, keyed by condition: medical, everyday, shuffled_medical, shuffled_everyday, irrelevant.",
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
         }
       }
     }

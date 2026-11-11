@@ -26,7 +26,7 @@ where they exist.
 |---|---|---|---|
 | `patientwords-engine` | generation, measurement, analysis, export | itself | `d8d0855d` (base of this change set) |
 | `patientwords` | public static site | `generated_files`: its `data/*.json`, read back by later publish steps; `source_checkout`: page HTML for the checkers. No pin | `b7da4530` |
-| `patientwords-ica-lens-paper` | ICA Lens paper and `icalens` library | `none` today. An optional offline adapter was added in this change set; fixtures only | `aa3b95c9` |
+| `patientwords-ica-lens-paper` | ICA Lens paper (arXiv:2606.11722v2) and `icalens` library | `none` today. An optional offline adapter was added in this change set; fixtures only | `aa3b95c9` |
 | `patient-words-jpp_lens` | J++ Lens plus the owner's `lens_interop` contract | `fitted_artifact`: the released Qwen3-4B J++ file, sha256 `893f7da2…`, fit identity unknown, inspected and never used. `source_checkout`: `lens_interop` in one manual script, no pin | `e74e7228` |
 | `patientwords-interp-engine` | interpretability runtime | `installed_distribution`: `interp-engine==1.5.1` from PyPI (`constraints.txt`). Not the fork source | `2afe000d` |
 | `patientwords-inspect_petri` | conversation-audit harness | `source_checkout` at `e199ec1a`, installed from git under `docs/framework/petri_environment.lock.json` | `de5dad81` |
@@ -87,7 +87,7 @@ Facts below were read in the engine or fork files for the manifest, or are marke
 
 ### patientwords-ica-lens-paper
 
-- **Purpose.** The ICA Lens paper repository around the installable library `icalens` 0.4.0.
+- **Purpose.** The ICA Lens paper repository around the installable library `icalens` 0.4.0. The paper is Sida Liu, Feijiang Han, Sarah Wiegreffe and Furong Huang, "Non-Gaussianity Reveals Interpretable Directions in Language Models", arXiv:2606.11722v2 (version 2 submitted 2026-10-19). VERIFIED (doc, ran): title, version, authors and date read on the arXiv abstract page on 2026-11-10 (record `arxiv.2606.11722v2` in `data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json`).
 - **Fork relationship.** Fork of `liusida/ica-lens-paper`; same commit as upstream; no owner commit. Project URLs and the model-framing registry URL still point upstream.
 - **Runtime role.** None in any engine lane. The adapter `scripts/experiments/adapters/ica.py` applies a saved basis with numpy and uses `icalens` only where it imports. It fits nothing.
 - **Licence.** MIT. `THIRD_PARTY_NOTICES.md` carries the FastICA_torch notice for `_fastica.py`; copied code must carry both.

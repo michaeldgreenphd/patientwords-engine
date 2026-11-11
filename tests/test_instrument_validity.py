@@ -22,6 +22,38 @@ tests/fixtures/instrument_validity/synthetic_bundle.v1.json, which is:
   artifacts; family_5 has two artifacts, 0.375 and 0.125, which average to 0.25.
 * Margins: 0.2 for the fact-recovery difference, 0.125 for the held-artifact difference. 2,000 resamples at 0.95,
   so the percentile index is k = 0.025 * 2000 = 50. Seed 7.
+
+Description controls of the same fixture (score stage). Each of the seven artifacts has eight evaluation items,
+four positive (p1 to p4) and four negative (n1 to n4). A score is balanced accuracy, (share of positives given yes +
+share of negatives given no) / 2, so it is a multiple of 1/8. The items given a yes verdict are:
+    medical            p1 p2 p3 p4 -> (1 + 1) / 2 = 1        artifact_5b: p1 p2 p3 -> (3/4 + 1) / 2 = 0.875
+    everyday           p1 p2 p3 n4 -> (3/4 + 3/4) / 2 = 0.75  artifact_5a: p1 p2 p3 n3 n4 -> (3/4 + 2/4) / 2 = 0.625
+    shuffled_medical   p1 p2 n1 n2 -> 0.5     shuffled_everyday  p3 p4 n3 n4 -> 0.5     irrelevant  none -> 0.5
+  So matched minus control is 0.5 (medical) and 0.25 (everyday) per artifact, except artifact_5a everyday 0.125 and
+  artifact_5b medical 0.375; family_5 averages its two artifacts to 0.4375 (medical) and 0.1875 (everyday).
+  Every item cue is balanced between the classes (two positives and two negatives per span_position and per
+  span_marking value and per window_token_count value; the presentation order of the second discovery artifact
+  is the label-mirror of the first), so every rule of the closed family scores 0.5 on the discovery items and the
+  frozen baseline is the first rule of the list, always_positive.
+  Description token counts are 8 and 8, except artifact_5a: medical 6, everyday 12. Formatting classes are
+  plain_sentence, except the everyday description of artifact_6. No presentation_order is recorded for descriptions.
+  Control margins are 0.125 each; shuffle seed 11; 2,000 permutations at alpha 0.05.
+
+tests/fixtures/instrument_validity/synthetic_control_states.v1.json holds one cell per control state. Six families,
+two per split (family_1, family_2 discovery; 3, 4 validation; 5, 6 fresh_test), one artifact per family and stage,
+four items per artifact (p1, p2 positive; n1, n2 negative), so a score is a multiple of 1/4. The plan's minimum is
+two families. The stages carry no observations. Yes verdicts: "reads" = p1 p2 (1.0); "one each" = p1 n1 (0.5);
+"three" = p1 p2 n1 -> (1 + 1/2) / 2 = 0.75; "none" (0.5).
+  score stage  span_position is centre for positives and edge for negatives on artifacts 1, 2, 5, 6, and centre for
+               p1 n1, edge for p2 n2 on artifacts 3, 4. span_marking is not recorded. Windows are 16 tokens.
+               artifacts 1, 2, 5, 6: matched "reads", shuffled "one each", irrelevant "none".
+               artifacts 3, 4: all five conditions "three" (a scorer that ignores the description).
+  label stage  window_token_count is 24 for p1 and 12 for p2, n1, n2; span_position and span_marking are balanced.
+               artifact 1: medical "reads", everyday "one each"; tokens 8 and 16; everyday formatting differs.
+               artifact 2: medical "reads", everyday "three"; tokens 8 and 12.
+               artifacts 3 to 6: matched "reads"; tokens 8 and 8. Shuffled "one each" and irrelevant "none"
+               everywhere, except that artifacts 3 and 4 have no shuffled verdicts at all.
+               The medical description is scored first on artifacts 1, 3, 5 and second on 2, 4, 6.
 """
 from __future__ import annotations
 
@@ -29,6 +61,7 @@ import copy
 import json
 import math
 import random
+import statistics
 from pathlib import Path
 
 import pytest
@@ -37,6 +70,8 @@ from scripts import instrument_validity as iv
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "tests" / "fixtures" / "instrument_validity" / "synthetic_bundle.v1.json"
+STATES_FIXTURE = ROOT / "tests" / "fixtures" / "instrument_validity" / "synthetic_control_states.v1.json"
+SPECIFICATION = ROOT / "docs" / "protocols" / "instrument_validity_benchmark.md"
 RUBRIC = ROOT / "data" / "protocols" / "instrument_validity_rubric.draft.json"
 FAMILIES = [f"family_{n}" for n in range(1, 7)]
 Z95 = 1.959963984540054
@@ -50,6 +85,16 @@ def bundle() -> dict:
 @pytest.fixture(scope="module")
 def report() -> dict:
     return iv.score_bundle(iv.load_bundle(FIXTURE))
+
+
+@pytest.fixture
+def states_bundle() -> dict:
+    return iv.load_bundle(STATES_FIXTURE)
+
+
+@pytest.fixture(scope="module")
+def states() -> dict:
+    return iv.score_bundle(iv.load_bundle(STATES_FIXTURE))
 
 
 def recovery(report: dict, stage: str, name: str = "all") -> dict:
@@ -589,3 +634,722 @@ def test_cli_out_is_exclusive_namespaced_and_outside_every_checkout(tmp_path: Pa
         assert body["code"] == ("invalid_input" if path == out else "output_namespace")
     assert not (ROOT / "tests" / "fixtures" / "instrument_validity" / "instrument_validity_report.a.json").exists()
     assert sorted(p.name for p in (tmp_path / "instrument_validity").iterdir()) == [out.name]
+
+
+# ------------------------------------------------------------------------- description controls and cue checks
+
+THREE_OUTCOMES = ("equivalent_within_margin", "different_beyond_margin", "inconclusive")
+USUAL_SCORES = {"medical": 1.0, "everyday": 0.75, "shuffled_medical": 0.5, "shuffled_everyday": 0.5, "irrelevant": 0.5}
+
+
+def held(report: dict, stage: str = "score", name: str = "all") -> dict:
+    return report["held_artifact"][stage]["analysis_sets"][name]
+
+
+def controls(report: dict, stage: str = "score") -> dict:
+    return report["held_artifact"][stage]["description_controls"]
+
+
+def control_of(report: dict, stage: str = "score", name: str = "all") -> dict:
+    return controls(report, stage)["analysis_sets"][name]
+
+
+def scored_items(report: dict, stage: str = "score") -> dict:
+    return {row["artifact_id"]: row for row in controls(report, stage)["per_artifact"]}
+
+
+def independent_derangement(family_of: dict[str, str], seed_label: str) -> tuple[dict[str, str], int]:
+    """The documented shuffle, written again here: sorted ids, redrawn until no artifact meets its own family."""
+    ids = sorted(family_of)
+    rng = random.Random(seed_label)
+    attempts = 0
+    while True:
+        attempts += 1
+        drawn = ids[:]
+        rng.shuffle(drawn)
+        if not any(family_of[own] == family_of[source] for own, source in zip(ids, drawn)):
+            return dict(zip(ids, drawn)), attempts
+
+
+def independent_association(xs: list[float], ys: list[float], permutations: int,
+                            seed_label: str) -> tuple[float, float]:
+    """The documented permutation test, written again here with the standard library's correlation."""
+    observed = statistics.correlation(xs, ys)
+    rng = random.Random(seed_label)
+    drawn = list(xs)
+    count = 0
+    for _ in range(permutations):
+        rng.shuffle(drawn)
+        if abs(statistics.correlation(drawn, ys)) >= abs(observed) - 1e-12:
+            count += 1
+    return observed, (1 + count) / (1 + permutations)
+
+
+def outcome_from(interval: list[float], margin: float) -> str:
+    if interval[0] > margin:
+        return "control_beaten"
+    return "control_not_beaten" if interval[1] <= margin else "advantage_not_shown"
+
+
+def test_rubric_control_names_match_the_scorer() -> None:
+    rubric = json.loads(RUBRIC.read_text(encoding="utf-8"))["description_controls"]
+    assert rubric["status"].startswith("draft - not validated")
+    assert rubric["score_metric"] == iv.SCORE_METRIC == "balanced_accuracy"
+    assert [c["condition"] for c in rubric["conditions"]] == ["matched", "shuffled", "irrelevant"]
+    family = tuple(rule["rule"] for rule in rubric["explanation_free_baseline"]["rule_family"])
+    assert family == iv.EXPLANATION_FREE_RULES == ("always_positive", "always_negative", "majority_class",
+                                                   "span_position", "span_marking", "window_length",
+                                                   "presentation_order")
+    margins = rubric["margins"]
+    assert set(margins) - {"note"} == set(iv.CONTROL_MARGINS.values()) == {
+        "matched_minus_shuffled", "matched_minus_irrelevant", "matched_minus_explanation_free"}
+    for name in iv.CONTROL_MARGINS.values():      # placeholders: the rubric names each margin and fixes no value
+        assert (margins[name]["value"], margins[name]["status"]) == (None, "placeholder - not fixed")
+    assert tuple(state["value"] for state in rubric["control_states"]) == iv.CONTROL_STATES
+    assert tuple(state["value"] for state in rubric["comparison_outcomes"]) == iv.CONTROL_OUTCOMES
+    assert tuple(state["value"] for state in rubric["cue_states"]) == iv.CUE_STATES
+    assert tuple(state["value"] for state in rubric["association_states"]) == iv.ASSOCIATION_STATES
+    fields = {**{cue: f"evaluation_items[].{field}" for cue, (field, _) in iv.CUE_RULES.items()},
+              **{cue: f"held_artifact[].{field}" for cue, field in iv.DESCRIPTION_CUES.items()}}
+    assert {check["cue"]: check["bundle_field"] for check in rubric["cue_checks"]} == fields
+    not_exposed = next(state for state in rubric["cue_states"] if state["value"] == "not_exposed")
+    assert "This is not a pass." in not_exposed["definition"]
+    placeholder = rubric["irrelevant_description"]
+    assert _text_of(FIXTURE)["description_controls"]["irrelevant_description"] == {
+        "placeholder_id": placeholder["placeholder_id"], "text": placeholder["text"]}
+
+
+def _text_of(path: Path) -> dict:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def test_every_description_condition_is_scored_on_the_artifacts_own_items(report: dict) -> None:
+    assert iv.balanced_accuracy([True, True, False, False], [True, False, False, False]) == 0.75     # (1/2 + 1) / 2
+    assert iv.balanced_accuracy([True, True, False, False], [True, True, True, True]) == 0.5         # (1 + 0) / 2
+    assert iv.balanced_accuracy([True, True], [True, True]) is None          # no negative item: undefined, not 1
+    assert iv.balanced_accuracy([], []) is None
+    per = scored_items(report)
+    assert len(per) == 7
+    assert all((row["n_items"], row["n_positive_items"], row["missing"]) == (8, 4, {}) for row in per.values())
+    for artifact_id in ("artifact_1", "artifact_2", "artifact_3", "artifact_4", "artifact_6"):
+        assert per[artifact_id]["scores"] == USUAL_SCORES
+    assert per["artifact_5a"]["scores"] == {**USUAL_SCORES, "everyday": 0.625}
+    assert per["artifact_5b"]["scores"] == {**USUAL_SCORES, "medical": 0.875}
+    # the matched scores are the ones the held-artifact records declare
+    declared = {row["artifact_id"]: (row["medical_description_score"], row["everyday_description_score"])
+                for row in report["held_artifact"]["score"]["per_artifact"]}
+    assert declared == {artifact_id: (row["scores"]["medical"], row["scores"]["everyday"])
+                        for artifact_id, row in per.items()}
+    assert controls(report)["score_metric"] == "balanced_accuracy"
+
+
+def test_shuffled_descriptions_come_from_a_seeded_derangement_across_families(bundle: dict, report: dict) -> None:
+    family_of = {record["artifact_id"]: record["family_id"] for record in bundle["held_artifact"]}
+    mapping, attempts = independent_derangement(family_of, "11:shuffle:score")
+    assert bundle["description_controls"]["shuffle"]["mapping"]["score"] == mapping
+    assert sorted(mapping) == sorted(mapping.values()) == sorted(family_of)        # a permutation of seven artifacts
+    assert all(family_of[own] != family_of[source] for own, source in mapping.items())
+    assert mapping["artifact_5a"] != "artifact_5b" and mapping["artifact_5b"] != "artifact_5a"     # one family
+    shuffle = controls(report)["shuffle"]
+    assert (shuffle["status"], shuffle["seed"], shuffle["seed_label"], shuffle["attempts"], shuffle["mapping"]) == (
+        "reproduced", 11, "11:shuffle:score", attempts, mapping)
+    assert iv.seeded_derangement(family_of, "11:shuffle:score") == (mapping, attempts)
+    assert iv.seeded_derangement({"a": "one_family", "b": "one_family"}, "0:shuffle:score") is None
+    swapped = copy.deepcopy(bundle)
+    recorded = swapped["description_controls"]["shuffle"]["mapping"]["score"]
+    recorded["artifact_1"], recorded["artifact_2"] = recorded["artifact_2"], recorded["artifact_1"]
+    assert refusal_code(swapped) == "shuffle_mapping_not_reproducible"
+    own = copy.deepcopy(bundle)
+    own["description_controls"]["shuffle"]["mapping"]["score"]["artifact_1"] = "artifact_1"
+    assert refusal_code(own) == "shuffle_mapping_not_reproducible"
+    assert independent_derangement(family_of, "12:shuffle:score")[0] != mapping
+    bundle["description_controls"]["shuffle"]["seed"] = 12            # the recorded mapping belongs to seed 11
+    assert refusal_code(bundle) == "shuffle_mapping_not_reproducible"
+
+
+def test_controls_pass_on_the_base_fixture_and_the_verdict_is_issued(report: dict) -> None:
+    baseline = controls(report)["explanation_free"]
+    assert baseline["candidate_rules"] == list(iv.EXPLANATION_FREE_RULES)
+    assert baseline["discovery_scores"] == dict.fromkeys(iv.EXPLANATION_FREE_RULES, 0.5)
+    assert (baseline["selected_rule"], baseline["selected_on_split"]) == ("always_positive", "discovery")
+    for name in ("all", "held_out", "comparable_behaviour"):
+        state = control_of(report, "score", name)
+        assert (state["state"], state["failed_comparisons"], state["controls_not_run"]) == ("controls_passed", [], [])
+        summary = held(report, "score", name)
+        assert (summary["control_state"], summary["verdict_issued"], summary["verdict"]) == (
+            "controls_passed", True, "different_beyond_margin")
+    # held out = families 3, 4, 5, 6. Matched minus any control: medical 0.5, 0.5, (0.5 + 0.375) / 2, 0.5;
+    # everyday 0.25, 0.25, (0.125 + 0.25) / 2, 0.25. Shuffled, irrelevant and the baseline all score 0.5.
+    for control in iv.CONTROLS:
+        medical, everyday = (control_of(report, "score", "held_out")["comparisons"][control][register]
+                             for register in ("medical", "everyday"))
+        assert medical["mean_difference"] == (0.5 + 0.5 + 0.4375 + 0.5) / 4
+        assert everyday["mean_difference"] == (0.25 + 0.25 + 0.1875 + 0.25) / 4
+        # no family value is below 0.4375 (0.1875), so no resampled mean is, whatever the seed: above the 0.125 margin
+        assert 0.4375 <= medical["interval"][0] <= medical["interval"][1] <= 0.5
+        assert 0.125 < 0.1875 <= everyday["interval"][0] <= everyday["interval"][1] <= 0.25
+        assert (medical["outcome"], everyday["outcome"], medical["control_margin"]) == (
+            "control_beaten", "control_beaten", 0.125)
+        label = f"7:held_artifact_score:matched_minus_{control}:everyday:held_out"
+        assert (everyday["seed_label"], everyday["interval"]) == (
+            label, independent_interval([0.25, 0.25, 0.1875, 0.25], label))
+    scores = control_of(report, "score", "held_out")["mean_scores"]
+    assert scores["matched"] == {"medical": (1 + 1 + 0.9375 + 1) / 4, "everyday": (0.75 + 0.75 + 0.6875 + 0.75) / 4}
+    assert (scores["shuffled"], scores["irrelevant"]) == ({"medical": 0.5, "everyday": 0.5}, 0.5)
+    assert scores["explanation_free_baseline"] == {"rule": "always_positive", "score": 0.5}
+    assert scores["explanation_free_rules"] == dict.fromkeys(iv.EXPLANATION_FREE_RULES, 0.5)
+
+
+def test_a_set_below_the_minimum_family_count_gets_a_control_state_and_no_verdict(report: dict) -> None:
+    for name in ("discovery", "validation", "fresh_test"):         # two families each; the plan's minimum is 3
+        state = control_of(report, "score", name)
+        assert state["state"] == "description_reading_not_shown"
+        assert all(body["interval"] is None and body["outcome"] == "advantage_not_shown"
+                   for registers in state["comparisons"].values() for body in registers.values())
+        summary = held(report, "score", name)
+        assert (summary["verdict"], summary["verdict_issued"]) == ("description_reading_not_shown", False)
+
+
+def test_control_state_fixture_is_synthetic_and_scores(states_bundle: dict, states: dict,
+                                                      capsys: pytest.CaptureFixture) -> None:
+    assert (states_bundle["synthetic"], states_bundle["execution_status"]) == (True, "synthetic")
+    record = iv.validate_bundle(states_bundle)
+    assert record["families_by_split"] == {"discovery": FAMILIES[:2], "validation": FAMILIES[2:4],
+                                           "fresh_test": FAMILIES[4:]}
+    assert states["evidence_label"] == "synthetic software fixture - not a research result"
+    assert '"measurement"' not in json.dumps(states)
+    assert iv.main(["--bundle", str(STATES_FIXTURE)]) == 0
+    assert json.loads(capsys.readouterr().out)["execution_status"] == "synthetic"
+    # the stages carry no observations: nothing is scored for fact recovery, and nothing is read as a zero difference
+    for stage in ("label", "score"):
+        assert (recovery(states, stage)["n_included"], recovery(states, stage)["verdict"]) == (0, "inconclusive")
+    usual = {**USUAL_SCORES, "everyday": 1.0}
+    assert scored_items(states, "score")["score_artifact_1"]["scores"] == usual
+    assert scored_items(states, "label")["label_artifact_5"]["scores"] == usual
+    assert scored_items(states, "label")["label_artifact_1"]["scores"] == {**usual, "everyday": 0.5}
+    assert scored_items(states, "label")["label_artifact_2"]["scores"] == {**usual, "everyday": 0.75}
+
+
+def test_a_scorer_that_ignores_the_description_gets_no_equivalence_verdict(states: dict) -> None:
+    for artifact_id in ("score_artifact_3", "score_artifact_4"):
+        # p1, p2 and n1 get yes under every condition: (2/2 + 1/2) / 2 = 0.75
+        assert scored_items(states)[artifact_id]["scores"] == dict.fromkeys(iv.VERDICT_CONDITIONS, 0.75)
+    summary = held(states, "score", "validation")
+    # both family differences are 0, so the interval is [0, 0], inside the 0.125 margin. The verdict rule alone
+    # calls that equivalent; the scorer at the commit before this change returned exactly that.
+    assert (summary["mean_difference"], summary["interval"], summary["margin"]) == (0.0, [0.0, 0.0], 0.125)
+    assert iv.equivalence_verdict(summary["interval"], summary["margin"]) == "equivalent_within_margin"
+    assert (summary["verdict"], summary["control_state"], summary["verdict_issued"]) == (
+        "scorer_does_not_read_description", "scorer_does_not_read_description", False)
+    state = control_of(states, "score", "validation")
+    for control in ("shuffled", "irrelevant"):
+        for register in ("medical", "everyday"):
+            body = state["comparisons"][control][register]
+            assert (body["mean_difference"], body["interval"], body["outcome"]) == (0.0, [0.0, 0.0],
+                                                                                    "control_not_beaten")
+    # the frozen baseline (span_position) says yes to p1 and n1 on these two artifacts: 0.5, and 0.75 - 0.5 = 0.25
+    for register in ("medical", "everyday"):
+        body = state["comparisons"]["explanation_free"][register]
+        assert (body["mean_difference"], body["interval"], body["outcome"]) == (0.25, [0.25, 0.25], "control_beaten")
+    assert state["failed_comparisons"] == ["matched_minus_shuffled:medical", "matched_minus_shuffled:everyday",
+                                           "matched_minus_irrelevant:medical", "matched_minus_irrelevant:everyday"]
+    assert states["stages"]["score"]["description_controls"]["state_by_analysis_set"]["validation"] == (
+        "scorer_does_not_read_description")
+
+
+def test_a_cue_only_rule_that_matches_the_real_score_blocks_the_verdict(states: dict) -> None:
+    baseline = controls(states)["explanation_free"]
+    candidates = [rule for rule in iv.EXPLANATION_FREE_RULES if rule != "span_marking"]
+    assert baseline["candidate_rules"] == candidates
+    # on the four discovery positives span_position is "centre", on the four negatives "edge"
+    assert baseline["parameters"]["span_position"] == {"field": "span_position", "positive_values": ["centre"]}
+    assert baseline["discovery_scores"] == {**dict.fromkeys(candidates, 0.5), "span_position": 1.0}
+    assert baseline["selected_rule"] == "span_position"
+    for artifact_id in ("score_artifact_5", "score_artifact_6"):
+        row = scored_items(states)[artifact_id]
+        assert (row["scores"]["medical"], row["scores"]["everyday"], row["rule_scores"]["span_position"]) == (1, 1, 1)
+    state = control_of(states, "score", "fresh_test")
+    for register in ("medical", "everyday"):
+        for control in ("shuffled", "irrelevant"):                   # 1.0 - 0.5
+            body = state["comparisons"][control][register]
+            assert (body["mean_difference"], body["interval"], body["outcome"]) == (0.5, [0.5, 0.5], "control_beaten")
+        body = state["comparisons"]["explanation_free"][register]     # 1.0 - 1.0
+        assert (body["mean_difference"], body["interval"], body["outcome"]) == (0.0, [0.0, 0.0], "control_not_beaten")
+    assert state["state"] == "baseline_not_beaten"
+    assert state["mean_scores"]["matched"] == {"medical": 1.0, "everyday": 1.0}       # reported beside the baseline
+    assert state["mean_scores"]["explanation_free_baseline"] == {"rule": "span_position", "score": 1.0}
+    summary = held(states, "score", "fresh_test")
+    assert iv.equivalence_verdict(summary["interval"], summary["margin"]) == "equivalent_within_margin"
+    assert (summary["verdict"], summary["verdict_issued"]) == ("baseline_not_beaten", False)
+    assert states["primary_results"]["held_artifact_score_difference"]["score"] == {
+        "n_families": 2, "n_included": 2, "mean_difference": 0.0, "interval": [0.0, 0.0], "margin": 0.125,
+        "verdict": "baseline_not_beaten", "control_state": "baseline_not_beaten"}
+
+
+def test_the_baseline_is_fitted_and_selected_on_discovery_items_only(states_bundle: dict, states: dict) -> None:
+    rows = [{"label": True, "window_token_count": 24}, {"label": True, "window_token_count": 12},
+            {"label": False, "window_token_count": 12}, {"label": False, "window_token_count": 12}]
+    # at least 12: yes to all, 0.5; at least 24: yes to the first positive only, (1/2 + 2/2) / 2 = 0.75;
+    # at most 12: (1/2 + 0) / 2 = 0.25; at most 24: 0.5
+    at_least_24 = {"field": "window_token_count", "direction": "at_least", "threshold": 24}
+    assert iv.fit_explanation_free_rule("window_length", rows) == at_least_24
+    assert [iv.apply_explanation_free_rule("window_length", at_least_24, row) for row in rows] == [True, False,
+                                                                                                  False, False]
+    flat = [{"label": True, "window_token_count": 16}, {"label": False, "window_token_count": 16}]
+    assert iv.fit_explanation_free_rule("window_length", flat) == {**at_least_24, "threshold": 16}   # yes to all
+    assert iv.fit_explanation_free_rule("majority_class", rows) == {"predicts": True}        # 2 of 4: a tie is yes
+    assert iv.fit_explanation_free_rule("majority_class", rows[1:]) == {"predicts": False}   # 1 positive of 3
+    assert iv.apply_explanation_free_rule("always_negative", {}, rows[0]) is False
+    label = controls(states, "label")["explanation_free"]
+    assert label["parameters"]["window_length"] == at_least_24
+    assert label["discovery_scores"] == {**dict.fromkeys(iv.EXPLANATION_FREE_RULES, 0.5), "window_length": 0.75}
+    assert (label["selected_rule"], label["fitted_on"]) == ("window_length", "pooled discovery items of this stage")
+    # the cue of the fresh-test items changes: no fitted parameter and no selection moves
+    moved = copy.deepcopy(states_bundle)
+    for row in moved["evaluation_items"]:
+        if row["artifact_id"] in ("score_artifact_5", "score_artifact_6"):
+            row["span_position"] = "centre" if row["item_id"] in ("p1", "n1") else "edge"
+    after = iv.score_bundle(moved)
+    assert controls(after)["explanation_free"] == controls(states)["explanation_free"]
+    # the frozen rule now says yes to p1 and n1 there: 0.5. The matched 1.0 beats it by 0.5 and the verdict is issued
+    assert control_of(after, "score", "fresh_test")["comparisons"]["explanation_free"]["medical"]["mean_difference"] == 0.5
+    assert (control_of(after, "score", "fresh_test")["state"], held(after, "score", "fresh_test")["verdict"]) == (
+        "controls_passed", "equivalent_within_margin")
+    # without discovery items no rule can be fitted: the baseline is missing, it is not 0.5 and not a pass
+    bare = copy.deepcopy(states_bundle)
+    bare["evaluation_items"] = [row for row in bare["evaluation_items"]
+                                if row["artifact_id"] not in ("score_artifact_1", "score_artifact_2")]
+    without = iv.score_bundle(bare)
+    assert controls(without)["explanation_free"]["selected_rule"] is None
+    assert controls(without)["explanation_free"]["selection_status"] == "no_discovery_items_with_both_classes"
+    assert (control_of(without, "score", "fresh_test")["state"], control_of(without, "score", "fresh_test")["controls_not_run"]) == (
+        "control_not_run", ["explanation_free"])
+    states_bundle["description_controls"]["explanation_free_rules"].remove("span_position")
+    assert refusal_code(states_bundle) == "explanation_free_rule_family"
+
+
+def test_an_absent_control_is_recorded_as_missing_and_blocks_the_verdict(bundle: dict, states_bundle: dict,
+                                                                       states: dict) -> None:
+    row = scored_items(states, "label")["label_artifact_3"]
+    assert (row["scores"]["shuffled_medical"], row["scores"]["shuffled_everyday"]) == (None, None)     # not 0
+    assert row["missing"] == {"shuffled_medical": "missing_item_verdict", "shuffled_everyday": "missing_item_verdict"}
+    state = control_of(states, "label", "validation")
+    assert (state["state"], state["controls_not_run"], state["controls_incomplete"]) == ("control_not_run",
+                                                                                         ["shuffled"], [])
+    for register in ("medical", "everyday"):
+        body = state["comparisons"]["shuffled"][register]
+        assert (body["n_families"], body["n_included"], body["mean_difference"], body["interval"]) == (2, 0, None,
+                                                                                                       None)
+        assert body["excluded"] == [{"family_id": "family_3", "reason": "missing_control_score:shuffled"},
+                                    {"family_id": "family_4", "reason": "missing_control_score:shuffled"}]
+        # the two controls that were run are beaten (1.0 - 0.5 and 1.0 - 0.75); one absent control still blocks
+        assert state["comparisons"]["irrelevant"][register]["mean_difference"] == 0.5
+        assert state["comparisons"]["explanation_free"][register]["mean_difference"] == 0.25
+        assert state["comparisons"]["explanation_free"][register]["outcome"] == "control_beaten"
+    summary = held(states, "label", "validation")
+    assert iv.equivalence_verdict(summary["interval"], summary["margin"]) == "equivalent_within_margin"
+    assert (summary["verdict"], summary["verdict_issued"]) == ("control_not_run", False)
+    # held out = families 3 to 6; the shuffled control exists for 5 and 6 only
+    assert (control_of(states, "label", "held_out")["state"], control_of(states, "label", "held_out")["controls_incomplete"]) == (
+        "control_incomplete", ["shuffled"])
+    assert held(states, "label", "held_out")["verdict"] == "control_incomplete"
+
+    # one null verdict is a missing score. Read as "no" it would have left the irrelevant score at 0.5 and the set
+    # in the state controls_passed.
+    one = copy.deepcopy(states_bundle)
+    next(item for item in one["evaluation_items"] if (item["artifact_id"], item["item_id"]) == (
+        "label_artifact_5", "p1"))["verdicts"]["irrelevant"] = None
+    result = iv.score_bundle(one)
+    assert scored_items(result, "label")["label_artifact_5"]["scores"]["irrelevant"] is None
+    assert (control_of(result, "label", "fresh_test")["state"], control_of(result, "label", "fresh_test")["controls_incomplete"]) == (
+        "control_incomplete", ["irrelevant"])
+    assert control_of(states, "label", "fresh_test")["state"] == "controls_passed"
+
+    no_mapping = copy.deepcopy(bundle)
+    del no_mapping["description_controls"]["shuffle"]["mapping"]["score"]
+    result = iv.score_bundle(no_mapping)
+    assert scored_items(result)["artifact_1"]["missing"] == {"shuffled_medical": "no_shuffle_mapping",
+                                                            "shuffled_everyday": "no_shuffle_mapping"}
+    assert (control_of(result)["state"], control_of(result)["controls_not_run"]) == ("control_not_run", ["shuffled"])
+    assert controls(result)["shuffle"] == {"status": "control_not_run", "reason": "no_shuffle_mapping", "seed": 11}
+
+    no_items = copy.deepcopy(bundle)
+    del no_items["evaluation_items"]
+    result = iv.score_bundle(no_items)
+    assert control_of(result) == {"state": "control_not_run", "reason": "no_evaluation_items"}
+    summary = held(result)
+    # the difference and its interval are still reported; only the verdict is withheld
+    assert (summary["mean_difference"], summary["interval"], summary["verdict"]) == (0.25, [0.25, 0.25],
+                                                                                   "control_not_run")
+
+
+def test_controls_passed_with_a_fitted_baseline_issues_the_equivalence_verdict(states: dict) -> None:
+    state = control_of(states, "label", "fresh_test")
+    for register in ("medical", "everyday"):
+        # matched 1.0; shuffled 0.5; irrelevant 0.5; the frozen window_length rule says yes to p1 only: 0.75
+        for control, difference in (("shuffled", 0.5), ("irrelevant", 0.5), ("explanation_free", 0.25)):
+            body = state["comparisons"][control][register]
+            assert (body["mean_difference"], body["interval"], body["outcome"]) == (
+                difference, [difference, difference], "control_beaten")
+    assert (state["state"], state["failed_comparisons"], state["item_cues_not_exposed"]) == ("controls_passed", [], [])
+    assert state["mean_scores"]["explanation_free_baseline"] == {"rule": "window_length", "score": 0.75}
+    assert states["primary_results"]["analysis_set"] == "fresh_test"
+    assert states["primary_results"]["held_artifact_score_difference"]["label"] == {
+        "n_families": 2, "n_included": 2, "mean_difference": 0.0, "interval": [0.0, 0.0], "margin": 0.125,
+        "verdict": "equivalent_within_margin", "control_state": "controls_passed"}
+    assert held(states, "label", "fresh_test")["verdict_issued"] is True
+
+
+def test_an_advantage_that_the_interval_does_not_settle_is_not_shown(states: dict) -> None:
+    # held out: families 3, 4 ignore the description (0 over shuffled and irrelevant, 0.25 over the baseline);
+    # families 5, 6 read it and match the baseline (0.5, 0.5, 0)
+    expected = {"shuffled": [0.0, 0.0, 0.5, 0.5], "irrelevant": [0.0, 0.0, 0.5, 0.5],
+                "explanation_free": [0.25, 0.25, 0.0, 0.0]}
+    state = control_of(states, "score", "held_out")
+    for control, values in expected.items():
+        for register in ("medical", "everyday"):
+            body = state["comparisons"][control][register]
+            label = f"7:held_artifact_score:matched_minus_{control}:{register}:held_out"
+            interval = independent_interval(values, label)
+            assert (body["mean_difference"], body["interval"], body["seed_label"]) == (sum(values) / 4, interval, label)
+            assert interval[0] <= 0.125 < interval[1]                 # the margin lies inside the interval
+            assert body["outcome"] == outcome_from(interval, 0.125) == "advantage_not_shown"
+    assert state["state"] == "description_reading_not_shown"
+    assert held(states, "score", "held_out")["verdict"] == "description_reading_not_shown"
+    # all six families: 0.5, 0.5, 0, 0, 0.5, 0.5 over shuffled and irrelevant; 0, 0, 0.25, 0.25, 0, 0 over the baseline
+    everything = control_of(states, "score", "all")
+    derived = set()
+    for control, values in (("shuffled", [0.5, 0.5, 0.0, 0.0, 0.5, 0.5]), ("irrelevant", [0.5, 0.5, 0.0, 0.0, 0.5, 0.5]),
+                            ("explanation_free", [0.0, 0.0, 0.25, 0.25, 0.0, 0.0])):
+        for register in ("medical", "everyday"):
+            label = f"7:held_artifact_score:matched_minus_{control}:{register}:all"
+            outcome = outcome_from(independent_interval(values, label), 0.125)
+            assert everything["comparisons"][control][register]["outcome"] == outcome
+            derived.add((control, outcome))
+    assert derived == {("shuffled", "control_beaten"), ("irrelevant", "control_beaten"),
+                       ("explanation_free", "advantage_not_shown")}
+    assert everything["state"] == "baseline_advantage_not_shown"
+    assert held(states, "score", "all")["verdict"] == "baseline_advantage_not_shown"
+    # the rule on the boundary: an interval that ends on the margin is not above it
+    assert (outcome_from([0.125, 0.25], 0.125), outcome_from([0.0, 0.125], 0.125)) == ("advantage_not_shown",
+                                                                                      "control_not_beaten")
+
+
+def test_a_cue_that_is_not_exposed_is_reported_and_is_never_a_pass(report: dict, states: dict) -> None:
+    cues = controls(states)["item_cues"]
+    assert {cue: body["state"] for cue, body in cues.items()} == {
+        "span_position": "exposed", "span_marking": "not_exposed", "window_length": "exposed",
+        "presentation_order": "exposed"}
+    assert (cues["span_marking"]["n_items"], cues["span_marking"]["n_items_recorded"]) == (24, 0)
+    assert cues["span_marking"]["bundle_field"] == "evaluation_items[].span_marking"
+    assert "span_marking" not in controls(states)["explanation_free"]["parameters"]
+    for name in states["analysis_sets"]:
+        assert control_of(states, "score", name)["item_cues_not_exposed"] == ["span_marking"]
+    assert {body["state"] for body in controls(states, "label")["item_cues"].values()} == {"exposed"}
+    # no description order is recorded in the base fixture or at the score stage of the control-state fixture
+    for scored in (report, states):
+        order = held(scored)["description_cues"]["description_order"]
+        assert (order["state"], order["n_pairs_recorded"], order["association_with_score_difference"]) == (
+            "not_exposed", 0, {"state": "not_exposed"})
+    # the base controls passed with that cue unexposed; the cue's own state stays not_exposed and is reported beside it
+    assert held(report)["control_state"] == "controls_passed"
+    assert not any("pass" in name for name in iv.CUE_STATES + iv.ASSOCIATION_STATES)
+    assert "a cue reported as not_exposed was not checked; it is not a pass" in report["limitations"]
+
+
+def test_a_cue_recorded_for_some_items_only_is_missing_data(states_bundle: dict) -> None:
+    partial = copy.deepcopy(states_bundle)
+    del next(item for item in partial["evaluation_items"] if item["artifact_id"] == "label_artifact_5")["span_position"]
+    result = iv.score_bundle(partial)
+    cue = controls(result, "label")["item_cues"]["span_position"]
+    assert (cue["state"], cue["n_items"], cue["n_items_recorded"]) == ("partly_recorded", 24, 23)
+    assert "span_position" not in controls(result, "label")["explanation_free"]["candidate_rules"]
+    state = control_of(result, "label", "fresh_test")
+    assert (state["state"], state["item_cues_partly_recorded"]) == ("control_incomplete", ["span_position"])
+    assert held(result, "label", "fresh_test")["verdict"] == "control_incomplete"
+
+    del next(record for record in states_bundle["held_artifact"] if record["artifact_id"] == "label_artifact_6"
+             and record["description_register"] == "everyday")["description_token_count"]
+    result = iv.score_bundle(states_bundle)
+    length = held(result, "label", "fresh_test")["description_cues"]["description_length"]
+    assert (length["state"], length["n_pairs"], length["n_pairs_recorded"]) == ("partly_recorded", 2, 1)
+    assert length["association_with_score_difference"] == {"state": "partly_recorded", "n_families": 2,
+                                                           "n_families_recorded": 1}
+    pair = next(row for row in result["held_artifact"]["label"]["per_artifact"]
+                if row["artifact_id"] == "label_artifact_6")
+    assert (pair["token_count_difference"], pair["length_confounded"]) == (None, None)       # unknown, not "equal"
+
+
+def test_a_length_confounded_pair_is_flagged_beside_every_difference(report: dict, states: dict) -> None:
+    pairs = {row["artifact_id"]: row for row in report["held_artifact"]["score"]["per_artifact"]}
+    unequal = pairs["artifact_5a"]
+    assert (unequal["medical_description_token_count"], unequal["everyday_description_token_count"],
+            unequal["token_count_difference"], unequal["length_confounded"]) == (6, 12, -6, True)
+    assert [artifact_id for artifact_id, row in pairs.items() if row["length_confounded"]] == ["artifact_5a"]
+    assert [artifact_id for artifact_id, row in pairs.items() if row["formatting_differs"]] == ["artifact_6"]
+    assert all(row["medical_presented_first"] is None for row in pairs.values())
+    for name in report["analysis_sets"]:                    # reported with every medical-minus-everyday difference
+        assert set(held(report, "score", name)["description_cues"]) == set(iv.DESCRIPTION_CUES)
+    length = held(report)["description_cues"]["description_length"]
+    assert (length["state"], length["n_pairs"], length["n_pairs_recorded"]) == ("exposed", 7, 7)
+    assert length["length_confounded_artifact_ids"] == ["artifact_5a"]
+    assert length["mean_token_count_difference"] == pytest.approx(-6 / 7)
+    # six pairs of equal length: five differences of 0.25 and artifact_5b's 0.125. The unequal pair: 0.375
+    assert length["score_difference_by_length_match"] == {
+        "length_matched": {"n_artifacts": 6, "mean_score_difference": pytest.approx((5 * 0.25 + 0.125) / 6)},
+        "length_differs": {"n_artifacts": 1, "mean_score_difference": 0.375}}
+    # the six family differences are all 0.25: no association can be computed. That is not "no association".
+    association = length["association_with_score_difference"]
+    assert (association["state"], association["reason"], association["p_value"]) == ("not_computable",
+                                                                                    "score_constant", None)
+    held_out = held(report, "score", "held_out")["description_cues"]
+    assert held_out["description_length"]["mean_token_count_difference"] == pytest.approx(-6 / 5)
+    assert held_out["description_formatting"]["formatting_differs_artifact_ids"] == ["artifact_6"]
+    validation = held(report, "score", "validation")["description_cues"]["description_length"]
+    assert (validation["length_confounded_artifact_ids"], validation["mean_token_count_difference"]) == ([], 0.0)
+    label = {row["artifact_id"]: row for row in states["held_artifact"]["label"]["per_artifact"]}
+    assert (label["label_artifact_1"]["token_count_difference"], label["label_artifact_1"]["length_confounded"],
+            label["label_artifact_1"]["formatting_differs"]) == (-8, True, True)
+    assert (label["label_artifact_2"]["token_count_difference"], label["label_artifact_2"]["length_confounded"],
+            label["label_artifact_2"]["formatting_differs"]) == (-4, True, False)
+    assert held(states, "label", "discovery")["description_cues"]["description_length"][
+        "length_confounded_artifact_ids"] == ["label_artifact_1", "label_artifact_2"]
+
+
+def test_cue_association_is_a_seeded_permutation_test(states: dict) -> None:
+    # five families with the cue and the score in the same order: r = 1. Of the 120 orderings of the cue only the
+    # identity (r = 1) and the reversal (r = -1) reach |r| = 1, so the exact p-value is 2 / 120.
+    xs, ys = [1.0, 2.0, 3.0, 4.0, 5.0], [0.125, 0.25, 0.375, 0.5, 0.625]
+    result = iv.permutation_association(xs, ys, 2000, 0.05, "7:cue:hand")
+    r, p = independent_association(xs, ys, 2000, "7:cue:hand")
+    assert result["pearson_r"] == pytest.approx(1.0) and r == pytest.approx(1.0)
+    assert result["p_value"] == p and abs(p - 2 / 120) < 0.012
+    assert (result["state"], result["n_families"], result["permutations"], result["alpha"], result["seed_label"]) == (
+        "association_detected", 5, 2000, 0.05, "7:cue:hand")
+    assert iv.permutation_association(xs, ys, 2000, 0.05, "7:cue:hand") == result             # same seed, same result
+    assert iv.permutation_association(xs, ys, 2000, 0.001, "7:cue:hand")["state"] == "association_not_detected"
+    for cue, score, reason in (([1.0, 2.0], [0.5, 0.25], "fewer_than_three_families"),
+                               ([8.0, 8.0, 8.0], [0.5, 0.25, 0.0], "cue_constant"),
+                               ([8.0, 4.0, 0.0], [0.25, 0.25, 0.25], "score_constant")):
+        missing = iv.permutation_association(cue, score, 2000, 0.05, "7:cue:hand")
+        assert (missing["state"], missing["reason"], missing["pearson_r"], missing["p_value"]) == (
+            "not_computable", reason, None, None)
+
+    # label stage, all six families. Token difference (medical - everyday): -8, -4, 0, 0, 0, 0. Score difference:
+    # 0.5, 0.25, 0, 0, 0, 0, which is the token difference times -1/16, so r = -1. An ordering reaches |r| = 1 only
+    # with -8 on family_1 and -4 on family_2: 1 of the 6 * 5 = 30 placements of those two values, so p is 1 / 30.
+    length = held(states, "label", "all")["description_cues"]["description_length"]
+    association = length["association_with_score_difference"]
+    label = "7:cue:label:description_length:all"
+    r, p = independent_association([-8.0, -4.0, 0.0, 0.0, 0.0, 0.0], [0.5, 0.25, 0.0, 0.0, 0.0, 0.0], 2000, label)
+    assert association["pearson_r"] == pytest.approx(-1.0) and r == pytest.approx(-1.0)
+    assert (association["p_value"], association["seed_label"], association["n_families"]) == (p, label, 6)
+    assert abs(p - 1 / 30) < 0.012 and association["state"] == "association_detected"
+    assert length["mean_token_count_difference"] == -2.0                    # (-8 - 4) / 6
+    # the control state of that set is control_incomplete; the association is reported whatever the control state
+    assert held(states, "label", "all")["control_state"] == "control_incomplete"
+
+    # description order: the medical description is first on families 1, 3, 5. With x - 0.5 = +-0.5 and
+    # y - 0.125 = 0.375, 0.125, -0.125 (four times): sum of products = 0.5 * 0.375 - 0.5 * 0.125 = 0.125,
+    # sum of squares 6 * 0.25 = 1.5 and 0.140625 + 5 * 0.015625 = 0.21875.
+    order = held(states, "label", "all")["description_cues"]["description_order"]
+    assert (order["state"], order["n_pairs"], order["n_pairs_medical_first"]) == ("exposed", 6, 3)
+    association = order["association_with_score_difference"]
+    assert association["pearson_r"] == pytest.approx(0.125 / math.sqrt(1.5 * 0.21875))
+    # the sum of products of any ordering is +-0.375 or +-0.125, so every ordering reaches the observed |r|: p = 1
+    assert (association["p_value"], association["state"]) == (1.0, "association_not_detected")
+    assert "an association that was not detected is not evidence that the cue has no effect" in states["limitations"]
+
+
+def test_window_length_is_checked_against_the_matched_score_over_families(bundle: dict, report: dict) -> None:
+    for register in ("medical", "everyday"):        # every artifact's windows average (12 + 16) / 2 = 14 tokens
+        association = control_of(report)["window_length_association"][register]
+        assert (association["state"], association["reason"]) == ("not_computable", "cue_constant")
+    for item in bundle["evaluation_items"]:
+        if item["artifact_id"] == "artifact_3":
+            item["window_token_count"] += 8
+    result = iv.score_bundle(bundle)
+    association = control_of(result)["window_length_association"]["everyday"]
+    # cue: 14 for five families, 22 for family_3. Score: 0.75 for five families, 0.6875 for family_5. Two
+    # one-family departures on different families of six correlate at -1/5 when both go the same way; one is
+    # upward and one downward, so r = +1/5. Any ordering puts the long windows on family_5 (r = -1) or
+    # elsewhere (|r| = 1/5), so every ordering reaches the observed |r| and p = 1.
+    assert association["pearson_r"] == pytest.approx(0.2)
+    assert (association["p_value"], association["state"], association["seed_label"]) == (
+        1.0, "association_not_detected", "7:cue:score:window_length:everyday:all")
+    # artifact_3 is a validation artifact: the rules fitted on discovery items did not move
+    assert controls(result)["explanation_free"]["parameters"] == controls(report)["explanation_free"]["parameters"]
+
+
+def test_label_and_score_stages_carry_the_control_state_and_no_pass_verdict(report: dict, states: dict) -> None:
+    # the base fixture has no held-artifact record at the label stage, so no control was run there
+    label = report["stages"]["label"]["description_controls"]
+    assert label["state_by_analysis_set"] == dict.fromkeys(report["analysis_sets"], "control_not_run")
+    primary = report["primary_results"]["fact_recovery_rate_difference"]
+    assert (primary["label"]["verdict"], primary["label"]["description_control_state"]) == (
+        "equivalent_within_margin", "control_not_run")
+    assert (primary["score"]["verdict"], primary["score"]["description_control_state"]) == (
+        "equivalent_within_margin", "controls_passed")
+    for stage in ("activation", "readout"):
+        assert "description_control_state" not in primary[stage]
+        assert "description_controls" not in report["stages"][stage]
+    assert report["control_rule"].endswith("The report holds no verdict that a stage passes.")
+    assert report["held_artifact"]["control_rule"] == report["control_rule"]
+    # in both reports a held-artifact verdict is one of the three outcomes exactly where the controls passed
+    seen = set()
+    for scored in (report, states):
+        for stage in ("label", "score"):
+            for summary in scored["held_artifact"][stage].get("analysis_sets", {}).values():
+                seen.add(summary["control_state"])
+                assert summary["control_state"] in iv.CONTROL_STATES
+                if summary["control_state"] == "controls_passed":
+                    assert summary["verdict"] in THREE_OUTCOMES and summary["verdict_issued"] is True
+                else:
+                    assert summary["verdict"] == summary["control_state"] and summary["verdict_issued"] is False
+    assert seen == set(iv.CONTROL_STATES)                        # the two fixtures reach every named state
+
+
+def test_every_random_step_of_the_controls_records_its_seed(bundle: dict, report: dict) -> None:
+    randomness = report["control_randomness"]
+    assert randomness["generator"] == "random.Random"
+    assert randomness["shuffle_seed_rule"] == "'<description_controls.shuffle.seed>:shuffle:<stage>'"
+    assert randomness["description_controls"]["shuffle"]["seed"] == 11
+    assert randomness["description_controls"]["cue_association"] == {"permutations": 2000, "alpha": 0.05}
+    body = control_of(report)["comparisons"]["shuffled"]["medical"]
+    assert body["seed_label"] == "7:held_artifact_score:matched_minus_shuffled:medical:all"
+    bundle["seed"] = 8
+    other = iv.score_bundle(bundle)
+    assert control_of(other)["comparisons"]["shuffled"]["medical"]["seed_label"] == (
+        "8:held_artifact_score:matched_minus_shuffled:medical:all")
+    assert controls(other)["shuffle"]["seed_label"] == "11:shuffle:score"       # the shuffle has its own seed
+    assert control_of(other)["comparisons"]["shuffled"]["medical"]["mean_difference"] == body["mean_difference"]
+
+
+def test_a_bundle_in_the_earlier_shape_stays_valid_and_gets_no_held_artifact_verdict(bundle: dict,
+                                                                                    report: dict) -> None:
+    del bundle["description_controls"], bundle["evaluation_items"]
+    for record in bundle["held_artifact"]:
+        for field in iv.DESCRIPTION_CUES.values():
+            record.pop(field, None)
+    assert iv.validate_bundle(bundle)["status"] == "validated"
+    result = iv.score_bundle(bundle)
+    summary = held(result)
+    assert (summary["mean_difference"], summary["interval"]) == (0.25, [0.25, 0.25])
+    assert (summary["verdict"], summary["control_state"], summary["verdict_issued"]) == ("control_not_run",
+                                                                                       "control_not_run", False)
+    assert control_of(result) == {"state": "control_not_run", "reason": "no_description_controls_plan"}
+    assert result["primary_results"]["held_artifact_score_difference"]["score"]["verdict"] == "control_not_run"
+    length = summary["description_cues"]["description_length"]
+    assert (length["state"], length["length_confounded_artifact_ids"], length["mean_token_count_difference"]) == (
+        "not_exposed", [], None)
+    assert [row["length_confounded"] for row in result["held_artifact"]["score"]["per_artifact"]] == [None] * 7
+    for stage in ("activation", "readout", "label", "score"):       # the stage endpoints do not use the controls
+        for key in ("fact_recovery", "changed_fact_sensitivity", "behaviour_by_representation"):
+            assert result["stages"][stage][key] == report["stages"][stage][key]
+
+
+def _swap_shuffle_sources(bundle: dict) -> None:
+    mapping = bundle["description_controls"]["shuffle"]["mapping"]["score"]
+    mapping["artifact_3"], mapping["artifact_4"] = mapping["artifact_4"], mapping["artifact_3"]
+
+
+def _shuffled_description_with_its_own_text(bundle: dict) -> None:
+    source = bundle["description_controls"]["shuffle"]["mapping"]["score"]["artifact_1"]
+    text = next(r["description_text"] for r in bundle["held_artifact"]
+                if r["artifact_id"] == source and r["description_register"] == "medical")
+    bundle["held_artifact"][0]["description_text"] = text
+
+
+def _both_descriptions_first(bundle: dict) -> None:
+    bundle["held_artifact"][0]["presentation_order"] = bundle["held_artifact"][1]["presentation_order"] = 1
+
+
+def _drop_control(key: str):
+    def mutate(bundle: dict) -> None:
+        del bundle["description_controls"][key]
+    return mutate
+
+
+@pytest.mark.parametrize(("mutate", "code"), [
+    (_set(("description_controls", "prespecified"), False), "control_margins_not_prespecified"),
+    (_set(("description_controls", "fixed_before_data"), " "), "control_margins_not_prespecified"),
+    (_set(("description_controls", "score_metric"), "pooled_correlation"), "score_metric"),
+    (_set(("description_controls", "margins"), {"matched_minus_shuffled": 0.125}), "missing_control_margins"),
+    (_set(("description_controls", "margins", "matched_minus_blank"), 0.125), "unknown_control_margin"),
+    (_set(("description_controls", "margins", "matched_minus_explanation_free"), 0), "invalid_margin"),
+    (_set(("description_controls", "explanation_free_rules"), ["always_positive"]), "explanation_free_rule_family"),
+    (_set(("description_controls", "irrelevant_description", "text"), "another placeholder"),
+     "irrelevant_description"),
+    (_set(("description_controls", "shuffle", "seed"), -1), "missing_seed"),
+    (_set(("description_controls", "shuffle", "mapping", "readout"), {}), "unknown_stage"),
+    (_swap_shuffle_sources, "shuffle_mapping_not_reproducible"),
+    (_shuffled_description_with_its_own_text, "shuffle_identical_description"),
+    (_set(("description_controls", "cue_association", "alpha"), 1), "analysis_plan"),
+    (_set(("description_controls", "cue_association", "permutations"), 0), "analysis_plan"),
+    (_drop_control("cue_association"), "schema"),
+    (_drop_control("shuffle"), "schema"),
+    (_set(("evaluation_items", 0, "artifact_id"), "artifact_9"), "unknown_artifact"),
+    (_set(("evaluation_items", 1, "item_id"), "p1"), "duplicate_item"),
+    (_set(("evaluation_items", 0, "verdicts", "reversed"), True), "verdict_condition"),
+    (_set(("evaluation_items", 0, "window_token_count"), 0), "invalid_cue_value"),
+    (_set(("evaluation_items", 1, "presentation_index"), 1), "invalid_cue_value"),
+    (_set(("evaluation_items", 0, "span_position"), " "), "invalid_cue_value"),
+    (_set(("evaluation_items", 0, "label"), "yes"), "schema"),
+    (_set(("evaluation_items", 0, "verdicts", "medical"), "yes"), "schema"),
+    (_set(("held_artifact", 0, "description_token_count"), 0), "invalid_cue_value"),
+    (_set(("held_artifact", 0, "presentation_order"), 3), "invalid_cue_value"),
+    (_both_descriptions_first, "invalid_cue_value"),
+    (_set(("held_artifact", 0, "score"), 0.875), "score_not_reproduced_from_items"),
+])
+def test_named_control_refusals(bundle: dict, mutate, code: str) -> None:
+    mutate(bundle)
+    assert refusal_code(bundle) == code
+    with pytest.raises(iv.Refusal) as caught:
+        iv.validate_bundle(bundle)
+    assert caught.value.code == code
+
+
+def test_no_failed_or_missing_control_ends_in_an_equivalence_verdict(states: dict) -> None:
+    # every set below has a zero difference in each family: interval [0, 0], inside the 0.125 margin, which the
+    # verdict rule alone calls equivalent_within_margin
+    withheld = {("score", "validation"): "scorer_does_not_read_description",
+                ("score", "fresh_test"): "baseline_not_beaten",
+                ("score", "held_out"): "description_reading_not_shown",
+                ("score", "all"): "baseline_advantage_not_shown",
+                ("label", "validation"): "control_not_run",
+                ("label", "held_out"): "control_incomplete"}
+    for (stage, name), state in withheld.items():
+        summary = held(states, stage, name)
+        assert (summary["mean_difference"], summary["interval"], summary["margin"]) == (0.0, [0.0, 0.0], 0.125)
+        assert summary["verdict"] == state
+    passed = held(states, "label", "fresh_test")              # the same numbers, with every control beaten
+    assert (passed["mean_difference"], passed["interval"], passed["verdict"]) == (0.0, [0.0, 0.0],
+                                                                                 "equivalent_within_margin")
+
+
+def test_specification_keeps_the_fixed_statements_and_defines_every_state() -> None:
+    text = " ".join(SPECIFICATION.read_text(encoding="utf-8").split())
+    for sentence in (
+            "**Status: proposed PatientWords contribution; no register bias has been measured with it.**",
+            "Its reported result is a reason to test these controls in PatientWords, not evidence that PatientWords "
+            "already has that failure.",
+            "Equal behaviour on a measured endpoint does not imply identical hidden states, and it does not establish "
+            "instrument bias.",
+            "this file makes no novelty claim",
+            "They are not results and describe no scorer.",
+            "established independently of every interpretability instrument",
+            "**Within-register paraphrases.**", "**Changed-fact controls.**", "**Split before development.**",
+            "A practical equivalence margin is fixed for each endpoint that receives a verdict, before any data.",
+            "Hold the underlying artifact fixed",
+            "**The control margins are placeholders.**"):
+        assert sentence in text, sentence
+    names = (iv.CONTROL_STATES + iv.CONTROL_OUTCOMES + iv.CUE_STATES + iv.ASSOCIATION_STATES + iv.EXPLANATION_FREE_RULES
+             + tuple(iv.CONTROL_MARGINS.values()) + iv.ARM_STATES + iv.ARMS + tuple(iv.ARM_MARGINS.values()))
+    for name in names:
+        assert f"`{name}`" in text, name
+    for question in ("1. **Decided by the owner, 2026-11-10: yes.**", "2. **Partly decided by the owner, 2026-11-10.**",
+                     # Question 3 was decided by the owner on 2026-11-11 (the input-only and control-artifact
+                     # arms); question 4 stays open as a general rule and is fixed for the first experiment only.
+                     "3. **Decided by the owner, 2026-11-11: yes.**",
+                     "4. **Open as a general rule; fixed for the first experiment.**"):
+        assert question in text, question

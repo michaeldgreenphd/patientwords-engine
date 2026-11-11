@@ -1,7 +1,7 @@
 {
   "schema": "patientwords.instrument-validity-rubric/1",
   "status": "draft - not validated; no human calibration has been run",
-  "_readme": "Annotation rubric for the interpretability-instrument validity benchmark (docs/protocols/instrument_validity_benchmark.md). It tells an annotator how to compare one instrument output (a readout summary, a generated label, a verbalization, or the description an explanation scorer accepted) with a reference set of facts that was established without the instrument. The value names under items.fact_recovery.values and items.description_register.values are the ones scripts/instrument_validity.py accepts; tests/test_instrument_validity.py keeps the two in step. Nothing here has been tested with annotators. Agreement, completion time and the wording of every definition are unmeasured.",
+  "_readme": "Annotation rubric for the interpretability-instrument validity benchmark (docs/protocols/instrument_validity_benchmark.md). It tells an annotator how to compare one instrument output (a readout summary, a generated label, a verbalization, or the description an explanation scorer accepted) with a reference set of facts that was established without the instrument. The value names under items.fact_recovery.values and items.description_register.values are the ones scripts/instrument_validity.py accepts; tests/test_instrument_validity.py keeps the two in step. The section description_controls is not an annotation item: it defines the shuffled and irrelevant description controls, the closed family of explanation-free rules, the cue checks and the named control states of the label and score stages, with the names the scorer uses. Its three control margins are placeholders without a value. Nothing here has been tested with annotators. Agreement, completion time and the wording of every definition are unmeasured.",
   "applies_to": {
     "benchmark": "docs/protocols/instrument_validity_benchmark.md",
     "bundle_schema": "schemas/protocols/instrument_validity.v1.schema.json",
@@ -160,6 +160,275 @@
       "resolution_status"
     ],
     "report_separately": "Agreement computed within outputs from medical-register inputs and within outputs from everyday-register inputs. If annotators agree less on one register, the rubric itself is register-sensitive and the benchmark's estimates inherit that."
+  },
+  "description_controls": {
+    "status": "draft - not validated; the three control margins are placeholders and no value is fixed",
+    "applies_to": "the held-artifact manipulation at the label and score stages: one artifact, one fixed set of evaluation items, and a scorer that returns a yes or no verdict for each item given a description",
+    "purpose": "To check that a score depends on what the description says. A scorer that does not read the description gives a medical and an everyday description the same score, and that equality is not evidence that the scorer treats the two registers alike.",
+    "score_metric": "balanced_accuracy",
+    "score_definition": "For one artifact and one description: the mean of the share of positive items given a yes verdict and the share of negative items given a no verdict. Every condition below is scored on the same items of the same artifact.",
+    "conditions": [
+      {
+        "condition": "matched",
+        "definition": "The description written for the artifact, in the medical register and in the everyday register. Item verdicts are recorded under the keys medical and everyday."
+      },
+      {
+        "condition": "shuffled",
+        "definition": "The description written for another artifact of the same stage, in the same register. The other artifact is fixed by a seeded derangement over the stage's artifacts in which no artifact receives a description from its own case family. The seed and the mapping are stored in the bundle and the scorer recomputes the mapping. Item verdicts are recorded under the keys shuffled_medical and shuffled_everyday."
+      },
+      {
+        "condition": "irrelevant",
+        "definition": "The fixed placeholder description below, which is about nothing in the items. It has one wording and no register. Item verdicts are recorded under the key irrelevant."
+      }
+    ],
+    "irrelevant_description": {
+      "placeholder_id": "irrelevant_placeholder_1",
+      "text": "The names of chess openings.",
+      "requirement": "Before data, the study protocol records a check that no evaluation item is about the placeholder's subject. If one is, the placeholder is replaced in this file, with a new placeholder_id, before any item is scored."
+    },
+    "explanation_free_baseline": {
+      "definition": "The best rule that never reads a description, scored on the same items as the matched description. A rule reads only how an item was built.",
+      "rule_family": [
+        {
+          "rule": "always_positive",
+          "definition": "Yes for every item."
+        },
+        {
+          "rule": "always_negative",
+          "definition": "No for every item."
+        },
+        {
+          "rule": "majority_class",
+          "definition": "The more frequent label among the discovery items, for every item. A tie gives yes."
+        },
+        {
+          "rule": "span_position",
+          "definition": "Yes when the item's span_position value is more frequent among positive discovery items than among negative ones."
+        },
+        {
+          "rule": "span_marking",
+          "definition": "Yes when the item's span_marking value is more frequent among positive discovery items than among negative ones."
+        },
+        {
+          "rule": "window_length",
+          "definition": "Yes when window_token_count is at least, or at most, a threshold. Direction and threshold are the first candidate with the highest balanced accuracy on the discovery items."
+        },
+        {
+          "rule": "presentation_order",
+          "definition": "Yes when presentation_index is at least, or at most, a threshold, fitted in the same way."
+        }
+      ],
+      "family_is_closed": "The list is closed. A bundle that declares another list is refused. Under balanced accuracy the first three rules score 0.5 whenever an artifact has items of both classes; they are listed so that the score of a rule that uses no cue is stated.",
+      "selection": "Each rule is fitted on the pooled discovery items of the stage. The rule with the highest mean balanced accuracy over discovery families is the baseline; a tie goes to the earliest rule in the list. The baseline is frozen before any validation or fresh-test item is scored.",
+      "reporting": "The matched description's score is reported beside the baseline's score and beside every rule's score on the same items. The rule that scores highest on a non-discovery set is also named; it was chosen after the fact and the verdict rule does not use it."
+    },
+    "margins": {
+      "matched_minus_shuffled": {
+        "value": null,
+        "status": "placeholder - not fixed",
+        "meaning": "The smallest advantage of the matched description over the shuffled description that counts as the scorer reading the description."
+      },
+      "matched_minus_irrelevant": {
+        "value": null,
+        "status": "placeholder - not fixed",
+        "meaning": "The smallest advantage of the matched description over the irrelevant placeholder that counts as the scorer reading the description."
+      },
+      "matched_minus_explanation_free": {
+        "value": null,
+        "status": "placeholder - not fixed",
+        "meaning": "The smallest advantage of the matched description over the frozen explanation-free baseline that counts as the score carrying information from the description."
+      },
+      "note": "Each value is fixed in the study protocol before data, with a stated reason, and copied into the bundle with prespecified true. This file supplies no value. The numbers in the synthetic fixtures were written to exercise the scorer and are not proposals."
+    },
+    "cue_checks": [
+      {
+        "cue": "span_position",
+        "what_it_is": "Where the scored span sits in its window.",
+        "bundle_field": "evaluation_items[].span_position",
+        "check": "The span_position rule's balanced accuracy on the same items."
+      },
+      {
+        "cue": "span_marking",
+        "what_it_is": "How the scored span is marked for the scorer, for example how many tokens carry a mark.",
+        "bundle_field": "evaluation_items[].span_marking",
+        "check": "The span_marking rule's balanced accuracy on the same items."
+      },
+      {
+        "cue": "window_length",
+        "what_it_is": "The token count of the window an item shows.",
+        "bundle_field": "evaluation_items[].window_token_count",
+        "check": "The window_length rule's balanced accuracy on the same items, and the association over families between mean window length and the matched score."
+      },
+      {
+        "cue": "presentation_order",
+        "what_it_is": "The position of an item in the order the scorer saw the items.",
+        "bundle_field": "evaluation_items[].presentation_index",
+        "check": "The presentation_order rule's balanced accuracy on the same items."
+      },
+      {
+        "cue": "description_length",
+        "what_it_is": "The token count of each description.",
+        "bundle_field": "held_artifact[].description_token_count",
+        "check": "Per pair, the medical-minus-everyday token difference and a length_confounded flag when the counts differ. Per analysis set, the association over families between that difference and the score difference."
+      },
+      {
+        "cue": "description_formatting",
+        "what_it_is": "The formatting class of each description, for example plain_sentence or bulleted_list.",
+        "bundle_field": "held_artifact[].formatting_class",
+        "check": "Per pair, a formatting_differs flag when the two classes differ."
+      },
+      {
+        "cue": "description_order",
+        "what_it_is": "Which of the two descriptions of an artifact the scorer saw first.",
+        "bundle_field": "held_artifact[].presentation_order",
+        "check": "The association over families between the medical description being first and the score difference."
+      }
+    ],
+    "cue_states": [
+      {
+        "value": "exposed",
+        "definition": "The bundle records the cue for every item or pair in scope. The cue is checked."
+      },
+      {
+        "value": "not_exposed",
+        "definition": "The bundle records the cue for no item or pair in scope. The cue was not checked. This is not a pass."
+      },
+      {
+        "value": "partly_recorded",
+        "definition": "The bundle records the cue for some items or pairs only. The data are missing; the check is not computed, and for an item cue the control state is control_incomplete."
+      }
+    ],
+    "association_states": [
+      {
+        "value": "association_detected",
+        "definition": "The permutation p-value is at or below the alpha fixed in the bundle."
+      },
+      {
+        "value": "association_not_detected",
+        "definition": "The p-value is above alpha. This is not evidence that the cue has no effect."
+      },
+      {
+        "value": "not_computable",
+        "definition": "Fewer than three families, or the cue or the score takes one value, or the bundle has no control plan. The reason is recorded."
+      },
+      {
+        "value": "not_exposed",
+        "definition": "As under cue_states."
+      },
+      {
+        "value": "partly_recorded",
+        "definition": "As under cue_states."
+      }
+    ],
+    "comparison_outcomes": [
+      {
+        "value": "control_beaten",
+        "definition": "The whole family-clustered bootstrap interval of the mean of matched score minus control score lies above the control margin."
+      },
+      {
+        "value": "control_not_beaten",
+        "definition": "The whole interval lies at or below the control margin."
+      },
+      {
+        "value": "advantage_not_shown",
+        "definition": "The interval contains the margin, or no interval was computed because the set has fewer families than the plan's minimum."
+      }
+    ],
+    "control_states": [
+      {
+        "value": "controls_passed",
+        "definition": "In each register the matched description beats the shuffled description, the irrelevant description and the frozen baseline. The held-artifact verdict is issued."
+      },
+      {
+        "value": "control_not_run",
+        "definition": "The bundle has no control plan, no evaluation items, or no score at all for one of the three controls in this set. No verdict."
+      },
+      {
+        "value": "control_incomplete",
+        "definition": "A control or an item cue is recorded for some of the artifacts or items in this set and missing for others. No verdict."
+      },
+      {
+        "value": "scorer_does_not_read_description",
+        "definition": "In some register the matched description does not beat the shuffled or the irrelevant description (control_not_beaten). No verdict."
+      },
+      {
+        "value": "baseline_not_beaten",
+        "definition": "In some register the matched description does not beat the frozen explanation-free baseline (control_not_beaten). No verdict."
+      },
+      {
+        "value": "description_reading_not_shown",
+        "definition": "No comparison is control_not_beaten, and the advantage over the shuffled or the irrelevant description is advantage_not_shown in some register. No verdict."
+      },
+      {
+        "value": "baseline_advantage_not_shown",
+        "definition": "The shuffled and irrelevant descriptions are beaten, and the advantage over the frozen baseline is advantage_not_shown in some register. No verdict."
+      }
+    ],
+    "state_precedence": "The first state that applies, in this order: control_not_run, control_incomplete, scorer_does_not_read_description, baseline_not_beaten, description_reading_not_shown, baseline_advantage_not_shown, controls_passed.",
+    "not_tested": "No scorer has been run under these controls. Whether a derangement across case families gives descriptions that are different enough, whether the placeholder is irrelevant to real items, and whether the closed rule family covers the cues a real scoring task exposes are unmeasured."
+  },
+  "pair_equivalence_review": {
+    "_readme": "Review of one case family's medical and everyday wording, done before any model or instrument sees them (docs/protocols/instrument_register_experiment_20261111.md, section 4). Draft, added 2026-11-11; it has not been used on a real pair. It is separate from the annotation items above, which rate an instrument's output.",
+    "recorded_per": "case family",
+    "dimensions": [
+      {
+        "dimension": "clinical_facts",
+        "question": "Do both wordings state the same set of clinical facts, with none added and none dropped?"
+      },
+      {
+        "dimension": "negation",
+        "question": "Is every negated or absent finding negated in both wordings?"
+      },
+      {
+        "dimension": "timing",
+        "question": "Do onset, duration, sequence and frequency agree?"
+      },
+      {
+        "dimension": "uncertainty",
+        "question": "Is the degree of certainty the same, with no possibility turned into a statement of fact?"
+      },
+      {
+        "dimension": "severity",
+        "question": "Is the stated severity the same?"
+      },
+      {
+        "dimension": "urgency",
+        "question": "Would the two wordings call for the same urgency of response?"
+      }
+    ],
+    "values": [
+      "same",
+      "different",
+      "cannot_judge"
+    ],
+    "missing_value": {
+      "recorded_as": null,
+      "meaning": "The dimension was not reviewed. It is never entered as same."
+    },
+    "reviewers": [
+      {
+        "role": "clinician",
+        "reviews": [
+          "clinical_facts",
+          "negation",
+          "timing",
+          "uncertainty",
+          "severity",
+          "urgency"
+        ],
+        "also_establishes": "the reference facts of the family, and the one fact changed in each changed-fact control"
+      },
+      {
+        "role": "patient_language_reviewer",
+        "reviews": [
+          "plausible_patient_wording",
+          "same_meaning_to_a_lay_reader"
+        ],
+        "note": "Everyday wording is not rated as a degraded form of medical wording. The question is whether a patient would plausibly say it and whether a lay reader takes the same meaning from it."
+      }
+    ],
+    "status_rule": "A family is reviewed only when a clinician recorded 'same' on all six dimensions and a patient-language reviewer recorded both of their items. Any 'different' removes the family before the split. Anything else leaves review_status at domain_review_pending, and the family is reported in its own row.",
+    "not_a_review": "A language model's statement that two wordings are equivalent is not a review and is not recorded in this form."
   },
   "open_questions": [
     "Whether partially can be applied consistently, or should be split into named sub-cases.",

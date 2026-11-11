@@ -13,7 +13,14 @@ Checks are derived from the page JS as of the 2026-07-16 audit (Audit 1); when a
 page starts reading a new field, add it here in the same change. ERRORS are
 contract breaks a page cannot survive (wrong numbers, broken joins, dead iframe
 paths); WARNINGS are drift that degrades silently (orphan rows, stale manual
-copies, unknown top-level keys). --strict promotes warnings to errors.
+copies, unknown top-level keys). --strict promotes warnings to errors. NOTES are
+expected states worth printing; they are never counted and --strict does not
+promote them.
+
+One VALUE check lives here because no other gate makes it: the payload's
+summary.penalty block is recomputed from the payload's own rows
+(check_summary_penalty, which states the rule and the one dated transition it
+accepts, LEGACY_SUMMARY_ACCEPTED_THROUGH).
 
 Exit codes: 0 contract holds, 1 violations, 2 site payload missing/unreadable.
 No medical vocabulary lives in this file; all terms stay in the data.
@@ -27,6 +34,7 @@ import math
 import re
 import subprocess
 import sys
+from datetime import date, datetime, timedelta, timezone
 from hashlib import sha256
 from pathlib import Path, PurePosixPath
 from typing import Callable, NamedTuple
@@ -39,6 +47,14 @@ _SCHEMA_SPEC = importlib.util.spec_from_file_location(
 assert _SCHEMA_SPEC is not None and _SCHEMA_SPEC.loader is not None
 _SCHEMA_ADAPTER = importlib.util.module_from_spec(_SCHEMA_SPEC)
 _SCHEMA_SPEC.loader.exec_module(_SCHEMA_ADAPTER)
+# The experiments page's index (scripts/export_experiment_index.py) has its check in a sibling module, loaded
+# the same way. It reads only scripts/ of the engine.
+_INDEX_SPEC = importlib.util.spec_from_file_location(
+    "_patientwords_experiment_index_contract", Path(__file__).resolve().with_name("experiment_index_contract.py"))
+assert _INDEX_SPEC is not None and _INDEX_SPEC.loader is not None
+_INDEX_CONTRACT = importlib.util.module_from_spec(_INDEX_SPEC)
+_INDEX_SPEC.loader.exec_module(_INDEX_CONTRACT)
+check_experiment_index = _INDEX_CONTRACT.check_experiment_index
 
 # One structural authority for this artifact, also referenced by the HTTP contract.
 SIMULATED_SCHEMA_PATH = Path(__file__).resolve().parent / "contracts" / "simulated_scenarios.v1.schema.json"
@@ -135,8 +151,187 @@ def check_schema_subset(rep: Report, artifact: str, value: object, schema: dict,
     """Preserve the public export-gate entry point; the adapter owns schema traversal."""
     _SCHEMA_ADAPTER.check_schema_subset(rep.err, artifact, value, schema, export_gate=export_gate)
 
-def check_simulated(rep: Report, site: Path, payload: dict) -> dict:
-    """Returns join indexes used by cross-artifact checks."""
+# ---- summary.penalty: the headline numbers, recomputed from the payload's own rows
+#
+# This block is written here and imports nothing from scripts/payload_summary.py (the
+# producer), so a producer defect is not repeated by its own check.
+
+# The producer rounds both means and both interval ends to this many decimals.
+SUMMARY_DECIMALS = 4
+# A published mean matches a recomputed one when it is within half a unit of the last
+# published decimal. The 1e-9 covers the two summation orders (this file uses math.fsum,
+# the producer uses sum) landing on opposite sides of an exact rounding tie.
+SUMMARY_TOLERANCE = 0.5 * 10 ** -SUMMARY_DECIMALS + 1e-9
+# The producer writes ci95 as null below this many resampled values.
+SUMMARY_CI_MIN_VALUES = 3
+# The date of the producer correction (engine commit c46db48f, from pull request 169).
+SUMMARY_CORRECTION_DATE = date(2026, 11, 10)
+# TEMPORARY TRANSITION. Until the correction, scripts/payload_summary.py keyed phrases on
+# a field the exporter's rows never carried, so every row was its own phrase: n_phrases
+# equalled n_scored_rows, mean_phrase_deduped equalled the row mean, and ci95 resampled
+# rows. Site CI runs this file from the engine's main branch against the site, and the
+# corrected payload reaches the site only after the engine change merges. A summary in
+# exactly that legacy form is therefore accepted, with a note on every run, through this
+# date (UTC, inclusive). From the next day it is an error. Nothing else is accepted:
+# any other disagreement with the rows is an error on every date. When the site carries
+# a corrected payload, delete this constant, the legacy branch of check_summary_penalty
+# and their tests in one change. Do not move the date to keep a check green.
+LEGACY_SUMMARY_ACCEPTED_THROUGH = date(2026, 12, 15)
+
+
+def _utc_today() -> date:
+    return datetime.now(timezone.utc).date()
+
+
+def _summary_population(scenarios: list[dict]) -> tuple[list[float], list[float]]:
+    """The scored rows' penalties, and one mean per clinical phrase, under the rule
+    check_summary_penalty states."""
+    row_values: list[float] = []
+    by_phrase: dict[tuple, list[float]] = {}
+    for row in scenarios:
+        if row.get("steered"):
+            continue
+        penalty = row.get("language_penalty")
+        if not _is(penalty, NUM):
+            continue
+        prompt = row.get("clinical_prompt")
+        # Tuples keep a phrase and a fallback key apart even if a phrase's text had the
+        # form "<batch>#<n>"; the producer joins the fallback into one string.
+        key = ("phrase", prompt) if isinstance(prompt, str) and prompt else \
+            ("row", row.get("batch"), row.get("batch_index"))
+        row_values.append(float(penalty))
+        by_phrase.setdefault(key, []).append(float(penalty))
+    return row_values, [math.fsum(v) / len(v) for v in by_phrase.values()]
+
+
+def _mean(values: list[float]) -> float | None:
+    return math.fsum(values) / len(values) if values else None
+
+
+def _shown(value: float | None) -> float | None:
+    """A recomputed mean as the producer would publish it, for messages."""
+    return None if value is None else round(value, SUMMARY_DECIMALS)
+
+
+def _mean_matches(published: object, exact: float | None) -> bool:
+    """Whether a published mean is the recomputed one rounded to SUMMARY_DECIMALS (null when there are no values)."""
+    if exact is None or published is None:
+        return exact is None and published is None
+    return (_finite(published) and round(published, SUMMARY_DECIMALS) == published
+            and abs(published - exact) <= SUMMARY_TOLERANCE)
+
+
+def _ci95_problem(ci: object, values: list[float], unit: str) -> str | None:
+    """Why a published ci95 cannot be the percentile bootstrap interval of the mean of `values`, or None.
+
+    The bootstrap itself is not recomputed: the payload records neither the producer's seed nor its resample
+    count, and copying both defaults and the resampling loop from the producer would repeat a producer defect
+    instead of detecting it. What is checked is everything that holds for any seed and resample count: null
+    exactly when there are fewer than SUMMARY_CI_MIN_VALUES values; otherwise two finite numbers, low <= high;
+    both inside the range of the values (a resample mean cannot leave it); and the mean of the values inside the
+    interval. The last is not a theorem. A resample mean falls on either side of the sample mean with a
+    probability far above the 2.5 % the percentile ends cut off, so an interval that excludes the mean was not
+    computed from these values in practice. A stale interval that still satisfies all of this is not detected."""
+    if len(values) < SUMMARY_CI_MIN_VALUES:
+        return None if ci is None else f"must be null with fewer than {SUMMARY_CI_MIN_VALUES} {unit}, is {ci!r}"
+    if not (isinstance(ci, list) and len(ci) == 2 and all(_is(v, NUM) and _finite(v) for v in ci)):
+        return f"must be [low, high], two finite numbers, for {len(values)} {unit}; is {ci!r}"
+    low, high = ci
+    mean = math.fsum(values) / len(values)
+    if low > high:
+        return f"low {low} is above high {high}"
+    if low < min(values) - SUMMARY_TOLERANCE or high > max(values) + SUMMARY_TOLERANCE:
+        return (f"[{low}, {high}] leaves the range of the {len(values)} {unit} it resamples "
+                f"([{round(min(values), SUMMARY_DECIMALS)}, {round(max(values), SUMMARY_DECIMALS)}])")
+    if not low - SUMMARY_TOLERANCE <= mean <= high + SUMMARY_TOLERANCE:
+        return f"[{low}, {high}] does not contain the mean of the {len(values)} {unit} ({round(mean, SUMMARY_DECIMALS)})"
+    return None
+
+
+def check_summary_penalty(rep: Report, a: str, payload: dict, today: date | None = None) -> None:
+    """Check $.summary.penalty against the payload's own scenario rows.
+
+    The rule, read from scripts/payload_summary.py and scripts/export_frontend_simulated.py as corrected on
+    2026-11-10 and written again here without importing either:
+
+    - A row is SCORED when it is not steered (no truthy `steered`) and its top-level `language_penalty` is a
+      number (not null, not a boolean). The top-level field is the base-model mirror: check_simulated requires it
+      to equal models[gemma-2-2b].language_penalty wherever that model is present. Screening status is not read.
+      A screened-out row leaves the population because the measurement gives it a null penalty, and a measured
+      row whose penalty is null (pending) leaves it the same way.
+    - A scored row's PHRASE is its top-level `clinical_prompt`. A row whose prompt is empty is its own phrase,
+      identified by (batch, batch_index). Phrases are compared as exact strings across all batches.
+    - n_scored_rows is the number of scored rows. mean_rows_raw is their mean penalty.
+    - n_phrases is the number of distinct phrases among the scored rows. mean_phrase_deduped is the mean, over
+      phrases, of each phrase's mean penalty.
+    - Both means are rounded to SUMMARY_DECIMALS decimals; with no scored row both are null.
+    - ci95 is a percentile bootstrap interval over the phrase means, null below SUMMARY_CI_MIN_VALUES phrases.
+      It is checked for consistency, not recomputed (_ci95_problem says why and what that leaves undetected).
+
+    Every disagreement is an error, with one dated exception. A summary in exactly the form the producer wrote
+    before the correction (LEGACY_SUMMARY_ACCEPTED_THROUGH describes it: the row-level fields right, n_phrases
+    equal to n_scored_rows, mean_phrase_deduped equal to the row mean, ci95 consistent with a resample of rows,
+    and rows that do repeat a phrase) is a note through that date and an error after it. `today` is the UTC date
+    the deadline is compared with; tests pass it, and it defaults to the current UTC date.
+
+    A payload with no summary, or a summary with no `penalty` key (payloads older than the block), is not
+    checked. The summary's `totals` block is not checked here."""
+    summary = payload.get("summary")
+    if not isinstance(summary, dict) or "penalty" not in summary:
+        return
+    p = "$.summary.penalty"
+    pen = summary["penalty"]
+    if not isinstance(pen, dict):
+        rep.err(a, p, f"must be an object, is {type(pen).__name__}")
+        return
+    before = len(rep.errors)
+    n_rows = need(rep, a, pen, "n_scored_rows", int, p)
+    n_phrases = need(rep, a, pen, "n_phrases", int, p)
+    mean_rows = need(rep, a, pen, "mean_rows_raw", NUM, p, nullable=True)
+    mean_phrases = need(rep, a, pen, "mean_phrase_deduped", NUM, p, nullable=True)
+    ci = need(rep, a, pen, "ci95", list, p, nullable=True)
+    if len(rep.errors) != before:
+        return
+
+    row_values, phrase_means = _summary_population(payload["scenarios"])
+    row_mean, phrase_mean = _mean(row_values), _mean(phrase_means)
+    rows_ok = n_rows == len(row_values) and _mean_matches(mean_rows, row_mean)
+
+    if (rows_ok and len(phrase_means) != len(row_values) and n_phrases == len(row_values)
+            and _mean_matches(mean_phrases, row_mean) and _ci95_problem(ci, row_values, "scored rows") is None):
+        today = today or _utc_today()
+        legacy = (f"summary written before the {SUMMARY_CORRECTION_DATE.isoformat()} phrase-key correction in "
+                  f"scripts/payload_summary.py: every row was counted as its own phrase, so it publishes n_phrases "
+                  f"{n_phrases} and mean_phrase_deduped {mean_phrases}, where the payload's own rows give n_phrases "
+                  f"{len(phrase_means)} and mean_phrase_deduped {_shown(phrase_mean)}. Remedy: re-export with the "
+                  f"corrected producer (scripts/export_frontend_simulated.py) and publish the result.")
+        if today <= LEGACY_SUMMARY_ACCEPTED_THROUGH:
+            rep.notes.append(f"{a} :: {p} :: legacy {legacy} Accepted through "
+                             f"{LEGACY_SUMMARY_ACCEPTED_THROUGH.isoformat()} (LEGACY_SUMMARY_ACCEPTED_THROUGH); "
+                             f"an error from {(LEGACY_SUMMARY_ACCEPTED_THROUGH + timedelta(days=1)).isoformat()}.")
+        else:
+            rep.err(a, p, f"legacy {legacy} The transition that accepted this form ended on "
+                          f"{LEGACY_SUMMARY_ACCEPTED_THROUGH.isoformat()} (LEGACY_SUMMARY_ACCEPTED_THROUGH).")
+        return
+
+    if n_rows != len(row_values):
+        rep.err(a, f"{p}.n_scored_rows", f"says {n_rows}, the payload has {len(row_values)} scored rows "
+                                         "(not steered, numeric top-level language_penalty)")
+    if not _mean_matches(mean_rows, row_mean):
+        rep.err(a, f"{p}.mean_rows_raw", f"says {mean_rows}, the scored rows' mean penalty is {_shown(row_mean)}")
+    if n_phrases != len(phrase_means):
+        rep.err(a, f"{p}.n_phrases", f"says {n_phrases}, the scored rows hold {len(phrase_means)} distinct "
+                                     "clinical phrases")
+    if not _mean_matches(mean_phrases, phrase_mean):
+        rep.err(a, f"{p}.mean_phrase_deduped", f"says {mean_phrases}, the mean over phrases of each phrase's mean "
+                                               f"penalty is {_shown(phrase_mean)}")
+    problem = _ci95_problem(ci, phrase_means, "phrase means")
+    if problem:
+        rep.err(a, f"{p}.ci95", problem)
+
+
+def check_simulated(rep: Report, site: Path, payload: dict, today: date | None = None) -> dict:
+    """Returns join indexes used by cross-artifact checks. `today` is passed to check_summary_penalty."""
     a = "simulated_scenarios.json"
     before = len(rep.errors)
     check_schema_subset(rep, a, payload, SIMULATED_SCHEMA, export_gate=True)
@@ -258,6 +453,8 @@ def check_simulated(rep: Report, site: Path, payload: dict) -> dict:
         if meta and _is(meta.get("n_traced"), int) and meta["n_traced"] != count:
             rep.err(a, f"$.models_meta[{mid}].n_traced",
                     f"says {meta['n_traced']}, payload has {count} scenarios with this model")
+
+    check_summary_penalty(rep, a, payload, today)
 
     return {"scenario_keys": scenario_keys, "batch_stems": batch_stems,
             "meta_ids": set(meta_ids)}
@@ -1592,12 +1789,15 @@ def check_results_catalogue(rep: Report, site: Path) -> None:
             rep.err(f"{CATALOGUE_DIR}/{csv_name}", "-", "download named on the catalogue page is missing")
 
 
-def validate(site: Path, engine: Path | None, strict: bool = False, send_waivers: dict | None = None) -> Report:
+def validate(site: Path, engine: Path | None, strict: bool = False, send_waivers: dict | None = None,
+             today: date | None = None) -> Report:
+    """`today` is the UTC date the summary transition's deadline is compared with (check_summary_penalty); it
+    defaults to the current UTC date and exists so tests do not depend on the wall clock."""
     rep = Report()
     payload = load(site, "simulated_scenarios.json", rep, required=True)
     joins = {"scenario_keys": set(), "batch_stems": set(), "meta_ids": set()}
     if isinstance(payload, dict):
-        joins = check_simulated(rep, site, payload)
+        joins = check_simulated(rep, site, payload, today)
     urg = load(site, "urgency_shift.json", rep)
     if isinstance(urg, dict):
         check_urgency(rep, urg, joins)
@@ -1605,6 +1805,7 @@ def validate(site: Path, engine: Path | None, strict: bool = False, send_waivers
     check_owner_run(rep, site, send_waivers)
     check_jev_payloads(rep, site)
     check_results_catalogue(rep, site)
+    check_experiment_index(rep, site)
     if engine is not None and engine.is_dir():
         check_engine_copies(rep, site, engine)
     if strict:

@@ -51,6 +51,7 @@ import json
 import os
 import platform
 import subprocess
+import time
 from pathlib import Path
 
 DEFAULT_TOPK = 10
@@ -160,8 +161,30 @@ def build_result(index, pair, model, tokenizer, measure_fn, topk):
     }
 
 
+def wall_seconds(load, measure, pairs_measured):
+    """The run's own timing record (added 2026-11-11): seconds to load and warm
+    the model, seconds spent measuring, and the number of pairs those
+    measurement seconds cover. Wall-clock time of this process on this runner;
+    it is the only place a real seconds-per-pair rate for this path comes from.
+    ``seconds_per_pair`` is null until a pair has been measured."""
+    return {"load": round(load, 3), "measure": round(measure, 3), "pairs_measured": pairs_measured,
+            "seconds_per_pair": round(measure / pairs_measured, 3) if pairs_measured else None,
+            "clock": "time.perf_counter in the measuring process; load includes download and warmup"}
+
+
 def build_summary(model_id, hf_id, results, start_index=1, dtype=DEFAULT_DTYPE,
-                  topk=DEFAULT_TOPK, completed=True, revision=None, revision_pinned=None):
+                  topk=DEFAULT_TOPK, completed=True, revision=None, revision_pinned=None,
+                  timing=None):
+    """``timing`` is a ``wall_seconds`` record; a summary built without one (every
+    part landed before 2026-11-11) has no ``inference.wall_seconds`` key."""
+    summary = _summary(model_id, hf_id, results, start_index, dtype, topk, completed, revision,
+                       revision_pinned)
+    if timing is not None:
+        summary["inference"]["wall_seconds"] = timing
+    return summary
+
+
+def _summary(model_id, hf_id, results, start_index, dtype, topk, completed, revision, revision_pinned):
     return {
         "mode": "2panel",
         # Distinct from both "hosted" and "logits": this is a verification run,
@@ -225,6 +248,7 @@ def main(argv=None):
         pairs = pairs[:args.limit]
 
     print(f"Loading {hf_id} @ {pinned} via interp-engine eager (cpu, {args.dtype}) ...", flush=True)
+    load_clock = time.perf_counter()
     # Eager is the only backend that ships the full logit vector, and the only
     # one that runs without CUDA. trust_remote_code stays off: we never execute
     # checkpoint-bundled code. interp-engine has no revision argument of its
@@ -247,6 +271,8 @@ def main(argv=None):
     # generate_stream, which is itself a sync free function (depth_probe.py).
     lifecycle = sync_model(model)
     lifecycle.warmup()
+    load_seconds = time.perf_counter() - load_clock
+    measure_seconds = 0.0
     tokenizer = model.tokenizer
 
     start_index = args.offset + 1   # global 1-based join key, matching the trace path
@@ -258,14 +284,17 @@ def main(argv=None):
         write_summary(args.out, build_summary(
             model_id, hf_id, results, start_index, dtype=args.dtype,
             topk=args.topk, completed=completed, revision=revision,
-            revision_pinned=pinned), start_index)
+            revision_pinned=pinned,
+            timing=wall_seconds(load_seconds, measure_seconds, len(results))), start_index)
 
     def measure_fn(prompt, target_id, topk):
         return measure(model, tokenizer, prompt, target_id, topk)
 
     for offset, pair in enumerate(pairs):
         index = start_index + offset
+        pair_clock = time.perf_counter()
         results.append(build_result(index, pair, model, tokenizer, measure_fn, args.topk))
+        measure_seconds += time.perf_counter() - pair_clock
         flush(False)
         print(f"  [{index}] {results[-1]['probabilities']}", flush=True)
 

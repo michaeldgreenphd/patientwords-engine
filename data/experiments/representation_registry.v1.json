@@ -2,7 +2,7 @@
   "schema_version": "patientwords.representation-registry/1",
   "as_of": "2026-11-10",
   "synthetic": false,
-  "description": "Representations the project uses or names, one entry per representation of one model. The model block is the engine's study identity (short id, Hugging Face id, pinned commit); it is not a statement about what a hosted service loads. A null means this registry holds no value and its pointer is listed in the entry's not_recorded. links_enabled is true only for verified_exact. On 2026-11-10 the service's own records were read with plain GET requests; data/experiments/neuronpedia_evidence/20261110/index.v1.json holds each record's SHA-256, size, retrieval time and the fields read. Those records name a Hugging Face repository for each hosted model and source and no revision, commit or hash. So no real entry is verified_exact and no real link is built. Representation types are different objects and are never interchangeable.",
+  "description": "Representations the project uses or names, one entry per representation of one model. The model block is the engine's study identity (short id, Hugging Face id, pinned commit); it is not a statement about what a hosted service loads. A null means this registry holds no value and its pointer is listed in the entry's not_recorded. Each entry carries two separate facts. verification is about the identity of the hosted checkpoint: links_enabled is the exact-link flag and is true only for verified_exact, which is also what pooling of hosted and local results and any parity statement need. reference is about the source of a link: whether the service's own record for the entry's ids was read and saved, with the record named by path, SHA-256 and retrieval time. A reference link is a link to the service's page for a model, one layer's source or a lens, shown as a reference to an external page; it is not evidence that the page shows the study's model or representation. On 2026-11-10 the service's own records were read with plain GET requests; data/experiments/neuronpedia_evidence/20261110/index.v1.json holds each record's SHA-256, size, retrieval time and the fields read, and data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json holds the pages fetched to confirm the page forms. Those records name a Hugging Face repository for each hosted model and source and no revision, commit or hash. So no real entry is verified_exact and no real exact link is built; five entries have the reference status service_record_read_revision_not_reported and reference links on, and the four bases named only in the ICA fork have none. Representation types are different objects and are never interchangeable.",
   "verification_statuses": [
     "verified_exact",
     "alias_unverified_checkpoint",
@@ -10,10 +10,18 @@
     "unverified"
   ],
   "verification_meaning": {
-    "verified_exact": "The Neuronpedia ids were read in a primary source and the hosted checkpoint revision is recorded and equals the study revision. The only status that permits a link.",
+    "verified_exact": "The Neuronpedia ids were read in a primary source and the hosted checkpoint revision is recorded and equals the study revision. The only status that permits an exact link, pooling of hosted and local results, or a parity statement. A reference link does not depend on this status and is not evidence for it.",
     "alias_unverified_checkpoint": "Another id is given for the same checkpoint by the source that the entry's id_source names. No record of the checkpoint revision behind that id was read. An alias alone verifies nothing.",
     "hosted_identity_unknown": "The engine uses these hosted ids and responses have landed. The engine records no model, dictionary or instrument revision for these responses. The entry's evidence names the records of the service that were read and says that none of them carries a revision, or says that none was read. What answered is therefore not identified by commit.",
     "unverified": "The representation is named in a source that was read. Its own manifest or page was not read."
+  },
+  "reference_statuses": [
+    "service_record_read_revision_not_reported",
+    "no_service_record"
+  ],
+  "reference_meaning": {
+    "service_record_read_revision_not_reported": "The service's own record for the entry's Neuronpedia ids was read and is saved; reference.evidence names it by path, SHA-256, size and retrieval time. The record names the entry's model id and a Hugging Face repository equal to the study's, and reports no revision, commit or hash. Permits a reference link to a page form listed in reference.pages. Says nothing about the hosted checkpoint: the verification status is unchanged by it, and it permits no exact link, no pooling and no parity statement.",
+    "no_service_record": "The entry names no saved record of the service for its ids: it records no Neuronpedia ids, or no record was saved. No reference link."
   },
   "sources_not_read": [
     {
@@ -147,6 +155,57 @@
         "checked_utc_date": "2026-11-10"
       },
       "links_enabled": false,
+      "reference": {
+        "status": "service_record_read_revision_not_reported",
+        "enabled": true,
+        "evidence": {
+          "index": "data/experiments/neuronpedia_evidence/20261110/index.v1.json",
+          "record_id": "api.source-set.gemma-2-2b.gemmascope-transcoder-16k",
+          "path": "data/experiments/neuronpedia_evidence/20261110/bodies/api.source-set.gemma-2-2b.gemmascope-transcoder-16k.json",
+          "sha256": "dcfdd5f55b4951287c466bba77ee7aeaaa05ba735ce6067c982782827719d900",
+          "bytes": 34248,
+          "retrieved_utc": "2026-11-10T18:25:56Z"
+        },
+        "pages": [
+          {
+            "kind": "model_page",
+            "template": "https://www.neuronpedia.org/{model_id}",
+            "source": "https://docs.neuronpedia.org/getting-started/find-resources (record docs.getting-started.find-resources in data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json): 'A model page (neuronpedia.org/[MODEL_ID]) shows all the releases for that model'. The documentation writes the host as neuronpedia.org; the page fetched for this entry answered at www.neuronpedia.org with no redirect.",
+            "read_utc_date": "2026-11-10",
+            "form_record": {
+              "index": "data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json",
+              "record_id": "docs.getting-started.find-resources",
+              "sha256": "0e817a72106f53f657889453fdf22a361a180c684e016583aad61da3829e3b32",
+              "retrieved_utc": "2026-11-10T19:49:21Z"
+            },
+            "instance_record": {
+              "index": "data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json",
+              "record_id": "page.model.gemma-2-2b",
+              "sha256": "b9102c44d0c187d17920031813efe4bd8672968befd6226b6fb933b675bedeeb",
+              "retrieved_utc": "2026-11-10T19:50:41Z"
+            }
+          },
+          {
+            "kind": "source_page",
+            "template": "https://www.neuronpedia.org/{model_id}/{layer}-{source_set}",
+            "source": "https://docs.neuronpedia.org/getting-started/find-resources (record docs.getting-started.find-resources in data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json): 'A source page (neuronpedia.org/[MODEL_ID]/[SOURCE_ID]) shows the configuration of one SAE or transcoder'. A source id is the layer number followed by the source set name (record docs.getting-started.key-concepts in the same index). The documentation writes the host as neuronpedia.org; the page fetched for this entry answered at www.neuronpedia.org with no redirect.",
+            "read_utc_date": "2026-11-10",
+            "form_record": {
+              "index": "data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json",
+              "record_id": "docs.getting-started.find-resources",
+              "sha256": "0e817a72106f53f657889453fdf22a361a180c684e016583aad61da3829e3b32",
+              "retrieved_utc": "2026-11-10T19:49:21Z"
+            },
+            "instance_record": {
+              "index": "data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json",
+              "record_id": "page.source.gemma-2-2b.0-gemmascope-transcoder-16k",
+              "sha256": "d184c9ad9827688d3562a01399b52ff056e82a7a8a2fbf4b8aa4bede83df6158",
+              "retrieved_utc": "2026-11-10T19:50:49Z"
+            }
+          }
+        ],
+        "reason": "On: the service's source-set record names model id gemma-2-2b, the repository google/gemma-2-2b and the 26 source ids {layer}-gemmascope-transcoder-16k, and no revision. The model page and the source page of layer 0 were fetched on 2026-11-10 and rendered. The source pages of layers 1 to 25 were not fetched: their ids are in the record and the form is the documented one. No feature page is recorded: a reference link names a model, one layer's source or a lens, never one component."
+      },
       "not_recorded": [
         "/artifact/fit_model_hf_id",
         "/artifact/fit_model_revision",
@@ -162,7 +221,7 @@
         "/url_pattern",
         "/verification/hosted_checkpoint_revision"
       ],
-      "notes": "The one calibrated feature source. Read from the service on 2026-11-10: the ids exist; the model record names the Hugging Face repository google/gemma-2-2b; each source record names a transcoder weights repository and a folder. Not reported by any record read: the commit of the model the service loads, the commit of the weights, a hash of either. The hosted checkpoint revision is therefore not recorded, the status stays hosted_identity_unknown and links are off. The API record and the export record name the weights repository differently (google/gemma-scope-2b-pt-transcoders; google/gemma-scope), so artifact.repository stays null; README.md:51 links the first. Layer numbering: source ids run from 0 to 25 and source 0 hooks blocks.0, so the base is 0. The capture site is not recorded because the service gives two names for the input hook (hookName blocks.0.hook_mlp_in on the feature; hook_name blocks.0.ln2.hook_normalized in the saelensConfig). Labels: the feature read today carried three explanations and the two features sampled on 2026-10-09 carried two each (oai_token-act-pair and np_max-act, both from gemini-2.0-flash; docs/cross-model.md:66-71). Three features do not establish the explainer for the set, so explanation_type and explanation_model are not recorded. The service's documentation gives the feature page form neuronpedia.org/[MODEL_ID]/[SOURCE_ID]/[INDEX] (record docs.getting-started.key-concepts); it is not entered as url_pattern, because no entry permits a link and entering one is left to the owner."
+      "notes": "The one calibrated feature source. Read from the service on 2026-11-10: the ids exist; the model record names the Hugging Face repository google/gemma-2-2b; each source record names a transcoder weights repository and a folder. Not reported by any record read: the commit of the model the service loads, the commit of the weights, a hash of either. The hosted checkpoint revision is therefore not recorded, the status stays hosted_identity_unknown and exact links are off. Reference links are on (reference block): they are built from the source-set record and go to the model page or to one layer's source page. The API record and the export record name the weights repository differently (google/gemma-scope-2b-pt-transcoders; google/gemma-scope), so artifact.repository stays null; README.md:51 links the first. Layer numbering: source ids run from 0 to 25 and source 0 hooks blocks.0, so the base is 0. The capture site is not recorded because the service gives two names for the input hook (hookName blocks.0.hook_mlp_in on the feature; hook_name blocks.0.ln2.hook_normalized in the saelensConfig). Labels: the feature read today carried three explanations and the two features sampled on 2026-10-09 carried two each (oai_token-act-pair and np_max-act, both from gemini-2.0-flash; docs/cross-model.md:66-71). Three features do not establish the explainer for the set, so explanation_type and explanation_model are not recorded. The service's documentation gives the feature page form neuronpedia.org/[MODEL_ID]/[SOURCE_ID]/[INDEX] (record docs.getting-started.key-concepts); it is not entered as url_pattern, because no entry permits an exact link, and it is not a reference page form, because a reference link carries no component index."
     },
     {
       "registry_id": "qwen3-4b.transcoder-feature.transcoder-hp",
@@ -288,6 +347,57 @@
         "checked_utc_date": "2026-11-10"
       },
       "links_enabled": false,
+      "reference": {
+        "status": "service_record_read_revision_not_reported",
+        "enabled": true,
+        "evidence": {
+          "index": "data/experiments/neuronpedia_evidence/20261110/index.v1.json",
+          "record_id": "api.source-set.qwen3-4b.transcoder-hp",
+          "path": "data/experiments/neuronpedia_evidence/20261110/bodies/api.source-set.qwen3-4b.transcoder-hp.json",
+          "sha256": "20d4a02af965fe02619c6af3ef2163f5aea65ea309576225ce30e02f6656f539",
+          "bytes": 43307,
+          "retrieved_utc": "2026-11-10T18:25:57Z"
+        },
+        "pages": [
+          {
+            "kind": "model_page",
+            "template": "https://www.neuronpedia.org/{model_id}",
+            "source": "https://docs.neuronpedia.org/getting-started/find-resources (record docs.getting-started.find-resources in data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json): 'A model page (neuronpedia.org/[MODEL_ID]) shows all the releases for that model'. The documentation writes the host as neuronpedia.org; the page fetched for this entry answered at www.neuronpedia.org with no redirect.",
+            "read_utc_date": "2026-11-10",
+            "form_record": {
+              "index": "data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json",
+              "record_id": "docs.getting-started.find-resources",
+              "sha256": "0e817a72106f53f657889453fdf22a361a180c684e016583aad61da3829e3b32",
+              "retrieved_utc": "2026-11-10T19:49:21Z"
+            },
+            "instance_record": {
+              "index": "data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json",
+              "record_id": "page.model.qwen3-4b",
+              "sha256": "41f8f1ba52b49d6db9338d0e7f460bc2817a8c57fe53828880b77e3f59b7c5e8",
+              "retrieved_utc": "2026-11-10T19:50:45Z"
+            }
+          },
+          {
+            "kind": "source_page",
+            "template": "https://www.neuronpedia.org/{model_id}/{layer}-{source_set}",
+            "source": "https://docs.neuronpedia.org/getting-started/find-resources (record docs.getting-started.find-resources in data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json): 'A source page (neuronpedia.org/[MODEL_ID]/[SOURCE_ID]) shows the configuration of one SAE or transcoder'. A source id is the layer number followed by the source set name (record docs.getting-started.key-concepts in the same index). The documentation writes the host as neuronpedia.org; the page fetched for this entry answered at www.neuronpedia.org with no redirect.",
+            "read_utc_date": "2026-11-10",
+            "form_record": {
+              "index": "data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json",
+              "record_id": "docs.getting-started.find-resources",
+              "sha256": "0e817a72106f53f657889453fdf22a361a180c684e016583aad61da3829e3b32",
+              "retrieved_utc": "2026-11-10T19:49:21Z"
+            },
+            "instance_record": {
+              "index": "data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json",
+              "record_id": "page.source.qwen3-4b.0-transcoder-hp",
+              "sha256": "166bc3ee6697e838ab78dbb7561f12fd4f29ad10863493e9b4b8cc5d11c421e3",
+              "retrieved_utc": "2026-11-10T19:50:52Z"
+            }
+          }
+        ],
+        "reason": "On: the service's source-set record names model id qwen3-4b, the repository Qwen/Qwen3-4B and the 36 source ids {layer}-transcoder-hp, and no revision. The model page and the source page of layer 0 were fetched on 2026-11-10 and rendered. The source pages of layers 1 to 35 were not fetched: their ids are in the record and the form is the documented one. No feature page is recorded: a reference link names a model, one layer's source or a lens, never one component."
+      },
       "not_recorded": [
         "/artifact/fit_model_hf_id",
         "/artifact/fit_model_revision",
@@ -384,6 +494,57 @@
         "checked_utc_date": "2026-11-10"
       },
       "links_enabled": false,
+      "reference": {
+        "status": "service_record_read_revision_not_reported",
+        "enabled": true,
+        "evidence": {
+          "index": "data/experiments/neuronpedia_evidence/20261110/index.v1.json",
+          "record_id": "api.source-set.gemma-2-2b.gemmascope-transcoder-16k",
+          "path": "data/experiments/neuronpedia_evidence/20261110/bodies/api.source-set.gemma-2-2b.gemmascope-transcoder-16k.json",
+          "sha256": "dcfdd5f55b4951287c466bba77ee7aeaaa05ba735ce6067c982782827719d900",
+          "bytes": 34248,
+          "retrieved_utc": "2026-11-10T18:25:56Z"
+        },
+        "pages": [
+          {
+            "kind": "model_page",
+            "template": "https://www.neuronpedia.org/{model_id}",
+            "source": "https://docs.neuronpedia.org/getting-started/find-resources (record docs.getting-started.find-resources in data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json): 'A model page (neuronpedia.org/[MODEL_ID]) shows all the releases for that model'. The documentation writes the host as neuronpedia.org; the page fetched for this entry answered at www.neuronpedia.org with no redirect.",
+            "read_utc_date": "2026-11-10",
+            "form_record": {
+              "index": "data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json",
+              "record_id": "docs.getting-started.find-resources",
+              "sha256": "0e817a72106f53f657889453fdf22a361a180c684e016583aad61da3829e3b32",
+              "retrieved_utc": "2026-11-10T19:49:21Z"
+            },
+            "instance_record": {
+              "index": "data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json",
+              "record_id": "page.model.gemma-2-2b",
+              "sha256": "b9102c44d0c187d17920031813efe4bd8672968befd6226b6fb933b675bedeeb",
+              "retrieved_utc": "2026-11-10T19:50:41Z"
+            }
+          },
+          {
+            "kind": "lens_page",
+            "template": "https://www.neuronpedia.org/{model_id}/jlens",
+            "source": "https://docs.neuronpedia.org/jacobian-lens (record docs.jacobian-lens in data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json): 'You can also go directly to neuronpedia.org/[MODEL_ID]/jlens'. The documentation writes the host as neuronpedia.org; the page fetched for this entry answered at www.neuronpedia.org with no redirect.",
+            "read_utc_date": "2026-11-10",
+            "form_record": {
+              "index": "data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json",
+              "record_id": "docs.jacobian-lens",
+              "sha256": "cb2557293dbd948f27283f93c75e8c8fa8e6431c73417db02b4e8fc2e5688d3b",
+              "retrieved_utc": "2026-11-10T19:49:21Z"
+            },
+            "instance_record": {
+              "index": "data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json",
+              "record_id": "page.jlens.gemma-2-2b",
+              "sha256": "e7366380c533ced415e163b0d06672626bded916626a97923ce18abcd19d5f54",
+              "retrieved_utc": "2026-11-10T19:50:55Z"
+            }
+          }
+        ],
+        "reason": "On: the model record inside the service's source-set record names model id gemma-2-2b and the repository google/gemma-2-2b, and no revision. That record is the record of another representation of the same model id; it is cited here for the model record only. The model page and the lens page were fetched on 2026-11-10 and rendered. Neither page names a lens repository, file or revision, so the link is a reference to the page and says nothing about which lens answered a landed readout."
+      },
       "not_recorded": [
         "/artifact/fit_model_hf_id",
         "/artifact/fit_model_revision",
@@ -396,7 +557,7 @@
         "/url_pattern",
         "/verification/hosted_checkpoint_revision"
       ],
-      "notes": "A workspace readout is a per-layer reading of the residual stream over the vocabulary. It has no component index and no label source. Read from the service on 2026-11-10: the lens page exists for this model id and the model record names the Hugging Face repository. Not reported by any record read: the lens file or repository behind the hosted lens, its revision, the model commit, a hash. The route that returns readouts was not called, so what a live response reports was not read; its documented meta message has no identity field. The status stays hosted_identity_unknown. Layer numbers come from the response's meta.layers_by_type, or from list position when that is absent (scripts/jlens_readout.py:164-170); the index base is not recorded. The only lens page pattern the engine holds puts the prompt in a query string (scripts/export_jlens_transport.py:151-156). This registry records no pattern for it and scripts/experiments/neuronpedia.py builds no such link."
+      "notes": "A workspace readout is a per-layer reading of the residual stream over the vocabulary. It has no component index and no label source. Read from the service on 2026-11-10: the lens page exists for this model id and the model record names the Hugging Face repository. Not reported by any record read: the lens file or repository behind the hosted lens, its revision, the model commit, a hash. The route that returns readouts was not called, so what a live response reports was not read; its documented meta message has no identity field. The status stays hosted_identity_unknown. Layer numbers come from the response's meta.layers_by_type, or from list position when that is absent (scripts/jlens_readout.py:164-170); the index base is not recorded. The only lens page pattern the engine holds puts the prompt in a query string (scripts/export_jlens_transport.py:151-156). This registry records no pattern for it and scripts/experiments/neuronpedia.py builds no such link. The reference block records the lens page form with no query string (neuronpedia.org/[MODEL_ID]/jlens); a reference link built from it holds the model id and nothing else."
     },
     {
       "registry_id": "gemma-2-2b-it.workspace-readout.hosted-jlens",
@@ -481,6 +642,57 @@
         "checked_utc_date": "2026-11-10"
       },
       "links_enabled": false,
+      "reference": {
+        "status": "service_record_read_revision_not_reported",
+        "enabled": true,
+        "evidence": {
+          "index": "data/experiments/neuronpedia_evidence/20261110/index.v1.json",
+          "record_id": "api.source-set.gemma-2-2b-it.icalens-res",
+          "path": "data/experiments/neuronpedia_evidence/20261110/bodies/api.source-set.gemma-2-2b-it.icalens-res.json",
+          "sha256": "4640f487d7ed0b20a3109ed61cd67bc6d6fc918c5e4b4e4d87bb6a7b80e4802b",
+          "bytes": 17879,
+          "retrieved_utc": "2026-11-10T18:25:57Z"
+        },
+        "pages": [
+          {
+            "kind": "model_page",
+            "template": "https://www.neuronpedia.org/{model_id}",
+            "source": "https://docs.neuronpedia.org/getting-started/find-resources (record docs.getting-started.find-resources in data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json): 'A model page (neuronpedia.org/[MODEL_ID]) shows all the releases for that model'. The documentation writes the host as neuronpedia.org; the page fetched for this entry answered at www.neuronpedia.org with no redirect.",
+            "read_utc_date": "2026-11-10",
+            "form_record": {
+              "index": "data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json",
+              "record_id": "docs.getting-started.find-resources",
+              "sha256": "0e817a72106f53f657889453fdf22a361a180c684e016583aad61da3829e3b32",
+              "retrieved_utc": "2026-11-10T19:49:21Z"
+            },
+            "instance_record": {
+              "index": "data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json",
+              "record_id": "page.model.gemma-2-2b-it",
+              "sha256": "7bde94a55aea49de47e7f8ae3f05edb214cc654c9206e1bf0a06b85a24b67f8a",
+              "retrieved_utc": "2026-11-10T19:50:43Z"
+            }
+          },
+          {
+            "kind": "lens_page",
+            "template": "https://www.neuronpedia.org/{model_id}/jlens",
+            "source": "https://docs.neuronpedia.org/jacobian-lens (record docs.jacobian-lens in data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json): 'You can also go directly to neuronpedia.org/[MODEL_ID]/jlens'. The documentation writes the host as neuronpedia.org; the page fetched for this entry answered at www.neuronpedia.org with no redirect.",
+            "read_utc_date": "2026-11-10",
+            "form_record": {
+              "index": "data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json",
+              "record_id": "docs.jacobian-lens",
+              "sha256": "cb2557293dbd948f27283f93c75e8c8fa8e6431c73417db02b4e8fc2e5688d3b",
+              "retrieved_utc": "2026-11-10T19:49:21Z"
+            },
+            "instance_record": {
+              "index": "data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json",
+              "record_id": "page.jlens.gemma-2-2b-it",
+              "sha256": "d4e81bd7de1f6a1e4ee8308b1ea16effe1740cbd2a40a81ff44051181182e8c4",
+              "retrieved_utc": "2026-11-10T19:50:57Z"
+            }
+          }
+        ],
+        "reason": "On: the model record inside the service's source-set record names model id gemma-2-2b-it and the repository google/gemma-2-2b-it, and no revision. That record is the record of the hosted ICA set of the same model id, which has no registry entry; it is cited here for the model record only. The model page and the lens page were fetched on 2026-11-10 and rendered. Neither page names a lens repository, file or revision, so the link is a reference to the page and says nothing about which lens answered a landed readout."
+      },
       "not_recorded": [
         "/artifact/fit_model_hf_id",
         "/artifact/fit_model_revision",
@@ -493,7 +705,7 @@
         "/url_pattern",
         "/verification/hosted_checkpoint_revision"
       ],
-      "notes": "A workspace readout is a per-layer reading of the residual stream over the vocabulary. It has no component index and no label source. Read from the service on 2026-11-10: the lens page exists for this model id and the model record names the Hugging Face repository. Not reported by any record read: the lens file or repository behind the hosted lens, its revision, the model commit, a hash. The route that returns readouts was not called, so what a live response reports was not read; its documented meta message has no identity field. The status stays hosted_identity_unknown. Layer numbers come from the response's meta.layers_by_type, or from list position when that is absent (scripts/jlens_readout.py:164-170); the index base is not recorded. The only lens page pattern the engine holds puts the prompt in a query string (scripts/export_jlens_transport.py:151-156). This registry records no pattern for it and scripts/experiments/neuronpedia.py builds no such link."
+      "notes": "A workspace readout is a per-layer reading of the residual stream over the vocabulary. It has no component index and no label source. Read from the service on 2026-11-10: the lens page exists for this model id and the model record names the Hugging Face repository. Not reported by any record read: the lens file or repository behind the hosted lens, its revision, the model commit, a hash. The route that returns readouts was not called, so what a live response reports was not read; its documented meta message has no identity field. The status stays hosted_identity_unknown. Layer numbers come from the response's meta.layers_by_type, or from list position when that is absent (scripts/jlens_readout.py:164-170); the index base is not recorded. The only lens page pattern the engine holds puts the prompt in a query string (scripts/export_jlens_transport.py:151-156). This registry records no pattern for it and scripts/experiments/neuronpedia.py builds no such link. The reference block records the lens page form with no query string (neuronpedia.org/[MODEL_ID]/jlens); a reference link built from it holds the model id and nothing else."
     },
     {
       "registry_id": "qwen3.5-2b-base.ica-component.neuronpedia-alias",
@@ -599,6 +811,57 @@
         "checked_utc_date": "2026-11-10"
       },
       "links_enabled": false,
+      "reference": {
+        "status": "service_record_read_revision_not_reported",
+        "enabled": true,
+        "evidence": {
+          "index": "data/experiments/neuronpedia_evidence/20261110/index.v1.json",
+          "record_id": "api.source-set.qwen3.5-2b-pt.icalens-res",
+          "path": "data/experiments/neuronpedia_evidence/20261110/bodies/api.source-set.qwen3.5-2b-pt.icalens-res.json",
+          "sha256": "43eed87cd8f70cbf9a5227b5b9e50494fc188a692e5623ff67b73631bef79498",
+          "bytes": 5588,
+          "retrieved_utc": "2026-11-10T18:25:32Z"
+        },
+        "pages": [
+          {
+            "kind": "model_page",
+            "template": "https://www.neuronpedia.org/{model_id}",
+            "source": "https://docs.neuronpedia.org/getting-started/find-resources (record docs.getting-started.find-resources in data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json): 'A model page (neuronpedia.org/[MODEL_ID]) shows all the releases for that model'. The documentation writes the host as neuronpedia.org; the page fetched for this entry answered at www.neuronpedia.org with no redirect.",
+            "read_utc_date": "2026-11-10",
+            "form_record": {
+              "index": "data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json",
+              "record_id": "docs.getting-started.find-resources",
+              "sha256": "0e817a72106f53f657889453fdf22a361a180c684e016583aad61da3829e3b32",
+              "retrieved_utc": "2026-11-10T19:49:21Z"
+            },
+            "instance_record": {
+              "index": "data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json",
+              "record_id": "page.model.qwen3.5-2b-pt",
+              "sha256": "9f6590e556b33db34c9cd1c5a69da093c8cdf8765c9f1b57fbccc42e033a8794",
+              "retrieved_utc": "2026-11-10T19:50:47Z"
+            }
+          },
+          {
+            "kind": "source_page",
+            "template": "https://www.neuronpedia.org/{model_id}/{layer}-{source_set}",
+            "source": "https://docs.neuronpedia.org/getting-started/find-resources (record docs.getting-started.find-resources in data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json): 'A source page (neuronpedia.org/[MODEL_ID]/[SOURCE_ID]) shows the configuration of one SAE or transcoder'. A source id is the layer number followed by the source set name (record docs.getting-started.key-concepts in the same index). The documentation writes the host as neuronpedia.org; the page fetched for this entry answered at www.neuronpedia.org with no redirect.",
+            "read_utc_date": "2026-11-10",
+            "form_record": {
+              "index": "data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json",
+              "record_id": "docs.getting-started.find-resources",
+              "sha256": "0e817a72106f53f657889453fdf22a361a180c684e016583aad61da3829e3b32",
+              "retrieved_utc": "2026-11-10T19:49:21Z"
+            },
+            "instance_record": {
+              "index": "data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json",
+              "record_id": "page.source.qwen3.5-2b-pt.0-icalens-res",
+              "sha256": "c54de15dcc2d4376738c1b3a7e811513c091921252d9265ff07fd908fe7ee66d",
+              "retrieved_utc": "2026-11-10T19:50:53Z"
+            }
+          }
+        ],
+        "reason": "On: the service's source-set record names model id qwen3.5-2b-pt, the repository Qwen/Qwen3.5-2B-Base and the six source ids {layer}-icalens-res at layers 0, 4, 8, 12, 16 and 20, and no revision. The model page and the source page of layer 0 were fetched on 2026-11-10 and rendered. The source pages of the other five layers were not fetched: their ids are in the record and the form is the documented one. No feature page is recorded: a component index of a local fit is not the index of a hosted direction unless the basis is the same file, and no record read establishes that."
+      },
       "not_recorded": [
         "/artifact/fit_model_hf_id",
         "/artifact/fit_model_revision",
@@ -682,6 +945,13 @@
         "checked_utc_date": "2026-11-10"
       },
       "links_enabled": false,
+      "reference": {
+        "status": "no_service_record",
+        "enabled": false,
+        "evidence": null,
+        "pages": [],
+        "reason": "Off: the entry records no Neuronpedia ids. The service hosts an ICA set for the same model, and its sources name the repository neuronpedia/icalens-gemma-2-2b, not the sida/ basis of this entry. No record read says the two hold the same basis, so a reference link from this entry would present another artifact's page as a reference for this one."
+      },
       "not_recorded": [
         "/artifact/fit_model_hf_id",
         "/artifact/fit_model_revision",
@@ -694,6 +964,7 @@
         "/label_source/scorer",
         "/label_source/version",
         "/neuronpedia",
+        "/reference/evidence",
         "/site/layers",
         "/url_pattern",
         "/verification/hosted_checkpoint_revision"
@@ -762,6 +1033,13 @@
         "checked_utc_date": "2026-11-10"
       },
       "links_enabled": false,
+      "reference": {
+        "status": "no_service_record",
+        "enabled": false,
+        "evidence": null,
+        "pages": [],
+        "reason": "Off: the entry records no Neuronpedia ids. The service hosts an ICA set for the same model, and its sources name the repository neuronpedia/icalens-gpt2-small, not the sida/ basis of this entry. No record read says the two hold the same basis, so a reference link from this entry would present another artifact's page as a reference for this one."
+      },
       "not_recorded": [
         "/artifact/fit_model_hf_id",
         "/artifact/fit_model_revision",
@@ -776,6 +1054,7 @@
         "/model/revision",
         "/model/study_id",
         "/neuronpedia",
+        "/reference/evidence",
         "/site/layers",
         "/url_pattern",
         "/verification/hosted_checkpoint_revision"
@@ -844,6 +1123,13 @@
         "checked_utc_date": "2026-11-10"
       },
       "links_enabled": false,
+      "reference": {
+        "status": "no_service_record",
+        "enabled": false,
+        "evidence": null,
+        "pages": [],
+        "reason": "Off: the entry records no Neuronpedia ids. The service hosts an ICA set for the same model, and its sources name the repository neuronpedia/icalens-qwen3.5-9b-pt, not the sida/ basis of this entry. No record read says the two hold the same basis, so a reference link from this entry would present another artifact's page as a reference for this one."
+      },
       "not_recorded": [
         "/artifact/fit_model_hf_id",
         "/artifact/fit_model_revision",
@@ -858,6 +1144,7 @@
         "/model/revision",
         "/model/study_id",
         "/neuronpedia",
+        "/reference/evidence",
         "/site/layers",
         "/url_pattern",
         "/verification/hosted_checkpoint_revision"
@@ -926,6 +1213,13 @@
         "checked_utc_date": "2026-11-10"
       },
       "links_enabled": false,
+      "reference": {
+        "status": "no_service_record",
+        "enabled": false,
+        "evidence": null,
+        "pages": [],
+        "reason": "Off: the entry records no Neuronpedia ids. The service lists no model for Qwen/Qwen3.5-2B and hosts no ICA set for it (record page.available-resources in data/experiments/neuronpedia_evidence/20261110/index.v1.json), so there is no page to refer to."
+      },
       "not_recorded": [
         "/artifact/fit_model_hf_id",
         "/artifact/fit_model_revision",
@@ -940,6 +1234,7 @@
         "/model/revision",
         "/model/study_id",
         "/neuronpedia",
+        "/reference/evidence",
         "/site/layers",
         "/url_pattern",
         "/verification/hosted_checkpoint_revision"

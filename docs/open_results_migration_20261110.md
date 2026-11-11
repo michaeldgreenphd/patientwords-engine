@@ -175,7 +175,7 @@ a published number, so it was not done here: a first version of the fix did drop
 byte-identity check failed, and the change was reverted. The collector now prints the count
 (`note: rows taken from the site payload at keys whose engine part this membership did not
 read ... qwen3-4b 11`). Decision for the owner: drop them in a new snapshot, or pin the
-parts they come from. The loop does refuse two things it did not before, neither of which
+parts they come from. The rows are declared in `data/results_policy/legacy_payload_rows.v1.json`. The loop does refuse two things it did not before, neither of which
 occurs in today's payload: a scenario of an excluded stimulus class, and a model that no
 cohort declares.
 
@@ -221,6 +221,6 @@ is unchanged from before and still open.
   equals the published file for nine models and differs for `qwen3-4b` in 10 fields, each
   in the fourth decimal (mean penalty -0.0466 published, -0.0465 recomputed; 497 and 498
   flips; the same 1,152 rows and 1,121 unique phrases). Row values at existing keys
-  changed after 2026-08-29; which landing changed them was not traced. Snapshot
+  changed after 2026-08-29; which landing changed them was not traced that day; it was traced later on 2026-11-10 (`docs/corrections/payload_summary_dedupe_20261110.md`, section 4). Snapshot
   `study-interim-20261110` lists the fields under `outputs.reproduces_from_inputs`.
   Regenerating the file is a publish the owner decides.

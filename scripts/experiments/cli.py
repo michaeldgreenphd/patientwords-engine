@@ -139,11 +139,16 @@ def cmd_compare(args: argparse.Namespace) -> int:
 
 
 def cmd_bundle(args: argparse.Namespace) -> int:
-    bundle = build_bundle(args.run_dir, allow_roots=args.allow_root)
+    protocol = _load(args.protocol, "protocol") if args.protocol else None
+    bundle = build_bundle(args.run_dir, allow_roots=args.allow_root, protocol=protocol)
     out = write_json(args.out, bundle, args.allow_root)
     _emit({"status": "bundled", "bundle": str(out), "schema_version": bundle["schema_version"],
            "families": len(bundle["comparisons"]), "capability_rows": len(bundle["capability_rows"]),
-           "by_state": bundle["execution"]["by_state"], "limitations": bundle["limitations"]})
+           "by_state": bundle["execution"]["by_state"], "limitations": bundle["limitations"],
+           # Families whose prompt text the bundle holds: only with --protocol, and only families the protocol
+           # marks (scripts/experiments/bundle.py, PROMPT_TEXT_MARKER).
+           "prompt_text_families": sorted(f["family_id"] for f in bundle["protocol"]["families"]
+                                          if "variant_text" in f)})
     return EXIT_OK
 
 
@@ -205,6 +210,9 @@ def build_parser() -> argparse.ArgumentParser:
     sub = add("bundle", cmd_bundle, "Export the preview bundle from a collected run.")
     sub.add_argument("--run-dir", type=Path, required=True)
     sub.add_argument("--out", type=Path, required=True)
+    sub.add_argument("--protocol", type=Path,
+                     help="the protocol the plan was built from; needed only to export the prompt text of "
+                          "families the protocol marks as approved for publication (default: no text)")
     allow_root(sub)
 
     sub = add("capabilities", cmd_capabilities, "Print capability matrix rows.")

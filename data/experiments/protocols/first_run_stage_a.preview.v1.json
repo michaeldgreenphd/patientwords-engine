@@ -1,0 +1,713 @@
+{
+  "commands": [
+    "python -m scripts.experiments.cli validate --protocol data/experiments/protocols/first_run_stage_a.protocol.v1.json",
+    "python -m scripts.experiments.cli plan --protocol data/experiments/protocols/first_run_stage_a.protocol.v1.json --out <directory outside the checkout>/plan.json",
+    "sha256sum <directory outside the checkout>/plan.json",
+    "python -m scripts.experiments.estimate --families 10 --rate gemma-2-2b=88.5 --failed-attempt-fraction 0.15",
+    "python -m scripts.experiments.estimate --families 1 --rate gemma-2-2b=88.5 --failed-attempt-fraction 0.15"
+  ],
+  "inputs": {
+    "batch": {
+      "path": "data/simulated/pairs_20260706T175614Z.json",
+      "rows": 10,
+      "sha256": "67b74e6e1e40e39f8c4c79d4cf2599a021fffcfbe712e714d1c25e3899f2b832"
+    },
+    "capability_matrix": {
+      "as_of": "2026-11-10",
+      "digest": "34c066ace474a72aece8c492b7fcf77b97c98ef93bbd2d3d4a2fe8ae3c9d6569",
+      "file_sha256": "55b17316577227d591b2d0e62c0c79aaa5d05505ba6651874179cc3dd934cbfe",
+      "path": "data/experiments/capability_matrix.v1.json"
+    },
+    "landed_cpu_part": {
+      "path": "trace_out/pairs_20260706T175614Z__gemma-2-2b/batch_summary.part_01.json",
+      "sha256": "3f21f073769e27d9ca4c927a624580222c568ea2fcbefe41035c9807151cd105"
+    },
+    "landed_hosted_part": {
+      "path": "trace_out/pairs_20260706T175614Z/batch_summary.part_01.json",
+      "sha256": "66925c49e7e6223193a2c095653c94d794727968a4dd99fa937531bb23b5a552"
+    },
+    "tier_b_start_stamp": "20260710T011438Z"
+  },
+  "landing_paths": {
+    "stage_a": "trace_out/verify_pairs_20260706T175614Z__gemma-2-2b/verify_summary.part_01.json",
+    "stage_b": "pilot/logits/pilot_v2_20261002/pilot_v2_20261002_trace_pairs__gemma-2-2b/batch_summary.part_01.json"
+  },
+  "parity_criteria": {
+    "stage_a": {
+      "candidate": "trace_out/verify_pairs_20260706T175614Z__gemma-2-2b/verify_summary.part_01.json",
+      "cpu_bfloat16": {
+        "consistent": "maximum at or below 0.0311",
+        "consistent_max": 0.0311,
+        "fail": "any side above 0.063",
+        "fail_above": 0.063,
+        "inconclusive": "otherwise (a side above 0.0311 and none above 0.063), or a precondition does not hold",
+        "metric": "absolute difference of the two recorded probabilities, per side; mean and maximum",
+        "reference": {
+          "path": "trace_out/pairs_20260706T175614Z__gemma-2-2b/batch_summary.part_01.json",
+          "sha256": "3f21f073769e27d9ca4c927a624580222c568ea2fcbefe41035c9807151cd105"
+        },
+        "sides": 20,
+        "tolerance_source": "observed, not derived: 0.0311 is the largest of 100 side differences between interp-engine float32 and CPU bfloat16 on pairs_20260710T011743Z (ops/backend_agreement_interp_vs_local_20260904.json); 0.0630 is twice 0.0315, the largest side difference any earlier comparison of the bfloat16 lane recorded (docs/backend_agreement_20260903.md). The factor 2 is a choice, not a derivation"
+      },
+      "hosted": {
+        "comparable_sides": [
+          {
+            "batch_index": 2,
+            "side": "clinical"
+          },
+          {
+            "batch_index": 4,
+            "side": "clinical"
+          },
+          {
+            "batch_index": 4,
+            "side": "patient"
+          },
+          {
+            "batch_index": 6,
+            "side": "clinical"
+          },
+          {
+            "batch_index": 6,
+            "side": "patient"
+          },
+          {
+            "batch_index": 7,
+            "side": "clinical"
+          },
+          {
+            "batch_index": 7,
+            "side": "patient"
+          },
+          {
+            "batch_index": 8,
+            "side": "clinical"
+          },
+          {
+            "batch_index": 8,
+            "side": "patient"
+          }
+        ],
+        "excluded_sides": [
+          {
+            "batch_index": 1,
+            "reason": "hosted_part_read_another_token_than_the_cpu_part",
+            "side": "clinical"
+          },
+          {
+            "batch_index": 1,
+            "reason": "hosted_part_read_another_token_than_the_cpu_part",
+            "side": "patient"
+          },
+          {
+            "batch_index": 2,
+            "reason": "hosted_part_reports_no_value",
+            "side": "patient"
+          },
+          {
+            "batch_index": 3,
+            "reason": "hosted_part_read_another_token_than_the_cpu_part",
+            "side": "clinical"
+          },
+          {
+            "batch_index": 3,
+            "reason": "hosted_part_read_another_token_than_the_cpu_part",
+            "side": "patient"
+          },
+          {
+            "batch_index": 5,
+            "reason": "hosted_part_read_another_token_than_the_cpu_part",
+            "side": "clinical"
+          },
+          {
+            "batch_index": 5,
+            "reason": "hosted_part_read_another_token_than_the_cpu_part",
+            "side": "patient"
+          },
+          {
+            "batch_index": 9,
+            "reason": "hosted_part_read_another_token_than_the_cpu_part",
+            "side": "clinical"
+          },
+          {
+            "batch_index": 9,
+            "reason": "hosted_part_read_another_token_than_the_cpu_part",
+            "side": "patient"
+          },
+          {
+            "batch_index": 10,
+            "reason": "hosted_part_read_another_token_than_the_cpu_part",
+            "side": "clinical"
+          },
+          {
+            "batch_index": 10,
+            "reason": "hosted_part_read_another_token_than_the_cpu_part",
+            "side": "patient"
+          }
+        ],
+        "fail": "any comparable side above 0.001",
+        "fail_above": 0.001,
+        "inconclusive": "otherwise (a side above 0.0005 and none above 0.001), or a precondition does not hold",
+        "metric": "absolute difference of the two recorded probabilities, per side",
+        "pass": "every comparable side at or below 0.0005",
+        "pass_max": 0.0005,
+        "reference": {
+          "path": "trace_out/pairs_20260706T175614Z/batch_summary.part_01.json",
+          "sha256": "66925c49e7e6223193a2c095653c94d794727968a4dd99fa937531bb23b5a552"
+        },
+        "tolerance_source": "recording precision: the hosted part keeps 3 decimals (half-width 0.0005) and a verify summary 4 (half-width 0.00005), so two routes that compute the same probability differ by at most 0.00055 as recorded, which is 0.0005 on the 0.0001 grid of such differences; a recorded difference above 0.0010 needs a true difference above 0.00045"
+      },
+      "landed_baseline_hosted_vs_cpu_bfloat16": {
+        "max": 0.0124,
+        "mean": 0.00476,
+        "sides": 9,
+        "sides_where_the_hosted_part_read_another_token": {
+          "above_0.06": 9,
+          "max": 0.436,
+          "min": 0.0109,
+          "sides": 10
+        },
+        "statement": "computed from the two landed reference parts for this document; it measures the bfloat16 lane against the hosted route on the comparable sides and is not a result of the proposed run"
+      },
+      "preconditions": [
+        "the candidate records inference.revision and revision_pinned equal to the pin, dtype float32, interp_engine 1.5.1, completed true and results with indices 1 to 10",
+        "token_parity.match is true on all 20 prompts",
+        "every candidate target label equals the landed CPU part's label for that row",
+        "every candidate probability is finite and present on all 20 sides",
+        "both reference files have the SHA-256 recorded here"
+      ]
+    },
+    "stage_b": {
+      "candidate": "pilot/logits/pilot_v2_20261002/pilot_v2_20261002_trace_pairs__gemma-2-2b/batch_summary.part_01.json",
+      "fail": "a side above 0.0315",
+      "inconclusive": "a precondition does not hold",
+      "metric": "absolute difference of the two recorded probabilities, per side (2 sides)",
+      "pass": "both sides at or below 0.0315",
+      "pass_max": 0.0315,
+      "preconditions": [
+        "the part is completed and its single result has index 1",
+        "the pairs file at the fired commit has the SHA-256 recorded here",
+        "the candidate's target label equals the reference's label",
+        "the reference file has the SHA-256 recorded here"
+      ],
+      "prompt_sha256": {
+        "recipient": "9d156d56a62cb27cc71f6e122a9edac89ad59dad56ad7b296072ff52f911558d",
+        "source": "d56a6d92b2937b5cb9b3d9a33a8f7008363b26bf65574c66ee6b258fc4d6ae34"
+      },
+      "reference": {
+        "index": 1,
+        "pairs_file": "pilot/runs/pilot_v2_20261002/trace/trace_pairs.json",
+        "pairs_file_sha256": "4a6ebb2215d79a41efb92643ebd9fa27cb1e882b2ffc26a98ed384407687c82a",
+        "path": "pilot/traces/trace_pairs/batch_summary.part_01.json",
+        "sha256": "3a78536a539b70eecdd1357dbd773560f6418ab40a5abd983ea8c6ba48ac35d2"
+      },
+      "reference_checks": {
+        "both_sides_reported": true,
+        "graph_model": "gemma-2-2b",
+        "label_equals_the_target_text": true,
+        "prompts_equal_the_pairs_file_row": true
+      },
+      "tolerance_source": "observed, not derived: 0.0315 is the largest of 71 side differences between the hosted route and CPU bfloat16 on pairs_20260710T011743Z (docs/backend_agreement_20260903.md)"
+    },
+    "status": "proposed_before_any_run_not_approved"
+  },
+  "plan": {
+    "adapters": {
+      "behavior_next_token": "present"
+    },
+    "by_method": {
+      "behavior_next_token": {
+        "ready": 0,
+        "total": 6,
+        "unavailable": 6,
+        "unsupported": 0
+      }
+    },
+    "by_planned_state": {
+      "ready": 0,
+      "unavailable": 6,
+      "unsupported": 0
+    },
+    "capability": [
+      "{\"matched\": true, \"revision_match\": \"row_revision_not_recorded\", \"status\": \"artifact_available_identity_unknown\"}"
+    ],
+    "estimate_notes": [
+      "activation_bytes = captured_positions * layers * hidden_size * bytes_per_value(dtype); float16 and bfloat16 are 2 bytes, float32 4, float64 8.",
+      "Sizes are for uncompressed arrays with no container overhead. They are estimates, not measurements.",
+      "Estimates cover every planned task, including unsupported and unavailable ones; ready-only sums are given separately.",
+      "fit_bytes = bytes_per_value(dtype) * (2 * n_samples * hidden_size + 3 * hidden_size ** 2) is exposed as estimate_fit_bytes for an ICA or whitening workspace; no fit is planned here, so no fit size is summed.",
+      "runtime_seconds_estimate is null: no measured rate was supplied. Fixture timings would say nothing about model runs, so none is used."
+    ],
+    "estimates": {
+      "activation_bytes": 0,
+      "measured": false,
+      "ready_activation_bytes": 0,
+      "ready_tokens": 0,
+      "tokens": 125
+    },
+    "file_sha256": "7ca3ca7e4153a281059c8d5d2206d9f169757212fdf9b53464499cf80e2fd3a6",
+    "plan_digest": "38d24b6bb1cfc5fb30837cab64a177f860967f71404f1bfb0cec7a671be8f9b3",
+    "reasons": {
+      "unavailable: artifact identity unknown: Lowered from parity_passed on 2026-11-10, first to artifact_available and the same day to artifact_available_identity_unknown. The route exists and one run landed; the cited records state no pass criterion and no verdict for this comparison, and the audited summary records no model revision (last sentences of this note), so the row records neither a model revision nor an artifact revision or hash and cannot hold artifact_available. ops/backend_agreement_interp_vs_hosted_20260904.json compares interp-engine 1.5.1 eager CPU float32 with the hosted next-token probabilities on one batch (pairs_20260710T011743Z, 50 pairs, one model). It covers 71 of 100 side-measurements: the hosted route reported no value for 8 clinical and 21 patient sides. Over those 71 the absolute probability difference has mean 0.00062, median 0.0002 and maximum 0.0273, with 1 of 71 above each of the report's thresholds (near 0.01, far 0.02). Over the 29 pairs with a penalty on both sides the maximum penalty difference is 0.027, with 1 of 29 above each threshold. The report has no pass or verdict field. docs/backend_agreement_20260903.md wrote its thresholds before the run for the maximum per-pair penalty difference between interp-engine float32 and the local bfloat16 path (at or below 0.0315, under 0.005, above 0.0315) and calls none of them a pass. Its statement that interp-engine and the hosted values agree to 0.0005, the rounding limit of the hosted three-decimal values, holds for 70 measurements once one row is left out (index 20, patient side, where the hosted path recorded another token's probability); that row was left out after the run. Tokenization parity held on all 100 prompts. The hosted reference route carries the target-read limitation recorded in AGENTS.md. The audited summary (trace_out/verify_pairs_20260710T011743Z__gemma-2-2b) records inference.revision null, so model.revision is null in this row: the run predates enforced pinning. That it loaded the commit pinned later is inferred, not recorded.": 6
+    },
+    "runtime_seconds_estimate": null,
+    "tasks": 6
+  },
+  "protocol": {
+    "file_sha256": "6ca17d979628c7ac9ced050fe8bcaf1fddc6fa73743f7d73c2b1ec17e1e7571e",
+    "path": "data/experiments/protocols/first_run_stage_a.protocol.v1.json",
+    "protocol_sha256": "23d1e4cbdf1444e13bf5f915085b85c8456bbaea5ae0cca260a79ae61be91e78",
+    "validation": {
+      "comparisons": [
+        "clinical_vs_colloquial"
+      ],
+      "digest_convention": "scripts.exploratory_methods.digest",
+      "excluded_families": [],
+      "families": 3,
+      "families_by_split": {
+        "discovery": 3,
+        "fresh_test": 0,
+        "validation": 0
+      },
+      "methods": [
+        "behavior_next_token"
+      ],
+      "protocol_id": "first-run-stage-a-gemma-2-2b-recorded-subset",
+      "protocol_sha256": "23d1e4cbdf1444e13bf5f915085b85c8456bbaea5ae0cca260a79ae61be91e78",
+      "replicates": 1,
+      "schema_version": "patientwords.experiment-protocol/1",
+      "seed": 0,
+      "status": "validated",
+      "synthetic": false,
+      "version": "1"
+    }
+  },
+  "resource_estimate": {
+    "activation_capture_if_one_were_added": {
+      "float32_bytes_all_positions_all_layers": 29952000,
+      "float32_bytes_all_positions_one_layer": 1152000,
+      "label": "derived from the recorded token counts; the two behaviour checks capture no activation, so this is the size of the smallest capture section 11 describes"
+    },
+    "failed_attempt_fraction": {
+      "label": "assumption, a stated allowance",
+      "value": 0.15
+    },
+    "rate": {
+      "label": "assumption: a proxy; no rate is recorded for gemma-2-2b on the CPU lane",
+      "of_model": "gemma-2-2b-it",
+      "seconds_per_pair": 88.5,
+      "source": "scripts/backfill_planner.py SECONDS_PER_PAIR: the SLOWEST rate each model showed in its successful logits-eval runs on GitHub Actions up to 2026-10-09: the 'Measure next-token behavior' step's duration (model load included) over the pairs the run's trigger file asked for. Medians were about half these (gemma-3-4b-it 94, qwen3-1.7b 33, qwen3-4b 76, llama-3.2-3b 69, olmo-2-1b 37, gemma-2-2b-it 79 s/pair), so sizing on the slowest keeps a slow runner inside the timeout too"
+    },
+    "recorded_token_counts": {
+      "batch_prompts": 20,
+      "batch_tokens": 394,
+      "label": "measured: read from the landed hosted-lens records, BOS included",
+      "max_tokens_per_prompt": 23,
+      "protocol_prompts": 6,
+      "protocol_tokens": 125
+    },
+    "stage_a": {
+      "argv": [
+        "--families",
+        "10",
+        "--rate",
+        "gemma-2-2b=88.5",
+        "--failed-attempt-fraction",
+        "0.15"
+      ],
+      "output": {
+        "rates_source": "command line (--rate)",
+        "time": {
+          "assumptions": [
+            "time scales with the number of prompts, so a family of v variants is v / 2 pairs",
+            "failed_attempt_fraction = 0.15 is a stated allowance, not a measured rate",
+            "the rates are for the legacy first-token endpoint and include model load",
+            "runner seconds are not wall-clock time: queueing, install and parallelism are not modelled"
+          ],
+          "attempted_pair_equivalents": 12,
+          "formula": "runner_seconds = ceil(pair_equivalents * (1 + failed_attempt_fraction)) * seconds_per_pair, summed over models; pair_equivalents = case_families * replicates * prompts_per_family / 2; legs = ceil(attempted_pairs / max(1, min(max_pairs_per_leg, floor(leg_budget_seconds / seconds_per_pair))))",
+          "measured": false,
+          "pair_equivalents": 10.0,
+          "per_model": {
+            "gemma-2-2b": {
+              "legs": 1,
+              "pairs_per_leg": 81,
+              "runner_seconds": 1062.0,
+              "seconds_per_pair": 88.5
+            }
+          },
+          "runner_seconds": 1062.0
+        }
+      }
+    },
+    "stage_b": {
+      "argv": [
+        "--families",
+        "1",
+        "--rate",
+        "gemma-2-2b=88.5",
+        "--failed-attempt-fraction",
+        "0.15"
+      ],
+      "output": {
+        "rates_source": "command line (--rate)",
+        "time": {
+          "assumptions": [
+            "time scales with the number of prompts, so a family of v variants is v / 2 pairs",
+            "failed_attempt_fraction = 0.15 is a stated allowance, not a measured rate",
+            "the rates are for the legacy first-token endpoint and include model load",
+            "runner seconds are not wall-clock time: queueing, install and parallelism are not modelled"
+          ],
+          "attempted_pair_equivalents": 2,
+          "formula": "runner_seconds = ceil(pair_equivalents * (1 + failed_attempt_fraction)) * seconds_per_pair, summed over models; pair_equivalents = case_families * replicates * prompts_per_family / 2; legs = ceil(attempted_pairs / max(1, min(max_pairs_per_leg, floor(leg_budget_seconds / seconds_per_pair))))",
+          "measured": false,
+          "pair_equivalents": 1.0,
+          "per_model": {
+            "gemma-2-2b": {
+              "legs": 1,
+              "pairs_per_leg": 81,
+              "runner_seconds": 177.0,
+              "seconds_per_pair": 88.5
+            }
+          },
+          "runner_seconds": 177.0
+        }
+      }
+    },
+    "statement": "Arithmetic on stated inputs. No number in this block is a measurement of this model.",
+    "weights": {
+      "bfloat16_bytes": 5200000000,
+      "float32_bytes": 10400000000,
+      "label": "derived from the rounded count '2.6B' in docs/model_matrix.md; the exact count is not recorded",
+      "parameters": 2600000000
+    }
+  },
+  "schema_version": "patientwords.first-run-preview/1",
+  "selection": {
+    "rows": [
+      {
+        "batch": "pairs_20260706T175614Z",
+        "batch_index": 1,
+        "in_protocol": true,
+        "reason": "every_token_id_on_a_landed_record",
+        "target_id_record": {
+          "file": "trace_out/pairs_20260707T023706Z__jlens_gemma-2-2b/jlens_raw/pair_021_patient.json.gz",
+          "join": "token string equal to the target text; id read at that position",
+          "position": 5,
+          "sha256": "446f0b36b8e0144cbf9cb3eb15c42bb129d30a8b86e21c4b349412174731c2b2"
+        },
+        "target_tokens_in_landed_cpu_part": "one",
+        "variants": {
+          "clinical": {
+            "batch_side": "clinical",
+            "prompt_sha256": "db5db31fd44fdeec0bba38c840d13d39b781b459dea8fe86a3d1021c9258bd32",
+            "token_count": 19,
+            "token_id_record": {
+              "file": "trace_out/pairs_20260706T175614Z__jlens_gemma-2-2b/jlens_raw/pair_001_clinical.json.gz",
+              "sha256": "d74aad8a8f607a2f58c9318330411fb300ef15784ccccfc497861a1f3796fb05"
+            },
+            "token_sha256": "caa62f84fc3b3a08f3b9bcfb90af78727670b3d58d4f7a40a7757c7a37112898"
+          },
+          "colloquial": {
+            "batch_side": "patient",
+            "prompt_sha256": "c3fc29a227ee80439a8f40ffc88b9878d58ac98fd7d6dfed46a36c9a0c443e63",
+            "token_count": 19,
+            "token_id_record": {
+              "file": "trace_out/pairs_20260706T175614Z__jlens_gemma-2-2b/jlens_raw/pair_001_patient.json.gz",
+              "sha256": "73ab510db4d0f882cc56857365d4b5496b623351ff9a1f223d192e256583efae"
+            },
+            "token_sha256": "9d273cc58f8193efc0eefe4e6d841b73843d4c2585e7f8ba2f0410524b16bd44"
+          }
+        }
+      },
+      {
+        "batch": "pairs_20260706T175614Z",
+        "batch_index": 2,
+        "in_protocol": false,
+        "reason": "target_is_more_than_one_token_and_its_tokenization_is_on_no_landed_record",
+        "target_tokens_in_landed_cpu_part": "more_than_one",
+        "variants": {
+          "clinical": {
+            "batch_side": "clinical",
+            "prompt_sha256": "469500729c0b55053800f5c32e76f2628935c719744bed1e055963dee65952c1",
+            "token_count": 15,
+            "token_id_record": {
+              "file": "trace_out/pairs_20260706T175614Z__jlens_gemma-2-2b/jlens_raw/pair_002_clinical.json.gz",
+              "sha256": "e1a609f1eff144715ea58be05adf16477db95c2d8124e2195d3eb2bab29f03c8"
+            },
+            "token_sha256": "fe1b8be865898c9a5727b20243c0713989407b40d895157bffd84e2ea2aa857d"
+          },
+          "colloquial": {
+            "batch_side": "patient",
+            "prompt_sha256": "d5fb9ed2cf516093f519e156565902785733dee84d869ca2faf80b678fe9158e",
+            "token_count": 15,
+            "token_id_record": {
+              "file": "trace_out/pairs_20260706T175614Z__jlens_gemma-2-2b/jlens_raw/pair_002_patient.json.gz",
+              "sha256": "e0016ddadc3ea8c5dfed67d6e60cdb717a8b2b8e49ddd590aa57a9dd0950aa16"
+            },
+            "token_sha256": "42226f833d3e113236c17ac00f675621a378b7a71b253a07605ce33d3c11b974"
+          }
+        }
+      },
+      {
+        "batch": "pairs_20260706T175614Z",
+        "batch_index": 3,
+        "in_protocol": false,
+        "reason": "target_is_more_than_one_token_and_its_tokenization_is_on_no_landed_record",
+        "target_tokens_in_landed_cpu_part": "more_than_one",
+        "variants": {
+          "clinical": {
+            "batch_side": "clinical",
+            "prompt_sha256": "d833183cd913cfb0a0ec8a4f4576e58d95df5b6012b37c5a7d2ae45c32e99cb3",
+            "token_count": 16,
+            "token_id_record": {
+              "file": "trace_out/pairs_20260706T175614Z__jlens_gemma-2-2b/jlens_raw/pair_003_clinical.json.gz",
+              "sha256": "249b6f3f9ab04d0206eb4fba8f3e835ec292d80f5e63ab47c0a044d8cc370b7b"
+            },
+            "token_sha256": "15bf7b0887dc2096b02b4de60e1103fceaf8f8cb4934c71fa70a0e495897b5ff"
+          },
+          "colloquial": {
+            "batch_side": "patient",
+            "prompt_sha256": "b44c8e9607bb1e21094be217a130f3c7ff440502a37e73bdae99c8e385b72927",
+            "token_count": 19,
+            "token_id_record": {
+              "file": "trace_out/pairs_20260706T175614Z__jlens_gemma-2-2b/jlens_raw/pair_003_patient.json.gz",
+              "sha256": "f1338f1801c47c0e620a870d676a195e1524d9f6affd8f4584904ecff853c52c"
+            },
+            "token_sha256": "a855207cb8a1e6f94946c56ac2f22ec3dfc13a84fbff1e74dd0011843343fd3a"
+          }
+        }
+      },
+      {
+        "batch": "pairs_20260706T175614Z",
+        "batch_index": 4,
+        "in_protocol": false,
+        "reason": "target_is_more_than_one_token_and_its_tokenization_is_on_no_landed_record",
+        "target_tokens_in_landed_cpu_part": "more_than_one",
+        "variants": {
+          "clinical": {
+            "batch_side": "clinical",
+            "prompt_sha256": "d12a56ef23573d111ee10c1a24ddf6f1fa34d890360e1df378a0a38cdd5fff49",
+            "token_count": 20,
+            "token_id_record": {
+              "file": "trace_out/pairs_20260706T175614Z__jlens_gemma-2-2b/jlens_raw/pair_004_clinical.json.gz",
+              "sha256": "720a2a73c88788e1afd2db5f686c0415131020857d1e26c9783e093c498dde68"
+            },
+            "token_sha256": "04690853935e1bd746be4233249fa65fa8460ed2ed4365b5d97b71df9b80e512"
+          },
+          "colloquial": {
+            "batch_side": "patient",
+            "prompt_sha256": "fb278c3b7a58ad0672aee9ef5bc1cba7d76407ce4bfabec93918ccd894804572",
+            "token_count": 22,
+            "token_id_record": {
+              "file": "trace_out/pairs_20260706T175614Z__jlens_gemma-2-2b/jlens_raw/pair_004_patient.json.gz",
+              "sha256": "b338c5cbf77762a09e589fa352e0945768c43b15cc04708944be2c52658f3839"
+            },
+            "token_sha256": "20ed45c76ebdc35562f7a029c255d6bea474fdacec2a501bc3fd87087a390765"
+          }
+        }
+      },
+      {
+        "batch": "pairs_20260706T175614Z",
+        "batch_index": 5,
+        "in_protocol": false,
+        "reason": "target_is_more_than_one_token_and_its_tokenization_is_on_no_landed_record",
+        "target_tokens_in_landed_cpu_part": "more_than_one",
+        "variants": {
+          "clinical": {
+            "batch_side": "clinical",
+            "prompt_sha256": "c08d7e866bea75698215b39fe476832fd6b4dbc5e829a2d2a1d412a0fb52d4e4",
+            "token_count": 18,
+            "token_id_record": {
+              "file": "trace_out/pairs_20260706T175614Z__jlens_gemma-2-2b/jlens_raw/pair_005_clinical.json.gz",
+              "sha256": "c754389d569fe9c1153e4de97a2d8ccb67b72d3dd89a28fde12603c249e591d3"
+            },
+            "token_sha256": "bc990dd833a33055892d310a8896c8f7148dacd56dc6f6e1b723c39dbf4dfe1f"
+          },
+          "colloquial": {
+            "batch_side": "patient",
+            "prompt_sha256": "990f16422e89aab0fe7b17a1d8cde5671e0602cf81f7cab1ad6b54303c07b440",
+            "token_count": 20,
+            "token_id_record": {
+              "file": "trace_out/pairs_20260706T175614Z__jlens_gemma-2-2b/jlens_raw/pair_005_patient.json.gz",
+              "sha256": "e72ff0e61996a6c3ac735616d5671ee3628d86e5bfd55548327eaa44eec6a4ec"
+            },
+            "token_sha256": "c2d68292b19c95dcbfe4aa25a8a05e207d0559ba6e3f6106068ba7c70c61d17f"
+          }
+        }
+      },
+      {
+        "batch": "pairs_20260706T175614Z",
+        "batch_index": 6,
+        "in_protocol": true,
+        "reason": "every_token_id_on_a_landed_record",
+        "target_id_record": {
+          "file": "trace_out/pairs_20260707T023656Z__jlens_gemma-2-2b/jlens_raw/pair_014_patient.json.gz",
+          "join": "token string equal to the target text; id read at that position",
+          "position": 5,
+          "sha256": "be228a1aba7f1d6e4f6666561e76ad67935c93a7162427dd6045e01f2b87360c"
+        },
+        "target_tokens_in_landed_cpu_part": "one",
+        "variants": {
+          "clinical": {
+            "batch_side": "clinical",
+            "prompt_sha256": "7ecd3989ac2688d06e337cfa7d86498f339fd2cfeafc462675bbd203a61558d3",
+            "token_count": 22,
+            "token_id_record": {
+              "file": "trace_out/pairs_20260706T175614Z__jlens_gemma-2-2b/jlens_raw/pair_006_clinical.json.gz",
+              "sha256": "a16db9a728bbf99420ed3dc9da3039eaa7efa43dac23a084bf760a95ad47ff74"
+            },
+            "token_sha256": "bfb9b580eafaa2f964ea9c1dff51f6b0499056918f8b62176f898aa20f4c8967"
+          },
+          "colloquial": {
+            "batch_side": "patient",
+            "prompt_sha256": "009002365df97266558ed57fbb2d117385fbdaddce4b82ae67706d4e153efdf9",
+            "token_count": 22,
+            "token_id_record": {
+              "file": "trace_out/pairs_20260706T175614Z__jlens_gemma-2-2b/jlens_raw/pair_006_patient.json.gz",
+              "sha256": "b4ada48bf8881e2f3b6b21fc90642e5734019a23668f757e2b986701dadae46d"
+            },
+            "token_sha256": "efa04ed9b19734ee002cbe07701dd4cebaa239c066a9234d0aee27d604992b6f"
+          }
+        }
+      },
+      {
+        "batch": "pairs_20260706T175614Z",
+        "batch_index": 7,
+        "in_protocol": false,
+        "reason": "target_is_more_than_one_token_and_its_tokenization_is_on_no_landed_record",
+        "target_tokens_in_landed_cpu_part": "more_than_one",
+        "variants": {
+          "clinical": {
+            "batch_side": "clinical",
+            "prompt_sha256": "2e22678d22cea051f1a68997bdec95fb183c5319bff9f3071ba28556920fe552",
+            "token_count": 23,
+            "token_id_record": {
+              "file": "trace_out/pairs_20260706T175614Z__jlens_gemma-2-2b/jlens_raw/pair_007_clinical.json.gz",
+              "sha256": "ec55eb19bbe3789ce33d2a2a62752984c638b18a9f4acf6ac1acbb7788c47e17"
+            },
+            "token_sha256": "cf188c7dd675111ce0f5357d7e6b3961f6f25e36ba27331a0363c9bfe00103f1"
+          },
+          "colloquial": {
+            "batch_side": "patient",
+            "prompt_sha256": "82ec6817a146508211bc868a3a885d682c5ebb8972a4385c8d43043ac6f1843c",
+            "token_count": 22,
+            "token_id_record": {
+              "file": "trace_out/pairs_20260706T175614Z__jlens_gemma-2-2b/jlens_raw/pair_007_patient.json.gz",
+              "sha256": "fbf3813d4e91e92db815753b8db90034d18f641b7d42d1ffe8a6d86de596b01d"
+            },
+            "token_sha256": "61549df32736c9a20edfc0ff4e7c074f89a854a95d8a162b2889fb759c86cb99"
+          }
+        }
+      },
+      {
+        "batch": "pairs_20260706T175614Z",
+        "batch_index": 8,
+        "in_protocol": false,
+        "reason": "target_is_more_than_one_token_and_its_tokenization_is_on_no_landed_record",
+        "target_tokens_in_landed_cpu_part": "more_than_one",
+        "variants": {
+          "clinical": {
+            "batch_side": "clinical",
+            "prompt_sha256": "b9b1ca207bad5fb39a09e2844115fd771cfc2ceaea8ed9bc0139fc5ee79ded12",
+            "token_count": 18,
+            "token_id_record": {
+              "file": "trace_out/pairs_20260706T175614Z__jlens_gemma-2-2b/jlens_raw/pair_008_clinical.json.gz",
+              "sha256": "f04c442b7537e967fa140107938922d30493849bc73a61befdc32e8d0ab84f45"
+            },
+            "token_sha256": "77b097e426629a5244d18263a88b364e7cb1458729987bbd5228a80c0c9806d6"
+          },
+          "colloquial": {
+            "batch_side": "patient",
+            "prompt_sha256": "0adb722bfbfb48760e7f018ac42224b8be8cb7633726f8784dc638b47b9ea1d5",
+            "token_count": 19,
+            "token_id_record": {
+              "file": "trace_out/pairs_20260706T175614Z__jlens_gemma-2-2b/jlens_raw/pair_008_patient.json.gz",
+              "sha256": "ffff00a7b4cbc74a7d9e9ad9b01ce2e4785caae1c6f9af6ddafdfa5e9753e080"
+            },
+            "token_sha256": "abb61f12b1e4f32b7be2fb552c0c5d39cfabd65338a333b66d962de39b67a502"
+          }
+        }
+      },
+      {
+        "batch": "pairs_20260706T175614Z",
+        "batch_index": 9,
+        "in_protocol": false,
+        "reason": "target_is_one_token_and_its_id_is_on_no_landed_record",
+        "target_tokens_in_landed_cpu_part": "one",
+        "variants": {
+          "clinical": {
+            "batch_side": "clinical",
+            "prompt_sha256": "7a9968a1498092913a683b55ff5df86a55d29a1250fe3263bc3b8f0aa0f34ed1",
+            "token_count": 21,
+            "token_id_record": {
+              "file": "trace_out/pairs_20260706T175614Z__jlens_gemma-2-2b/jlens_raw/pair_009_clinical.json.gz",
+              "sha256": "70868eeba30ac3212d664c14538702eabed2f7ce8c424b6ac6bd0e6989b7b963"
+            },
+            "token_sha256": "d80c704b06d23174a03585397021d48943daeb7a60a8e52d1b06ef262eb803c5"
+          },
+          "colloquial": {
+            "batch_side": "patient",
+            "prompt_sha256": "30a3403a841703f90bd60612989b1a42b64982cd6ec31c8872288ffc39c84964",
+            "token_count": 21,
+            "token_id_record": {
+              "file": "trace_out/pairs_20260706T175614Z__jlens_gemma-2-2b/jlens_raw/pair_009_patient.json.gz",
+              "sha256": "a382db0c0dcf82e9d2471836d0694ed576e7418864ab9824aa90a8359da2a5c9"
+            },
+            "token_sha256": "cbba07d29e6c8cc8504678058760d0c44a9812269c37e36cb18a80e49f1ff09f"
+          }
+        }
+      },
+      {
+        "batch": "pairs_20260706T175614Z",
+        "batch_index": 10,
+        "in_protocol": true,
+        "reason": "every_token_id_on_a_landed_record",
+        "target_id_record": {
+          "file": "trace_out/pairs_20260707T023706Z__jlens_gemma-2-2b/jlens_raw/pair_021_patient.json.gz",
+          "join": "token string equal to the target text; id read at that position",
+          "position": 5,
+          "sha256": "446f0b36b8e0144cbf9cb3eb15c42bb129d30a8b86e21c4b349412174731c2b2"
+        },
+        "target_tokens_in_landed_cpu_part": "one",
+        "variants": {
+          "clinical": {
+            "batch_side": "clinical",
+            "prompt_sha256": "51bd1b1930a7b89e6f5ab9a4c9d4b2e5e64501565124054c2e1b01292ff82b7a",
+            "token_count": 21,
+            "token_id_record": {
+              "file": "trace_out/pairs_20260706T175614Z__jlens_gemma-2-2b/jlens_raw/pair_010_clinical.json.gz",
+              "sha256": "467ced6e156d51dc5bd8c0ef3d794cfa5608ba4b01f154f97d34d44f9d4825f0"
+            },
+            "token_sha256": "b1838910c94cebd39356bd48ee7fdc3022d10fde23bf04fb403cb9665cd7368a"
+          },
+          "colloquial": {
+            "batch_side": "patient",
+            "prompt_sha256": "6bcdbd8a6837645b8b4eaac6d2b080c8aa72bf36c34bdcbeed0d6b0e27a100a8",
+            "token_count": 22,
+            "token_id_record": {
+              "file": "trace_out/pairs_20260706T175614Z__jlens_gemma-2-2b/jlens_raw/pair_010_patient.json.gz",
+              "sha256": "4cfff20ac6dac7f2ff26b56c70c8cbbe7eca0d5cb90fe8b91daafbf3586b041e"
+            },
+            "token_sha256": "a4dc1ae5b9dbe1c2a9192b94796f89db3ad3632a46c4a48947a0cf028f8d0a03"
+          }
+        }
+      }
+    ],
+    "rows_in_batch": 10,
+    "rows_in_protocol": 3,
+    "rule": "a row is in the protocol when (1) the landed hosted-lens record of each of its two prompts reproduces the prompt from its token strings, (2) the landed CPU part's target label equals the target text, so the target is one token, and (3) a landed hosted-lens record of this model, from a study batch dated before the Tier B start stamp, holds a prompt token with exactly that string"
+  },
+  "statement": "Nothing here was measured on a model. The plan below marks every task unavailable; no task is ready and none was executed. Counts, hashes and estimates are computed offline from committed files.",
+  "status": "preview_not_run",
+  "token_records": {
+    "batches_read": 12,
+    "distinct_token_ids": 1172,
+    "distinct_token_strings": 1172,
+    "files_read": 982,
+    "ids_recorded_with_more_than_one_string": 0,
+    "not_verified": "that the hosted service's tokenizer for model id gemma-2-2b is the tokenizer at the pinned revision; the service records no tokenizer revision",
+    "scope": "trace_out/pairs_<stamp>__jlens_gemma-2-2b/jlens_raw/*.json.gz with <stamp> before the Tier B start stamp",
+    "strings_recorded_with_more_than_one_id": 0
+  }
+}

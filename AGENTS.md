@@ -70,6 +70,10 @@ The frontend renders exported JSON and HTML; it does not call a live engine API.
   ([docs/open_results_policy.md](docs/open_results_policy.md)): an intact, unrestricted
   result is shared whatever its effect; it joins a statistic only through a named
   membership, and a published statistic changes only through a versioned snapshot.
+- An export or release that changes or removes a measurement the site already publishes,
+  or changes a model's capability label, is refused unless
+  `data/results_policy/payload_dispositions.v1.json` holds the owner's `accept_candidate`
+  entry for exactly that difference. Agents write `pending` entries only.
 - Record random seeds in statistical outputs; document methods, transforms and assumptions.
   Record absent/unreadable data explicitly; never silently turn it into zero or drop rows.
 - The engine computes; the frontend presents. Public explanations must retain provenance,

@@ -57,6 +57,33 @@ python scripts/export_frontend_simulated.py --frontend ../patientwords \
   could surprise you; the first publish after 2026-09-23 prunes about 235 orphans.
   A `refusing:` line means nothing was written. Fix the cause it names (for a
   sparse checkout, precondition 3) and re-run; it is not success-with-no-change.
+- **Published measurements (since 2026-11-11).** Before its first write, copy or
+  prune, the exporter compares what it would write with the payload in the site's HEAD
+  commit (`scripts/payload_dispositions.py`). A difference is a measured value that
+  changed at a published `(batch, batch_index, model)`, a published measurement that
+  is no longer there (a model gone from a row, a row gone), or a changed capability
+  label (`models_meta[].graphs`, `features`, `source_set`; `traced_by_model[].backend`).
+  New rows, new batches, a new model on existing rows, display order, joins, trace
+  links, render lists and the `summary` block are not differences. With a difference
+  that has no accepting owner disposition it prints one `REFUSED` line per difference
+  (identities, field names and numbers; no token or prompt text) and exits 1 with
+  `refusing: this export changes N published measurement(s) or capability label(s)`.
+  `--dry-run` does the same. There is no flag that skips it.
+  This refusal is not fixed in the engine and not retried. A difference passes only
+  when the committed record `data/results_policy/payload_dispositions.v1.json` holds an
+  entry for exactly it with `"disposition": "accept_candidate"`, `"decided_by": "owner"`
+  and a `decision_ref` naming the committed document that records the decision. You
+  do not write or change a disposition: the decision is the owner's. When it happens:
+  1. Stop the gallery payload for this cycle: do not run steps 2, 3b and 4. They are
+     steps of the same payload publish, and without the export they publish joins
+     computed from parts whose values the published payload does not hold.
+  2. Put the printed `REFUSED` lines in the digest and in `decisions_pending`, as they
+     are.
+  3. Continue with what does not depend on the export: step 3 and step 5 when their
+     own inputs landed, then steps 6, 6b, 7, 8, 8b and 9. When step 6b's catalogue is
+     the only thing that changed, that is the *Catalogue-only publish* below.
+  Lines marked `accepted` are differences the owner has disposed; report them in the
+  digest and continue the chain.
 
 **2. Urgency collector.**
 ```
@@ -178,49 +205,152 @@ Exit 2: a config error, never a pass. The printed line names the cause: an empty
 sealed set (wrong branch), a malformed `data/seal_allowlist.json` (fix the entry;
 never delete the file to get past it), or a sparse site checkout (precondition 3).
 
-**9. Commit and push.**
-- Site: `git -C ../patientwords status` first. Only `data/*.json`, the catalogue's files
-  under `data/results_catalogue/`, and exporter-written `modes/simulated/` render files
-  may have changed (added, modified, or deleted by the prune or the catalogue export). Anything else changed → abort, revert, investigate. Stage render deletions
-  too (`git add -A data modes/simulated`), or the pruned files stay published. Commit
-  and push `main`; GitHub Pages serves it, so this push is the publish — the contract,
-  claim and seal gates above are the last check.
-- Engine: commit the chain's engine-side outputs (`ops/*.json`, `data/jlens_*.json`,
-  and `data/results_policy/part_ledger.v1.json` when step 6b recorded new hashes) to
-  `main`; `git pull --rebase` before pushing.
+**9. Release: commit locally, snapshot, check, then push.**
+Nothing is pushed before step 9e passes. The site push (9g) is the publication: GitHub
+Pages serves the site's `main`. The order below keeps a published statistic from
+existing without its version record. *Recovery* (below) says what each failure leaves
+and how to continue.
+
+**9a. Engine commit, local.** Commit the chain's engine-side outputs (`ops/*.json`,
+`data/jlens_*.json`, and `data/results_policy/part_ledger.v1.json` when step 6b recorded
+new hashes). Do not push.
+
+**9b. Site commit, local.** `git -C ../patientwords status` first. Only `data/*.json`,
+the catalogue's files under `data/results_catalogue/`, and exporter-written
+`modes/simulated/` render files may have changed (added, modified, or deleted by the
+prune or the catalogue export). Anything else changed → abort, revert, investigate.
+Stage render deletions too (`git -C ../patientwords add -A data modes/simulated`), or
+the pruned files stay published. Commit. Do not push. The contract, claim and seal
+gates above are the last check of the content; steps 9c to 9e check that the release
+is recorded.
+
+**9c. Snapshot — required whenever ANY published statistics file changes.**
+The published statistics set is `STATISTICS_FILES` in `scripts/results_snapshot.py`,
+the one definition. It holds every site data file that carries a measured or computed
+number: the gallery payload `data/simulated_scenarios.json` (its `summary.penalty`
+block is a published statistic, and it can change when `data/urgency_shift.json` does
+not), `data/urgency_shift.json`, `data/model_stats.json`, the lens and J-space files
+of step 3, `data/translation_scale.json`, and the owner-run advice, Petri and Jev
+payloads. A run of the whole chain normally changes at least the payload, so it
+normally needs a snapshot. When unsure, go to 9e: it names every changed statistics
+file the current snapshot does not cover.
+After a re-export that removes a row declared in
+`data/results_policy/legacy_payload_rows.v1.json`, set that entry's state to
+`"retired"` with `retired_by` naming the new snapshot, in the same engine commit as the
+snapshot; `tests/test_legacy_payload_rows.py` fails until then.
+```
+python scripts/results_snapshot.py create --id study-interim-<UTC date> \
+    --supersedes <the id `results_snapshot.py list` marks current> --site ../patientwords \
+    --change "<one sentence: what landed or changed since the previous snapshot>"
+```
+It writes a new immutable file under `data/analysis_snapshots/` and changes no
+published number. It records the sha256 of every file of the statistics set as
+committed in the site, which of them changed since the superseded snapshot, and the
+payload's `summary.penalty` block at both site commits, read from git. It refuses
+(exit 2, `refused, nothing written`) inputs that are not committed (untracked parts
+included), site statistics files that differ from the site's HEAD, an existing id
+(a second snapshot on one date takes a letter suffix), an id that does not supersede
+the current snapshot of its membership, and a directory holding a file the index does
+not list. It reads the committed policy whatever `PW_RESULTS_POLICY` says. It does not
+recompute the statistics (`--recomputed-statistics` records a comparison when the
+owner has recomputed `model_stats.json`). Never edit or delete a landed snapshot.
+It also refuses, with the same exit and one line per difference, when the gallery
+payload at the site's HEAD changes a published measurement or capability label since
+the superseded snapshot's site commit without an accepting owner disposition committed
+in the engine (step 1's rule, applied to the two committed payloads): a snapshot would
+otherwise record the changed file as a new sha256 with the change undecided. That is
+a `decisions_pending` item, not something to supersede past; undo the local site
+commit as the *Recovery* table says.
+
+**9d. Snapshot commit, local.** Commit the new snapshot file and
+`data/analysis_snapshots/index.json` in a second engine commit. Do not push.
+
+**9e. Release check.**
+```
+git -C ../patientwords fetch origin main
+python scripts/results_snapshot.py check-release --site ../patientwords
+```
+Exit 0 is required before any push. It reads both repositories and pushes nothing.
+It refuses (exit 1, one `REFUSED:` line per problem) unless: the engine tree is clean
+under the snapshot's inputs; the snapshot file and the index are committed; the
+snapshot is the current one of its membership and verifies; the engine commit it
+records is an ancestor of the engine HEAD; the site has no uncommitted change under
+`data/` or `modes/simulated/`; every file the snapshot records has the recorded sha256
+in the site's HEAD commit; every published statistics file this release changes
+(relative to the fetched `origin/main`) is recorded by the snapshot; the gallery
+payload at the site's HEAD changes no published measurement and no capability label
+relative to that base without an accepting owner disposition in the engine's HEAD
+commit (step 1's rule; it covers every writer of the payload, not only the exporter);
+and no changed
+data file is unclassified. An unclassified file is one that is in neither
+`STATISTICS_FILES` nor the commented lists of files a snapshot does not version; do
+not classify it yourself: put the `REFUSED:` line in `blockers` and stop. Report the
+manifest it prints (engine commit, site commit, snapshot id, each output's sha256) in
+the digest. `--json` prints the same manifest as JSON.
+
+**9f. Engine push.** `git push origin main`. If it is rejected, bring the remote in
+with a merge, `git pull --no-rebase origin main` (keep the target's trigger files, as
+the fire-trigger-safe skill says for any merge), never with a rebase: the snapshot
+records the engine commit it was created at, and a rebase replaces that commit. Then
+run 9e again and push.
+
+**9g. Site push — the publication.** `git -C ../patientwords push origin main`. If it
+is rejected, `git -C ../patientwords pull --rebase origin main`, run 9e again, then
+push. The rebase changes the site commit's id; the snapshot's recorded sha256 values
+bind the release, and 9e compares them at the new HEAD.
+
+**9h. Post-publication check.**
+```
+python scripts/results_snapshot.py check-release --site ../patientwords --published --record
+```
+It fetches both remotes and exits 1 unless the remote site branch holds every recorded
+file with the recorded sha256 and the remote engine branch holds the snapshot. On
+success `--record` appends a publication record (snapshot id, published site commit,
+time) to `data/analysis_snapshots/index.json`; commit that file and push the engine.
+The snapshot file is not edited. A snapshot with no publication record was created
+and not published: `results_snapshot.py list` shows `(no publication recorded)`.
+Exit 1 goes in `blockers` with its `REFUSED:` lines.
 
 ## Catalogue-only publish
 
 For a cycle whose only new results are parts outside the default analysis membership
-(precondition 4). Run, in order: step 6b, step 7, step 8, step 8b, step 9. Nothing else.
-The statistics files do not change in such a cycle, because the collectors behind them
-read under `study-interim/1`; if step 9's `git status` shows a change outside
-`data/results_catalogue/`, abort and investigate.
+(precondition 4), and for a cycle in which step 1 refused over published measurements
+and nothing but the catalogue is left to publish. It does not run the exporter, so the
+published payload stays byte for byte as it is. Run, in order: step 6b, step 7, step 8, step 8b, then steps 9a, 9b,
+9e, 9f, 9g and 9h without `--record`. Nothing else. It needs no new snapshot: the
+statistics files do not change in such a cycle, because the collectors behind them
+read under `study-interim/1`, and the results catalogue is not versioned by a
+snapshot. Step 9e passes against the current snapshot and prints
+`published statistics files this release changes: 0`; step 9h confirms that the
+published statistics files still have the bytes the current snapshot records. If
+step 9b's `git status` shows a change outside `data/results_catalogue/`, abort and
+investigate.
 
-## Snapshots
+## Recovery
 
-When step 2 changed the site's `data/urgency_shift.json` (new hosted parts landed, or
-the study pin was advanced in a reviewed change), record what the statistics were
-computed from. Run it after step 9's two commits, because it refuses inputs that are
-not committed (untracked parts included) and site statistics files that differ from
-the site's HEAD:
-```
-python scripts/results_snapshot.py create --id study-interim-<UTC date> \
-    --supersedes <the id `results_snapshot.py list` marks current> --site ../patientwords \
-    --change "<one sentence: what landed since the previous snapshot>"
-```
-It writes a new immutable file under `data/analysis_snapshots/` and changes no
-published number; commit the file and `index.json` in a second engine commit. It
-refuses an existing id, an id that does not supersede the current snapshot of its
-membership, and a directory holding a file the index does not list: never edit or
-delete a landed snapshot. It reads the committed policy whatever `PW_RESULTS_POLICY`
-says. The snapshot records each statistics file as published, with the generation time
-the file states; it does not recompute them (`--recomputed-statistics` records a
-comparison when the owner has recomputed `model_stats.json`).
+A snapshot is never edited or deleted to recover. A release that did not complete is
+continued, or its snapshot is superseded by the next one and keeps no publication
+record.
+
+| What failed | State it leaves | Continue | Undo |
+|---|---|---|---|
+| Step 1 refuses over published measurements or capability labels (`refusing: this export changes N ...`) | Nothing written, copied or pruned. Nothing committed. | Not by re-running: the differences need the owner's dispositions. Put the `REFUSED` lines in `decisions_pending`, skip steps 2, 3b and 4, and continue as step 1 says (the *Catalogue-only publish* when only the catalogue changed). | None needed. |
+| 9c `create` or 9e `check-release` refuses a published-measurement difference (a payload written by another route, or a disposition that is not committed) | Commits 9a and 9b are local. No snapshot file was written by the refused `create`. Nothing was pushed. | Put the lines in `decisions_pending` and `blockers`. Do not create a snapshot past it and do not push the site commit. | `git -C ../patientwords reset --hard origin/main` drops the local site commit. |
+| A gate stops the publish (step 7 errors, step 8b exit 1 or 2, an exporter's exit 2) | Nothing committed. The site working tree holds the chain's writes. | Fix the cause in the engine and run the chain again from step 1. | `git -C ../patientwords checkout -- data modes/simulated`, then `git -C ../patientwords clean -fd data modes/simulated` for new files. Leave the engine's ledger additions: they are true whether or not the publish completes. |
+| 9c `create` refuses (exit 2) | Commits 9a and 9b are local. No snapshot file was written. | Fix the cause the message names and run 9c again. | `git -C ../patientwords reset --hard origin/main` drops the local site commit. Nothing was published. |
+| 9c `create` is interrupted | Possibly a snapshot file the index does not list; `results_snapshot.py list` prints `NOT INDEXED`. | Remove that one file, then run 9c again. | The same removal. |
+| 9e `check-release` exits 1 | Everything is local. Nothing was pushed. | Fix what each `REFUSED:` line names and run 9e again. A recorded file with another sha256, or a changed statistics file the snapshot does not record: run 9c with `--supersedes <the snapshot just created>`, then 9d. | None needed. The unpublished snapshot stays in the index with no publication record. |
+| 9f succeeds, 9g fails | The engine remote holds a snapshot whose bytes are not published. `list` shows `(no publication recorded)`; `check-release --published` exits 1 and names the files. | Run 9g again (its rejected-push steps), then 9h. | If the publish is abandoned: `git -C ../patientwords reset --hard origin/main`, then 9c with `--supersedes <the unpublished snapshot>` and a change sentence saying the release was abandoned, 9d, 9e, 9f. The current snapshot then describes the published site again. |
+| 9g is rejected because the remote moved | The local site commit must be rebased, and its id changes. | `git -C ../patientwords pull --rebase origin main`, 9e, 9g. The recorded sha256 values bind the release; the publication record of 9h stores the published commit id. | As the row above. |
+| Another publish changed a recorded file | Before the pull 9e says `origin/main changed the published statistics file ...`; after it, `... at the site HEAD has sha256 ...`. | Supersede: 9c with `--supersedes <the snapshot just created>`, 9d, 9e, then push. If the rebase stops on a conflict in an engine-written file, `git -C ../patientwords rebase --abort`, `git -C ../patientwords reset --hard origin/main`, and run the chain again from step 1; never resolve such a conflict by hand. | None. |
+| The engine merge of 9f conflicts in `data/analysis_snapshots/index.json` | Two sessions created snapshots at once. | `git merge --abort`, stop, and put it in `blockers`: the owner decides which release stands. | None from this chain. |
+| 9h exits 1 after both pushes | The published bytes differ from the snapshot (another publish landed after 9g). | `git pull` in both repositories, then 9c (superseding) to 9h on the published state. | None. |
+
 `results_snapshot.py verify` (exit 1) means a recorded part changed or went missing,
 the current snapshot no longer describes the checkout (the pin, the tiers file or the
 membership rule changed without a superseding snapshot), or a snapshot file is not
-indexed: put it in `blockers`.
+indexed: put it in `blockers`. In a shallow engine checkout whose history ends before
+the snapshot's commit, 9e says so and names the remedy (`git fetch --deepen=<n>`).
 
 ## Never
 
@@ -229,6 +359,10 @@ indexed: put it in `blockers`.
 - Never remove or soften the urgency-tier review label. It comes from
   `vocabulary_status` in the data (step 2), and only the vocabulary's approval changes it.
 - Never hand-edit an exported payload, invent a number, or patch past an exporter refusal.
+- Never write, change or remove a disposition in
+  `data/results_policy/payload_dispositions.v1.json`, never export into a copy of the
+  site and move the payload across, and never remove the site's payload to get past
+  step 1: a changed or removed published measurement is the owner's decision.
 - Never change depth-exporter pins or render-cap/PNG defaults without owner instruction.
 - Never let holdout phrase text reach any output or committed file.
 - Never run `scripts/publication_release.py --release` from this chain while

@@ -2,7 +2,7 @@
  "schema": "patientwords.analysis-snapshot-index/1",
  "rule": "append-only; a snapshot file is never rewritten",
  "current": {
-  "study-interim/1": "study-interim-20261110"
+  "study-interim/1": "study-interim-20261110-r2"
  },
  "snapshots": [
   {
@@ -14,6 +14,16 @@
    "n_parts": 951,
    "change_record": "First snapshot of study-interim/1: the 951 parts the collectors read on 2026-11-10 under the rule in force since 2026-10-09 (every hosted and activation-patching part outside the hand-authored sets, and the 409 pinned CPU-logits parts). No input and no published file was changed. The published data/model_stats.json dates from 2026-08-29 and does not equal a recomputation over these inputs; outputs.reproduces_from_inputs lists the fields. The collector also takes 11 qwen3-4b rows from the site payload at keys whose engine parts are outside the pin.",
    "sha256": "bdd85f9fde14a8534343e058af84ddccef5580e3de20eb25f6695d1b6bbc14ae"
+  },
+  {
+   "id": "study-interim-20261110-r2",
+   "created_utc": "2026-11-10T22:09:08Z",
+   "membership": "study-interim/1",
+   "engine_commit": "a40520d1b6084462a6361921013510f9cdb7ab2e",
+   "supersedes": "study-interim-20261110",
+   "n_parts": 952,
+   "change_record": "Bug correction only. The gallery payload's summary.penalty was not phrase-deduplicated (docs/corrections/payload_summary_dedupe_20261110.md); it is recomputed from the payload's own 1,774 scenarios: n_phrases 1163 to 1124, mean_phrase_deduped -0.0387 to -0.0367, ci95 [-0.0477, -0.0291] to [-0.046, -0.0267]. No scenario, no other statistics file, no pin and no membership rule changed. The parts list is the membership at this engine commit, which includes parts that landed on main on 2026-11-10; no statistics file was regenerated from them.",
+   "sha256": "f48c64e3cd99c2da569e56e78be87b7e64f7f65f2ab47edf4432636c8cd8804b"
   }
  ]
 }

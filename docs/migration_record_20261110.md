@@ -37,7 +37,7 @@ of the day: `scripts/experiments/`, `data/experiments/`, `data/ecosystem/` and
 | `scripts/experiments/` | new package, run as `python -m scripts.experiments.cli` | proposed | its own tests `tests/test_experiments_*.py`; nothing published | delete the package; nothing else imports it |
 | `data/results_policy/` | new data directory (policy file; the part ledger is appended by step 6b) | present | `scripts/results_policy.py` | revert the commit |
 | `data/analysis_snapshots/` | new data directory | present | `scripts/results_snapshot.py` | revert the commit that added the snapshot |
-| `data/protocols/` | new data directory (annotation rubric) | present | annotators of the instrument-validity benchmark (`docs/protocols/`); `tests/test_instrument_validity.py`; no script under `scripts/` reads it | delete; nothing published reads it |
+| `data/protocols/` | new data directory (annotation rubric) | present | annotators of the instrument-validity benchmark (`docs/protocols/`); `tests/test_instrument_validity.py`; `scripts/instrument_validity.py` reads the rubric's description-control definitions (added later the same day; before that no script read the directory) | delete; nothing published reads it |
 | `data/experiments/`, `data/ecosystem/` | new data directories | proposed | the experiment package; documentation | delete; nothing published reads them |
 | `schemas/protocols/` | new schema directory | present | `scripts/instrument_validity.py` | delete with that script |
 | `schemas/experiments/` | new schema directory | proposed | the experiment package | delete with the package |

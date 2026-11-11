@@ -1,0 +1,608 @@
+{
+ "schema": "patientwords.payload-dispositions/1",
+ "recorded_utc": "2026-11-11",
+ "what_this_is": "Differences between the published gallery payload (data/simulated_scenarios.json in the sibling site repository) and what an export or a release would publish in its place, each with the owner's disposition. scripts/export_frontend_simulated.py and scripts/results_snapshot.py refuse a difference unless an entry here covers exactly it with accept_candidate.",
+ "what_it_is_not": "Not a membership rule, not a pin and not a hold on publication: a publish that changes no published measurement and no capability label needs no entry.",
+ "checked_by": "scripts/payload_dispositions.py; tests/test_payload_dispositions.py",
+ "dispositions": {
+  "pending": "the owner has not decided; an export or release that makes this difference is refused",
+  "accept_candidate": "the owner accepts the candidate as recorded here (a changed value, or a removal); the difference passes while the reference and candidate values are exactly the recorded ones",
+  "keep_reference": "the owner keeps the published value; an export that changes it is refused until the exporter reproduces the published value, and then there is no difference",
+  "withhold": "the owner accepts neither value: the row is to show as not measured for this model. An export that still carries a value is refused; the removal, once the exporter makes it, is a new difference with its own entry"
+ },
+ "rule": "Only accept_candidate passes, and only with decided_by \"owner\" and a decision_ref naming the committed document that records the decision. scripts/payload_dispositions.py propose writes pending entries and nothing else; a decision is entered by hand in a reviewed commit.",
+ "omitted": "No prompt, target or token text. 'values' holds numbers, booleans, counts and lengths; measurement_sha256 covers the tokens (the row hash of legacy_payload_rows.v1.json without the urgency join).",
+ "open_decisions": {
+  "explained_in": "docs/corrections/payload_summary_dedupe_20261110.md, section 8",
+  "D1": "qwen3-4b on rows 3 to 13 of pairs_20260706T201750Z: a full export removes the model from these rows",
+  "D4": "qwen3-4b on rows 1 and 2 of pairs_20260706T201750Z: a full export replaces the published logits-lane values with the hosted values of 2026-09-02"
+ },
+ "seeded_from": {
+  "reference": {
+   "path": "data/simulated_scenarios.json",
+   "site_commit": "2bf3c1ef81eb3c02ad07f170c2ff8663333b4e66",
+   "sha256": "b75735997140e1947f3af476c770e6d071d06c30521d0dd0aa4b1d773a2a918d"
+  },
+  "candidate": "one full export of the 27 published stamps and the 4 published models into an empty scratch directory, with the engine parts of 2026-11-11 (scripts/payload_dispositions.py propose)",
+  "agrees_with": "ops/payload_reexport_accounting_20261110.json, rows: the 13 identities, and each entry's published and regenerated values (tests/test_payload_dispositions.py repeats the comparison)"
+ },
+ "count": 13,
+ "entries": [
+  {
+   "scope": "row",
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 1,
+   "model": "qwen3-4b",
+   "change": "values_changed",
+   "fields": [
+    "language_penalty",
+    "prob_clinical",
+    "prob_patient",
+    "spread_clinical",
+    "spread_patient",
+    "target_token",
+    "top_clinical",
+    "top_patient"
+   ],
+   "reference": {
+    "measurement_sha256": "d389d2ea538a8d0cc5ef372889677b8705684347a9fa71d249a74797bc25fe08",
+    "values": {
+     "prob_clinical": 0.0118,
+     "prob_patient": 0.0063,
+     "language_penalty": -0.0055,
+     "flipped": false,
+     "anchor_fallback": false,
+     "screening": null,
+     "clinical_mass": null,
+     "circuit_diff_present": false,
+     "top_clinical_p": 0.2518,
+     "top_patient_p": 0.5314,
+     "spread_clinical_n": 9,
+     "spread_patient_n": 10,
+     "target_token_chars": 8
+    }
+   },
+   "candidate": {
+    "measurement_sha256": "d5c3ec5c35afc27924b7e7f886fb1ffbaa59779d7f767ccc011511af4bd65789",
+    "values": {
+     "prob_clinical": 0.037,
+     "prob_patient": 0.058,
+     "language_penalty": 0.021000000000000005,
+     "flipped": false,
+     "anchor_fallback": false,
+     "screening": null,
+     "clinical_mass": null,
+     "circuit_diff_present": true,
+     "top_clinical_p": 0.309,
+     "top_patient_p": 0.432,
+     "spread_clinical_n": 5,
+     "spread_patient_n": 5,
+     "target_token_chars": 5
+    }
+   },
+   "disposition": "pending",
+   "decided_by": null,
+   "decision_ref": null,
+   "open_decision": "D4"
+  },
+  {
+   "scope": "row",
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 2,
+   "model": "qwen3-4b",
+   "change": "values_changed",
+   "fields": [
+    "flipped",
+    "language_penalty",
+    "prob_clinical",
+    "prob_patient",
+    "spread_clinical",
+    "spread_patient",
+    "top_clinical",
+    "top_patient"
+   ],
+   "reference": {
+    "measurement_sha256": "fa6bc8da99c6591fe36ea919cc99ae8f59e6806d8ebff503a6acaa69f6223c30",
+    "values": {
+     "prob_clinical": 0.4239,
+     "prob_patient": 0.1804,
+     "language_penalty": -0.2435,
+     "flipped": false,
+     "anchor_fallback": false,
+     "screening": null,
+     "clinical_mass": null,
+     "circuit_diff_present": false,
+     "top_clinical_p": 0.4239,
+     "top_patient_p": 0.1804,
+     "spread_clinical_n": 10,
+     "spread_patient_n": 10,
+     "target_token_chars": 4
+    }
+   },
+   "candidate": {
+    "measurement_sha256": "8feb56c425378705c2839ed80b179017a1b0d409a3aac716a627021dc8363142",
+    "values": {
+     "prob_clinical": 0.218,
+     "prob_patient": 0.103,
+     "language_penalty": -0.115,
+     "flipped": true,
+     "anchor_fallback": false,
+     "screening": null,
+     "clinical_mass": null,
+     "circuit_diff_present": true,
+     "top_clinical_p": 0.218,
+     "top_patient_p": 0.109,
+     "spread_clinical_n": 5,
+     "spread_patient_n": 5,
+     "target_token_chars": 4
+    }
+   },
+   "disposition": "pending",
+   "decided_by": null,
+   "decision_ref": null,
+   "open_decision": "D4"
+  },
+  {
+   "scope": "row",
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 3,
+   "model": "qwen3-4b",
+   "change": "model_removed",
+   "fields": [
+    "anchor_fallback",
+    "flipped",
+    "language_penalty",
+    "prob_clinical",
+    "prob_patient",
+    "spread_clinical",
+    "spread_patient",
+    "target_token",
+    "top_clinical",
+    "top_patient"
+   ],
+   "reference": {
+    "measurement_sha256": "221f67f798520bd3804c6a3b0142c0a17c560356b8d4fba61634e79a22c4d128",
+    "values": {
+     "prob_clinical": 0.3228,
+     "prob_patient": 0.8118,
+     "language_penalty": 0.489,
+     "flipped": false,
+     "anchor_fallback": false,
+     "screening": null,
+     "clinical_mass": null,
+     "circuit_diff_present": false,
+     "top_clinical_p": 0.3228,
+     "top_patient_p": 0.8118,
+     "spread_clinical_n": 10,
+     "spread_patient_n": 9,
+     "target_token_chars": 3
+    }
+   },
+   "candidate": null,
+   "disposition": "pending",
+   "decided_by": null,
+   "decision_ref": null,
+   "open_decision": "D1"
+  },
+  {
+   "scope": "row",
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 4,
+   "model": "qwen3-4b",
+   "change": "model_removed",
+   "fields": [
+    "anchor_fallback",
+    "flipped",
+    "language_penalty",
+    "prob_clinical",
+    "prob_patient",
+    "spread_clinical",
+    "spread_patient",
+    "target_token",
+    "top_clinical",
+    "top_patient"
+   ],
+   "reference": {
+    "measurement_sha256": "fa6d5fcbc63350db008a15cd5ae8aff1fc944cd4584790da07020a389bc0789c",
+    "values": {
+     "prob_clinical": 0.0829,
+     "prob_patient": 0.0914,
+     "language_penalty": 0.0085,
+     "flipped": false,
+     "anchor_fallback": false,
+     "screening": null,
+     "clinical_mass": null,
+     "circuit_diff_present": false,
+     "top_clinical_p": 0.1549,
+     "top_patient_p": 0.1507,
+     "spread_clinical_n": 10,
+     "spread_patient_n": 10,
+     "target_token_chars": 8
+    }
+   },
+   "candidate": null,
+   "disposition": "pending",
+   "decided_by": null,
+   "decision_ref": null,
+   "open_decision": "D1"
+  },
+  {
+   "scope": "row",
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 5,
+   "model": "qwen3-4b",
+   "change": "model_removed",
+   "fields": [
+    "anchor_fallback",
+    "flipped",
+    "language_penalty",
+    "prob_clinical",
+    "prob_patient",
+    "spread_clinical",
+    "spread_patient",
+    "target_token",
+    "top_clinical",
+    "top_patient"
+   ],
+   "reference": {
+    "measurement_sha256": "cbb5d3f15b97f1c89df4f7cb96624a1b0c36e4126dd657d94fe2c85034ea7dad",
+    "values": {
+     "prob_clinical": 0.0004,
+     "prob_patient": 0.0002,
+     "language_penalty": -0.0002,
+     "flipped": false,
+     "anchor_fallback": false,
+     "screening": null,
+     "clinical_mass": null,
+     "circuit_diff_present": false,
+     "top_clinical_p": 0.2679,
+     "top_patient_p": 0.3598,
+     "spread_clinical_n": 9,
+     "spread_patient_n": 9,
+     "target_token_chars": 4
+    }
+   },
+   "candidate": null,
+   "disposition": "pending",
+   "decided_by": null,
+   "decision_ref": null,
+   "open_decision": "D1"
+  },
+  {
+   "scope": "row",
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 6,
+   "model": "qwen3-4b",
+   "change": "model_removed",
+   "fields": [
+    "anchor_fallback",
+    "flipped",
+    "language_penalty",
+    "prob_clinical",
+    "prob_patient",
+    "spread_clinical",
+    "spread_patient",
+    "target_token",
+    "top_clinical",
+    "top_patient"
+   ],
+   "reference": {
+    "measurement_sha256": "69e50dc1f9664432570cac0d919450cc66f83d47664a2aaaa358a7ed0d66c642",
+    "values": {
+     "prob_clinical": 0.0295,
+     "prob_patient": 0.0139,
+     "language_penalty": -0.0156,
+     "flipped": true,
+     "anchor_fallback": false,
+     "screening": null,
+     "clinical_mass": null,
+     "circuit_diff_present": false,
+     "top_clinical_p": 0.3599,
+     "top_patient_p": 0.1803,
+     "spread_clinical_n": 9,
+     "spread_patient_n": 9,
+     "target_token_chars": 6
+    }
+   },
+   "candidate": null,
+   "disposition": "pending",
+   "decided_by": null,
+   "decision_ref": null,
+   "open_decision": "D1"
+  },
+  {
+   "scope": "row",
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 7,
+   "model": "qwen3-4b",
+   "change": "model_removed",
+   "fields": [
+    "anchor_fallback",
+    "flipped",
+    "language_penalty",
+    "prob_clinical",
+    "prob_patient",
+    "spread_clinical",
+    "spread_patient",
+    "target_token",
+    "top_clinical",
+    "top_patient"
+   ],
+   "reference": {
+    "measurement_sha256": "2350283911b510ad2cdd19f5c5981f2b040093b8b79b1ccf2f6d18a5a7bbbfee",
+    "values": {
+     "prob_clinical": 0.0788,
+     "prob_patient": 0.5402,
+     "language_penalty": 0.4614,
+     "flipped": true,
+     "anchor_fallback": false,
+     "screening": null,
+     "clinical_mass": null,
+     "circuit_diff_present": false,
+     "top_clinical_p": 0.2426,
+     "top_patient_p": 0.5402,
+     "spread_clinical_n": 9,
+     "spread_patient_n": 9,
+     "target_token_chars": 4
+    }
+   },
+   "candidate": null,
+   "disposition": "pending",
+   "decided_by": null,
+   "decision_ref": null,
+   "open_decision": "D1"
+  },
+  {
+   "scope": "row",
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 8,
+   "model": "qwen3-4b",
+   "change": "model_removed",
+   "fields": [
+    "anchor_fallback",
+    "flipped",
+    "language_penalty",
+    "prob_clinical",
+    "prob_patient",
+    "spread_clinical",
+    "spread_patient",
+    "target_token",
+    "top_clinical",
+    "top_patient"
+   ],
+   "reference": {
+    "measurement_sha256": "ba6f02193d1a0b918936b7e5a347c314a6a5aad966cf8c5344914106b0ad71a3",
+    "values": {
+     "prob_clinical": 0.0289,
+     "prob_patient": 0.0001,
+     "language_penalty": -0.0288,
+     "flipped": true,
+     "anchor_fallback": false,
+     "screening": null,
+     "clinical_mass": null,
+     "circuit_diff_present": false,
+     "top_clinical_p": 0.2419,
+     "top_patient_p": 0.3754,
+     "spread_clinical_n": 9,
+     "spread_patient_n": 9,
+     "target_token_chars": 3
+    }
+   },
+   "candidate": null,
+   "disposition": "pending",
+   "decided_by": null,
+   "decision_ref": null,
+   "open_decision": "D1"
+  },
+  {
+   "scope": "row",
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 9,
+   "model": "qwen3-4b",
+   "change": "model_removed",
+   "fields": [
+    "anchor_fallback",
+    "flipped",
+    "language_penalty",
+    "prob_clinical",
+    "prob_patient",
+    "spread_clinical",
+    "spread_patient",
+    "target_token",
+    "top_clinical",
+    "top_patient"
+   ],
+   "reference": {
+    "measurement_sha256": "d88463edb1340d7b3614a2355052e357e3ef269959df207d052fa774265fe72e",
+    "values": {
+     "prob_clinical": 0.0,
+     "prob_patient": 0.0041,
+     "language_penalty": 0.0041,
+     "flipped": true,
+     "anchor_fallback": false,
+     "screening": null,
+     "clinical_mass": null,
+     "circuit_diff_present": false,
+     "top_clinical_p": 0.3835,
+     "top_patient_p": 0.2892,
+     "spread_clinical_n": 10,
+     "spread_patient_n": 10,
+     "target_token_chars": 5
+    }
+   },
+   "candidate": null,
+   "disposition": "pending",
+   "decided_by": null,
+   "decision_ref": null,
+   "open_decision": "D1"
+  },
+  {
+   "scope": "row",
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 10,
+   "model": "qwen3-4b",
+   "change": "model_removed",
+   "fields": [
+    "anchor_fallback",
+    "flipped",
+    "language_penalty",
+    "prob_clinical",
+    "prob_patient",
+    "spread_clinical",
+    "spread_patient",
+    "target_token",
+    "top_clinical",
+    "top_patient"
+   ],
+   "reference": {
+    "measurement_sha256": "b24aa0895e7d855072b85a8a3e3b6cb2747e23a4e685c652ad1c5adea0dcb7ee",
+    "values": {
+     "prob_clinical": 0.0725,
+     "prob_patient": 0.0034,
+     "language_penalty": -0.0691,
+     "flipped": true,
+     "anchor_fallback": false,
+     "screening": null,
+     "clinical_mass": null,
+     "circuit_diff_present": false,
+     "top_clinical_p": 0.0772,
+     "top_patient_p": 0.1656,
+     "spread_clinical_n": 10,
+     "spread_patient_n": 9,
+     "target_token_chars": 8
+    }
+   },
+   "candidate": null,
+   "disposition": "pending",
+   "decided_by": null,
+   "decision_ref": null,
+   "open_decision": "D1"
+  },
+  {
+   "scope": "row",
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 11,
+   "model": "qwen3-4b",
+   "change": "model_removed",
+   "fields": [
+    "anchor_fallback",
+    "flipped",
+    "language_penalty",
+    "prob_clinical",
+    "prob_patient",
+    "spread_clinical",
+    "spread_patient",
+    "target_token",
+    "top_clinical",
+    "top_patient"
+   ],
+   "reference": {
+    "measurement_sha256": "dcff80bd8b7e92f3c1391b9f7ed7aa142b1b9034da65242306681acf0c1316be",
+    "values": {
+     "prob_clinical": 0.409,
+     "prob_patient": 0.2271,
+     "language_penalty": -0.1819,
+     "flipped": false,
+     "anchor_fallback": false,
+     "screening": null,
+     "clinical_mass": null,
+     "circuit_diff_present": false,
+     "top_clinical_p": 0.5252,
+     "top_patient_p": 0.3744,
+     "spread_clinical_n": 10,
+     "spread_patient_n": 10,
+     "target_token_chars": 3
+    }
+   },
+   "candidate": null,
+   "disposition": "pending",
+   "decided_by": null,
+   "decision_ref": null,
+   "open_decision": "D1"
+  },
+  {
+   "scope": "row",
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 12,
+   "model": "qwen3-4b",
+   "change": "model_removed",
+   "fields": [
+    "anchor_fallback",
+    "flipped",
+    "language_penalty",
+    "prob_clinical",
+    "prob_patient",
+    "spread_clinical",
+    "spread_patient",
+    "target_token",
+    "top_clinical",
+    "top_patient"
+   ],
+   "reference": {
+    "measurement_sha256": "ecb87bfc3ef9696198c504201de6a5c98bac72c5faec392832a35133a9a7739d",
+    "values": {
+     "prob_clinical": 0.0251,
+     "prob_patient": 0.0959,
+     "language_penalty": 0.0708,
+     "flipped": true,
+     "anchor_fallback": false,
+     "screening": null,
+     "clinical_mass": null,
+     "circuit_diff_present": false,
+     "top_clinical_p": 0.2384,
+     "top_patient_p": 0.1581,
+     "spread_clinical_n": 10,
+     "spread_patient_n": 10,
+     "target_token_chars": 4
+    }
+   },
+   "candidate": null,
+   "disposition": "pending",
+   "decided_by": null,
+   "decision_ref": null,
+   "open_decision": "D1"
+  },
+  {
+   "scope": "row",
+   "batch": "pairs_20260706T201750Z",
+   "batch_index": 13,
+   "model": "qwen3-4b",
+   "change": "model_removed",
+   "fields": [
+    "anchor_fallback",
+    "flipped",
+    "language_penalty",
+    "prob_clinical",
+    "prob_patient",
+    "spread_clinical",
+    "spread_patient",
+    "target_token",
+    "top_clinical",
+    "top_patient"
+   ],
+   "reference": {
+    "measurement_sha256": "9f32e1f1cecdfd06d7c3c7028c3e558477b858b2f57178ecffb3f40bf7c63997",
+    "values": {
+     "prob_clinical": 0.6523,
+     "prob_patient": 0.0084,
+     "language_penalty": -0.6439,
+     "flipped": true,
+     "anchor_fallback": false,
+     "screening": null,
+     "clinical_mass": null,
+     "circuit_diff_present": false,
+     "top_clinical_p": 0.6523,
+     "top_patient_p": 0.5206,
+     "spread_clinical_n": 10,
+     "spread_patient_n": 10,
+     "target_token_chars": 3
+    }
+   },
+   "candidate": null,
+   "disposition": "pending",
+   "decided_by": null,
+   "decision_ref": null,
+   "open_decision": "D1"
+  }
+ ]
+}

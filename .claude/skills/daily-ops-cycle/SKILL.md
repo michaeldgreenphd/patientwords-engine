@@ -21,7 +21,11 @@ the same place as the scheduled Routine.
    Fires go through the fire-trigger-safe skill (with `--keep-dashboard`: this
    session is the dashboard's writer), harvests through harvest-resolve, the
    seal check through holdout-seal-check, and section 5 through
-   publish-site-data. The dashboard commits (section 2a's spend fold, then
+   publish-site-data. If that skill's exporter refuses over published
+   measurements (`refusing: this export changes N published measurement(s) or
+   capability label(s)`), the cycle goes on as section 5 says: the `REFUSED`
+   lines go to `decisions_pending`, the gallery payload is left as published,
+   and the catalogue-only chain still runs. The dashboard commits (section 2a's spend fold, then
    section 6) succeed only in the Routine's environment (`PW_ROUTINE=1`);
    anywhere else the guard hook refuses them, which means this session is not
    the Routine — stop and say so.

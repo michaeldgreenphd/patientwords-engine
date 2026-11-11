@@ -38,6 +38,12 @@ parser.add_argument("--publish", default="",
                     help="frontend repo root: also write a trimmed data/urgency_shift.json "
                          "for the site (summary + join-keyed rows + vocabulary status + the count "
                          "of rows joining no scenario in the --frontend payload, which must be readable)")
+parser.add_argument("--fallback-keys-out", default="",
+                    help="also write the keys of the rows the closing note counts (rows taken from the site "
+                         "payload at keys whose engine part the membership did not read) as a JSON list of "
+                         "[model, batch, batch_index]. It changes no other output. "
+                         "data/results_policy/legacy_payload_rows.v1.json declares these rows and "
+                         "tests/test_legacy_payload_rows.py compares the two")
 args = parser.parse_args()
 # unjoinable_rows is counted against the --frontend payload and written into the --publish root; with no
 # explicit --frontend, read the payload of the site being published, so the recorded count describes the
@@ -244,6 +250,7 @@ if payload is not None:
     _outside = gate.policy.excluded_models(gate.membership)
     _excluded_classes = gate.rule["exclude_stimulus_classes"]
     _payload_rows_of_skipped_parts = {}
+    _payload_fallback_keys = []  # [model, batch, batch_index] of each row counted above, in payload order
     for s in payload.get("scenarios", []):
         _batch = s.get("batch")
         if isinstance(_batch, str) and gate.policy.stimulus_class(_batch.partition("__")[0]) in _excluded_classes:
@@ -258,6 +265,7 @@ if payload is not None:
                 continue
             if (mid, _batch, s.get("batch_index")) in _skipped_rows and (mid, _batch, s.get("batch_index")) not in seen:
                 _payload_rows_of_skipped_parts[mid] = _payload_rows_of_skipped_parts.get(mid, 0) + 1
+                _payload_fallback_keys.append([mid, _batch, s.get("batch_index")])
             if (mid, s.get("batch"), s.get("batch_index")) in seen:
                 continue
             add(mid, s.get("batch"), s.get("batch_index"),
@@ -537,3 +545,8 @@ if payload is not None and _payload_rows_of_skipped_parts:
     print("note: rows taken from the site payload at keys whose engine part this membership did not read "
           "(kept, as before 2026-11-10; see docs/open_results_migration_20261110.md): "
           + ", ".join(f"{m} {n}" for m, n in sorted(_payload_rows_of_skipped_parts.items())))
+if args.fallback_keys_out:
+    # An empty list is written when the payload is absent or holds no such row, so a reader can tell "none"
+    # from "not asked".
+    Path(args.fallback_keys_out).write_text(
+        json.dumps(_payload_fallback_keys if payload is not None else []) + "\n", encoding="utf-8")

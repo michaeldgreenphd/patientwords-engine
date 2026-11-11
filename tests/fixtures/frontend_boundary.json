@@ -1,8 +1,12 @@
 {
-  "schema": "patientwords.frontend-boundary-fixture/1",
+  "schema": "patientwords.frontend-boundary-fixture/2",
   "disclosure": "Synthetic software fixture — not a research result. No model or hosted service was called.",
-  "fixture_rationale": "Expected values are specified here independently of the exporter. Three different targets bind identity, measured zero is distinct from missing, and the same first target reverses direction across models. Hosted is a synthetic input discriminator exercising the existing exporter, not a claim of hosted execution.",
-  "stamp": "20000101T000000Z",
+  "summary_page_disclosure": "Local boundary check — the sentences on this page that print the scenario summary read a synthetic software fixture, not a research result. The rest of the page is the site's own content.",
+  "fixture_rationale": "Expected values are specified here independently of the exporter. Three different targets bind identity, measured zero is distinct from missing, and the same first target reverses direction across models. Hosted is a synthetic input discriminator exercising the existing exporter, not a claim of hosted execution. Since 2026-11-10 a second batch repeats the first batch's first clinical prompt with a different patient prompt and a different measurement, so the summary's phrase count differs from its row count and its phrase-level mean differs from its row mean (expected.summary.derivation). Counting every row as a phrase, keying phrases on the patient prompt, deduplicating within a batch only, and keeping only the first or the last occurrence of a phrase each give a different count or mean from the expected one. Keying phrases on the clinical term or the target token gives the same numbers on this fixture and is not distinguished.",
+  "stamps": [
+    "20000101T000000Z",
+    "20000102T000000Z"
+  ],
   "models": [
     "gemma-2-2b",
     "qwen3-4b"
@@ -64,6 +68,34 @@
         "fixture negative",
         "fixture zero",
         "fixture missing"
+      ]
+    },
+    "data/simulated/pairs_20000102T000000Z.json": [
+      {
+        "top_prompt": "Synthetic formal alpha leads to",
+        "bottom_prompt": "Synthetic plain alpha leads to",
+        "target_clinical_token": " alpha",
+        "generation": {
+          "rationale": "Synthetic software fixture — not a research result.",
+          "patient_term": "alpha plain",
+          "clinical_term": "alpha formal",
+          "topic": "fixture repeat",
+          "topics": [
+            "fixture repeat"
+          ]
+        }
+      }
+    ],
+    "data/simulated/pairs_20000102T000000Z.report.json": {
+      "model": "synthetic-software-fixture",
+      "run_timestamp": "2000-01-02T00:00:00Z",
+      "cost_usd": 0,
+      "max_spend_usd": 0,
+      "accepted": 1,
+      "rejected": 0,
+      "rejection_reasons": [],
+      "topics": [
+        "fixture repeat"
       ]
     },
     "ops/dashboard.json": {
@@ -190,6 +222,57 @@
         }
       ]
     },
+    "trace_out/pairs_20000102T000000Z/batch_summary.part_01.json": {
+      "backend": "hosted",
+      "graph_model": "gemma-2-2b",
+      "source_set": "gemmascope-transcoder-16k",
+      "mode": "2panel",
+      "results": [
+        {
+          "index": 1,
+          "prompts": {
+            "clinical": "Synthetic formal alpha leads to",
+            "patient": "Synthetic plain alpha leads to"
+          },
+          "target_token": " alpha",
+          "probabilities": {
+            "clinical": 0.3,
+            "patient": 0.2068
+          },
+          "language_penalty": -0.0932,
+          "predictive_spread": {
+            "clinical": [
+              [
+                " alpha",
+                0.3
+              ],
+              [
+                " beta",
+                0.1
+              ]
+            ],
+            "patient": [
+              [
+                " alpha",
+                0.2068
+              ],
+              [
+                " beta",
+                0.1
+              ]
+            ]
+          },
+          "screening": null,
+          "clinical_mass": {
+            "clinical": 0.6,
+            "patient": 0.2
+          },
+          "inference": {
+            "environment": "synthetic-software-fixture"
+          }
+        }
+      ]
+    },
     "trace_out/pairs_20000101T000000Z__qwen3-4b/batch_summary.part_01.json": {
       "backend": "hosted",
       "graph_model": "qwen3-4b",
@@ -294,29 +377,45 @@
       [
         "pairs_20000101T000000Z",
         3
+      ],
+      [
+        "pairs_20000102T000000Z",
+        1
       ]
     ],
     "summary": {
-      "accepted": 3,
-      "measured": 2,
+      "accepted": 4,
+      "measured": 3,
       "screened_out": 1,
       "flipped_base": 1,
-      "n_scored_rows": 2,
+      "n_scored_rows": 3,
       "n_phrases": 2,
-      "mean_rows_raw": -0.0734,
-      "mean_phrase_deduped": -0.0734,
-      "ci95": null
+      "mean_rows_raw": -0.08,
+      "mean_phrase_deduped": -0.06,
+      "ci95": null,
+      "derivation": [
+        "Calculated by hand from the base-model (gemma-2-2b) language_penalty values typed in engine_files. No producer or validator code produced these numbers.",
+        "Scored rows are the rows with a numeric penalty: (pairs_20000101T000000Z, 1) = -0.1468; (pairs_20000101T000000Z, 2) = 0; (pairs_20000102T000000Z, 1) = -0.0932. (pairs_20000101T000000Z, 3) is screened out with a null penalty and is not scored.",
+        "n_scored_rows = 3.",
+        "mean_rows_raw = (-0.1468 + 0 + -0.0932) / 3 = -0.2400 / 3 = -0.0800.",
+        "Phrases are distinct clinical prompts. (pairs_20000101T000000Z, 1) and (pairs_20000102T000000Z, 1) carry the same clinical prompt: phrase mean = (-0.1468 + -0.0932) / 2 = -0.2400 / 2 = -0.1200. (pairs_20000101T000000Z, 2) is the only row of its phrase: phrase mean = 0.",
+        "n_phrases = 2.",
+        "mean_phrase_deduped = (-0.1200 + 0) / 2 = -0.0600.",
+        "ci95 = null: the producer writes no interval for fewer than 3 phrases.",
+        "The pages print the phrase-level mean as a whole number of percentage points: |-0.0600| x 100 = 6. The row mean would print 8, and a row count would print 3 where the phrase count prints 2."
+      ]
     },
     "models": {
       "gemma-2-2b": {
         "label": "Gemma 2 2B",
-        "n_traced": 3,
+        "n_traced": 4,
         "source_set": "gemmascope-transcoder-16k",
         "features": true,
         "provenance_text": "gemma-2-2b · gemmascope-transcoder-16k",
         "default_visible_indices": [
           1,
-          2
+          2,
+          4
         ],
         "rows": {
           "1": {
@@ -360,9 +459,27 @@
             "top_text": "screened out · unmeasurable",
             "gap_percentage_points": null,
             "clinical_mass": null
+          },
+          "4": {
+            "target": "alpha",
+            "prob_clinical": 0.3,
+            "prob_patient": 0.2068,
+            "language_penalty": -0.0932,
+            "shift_text": "0.30 → 0.21",
+            "top_text": "alpha (unchanged)",
+            "gap_percentage_points": -9.32,
+            "clinical_mass": {
+              "clinical": 0.6,
+              "patient": 0.2
+            },
+            "slope_title": "prob(alpha): clinical 0.30 → patient 0.21",
+            "mass_text": [
+              "60%",
+              "20%"
+            ]
           }
         },
-        "selector_text": "Gemma 2 2B · 3"
+        "selector_text": "Gemma 2 2B · 4"
       },
       "qwen3-4b": {
         "label": "Qwen3 4B",
@@ -373,7 +490,8 @@
         "default_visible_indices": [
           1,
           2,
-          3
+          3,
+          4
         ],
         "rows": {
           "1": {
@@ -402,6 +520,11 @@
             "has_model": false,
             "shift_text": "— → —",
             "top_text": "not traced on qwen3-4b"
+          },
+          "4": {
+            "has_model": false,
+            "shift_text": "— → —",
+            "top_text": "not traced on qwen3-4b"
           }
         },
         "selector_text": "Qwen3 4B · 2 (structure only)"
@@ -409,7 +532,8 @@
     },
     "filters": {
       "gemma_clinical_stronger": [
-        1
+        1,
+        4
       ],
       "gemma_patient_stronger": [],
       "gemma_screened": [
@@ -456,8 +580,42 @@
         "patient_term": "epsilon everyday",
         "clinical_term": "epsilon formal",
         "topic": "fixture missing"
+      },
+      "4": {
+        "clinical_prompt": "Synthetic formal alpha leads to",
+        "patient_prompt": "Synthetic plain alpha leads to",
+        "intended_target": "alpha",
+        "patient_term": "alpha plain",
+        "clinical_term": "alpha formal",
+        "topic": "fixture repeat"
       }
-    }
+    },
+    "repeated_phrase": {
+      "clinical_prompt": "Synthetic formal alpha leads to",
+      "rows": [
+        [
+          "pairs_20000101T000000Z",
+          1
+        ],
+        [
+          "pairs_20000102T000000Z",
+          1
+        ]
+      ]
+    },
+    "summary_sentences": [
+      {
+        "page": "/",
+        "selector": "#hero-caveat",
+        "text": "Across the 2 distinct scored phrases in the published file, the mean difference (everyday − medical) on gemma-2-2b is −6.0 percentage points. The population is the pairs published in this site’s data file (the file labels it public payload); the registered per-model estimates use another population and are on the Technical page."
+      },
+      {
+        "page": "/wording-differences/",
+        "selector": "#word-caveat",
+        "text": "One of the largest cases. Across the 2 distinct scored phrases the average signed move is −6 pp."
+      }
+    ],
+    "summary_sentences_note": "Typed from the sentence templates in the site's index.html and wording-differences/index.html and the hand-calculated summary above. Since 2026-11-11 the home page prints the summary once, in #hero-caveat, with one decimal: -0.0600 x 100 = -6.0; the fixture's summary has no interval (fewer than 3 phrases), so the sentence has no interval clause, and the pre-correction form's interval ends print as -14.68 -> -14.7 and 0.0. The sentences stop before the paraphrase comparison because the fixture's provenance.json carries no paraphrase floor. The wording-differences sentence prints whole percentage points, as before."
   },
   "site_files": {
     "data/urgency_shift.json": null,
@@ -485,6 +643,7 @@
   },
   "site_substitutes_note": "These local-only files replace every additional JSON fetch made by the selected page. Urgency is JSON null: unavailable rather than invented zero findings. Empty depth/taxonomy/provenance data and zero attempted retraces prevent unrelated study results entering the fixture view. No external services are stubbed within the exporter/HTTP/rendering boundary.",
   "pending_case": {
+    "stamp": "20000101T000000Z",
     "pair": {
       "top_prompt": "Synthetic formal eta leads to",
       "bottom_prompt": "Synthetic everyday eta leads to",
@@ -497,6 +656,40 @@
       }
     },
     "accepted": 4,
-    "display": "1 of 4 accepted scenarios are still tracing"
+    "expected": {
+      "accepted_public": 5,
+      "measured": 3,
+      "scenarios": 4
+    },
+    "display": "1 of 5 accepted scenarios are still tracing",
+    "note": "accepted is the first batch's report count after the untraced pair is added (3 + 1). accepted_public is both batches' reports (4 + 1). measured and scenarios do not change."
+  },
+  "summary_defects": {
+    "wrong_values": {
+      "n_phrases": 5,
+      "mean_phrase_deduped": 0.25
+    },
+    "wrong_values_note": "Neither value matches the rows and neither is the pre-correction form (n_phrases 3, mean_phrase_deduped -0.08), so the validator's dated transition does not apply.",
+    "pre_correction_form": {
+      "n_phrases": 3,
+      "mean_phrase_deduped": -0.08,
+      "ci95": [
+        -0.1468,
+        0.0
+      ]
+    },
+    "pre_correction_form_note": "The form scripts/payload_summary.py wrote before 2026-11-10: every row its own phrase, so n_phrases is the row count (3) and mean_phrase_deduped is the row mean (-0.08). That producer resampled the three rows for ci95. With three values a resample is all-minimum with probability 1/27 and all-maximum with probability 1/27; each is above the 2.5 % a percentile end cuts off, so the ends are expected to be the smallest and the largest row value, -0.1468 and 0. The values were typed from that reasoning. Afterwards the pre-correction producer (git c46db48f^:scripts/payload_summary.py) was run once on this fixture in a scratch copy and wrote the same three values. The validator notes this form through its transition date and rejects it afterwards; the fixture's expected values reject it on every date.",
+    "pre_correction_sentences": [
+      {
+        "page": "/",
+        "selector": "#hero-caveat",
+        "text": "Across the 3 distinct scored phrases in the published file, the mean difference (everyday − medical) on gemma-2-2b is −8.0 percentage points (95% bootstrap interval over phrases: −14.7 to 0.0). The population is the pairs published in this site’s data file (the file labels it public payload); the registered per-model estimates use another population and are on the Technical page."
+      },
+      {
+        "page": "/wording-differences/",
+        "selector": "#word-caveat",
+        "text": "One of the largest cases. Across the 3 distinct scored phrases the average signed move is −8 pp."
+      }
+    ]
   }
 }

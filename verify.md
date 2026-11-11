@@ -112,7 +112,7 @@ for code changes and add the checks below according to the affected behavior.
 | Instructions / documentation only | Quick path; exact sections parsed by tests must remain compatible | Verify links, command help/source and cross-repo shared rules; no model job |
 | Graph client / targets / batch logic | `python -m pytest -q -ra tests/test_graph_client.py tests/test_targets_and_batch.py tests/test_target_exact_read.py tests/test_target_keep_node_metrics.py` | Full suite + lint; hosted behavior still needs approved CI evidence |
 | Generation / phrase handling | `python -m pytest -q -ra tests/test_scenario_gen.py tests/test_patient_lexicon.py tests/test_translate_and_keywords.py` | Full suite + lint; preserve stimuli and append-only archives |
-| Exported schemas, collectors or model metadata | `python -m pytest -q -ra tests/test_export_frontend_defaults.py tests/test_validate_frontend_contract.py tests/test_simulated_schema.py tests/test_embed_scenario_joins.py tests/test_payload_summary.py tests/test_publication_hold.py tests/test_results_policy.py tests/test_results_catalogue.py tests/test_render_prune.py` | Full suite + paired contract/claim/seal gates; temporary export and consumer rendering when output changes |
+| Exported schemas, collectors or model metadata | `python -m pytest -q -ra tests/test_export_frontend_defaults.py tests/test_validate_frontend_contract.py tests/test_contract_summary_semantics.py tests/test_legacy_payload_rows.py tests/test_restamp_payload_summary.py tests/test_payload_dispositions.py tests/test_results_release.py tests/test_simulated_schema.py tests/test_embed_scenario_joins.py tests/test_payload_summary.py tests/test_publication_hold.py tests/test_results_policy.py tests/test_results_catalogue.py tests/test_render_prune.py` | Full suite + paired contract/claim/seal gates; temporary export and consumer rendering when output changes |
 | Frontend behavior or the engine checks used by site CI | `python -m pytest -q -ra tests/test_check_pages.py tests/test_check_pages_browser.py tests/test_validate_frontend_contract.py` | Companion's `verify.md`, paired structural gate, actual browser checks and relevant manual interaction |
 | Workflow/configuration/dependencies | `python -m pytest -q -ra tests/test_trigger_docs.py tests/test_workflow_created_guard.py tests/test_model_pins.py tests/test_agents_secrets.py` plus affected lane tests | Full suite + lint; read push-path parameter handling; local tests do not dispatch or reproduce hosted jobs |
 | Pilot scripts / recorded pilot artifacts | `python -m pytest -q -ra tests/test_pilot_recorded_runs.py tests/test_pilot_selftest.py` plus affected pilot tests | Recompute/re-finalize every recorded run under the compatible interpreter, compare summaries, and seal-check as `docs/pilot_runs.md` requires |
@@ -178,7 +178,13 @@ render links; external trace availability is separate from local frontend loadin
 2. `scripts/export_frontend_simulated.py` merges those summaries into the frontend's
    `data/simulated_scenarios.json`, copies capped HTML renders and prunes unreferenced
    matching renders. The base `gemma-2-2b` fields mirror `scenario.models[base]` for
-   compatibility. `models_meta` controls available model choices.
+   compatibility. `models_meta` controls available model choices. Before its first
+   write the exporter compares the export with the payload in the site checkout's HEAD
+   commit and refuses a changed or removed published measurement, or a changed
+   capability label, that has no accepting owner disposition in
+   `data/results_policy/payload_dispositions.v1.json` (`scripts/payload_dispositions.py`).
+   `scripts/results_snapshot.py create` and `check-release` apply the same rule to
+   committed site data. New rows, batches and models are not differences.
 3. Preserve the complete ordered stamp list, steering disclosure, source model/source
    set, report provenance, holdout counts, release hashes and archive link. The exporter
    withholds sealed rows and reads only parts inside the default analysis membership
@@ -256,6 +262,17 @@ python scripts/check_pages.py --site "$PW_SITE_ROOT" --port 8901
   chain requires `--strict` once urgency regeneration has written `unjoinable_rows`;
   the temporary regeneration below uses that stronger gate. `--strict` makes every
   warning fail; do not remove it from a publication check to hide drift.
+- The validator also recomputes `summary.penalty` in `data/simulated_scenarios.json`
+  from the payload's own rows (`check_summary_penalty`; the rule is in its docstring)
+  and fails on any disagreement. One temporary exception exists. The site's payload
+  was exported before the 2026-11-10 phrase-key correction in
+  `scripts/payload_summary.py`, so its summary counts every row as its own phrase.
+  That exact form is printed as a `note:` on every run and is accepted through
+  2026-12-15 UTC (`LEGACY_SUMMARY_ACCEPTED_THROUGH`). From 2026-12-16 it is an error
+  in report mode and under `--strict`. A note is never promoted by `--strict`, so
+  both modes pass until then. The remedy is to re-export with the corrected producer
+  and publish the result; then delete the constant, the legacy branch and their
+  tests. Do not move the date to keep a check green.
 - `claim_check.py` compares public prose against `data/claims_manifest.json` and
   data expressions. Exit 1 means failed claims. **Warnings can exit 0**: a missing
   snippet still needs investigation/manifest coordination, not a clean report.
@@ -313,6 +330,12 @@ Run from the engine root after the paired baseline. It needs a full frontend and
 all source summaries/renders for the existing payload's batches, plus space for a
 full site copy. A refusal caused by
 missing data is a gap to report, not a reason to prune the stamp list.
+The copy has no `.git`, so the exporter prints `N difference(s) from
+data/simulated_scenarios.json on disk ... not enforced` and goes on. Keep that list with
+the evidence: each line is a published measurement or capability label the current
+producers would change, and the same export into the site checkout is refused. On
+2026-11-11 the list is the 13 `qwen3-4b` rows of
+`docs/corrections/payload_summary_dedupe_20261110.md`, section 8.
 
 ```bash
 (
