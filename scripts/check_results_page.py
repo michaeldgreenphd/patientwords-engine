@@ -16,6 +16,12 @@ What runs, in order:
    390 x 844. A request to any other origin is blocked and counted; the count must be zero.
 4. The checks in ``CHECKS`` run. A failed check does not stop the later ones.
 
+What the checks are about: what a reader is told and can do. Labels, units and the order of a subtraction; a
+zero against a missing value; what is stated once for all runs and what a row adds; the order of the page
+(search, runs, downloads, then Methods & source); selection, filters and addresses; the keyboard path and its
+focus outline; sideways scrolling at 390 px, also with the text at twice its size. No check requires a number
+of rows inside a window, and the floor for visible text is 12 px.
+
 What a check may print or record: check names, run ids, file names, hashes and counts. The page shows published
 prompt text in an open run; this script never prints it and never puts it in the receipt. A screenshot taken
 with ``--shots`` is a picture of the page, so it shows what a reader sees, published prompt text included. The
@@ -64,7 +70,7 @@ EVIDENCE = "browser check of a static page against the catalogue files it reads"
 EXIT_PASS, EXIT_FAILED, EXIT_SETUP = 0, 1, 2
 DESKTOP, PHONE = (1280, 720), (390, 844)
 WAIT_MS = 8_000
-MIN_TEXT_PX = 10
+MIN_TEXT_PX = 12
 
 # What the page prints and how it pages. The checks compare rendered text, so these are reader-visible strings;
 # tests/test_check_results_page.py fails offline when one of them is no longer in the page source.
@@ -74,6 +80,23 @@ ORDER_DEFAULT, ORDER_DATE, ORDER_NEVER = "run id, A to Z", "batch date, newest f
 SEALED_IN_RUN = "withheld by the Tier B seal (counted, never shown)"
 METHODS_SOURCE = "Methods & source"
 RUN_LABELS = ("simulated stimuli", "evidence:", "clinical review:", "not a claim")
+# The wordings, as the page names them, and the order of the difference it prints. The files call the two
+# wordings clinical and patient; ``language_penalty`` is the patient value minus the clinical one.
+ROW_HEADS = ("index", "medical wording", "everyday wording", "target token", "target-token probability",
+             "target-token probability", "difference", "notes")
+PROBABILITY_SIDES = ("medical wording", "everyday wording")
+DIFFERENCE_ORDER = "everyday − medical, in probability"
+DIFFERENCE_NOTE = ("minus the medical wording", "0.01 is one percentage point")
+NOT_MEASURED = "— not measured"
+SHARED_STATUS = ("Simulated stimuli", "not statements from patients", "Clinical review of the stimuli is pending for")
+# The primary navigation, and what its disclosure lists.
+NAV_PRIMARY = (("Start here", "../start-here/"), ("Scenarios", "../simulated-scenarios/"), ("Results", "./"),
+               ("Methods", "../methods.html"))
+NAV_MORE = ("Wording differences", "Dialect differences", "Translation", "LLM responses", "Multi-turn",
+            "Phrase dataset", "Technical", "Clinical brief", "GitHub")
+# The colour the page keeps for a file that failed to load. Nothing may show it while nothing has failed.
+ALERT_COLOUR = "rgb(180, 72, 61)"
+WORDING_COLOURS = {"medical": "rgb(21, 128, 61)", "everyday": "rgb(17, 24, 39)"}
 JOIN_AND_FIELDS = ("join on stem and index", "own_clinical_prompt", "language_penalty", "completion_not_recorded",
                    "recorded_match")
 ABOUT_STATEMENTS = ("not a claim", "first encoded target token", "not statements from patients")
@@ -100,14 +123,17 @@ PAGE_SEARCH_RULE = ("return (str(r.run_dir)+' '+str(r.stem)+' '+str(r.model)+' '
 # The check names, in the order they run. The run stops with an error if what was recorded differs from this.
 CHECKS: tuple[str, ...] = (
     "search_input_is_inside_the_first_viewport_at_1280x720",
-    "first_result_rows_are_inside_the_first_viewport_at_1280x720",
+    "search_runs_downloads_and_methods_and_source_are_in_that_order",
     "run_table_has_the_five_columns",
     "count_reads_all_runs_of_the_index",
     "ordering_is_stated_and_never_by_effect",
     "default_order_is_the_index_order",
     "first_page_of_runs_is_rendered",
     "no_filter_is_set_by_default",
-    "download_links_are_inside_the_first_viewport_at_1280x720",
+    "download_links_stand_before_the_run_table_and_are_shown_on_load",
+    "shared_status_is_stated_once_and_a_row_adds_only_its_exception",
+    "navigation_marks_this_page_and_its_disclosure_opens_from_the_keyboard",
+    "main_controls_are_reached_by_tab_and_show_a_focus_outline",
     "search_narrows_the_list_and_the_count_updates",
     "reset_restores_the_full_list_and_clears_the_search",
     "more_filters_starts_closed",
@@ -124,6 +150,8 @@ CHECKS: tuple[str, ...] = (
     "sealed_row_count_is_shown_in_the_run_row",
     "rendered_rows_are_exactly_the_public_rows_of_the_rows_file",
     "open_run_carries_its_evidence_review_and_not_a_claim_labels",
+    "wordings_are_named_and_every_difference_is_everyday_minus_medical_with_its_sign",
+    "difference_and_status_text_is_neutral_and_no_alert_colour_is_shown",
     "open_run_has_a_closed_methods_and_source",
     "run_methods_and_source_opens_from_the_keyboard",
     "run_methods_and_source_shows_the_full_run_id",
@@ -144,6 +172,7 @@ CHECKS: tuple[str, ...] = (
     "page_does_not_say_answer_accuracy",
     "page_does_not_say_clinical_risk",
     "page_does_not_say_patient_understanding",
+    "smallest_visible_text_at_1280_is_at_least_12_px",
     "address_parameter_state_is_honoured",
     "address_parameters_evidence_rows_and_membership_are_honoured",
     "address_parameters_q_visibility_and_stimulus_are_honoured",
@@ -158,7 +187,8 @@ CHECKS: tuple[str, ...] = (
     "no_horizontal_scroll_at_390_with_about_and_more_filters_open",
     "no_horizontal_scroll_at_390_with_a_run_and_its_source_open",
     "no_horizontal_scroll_at_390_with_page_source_and_field_definitions_open",
-    "smallest_visible_text_at_390_is_at_least_10_px",
+    "smallest_visible_text_at_390_is_at_least_12_px",
+    "no_horizontal_scroll_at_390_with_text_at_200_percent",
     "no_console_error_page_error_or_failed_request",
     "no_request_left_the_test_server",
 )
@@ -287,6 +317,50 @@ def public_row_indices(rows_doc: Mapping[str, Any]) -> list[str]:
         for row in part.get("rows") or []:
             out.append(DASH if row.get("index") is None else str(row["index"]))
     return sorted(out)
+
+
+def fmt_number(value: float) -> str:
+    """Four decimals of the magnitude, as the page's ``fmtNum`` prints a stored value. A magnitude that would
+    print as 0.0000 without being zero is printed with an exponent instead."""
+    magnitude = abs(value)
+    rounded = math.floor(magnitude * 1e4 + 0.5) / 1e4
+    if rounded == 0 and value != 0:
+        mantissa, exponent = f"{magnitude:.2e}".split("e")
+        return f"{mantissa}e{int(exponent)}"
+    return f"{rounded:.4f}"
+
+
+def difference_text(row: Mapping[str, Any]) -> str:
+    """What the Difference cell of one row must read: the stored ``language_penalty`` with its sign and the
+    sign in words, or the not-measured statement when the row stores none. The page does not recompute the
+    value and does not change its sign; zero and missing never share a form."""
+    value = row.get("language_penalty")
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+        return NOT_MEASURED
+    sign = "−" if value < 0 else "+" if value > 0 else ""
+    return f"{sign}{fmt_number(value)} {'negative' if value < 0 else 'positive' if value > 0 else 'zero'}"
+
+
+def sign_agrees(row: Mapping[str, Any]) -> bool | None:
+    """Whether the stored difference has the sign of the everyday (patient) value minus the medical (clinical)
+    value. None when the row does not store all three numbers."""
+    values = [row.get(name) for name in ("language_penalty", "prob_patient", "prob_clinical")]
+    if not all(isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) for v in values):
+        return None
+    return abs(values[0] - (values[1] - values[2])) < 1e-9
+
+
+def shared_review(runs: Sequence[Mapping[str, Any]]) -> str:
+    """The clinical-review status most runs record; of two as frequent, the one the index lists first. The
+    page states it once above the list (``SHARED_REVIEW`` in the page)."""
+    counts: Counter[str] = Counter()
+    order: list[str] = []
+    for run in runs:
+        key = _text(run.get("clinical_review")) or "not recorded"
+        if key not in counts:
+            order.append(key)
+        counts[key] += 1
+    return max(order, key=lambda key: (counts[key], -order.index(key))) if order else ""
 
 
 # ------------------------------------------------------------------------------------------ expectations
@@ -597,10 +671,29 @@ LOAD_STATE = """() => {
     const query = document.getElementById('f-q'), links = document.querySelector('.sum-dl');
     const more = document.getElementById('more-filters'), restrictions = document.getElementById('restrictions');
     const rows = Array.from(document.querySelectorAll('#cat-body tr.cat-run'));
+    const before = (a, b) => !!a && !!b && !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    const shown = (node) => !!node && node.checkVisibility();
+    const shared = document.getElementById('cat-review');
     return {
         search: query ? [top(query), bottom(query)] : null,
-        rows: rows.slice(0, 3).map(bottom),
+        page_order: {
+            search_before_runs: before(query, rows[0]),
+            runs_before_downloads: before(rows[rows.length - 1], document.getElementById('downloads')),
+            downloads_before_methods_and_source: before(document.getElementById('downloads'),
+                                                       document.getElementById('methods-source')),
+            shared_status_before_search: before(shared, query),
+        },
+        tops: {search: query ? Math.round(top(query)) : null, first_run: rows[0] ? Math.round(top(rows[0])) : null},
+        first_run_shown: shown(rows[0]),
         downloads: links ? [top(links), bottom(links)] : null,
+        downloads_before_table: before(links, document.getElementById('cat-body')),
+        downloads_shown: shown(links),
+        shared: shared && shown(shared) ? shared.innerText.trim() : null,
+        context: rows.map((row) => {
+            const cell = row.querySelector('td.c-ctx');
+            const own = cell.querySelector('[data-exception="review"]');
+            return [row.getAttribute('data-run'), own ? own.innerText.trim() : null, row.innerText];
+        }),
         heads: Array.from(document.querySelectorAll('.cat-table > thead th')).map(
             (th) => th.innerText.split('\\n')[0].trim().toLowerCase()),
         count: text('cat-count'),
@@ -617,13 +710,154 @@ LOAD_STATE = """() => {
 RUN_IDS = "() => Array.from(document.querySelectorAll('#cat-body tr.cat-run')).map((row) => row.getAttribute('data-run'))"
 
 SMALLEST_TEXT = """() => {
-    let smallest = 99;
-    for (const node of document.querySelectorAll('main *')) {
-        if (!node.offsetParent) continue;
-        const own = Array.from(node.childNodes).some((child) => child.nodeType === 3 && child.textContent.trim());
-        if (own) smallest = Math.min(smallest, parseFloat(getComputedStyle(node).fontSize));
+    let smallest = 999, where = '';
+    const seen = (px, label) => { if (px < smallest) { smallest = px; where = label; } };
+    for (const node of document.querySelectorAll('body *')) {
+        if (node.closest('svg') || !node.checkVisibility()) continue;        // a closed fold's content is not shown
+        const style = getComputedStyle(node), box = node.getBoundingClientRect();
+        if (style.visibility === 'hidden' || box.right <= 0) continue;        // parked off screen for a screen reader
+        const name = node.tagName.toLowerCase() + (typeof node.className === 'string' && node.className
+            ? '.' + node.className.split(' ')[0] : '');
+        if (Array.from(node.childNodes).some((child) => child.nodeType === 3 && child.textContent.trim())) {
+            seen(parseFloat(style.fontSize), name);
+        }
+        // labels a stylesheet prints, such as the label above a value in the narrow layout
+        for (const pseudo of ['::before', '::after']) {
+            const part = getComputedStyle(node, pseudo);
+            if (part.content && part.content !== 'none' && part.content !== 'normal' && part.display !== 'none'
+                && /[A-Za-z0-9]/.test(part.content)) seen(parseFloat(part.fontSize), name + pseudo);
+        }
     }
-    return smallest;
+    return {smallest, where};
+}"""
+
+
+# Text only, twice the size: every element's computed font size is doubled in place and the window keeps its
+# width. This is what a reader's 200 % text setting asks of the layout.
+DOUBLE_TEXT = """() => {
+    const nodes = Array.from(document.body.querySelectorAll('*')).filter((node) => !(node instanceof SVGElement));
+    const sizes = nodes.map((node) => parseFloat(getComputedStyle(node).fontSize));
+    nodes.forEach((node, i) => node.style.setProperty('font-size', (sizes[i] * 2) + 'px', 'important'));
+    return nodes.length;
+}"""
+
+NAV_STATE = """() => {
+    const nav = document.querySelector('.masthead nav'), more = nav.querySelector('details.nav-more');
+    const list = more.querySelector('.nav-more-list'), box = list.getBoundingClientRect();
+    const first = document.body.firstElementChild;
+    return {
+        primary: Array.from(nav.children).filter((n) => n.tagName === 'A').map((a) => [a.textContent.trim(),
+            a.getAttribute('href'), a.getAttribute('aria-current')]),
+        open: more.open,
+        summary: more.querySelector('summary').textContent.trim(),
+        more: Array.from(list.querySelectorAll('a')).map((a) => [a.textContent.trim(), a.getAttribute('href'),
+            a.checkVisibility()]),
+        list_inside_window: !list.checkVisibility() || (box.left >= 0 && box.right <= window.innerWidth + 0.5),
+        focus_in_list: !!document.activeElement.closest('.nav-more-list'),
+        skip: [first.className, first.getAttribute('href')],
+    };
+}"""
+
+FOCUS = """() => {
+    const node = document.activeElement, style = getComputedStyle(node), box = node.getBoundingClientRect();
+    return {
+        tag: node.tagName, id: node.id || null, cls: typeof node.className === 'string' ? node.className : '',
+        text: (node.innerText || node.value || '').trim().split('\\n')[0].slice(0, 60),
+        parent: node.parentElement ? (node.parentElement.id || node.parentElement.className || '') : '',
+        in_nav: !!node.closest('.masthead nav'), download: node.hasAttribute('download'),
+        outline: style.outlineStyle, width: parseFloat(style.outlineWidth),
+        in_view: box.bottom > 0 && box.top < window.innerHeight && box.right > 0 && box.left < window.innerWidth,
+    };
+}"""
+# The controls a reader of the catalogue uses, in Tab order: name, and how the focused element is known.
+MAIN_CONTROLS: tuple[tuple[str, Callable[[Mapping[str, Any]], bool]], ...] = (
+    ("skip link", lambda stop: stop["cls"] == "skip"),
+    ("first navigation link", lambda stop: stop["in_nav"] and stop["tag"] == "A"),
+    ("navigation disclosure", lambda stop: stop["tag"] == "SUMMARY" and stop["parent"] == "nav-more"),
+    ("About this catalogue", lambda stop: stop["tag"] == "SUMMARY" and stop["parent"] == "about"),
+    ("search box", lambda stop: stop["id"] == "f-q"),
+    ("view of all runs", lambda stop: stop["id"] == "view-all"),
+    ("More filters", lambda stop: stop["id"] == "more-btn"),
+    ("Reset", lambda stop: stop["id"] == "f-reset"),
+    ("download link", lambda stop: stop["download"]),
+    ("first run", lambda stop: stop["tag"] == "BUTTON" and "cat-x" in stop["cls"].split()),
+)
+
+
+def tab_stops(page: Any, limit: int = 40) -> list[dict[str, Any]]:
+    """Press Tab up to ``limit`` times from the top of a fresh page and describe each element that takes focus."""
+    stops = []
+    for _ in range(limit):
+        page.keyboard.press("Tab")
+        stop = page.evaluate(FOCUS)
+        if stop["tag"] in ("BODY", "HTML"):
+            break
+        stops.append(stop)
+    return stops
+
+
+def assert_focus(stops: Sequence[Mapping[str, Any]],
+                 controls: Sequence[tuple[str, Callable[[Mapping[str, Any]], bool]]]) -> dict[str, Any]:
+    """Every named control is reached by Tab, in the order given, and shows a focus outline when it is: a solid
+    outline at least 2 CSS px wide, read from the focused element after a real key press, on an element that is
+    inside the window."""
+    position, reached = 0, {}
+    for name, known in controls:
+        index = next((i for i in range(position, len(stops)) if known(stops[i])), None)
+        assert index is not None, f"Tab does not reach the {name} (after {position} of {len(stops)} stops)"
+        stop = stops[index]
+        assert stop["outline"] == "solid" and stop["width"] >= 2, (
+            f"the {name} shows no focus outline: {stop['outline']} {stop['width']} px")
+        assert stop["in_view"], f"the {name} takes focus outside the window"
+        reached[name], position = index + 1, index + 1
+    unmarked = [stop["text"] or stop["tag"] for stop in stops if stop["outline"] != "solid" or stop["width"] < 2]
+    assert not unmarked, f"{len(unmarked)} Tab stop(s) show no focus outline; first: {unmarked[:2]}"
+    return {"tab_stops_read": len(stops), "reached_at_tab_press": reached}
+
+
+OPEN_RUN_ROWS = """() => {
+    const detail = document.querySelector('#cat-body tr.cat-detail');
+    const table = detail.querySelector('table.row-table');
+    return {
+        heads: Array.from(table.querySelectorAll(':scope > thead th')).map((th) => th.innerText.trim().split('\\n').map(
+            (line) => line.trim())),
+        rows: Array.from(table.querySelectorAll(':scope > tbody > tr')).map((tr) => {
+            const cells = Array.from(tr.children);
+            return {index: cells[0].innerText.trim(), medical: cells[4].innerText.trim(),
+                    everyday: cells[5].innerText.trim(), difference: cells[6].innerText.trim().replace(/\\s+/g, ' '),
+                    sign: cells[6].querySelector('[data-sign]') ? cells[6].querySelector('[data-sign]').dataset.sign : null,
+                    labels: cells.map((cell) => cell.getAttribute('data-l'))};
+        }),
+        note: detail.querySelector('.det-foot') ? detail.querySelector('.det-foot').innerText : '',
+    };
+}"""
+
+COLOURS = """(alert) => {
+    const shown = (node) => node.checkVisibility();
+    const main = document.querySelector('main');
+    const alerts = [];
+    for (const node of main.querySelectorAll('*')) {
+        if (!shown(node)) continue;
+        const style = getComputedStyle(node);
+        const border = parseFloat(style.borderTopWidth) > 0 || parseFloat(style.borderLeftWidth) > 0;
+        if (style.color === alert || (border && (style.borderTopColor === alert || style.borderLeftColor === alert))
+            || style.backgroundColor === alert) {
+            alerts.push(node.tagName.toLowerCase() + (typeof node.className === 'string' && node.className
+                ? '.' + node.className.split(' ')[0] : ''));
+        }
+    }
+    const colour = (selector) => Array.from(new Set(Array.from(main.querySelectorAll(selector)).filter(shown).map(
+        (node) => getComputedStyle(node).color)));
+    return {
+        alerts,
+        ink: getComputedStyle(document.body).color,
+        difference: colour('table.row-table td.r-pen, table.row-table td.r-pen *'),
+        probability: colour('table.row-table td.num, table.row-table td.num *'),
+        signs: colour('#cat-body td.c-meas .sg, #cat-body td.c-meas .sg *'),
+        status: colour('#cat-body td.c-status, #cat-body td.c-status *'),
+        medical: colour('table.row-table td.r-c .r-prompt'),
+        everyday: colour('table.row-table td.r-p .r-prompt'),
+    };
 }"""
 
 
@@ -717,7 +951,7 @@ def group(start: str, end: str) -> tuple[str, ...]:
 
 def check_first_view(s: Session, recorder: Recorder) -> None:
     names = group("search_input_is_inside_the_first_viewport_at_1280x720",
-                  "download_links_are_inside_the_first_viewport_at_1280x720")
+                  "main_controls_are_reached_by_tab_and_show_a_focus_outline")
     x, height = s.expected, DESKTOP[1]
 
     def start() -> Any:
@@ -735,11 +969,15 @@ def check_first_view(s: Session, recorder: Recorder) -> None:
             assert state["search"][1] <= height, f"the search input ends at {state['search'][1]:.0f} px, below {height}"
             return {"top": round(state["search"][0]), "bottom": round(state["search"][1])}
 
-        def rows_in_view() -> dict[str, Any]:
-            wanted = min(3, x.total)
-            assert len(state["rows"]) == wanted, f"{len(state['rows'])} run rows found, {wanted} expected"
-            assert max(state["rows"]) <= height, f"a row among the first {wanted} ends below {height} px"
-            return {"rows": wanted, "bottoms": [round(value) for value in state["rows"]]}
+        def page_order() -> dict[str, Any]:
+            # Until 2026-11-11 this check required the first three rows to end inside a 720 px window, which
+            # paid for small text. It now requires the order of the page, and that the first run is shown on
+            # load without opening anything. Positions go into the receipt; none is required.
+            wrong = [name.replace("_", " ") for name, holds in state["page_order"].items() if not holds]
+            assert not wrong, f"document order does not hold: {wrong}"
+            assert state["first_run_shown"], "the first run is not shown when the page loads"
+            return {"order": "shared status, search, runs, downloads, methods and source",
+                    "top_in_css_px_at_1280": state["tops"]}
 
         def columns() -> dict[str, Any]:
             assert state["heads"] == list(COLUMNS), f"column heads: {state['heads']}"
@@ -768,14 +1006,73 @@ def check_first_view(s: Session, recorder: Recorder) -> None:
                 "a filter is set when the page loads")
             return {"selects": len(state["selects"])}
 
-        def downloads_in_view() -> dict[str, Any]:
+        def downloads_before_table() -> dict[str, Any]:
+            # Until 2026-11-11: the download line had to end inside a 720 px window. Now: it stands before the
+            # run table, beside the count, and is shown on load.
             assert state["downloads"] is not None, "the page has no .sum-dl download line"
-            assert state["downloads"][1] <= height, (
-                f"the download line ends at {state['downloads'][1]:.0f} px, below {height}")
-            return {"top": round(state["downloads"][0]), "bottom": round(state["downloads"][1])}
+            assert state["downloads_before_table"] and state["downloads_shown"], (
+                "the download line is not before the run table, or is not shown on load")
+            return {"top": round(state["downloads"][0])}
 
-        for name, action in zip(names, (search_in_view, rows_in_view, columns, count, ordering, default_order,
-                                        one_page, defaults, downloads_in_view)):
+        def shared_status() -> dict[str, Any]:
+            runs = x.runs
+            pending = sum(1 for run in runs if _text(run.get("clinical_review")).endswith("pending"))
+            shared = state["shared"] or ""
+            missing = [text for text in SHARED_STATUS if text not in shared]
+            assert not missing, f"the shared status above the list lacks {missing}"
+            wanted = f"all {len(runs):,} runs" if pending == len(runs) else f"{pending:,} of {len(runs):,} runs"
+            assert wanted in shared, f"the shared status does not say that review is pending for {wanted}"
+            common = shared_review(runs)
+            by_id = {run["run_dir"]: run for run in runs}
+            exceptions = repeated = 0
+            for name, own, text in state["context"]:
+                differs = (_text(by_id[name].get("clinical_review")) or "not recorded") != common
+                if differs:
+                    assert own == "review: " + human(by_id[name].get("clinical_review")), (
+                        f"the row of {name} does not state its own review status")
+                    exceptions += 1
+                else:
+                    assert own is None, f"the row of {name} repeats the review status every run shares"
+                repeated += any(word in text.lower() for word in ("simulated", "not statements from patients"))
+            assert repeated == 0, f"{repeated} row(s) repeat the status stated once above the list"
+            return {"review_pending_runs": pending, "shared_review_status": common, "rows_read": len(state["context"]),
+                    "rows_with_their_own_review_status": exceptions}
+
+        def navigation() -> dict[str, Any]:
+            found = page.evaluate(NAV_STATE)
+            assert [tuple(item[:2]) for item in found["primary"]] == list(NAV_PRIMARY), found["primary"]
+            current = [label for label, _href, mark in found["primary"] if mark == "page"]
+            assert current == ["Results"], f"aria-current marks {current}"
+            assert not found["open"] and found["summary"] == "More", "the disclosure is open on load"
+            assert [label for label, _href, _shown in found["more"]] == list(NAV_MORE), found["more"]
+            assert not any(shown for _label, _href, shown in found["more"]), "a closed disclosure shows its links"
+            assert not [href for _l, href, _s in found["more"] if "experiments" in href], "the navigation links experiments"
+            assert found["skip"] == ["skip", "#main"], f"the first element of the page is {found['skip']}"
+            page.focus(".masthead nav details.nav-more > summary")
+            page.keyboard.press("Enter")
+            opened = page.evaluate(NAV_STATE)
+            assert opened["open"] and all(shown for _label, _href, shown in opened["more"]), (
+                "Enter on the summary did not show the supporting pages")
+            assert opened["list_inside_window"], "the open list leaves the window"
+            page.keyboard.press("Tab")
+            assert page.evaluate(NAV_STATE)["focus_in_list"], "Tab does not enter the open list"
+            page.focus(".masthead nav details.nav-more > summary")
+            page.keyboard.press("Enter")
+            assert not page.evaluate(NAV_STATE)["open"], "Enter did not close the disclosure"
+            return {"primary": [label for label, _href in NAV_PRIMARY], "supporting": len(NAV_MORE)}
+
+        def focus() -> dict[str, Any]:
+            # A fresh page: Tab must start from the top of the document.
+            fresh = s.page(s.desktop)
+            try:
+                s.load(fresh)
+                return assert_focus(tab_stops(fresh), MAIN_CONTROLS)
+            finally:
+                fresh.close()
+
+        for name, action in zip(names, (search_in_view, page_order, columns, count, ordering, default_order,
+                                        one_page, defaults, downloads_before_table, shared_status, navigation,
+                                        focus), strict=True):
             recorder.run(name, action)
     finally:
         page.close()
@@ -942,7 +1239,7 @@ def sealed_hits(texts: Mapping[str, str]) -> dict[str, Any]:
 
 
 def check_open_run(s: Session, recorder: Recorder) -> None:
-    names = group("a_run_opens_from_the_keyboard", "page_does_not_say_patient_understanding")
+    names = group("a_run_opens_from_the_keyboard", "smallest_visible_text_at_1280_is_at_least_12_px")
     x, run = s.expected, s.expected.open_run
     part = run["parts"][0]
 
@@ -1005,8 +1302,61 @@ def check_open_run(s: Session, recorder: Recorder) -> None:
         text = detail.locator(".det-labels").inner_text()
         missing = [label for label in RUN_LABELS if label not in text]
         assert not missing, f"the open run lacks the labels {missing}"
+        boxed = detail.locator(".det-labels .bdg").evaluate_all(
+            "(nodes) => nodes.filter((n) => parseFloat(getComputedStyle(n).borderTopWidth) > 0).length")
+        assert boxed == 0, f"{boxed} label(s) of the open run are drawn as boxes"
         s.shot(page, "results_open_run_1280.png")
         return {"labels": list(RUN_LABELS)}
+
+    def wordings_and_differences() -> dict[str, Any]:
+        rows_file = s.site / CATALOGUE / run["rows_file"]
+        stored = [row for part in json.loads(rows_file.read_text(encoding="utf-8"))["parts"]
+                  for row in part.get("rows") or []]
+        found = page.evaluate(OPEN_RUN_ROWS)
+        heads = [head[0].lower() for head in found["heads"]]
+        assert heads == list(ROW_HEADS), f"the columns of the rows are {heads}"
+        sides = [head[1].lower() if len(head) > 1 else "" for head in found["heads"]]
+        assert (sides[4], sides[5]) == PROBABILITY_SIDES and sides[6] == DIFFERENCE_ORDER, (
+            f"the probability columns are for {sides[4:6]} and the difference is headed {sides[6]!r}")
+        missing = [text for text in DIFFERENCE_NOTE if text not in found["note"]]
+        assert not missing, f"the note above the rows does not state the order and unit of a difference: {missing}"
+        # The narrow layout prints a label above each value; it must name the same wording and order.
+        labels = found["rows"][0]["labels"]
+        assert "medical wording" in labels[4].lower() and "everyday wording" in labels[5].lower() and (
+            "everyday \u2212 medical" in labels[6].lower()), f"labels of the narrow layout: {labels[4:7]}"
+        # Every row: the difference shown is the stored one with its sign, and a row without one says so.
+        def value(v: Any) -> str:
+            ok = isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
+            return ("\u2212" if v < 0 else "") + fmt_number(v) if ok else NOT_MEASURED
+
+        wanted = sorted((DASH if row.get("index") is None else str(row["index"]), value(row.get("prob_clinical")),
+                         value(row.get("prob_patient")), difference_text(row)) for row in stored)
+        shown = sorted((row["index"], row["medical"], row["everyday"], row["difference"]) for row in found["rows"])
+        assert len(shown) == len(wanted), f"{len(shown)} rows rendered, {len(wanted)} stored"
+        wrong = sum(1 for got, want in zip(shown, wanted) if got != want)
+        assert wrong == 0, f"{wrong} of {len(wanted)} rows do not show their stored values with the stored sign"
+        agree = [sign_agrees(row) for row in stored]
+        assert False not in agree, "a stored difference is not the everyday value minus the medical value"
+        counts = Counter("missing" if text == NOT_MEASURED else text.rsplit(" ", 1)[1]
+                         for _i, _m, _e, text in wanted)
+        signs = Counter(row["sign"] for row in found["rows"])
+        assert dict(signs) == dict(counts), f"signs marked {dict(signs)}, stored {dict(counts)}"
+        zero_like = [text for _i, _m, _e, text in wanted if text != NOT_MEASURED and text.endswith(" zero")]
+        assert all(any(ch.isdigit() for ch in text) for text in zero_like) and not any(
+            ch.isdigit() for ch in NOT_MEASURED), "a zero and a missing difference share a form"
+        return {"rows": len(wanted), "by_sign": dict(counts), "order": "everyday minus medical, in probability",
+                "rows_with_all_three_numbers_whose_sign_was_recomputed": sum(1 for a in agree if a)}
+
+    def neutral_colours() -> dict[str, Any]:
+        found = page.evaluate(COLOURS, ALERT_COLOUR)
+        assert not found["alerts"], f"the alert colour is shown while nothing has failed: {found['alerts'][:4]}"
+        muted = {found["ink"], "rgb(109, 108, 102)"}
+        for name in ("difference", "probability", "signs", "status"):
+            assert found[name] and set(found[name]) <= muted, f"{name} text is coloured {found[name]}"
+        assert found["medical"] == [WORDING_COLOURS["medical"]] and found["everyday"] == [WORDING_COLOURS["everyday"]], (
+            f"the wordings are coloured {found['medical']} and {found['everyday']}")
+        return {"alert_colour_elements": 0, "difference_colour": found["difference"],
+                "wording_colours": {"medical": found["medical"][0], "everyday": found["everyday"][0]}}
 
     def source_closed() -> dict[str, Any]:
         need(detail, "details.det-src", "details.det-src summary")
@@ -1128,10 +1478,18 @@ def check_open_run(s: Session, recorder: Recorder) -> None:
             return {"phrase": phrase}
         return action
 
-    actions = (opens, rows_load, sealed_in_run, sealed_in_row, only_public_rows, labels, source_closed, source_opens,
+    def text_size() -> dict[str, Any]:
+        # every section of the page is open by now: the run, both Methods & source, the fields and About
+        text = page.evaluate(SMALLEST_TEXT)
+        assert text["smallest"] >= MIN_TEXT_PX, (
+            f"the smallest visible text is {text['smallest']} px ({text['where']}), below {MIN_TEXT_PX}")
+        return {"smallest_px": text["smallest"], "floor_px": MIN_TEXT_PX}
+
+    actions = (opens, rows_load, sealed_in_run, sealed_in_row, only_public_rows, labels, wordings_and_differences,
+               neutral_colours, source_closed, source_opens,
                run_id, part_hash, part_name, seal, plain_downloads, *(target(name) for name in DOWNLOADS),
                downloads_section, join_and_fields, page_source_closed, page_source_opens, page_source_content,
-               about, explained_once, *(excluded(phrase) for phrase in EXCLUDED_PHRASES))
+               about, explained_once, *(excluded(phrase) for phrase in EXCLUDED_PHRASES), text_size)
     try:
         for name, action in zip(names, actions, strict=True):
             recorder.run(name, action)
@@ -1265,7 +1623,8 @@ def check_error_states(s: Session, recorder: Recorder) -> None:
 
 
 def check_phone(s: Session, recorder: Recorder) -> None:
-    names = group("search_input_is_inside_the_first_viewport_at_390x844", "smallest_visible_text_at_390_is_at_least_10_px")
+    names = group("search_input_is_inside_the_first_viewport_at_390x844",
+                  "no_horizontal_scroll_at_390_with_text_at_200_percent")
     run, height = s.expected.open_run, PHONE[1]
 
     def start() -> Any:
@@ -1314,13 +1673,22 @@ def check_phone(s: Session, recorder: Recorder) -> None:
         return no_horizontal_scroll(page)
 
     def text_size() -> dict[str, Any]:
-        smallest = page.evaluate(SMALLEST_TEXT)
-        assert smallest >= MIN_TEXT_PX, f"the smallest visible text in main is {smallest} px, below {MIN_TEXT_PX}"
-        return {"smallest_px": smallest}
+        # Until 2026-11-11 the floor was 10 px and only the text of main was read. Now: 12 px, the masthead
+        # too, and the labels a stylesheet prints above a value in the narrow layout.
+        text = page.evaluate(SMALLEST_TEXT)
+        assert text["smallest"] >= MIN_TEXT_PX, (
+            f"the smallest visible text is {text['smallest']} px ({text['where']}), below {MIN_TEXT_PX}")
+        return {"smallest_px": text["smallest"], "floor_px": MIN_TEXT_PX}
+
+    def text_zoom() -> dict[str, Any]:
+        # the page as the earlier checks left it: a run, both Methods & source, the fields and About are open
+        changed = page.evaluate(DOUBLE_TEXT)
+        assert changed > 100, f"only {changed} elements were resized"
+        return {"text_scale": 2, **no_horizontal_scroll(page)}
 
     try:
         for name, action in zip(names, (search_in_view, as_loaded, about_and_filters, run_and_source,
-                                        page_source_and_fields, text_size), strict=True):
+                                        page_source_and_fields, text_size, text_zoom), strict=True):
             recorder.run(name, action)
     finally:
         page.close()

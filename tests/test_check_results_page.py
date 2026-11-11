@@ -121,6 +121,65 @@ def test_count_text_and_public_row_indices() -> None:
     assert crp.public_row_indices(doc) == sorted(["12", "3", crp.DASH])
 
 
+def test_fmt_number_and_difference_text_keep_sign_zero_and_missing_apart() -> None:
+    assert crp.fmt_number(0.692) == "0.6920" and crp.fmt_number(-0.649) == "0.6490" and crp.fmt_number(0) == "0.0000"
+    assert crp.fmt_number(0.00005) == "0.0001" and crp.fmt_number(0.00004) == "4.00e-5"     # never 0.0000 unless zero
+    assert crp.fmt_number(1.3877787807814457e-17) == "1.39e-17"
+    assert crp.difference_text({"language_penalty": -0.649}) == "\u22120.6490 negative"
+    assert crp.difference_text({"language_penalty": 0.25}) == "+0.2500 positive"
+    assert crp.difference_text({"language_penalty": 0.0}) == "0.0000 zero"                  # a zero is a result
+    assert crp.difference_text({"language_penalty": None}) == crp.NOT_MEASURED == "\u2014 not measured"
+    assert crp.difference_text({}) == crp.NOT_MEASURED and crp.difference_text({"language_penalty": True}) == crp.NOT_MEASURED
+    assert crp.difference_text({"language_penalty": float("nan")}) == crp.NOT_MEASURED
+    assert not any(ch.isdigit() for ch in crp.NOT_MEASURED)                              # a missing value has no digit
+
+
+def test_sign_agrees_is_everyday_minus_medical_and_none_without_all_three_numbers() -> None:
+    row = {"prob_patient": 0.043, "prob_clinical": 0.692, "language_penalty": 0.043 - 0.692}
+    assert crp.sign_agrees(row) is True
+    assert crp.sign_agrees(dict(row, language_penalty=0.692 - 0.043)) is False            # the other order
+    assert crp.sign_agrees(dict(row, language_penalty=-(0.043 - 0.692))) is False         # the other sign
+    assert crp.sign_agrees({"prob_patient": 0.5, "prob_clinical": 0.5, "language_penalty": 0.0}) is True
+    assert crp.sign_agrees(dict(row, prob_patient=None)) is None and crp.sign_agrees({"language_penalty": 0.1}) is None
+
+
+def test_shared_review_is_the_most_frequent_status_and_the_first_of_a_tie() -> None:
+    def run(review: str | None) -> dict[str, Any]:
+        return {"clinical_review": review}
+
+    assert crp.shared_review([run("a_pending"), run("b_pending"), run("b_pending")]) == "b_pending"
+    assert crp.shared_review([run("a_pending"), run("b_pending")]) == "a_pending"         # a tie: the first listed
+    assert crp.shared_review([run(None), run(None), run("a_pending")]) == "not recorded"
+    assert crp.shared_review([]) == ""
+
+
+def _stop(**fields: Any) -> dict[str, Any]:
+    stop = {"tag": "A", "id": None, "cls": "", "text": "a link", "parent": "", "in_nav": False, "download": False,
+            "outline": "solid", "width": 2.0, "in_view": True}
+    stop.update(fields)
+    return stop
+
+
+def test_assert_focus_needs_every_control_in_order_with_an_outline() -> None:
+    stops = [_stop(cls="skip"), _stop(in_nav=True), _stop(tag="SUMMARY", parent="nav-more"),
+             _stop(tag="SUMMARY", parent="about"), _stop(tag="INPUT", id="f-q"), _stop(tag="BUTTON", id="view-all"),
+             _stop(tag="BUTTON", id="more-btn"), _stop(tag="BUTTON", id="f-reset"), _stop(download=True),
+             _stop(tag="BUTTON", cls="cat-x")]
+    found = crp.assert_focus(stops, crp.MAIN_CONTROLS)
+    assert found["reached_at_tab_press"]["search box"] == 5 and found["tab_stops_read"] == 10
+    with pytest.raises(AssertionError, match="does not reach the search box"):
+        crp.assert_focus([stop for stop in stops if stop["id"] != "f-q"], crp.MAIN_CONTROLS)
+    with pytest.raises(AssertionError, match="does not reach the download link"):
+        crp.assert_focus(stops[:7] + [stops[8], stops[7], stops[9]], crp.MAIN_CONTROLS)   # the two out of order
+    bare = [dict(stop) for stop in stops]
+    bare[4]["outline"] = "none"
+    with pytest.raises(AssertionError, match="search box shows no focus outline"):
+        crp.assert_focus(bare, crp.MAIN_CONTROLS)
+    thin = [dict(stop) for stop in stops] + [_stop(text="a stray control", width=1.0)]
+    with pytest.raises(AssertionError, match="show no focus outline"):
+        crp.assert_focus(thin, crp.MAIN_CONTROLS)
+
+
 # ------------------------------------------------------------------------------------------ expectations
 
 def test_the_search_term_is_the_model_name_that_selects_the_most_runs_and_not_all() -> None:
@@ -205,13 +264,19 @@ def test_load_catalogue_is_a_setup_problem_without_usable_data(tmp_path: Path) -
 
 # ------------------------------------------------------------------------------------------ recorder and exits
 
-def test_the_check_list_is_62_distinct_names_and_groups_follow_its_order() -> None:
-    assert len(crp.CHECKS) == len(set(crp.CHECKS)) == 62            # 61 of the scratch script, and the request count
+def test_the_check_list_is_69_distinct_names_and_groups_follow_its_order() -> None:
+    # 62 until 2026-11-11. Then: two placement checks were replaced in place by checks of the page's order, and
+    # seven were added (shared status, navigation, focus, wordings and differences, colour, text at 1280, text
+    # at twice its size).
+    assert len(crp.CHECKS) == len(set(crp.CHECKS)) == 69
     first = crp.group("search_input_is_inside_the_first_viewport_at_1280x720",
-                      "download_links_are_inside_the_first_viewport_at_1280x720")
-    assert first == crp.CHECKS[:9] and crp.CHECKS[-1] == "no_request_left_the_test_server"
+                      "main_controls_are_reached_by_tab_and_show_a_focus_outline")
+    assert first == crp.CHECKS[:12] and crp.CHECKS[-1] == "no_request_left_the_test_server"
     assert sum(1 for name in crp.CHECKS if name.startswith("page_does_not_say_")) == len(crp.EXCLUDED_PHRASES) == 3
     assert sum(1 for name in crp.CHECKS if name.startswith("download_target_")) == len(crp.DOWNLOADS) == 3
+    # No check requires a number of rows inside a window, and the floor for visible text is 12 px.
+    assert not [name for name in crp.CHECKS if "rows_are_inside" in name or "10_px" in name]
+    assert crp.MIN_TEXT_PX == 12 and sum(1 for name in crp.CHECKS if name.endswith("at_least_12_px")) == 2
 
 
 def test_recorder_keeps_passed_failed_not_applicable_and_blocked_apart(capsys: pytest.CaptureFixture[str]) -> None:
@@ -370,6 +435,28 @@ def test_the_page_carries_the_ids_and_strings_the_checker_reads() -> None:
                  "could not be loaded ('+failLabel(e)+')", "'HTTP '+r.status", *crp.RUN_LABELS[:1],
                  "'evidence: '", "'clinical review: '", "a listing, not a claim"):
         assert text in script, text
+    # The wordings, the order of the difference and the shared status, as the checks compare them.
+    for text in ("'Medical wording'", "'Everyday wording'", "['Target-token probability','num','medical wording']",
+                 "['Target-token probability','num','everyday wording']", f"['Difference','','{crp.DIFFERENCE_ORDER}']",
+                 *crp.SHARED_STATUS, *crp.DIFFERENCE_NOTE, "DASH+' not measured'", "'data-exception','review'",
+                 "'review: '+human(r.clinical_review)"):
+        assert text in script.replace("\u2019s", "").replace("\u2019", ""), text
+    assert "'Clinical wording'" not in script and "'Patient wording'" not in script
+    assert "var(--penalty)" not in source and "bdg-restricted" not in source and "draft-flag" not in source
+    # The alert colour is declared once and used for a file that failed to load, and for nothing else.
+    assert static.count("#b4483d") == 1 and f"--alert:{'#b4483d'}" in static
+    uses = [line.strip().split("{")[0] for line in static.splitlines() if "var(--alert)" in line]
+    assert uses == [".cat-err", ".det-status.is-fail"], uses
+    # Nothing a reader must read is set below 13 px, and no label is set in capitals with letter-spacing.
+    assert "text-transform:uppercase" not in static and "letter-spacing:.1" not in static
+    assert "--t-meta:13px" in static and not [size for size in ("font-size:10px", "font-size:10.5px", "font-size:11px",
+                                                                "font-size:11.5px", "font-size:12px") if size in static]
+    # The navigation: four links for the journey, the rest in one details element; this page is the current one.
+    nav = static[static.index('<nav aria-label="Site">'):static.index("</nav>")]
+    for label, href in crp.NAV_PRIMARY:
+        assert f'<a href="{href}"' in nav and f">{label}</a>" in nav, label
+    assert '<a href="./" aria-current="page">Results</a>' in nav and '<details class="nav-more">' in nav
+    assert all(f">{label}</a>" in nav for label in crp.NAV_MORE) and "experiments" not in nav
     for text in (*crp.ABOUT_STATEMENTS, crp.STUDY_VERSION, "join on <code>stem</code> and <code>index</code>",
                  "own_clinical_prompt", "language_penalty", 'href="#downloads"', 'href="#methods-source"'):
         assert text in static, text
@@ -403,6 +490,12 @@ def _chromium() -> str | None:
         return None
 
 
+def opened_rows(site: Path, catalogue: dict[str, Any]) -> int:
+    """The number of rows in the rows file of the run the check opened."""
+    doc = json.loads((site / crp.CATALOGUE / catalogue["opened_run_rows_file"]).read_text(encoding="utf-8"))
+    return sum(len(part.get("rows") or []) for part in doc["parts"])
+
+
 def test_the_results_page_check_passes_in_chromium(tmp_path: Path) -> None:
     pytest.importorskip("playwright", reason="the playwright package is not installed; the browser check did not run")
     if not (SITE / crp.PAGE).is_file() or not (SITE / crp.INDEX_FILE).is_file():
@@ -425,16 +518,32 @@ def test_the_results_page_check_passes_in_chromium(tmp_path: Path) -> None:
     assert {check["result"] for check in receipt["checks"]} <= {"passed", "not_applicable"}
     assert all(check["reason"] for check in receipt["checks"] if check["result"] == "not_applicable")
     counts = receipt["counts"]
-    assert counts["checks"] == 62 and counts["failed"] == counts["blocked"] == 0
-    assert counts["passed"] + counts["not_applicable"] == 62
+    assert counts["checks"] == 69 and counts["failed"] == counts["blocked"] == 0
+    assert counts["passed"] + counts["not_applicable"] == 69
     for name in ("count_reads_all_runs_of_the_index", "default_order_is_the_index_order",
+                 "search_runs_downloads_and_methods_and_source_are_in_that_order",
+                 "download_links_stand_before_the_run_table_and_are_shown_on_load",
+                 "shared_status_is_stated_once_and_a_row_adds_only_its_exception",
+                 "navigation_marks_this_page_and_its_disclosure_opens_from_the_keyboard",
+                 "main_controls_are_reached_by_tab_and_show_a_focus_outline",
                  "a_run_opens_from_the_keyboard", "rendered_rows_are_exactly_the_public_rows_of_the_rows_file",
+                 "wordings_are_named_and_every_difference_is_everyday_minus_medical_with_its_sign",
+                 "difference_and_status_text_is_neutral_and_no_alert_colour_is_shown",
                  "no_sealed_phrase_in_what_the_open_run_renders", "downloads_are_plain_links",
                  "missing_index_shows_the_error_state_and_no_runs",
                  "failing_rows_file_shows_the_failure_with_a_retry_and_no_rows",
-                 "no_horizontal_scroll_at_390_as_loaded", "smallest_visible_text_at_390_is_at_least_10_px",
+                 "no_horizontal_scroll_at_390_as_loaded", "smallest_visible_text_at_1280_is_at_least_12_px",
+                 "smallest_visible_text_at_390_is_at_least_12_px", "no_horizontal_scroll_at_390_with_text_at_200_percent",
                  "no_console_error_page_error_or_failed_request", "no_request_left_the_test_server"):
         assert results[name]["result"] == "passed", name
+    # The rows of the opened run were compared with the rows file: counts by sign, no row content.
+    rows = results["wordings_are_named_and_every_difference_is_everyday_minus_medical_with_its_sign"]
+    assert rows["rows"] == opened_rows(SITE, receipt["catalogue"]) and sum(rows["by_sign"].values()) == rows["rows"]
+    assert set(rows["by_sign"]) <= {"negative", "zero", "positive", "missing"}
+    shared = results["shared_status_is_stated_once_and_a_row_adds_only_its_exception"]
+    assert shared["rows_read"] == min(crp.PAGE_SIZE, receipt["catalogue"]["runs"])
+    assert min(results[name]["smallest_px"] for name in ("smallest_visible_text_at_1280_is_at_least_12_px",
+                                                         "smallest_visible_text_at_390_is_at_least_12_px")) >= 12
     # The expectations came from the site's own files.
     index = json.loads((SITE / crp.INDEX_FILE).read_text(encoding="utf-8"))
     runs = crp.listed_runs(index)
