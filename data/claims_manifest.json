@@ -179,6 +179,146 @@
    "expr": "d['instruction_tuning']['n_paired'] - len({p['index'] for p in d['instruction_tuning']['pairs']})",
    "expected": 0,
    "_": "D4 entry 2 (owner-approved 2026-08-21): n_paired must equal the count of distinct phrase indices, so replicated rows (e.g. daily-sentinel sweeps) can never inflate the public pair count again."
+  },
+  {
+   "page": "start-here/index.html",
+   "snippet": "bars:[['inhaler',0.692,'#0f766e'],['mask',0.059,'#c3c9d2'],['set',0.028,'#c3c9d2']]",
+   "source": "data/simulated_scenarios.json",
+   "expr": "[[b['label'],b['p'],b['role']] for b in d['featured']['tap_demo']['clinical']['bars']]",
+   "expected": [
+    [
+     "inhaler",
+     0.692,
+     "target"
+    ],
+    [
+     "mask",
+     0.059,
+     "other"
+    ],
+    [
+     "set",
+     0.028,
+     "other"
+    ]
+   ],
+   "_": "Start here (restored 2026-11-11), step 3: the three bars of the medical wording. The page replaces them with featured.tap_demo when the file loads; this entry guards the static copy."
+  },
+  {
+   "page": "start-here/index.html",
+   "snippet": "bars:[['shirt',0.183,'#b45309'],['t-',0.068,'#c3c9d2'],['inhaler (5th)',0.043,'#0f766e']]",
+   "source": "data/simulated_scenarios.json",
+   "expr": "[[b['label'],b['p'],b['role']] for b in d['featured']['tap_demo']['patient']['bars']]",
+   "expected": [
+    [
+     "shirt",
+     0.183,
+     "top"
+    ],
+    [
+     "t-",
+     0.068,
+     "other"
+    ],
+    [
+     "inhaler (5th)",
+     0.043,
+     "target"
+    ]
+   ],
+   "_": "Start here, step 3: the three bars of the everyday wording; guards the static copy."
+  },
+  {
+   "page": "start-here/index.html",
+   "snippet": "data-rec=\"s2-clin\">\u201cant\u201d</text>",
+   "source": "data/simulated_scenarios.json",
+   "expr": "next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==12)['top_clinical'][0].strip()",
+   "expected": "ant",
+   "_": "Steps 2 and 5: the recorded top token of the medical wording, a word piece (the start of the target word). Start here (restored 2026-11-11): the page fills this element from the data file when it loads; this entry guards the static copy a reader sees if the file does not load."
+  },
+  {
+   "page": "start-here/index.html",
+   "snippet": "data-rec=\"s2-pat\">\u201cice\u201d</text>",
+   "source": "data/simulated_scenarios.json",
+   "expr": "next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==12)['top_patient'][0].strip()",
+   "expected": "ice",
+   "_": "Steps 2 and 5: the recorded top token of the everyday wording. Start here (restored 2026-11-11): the page fills this element from the data file when it loads; this entry guards the static copy a reader sees if the file does not load."
+  },
+  {
+   "page": "start-here/index.html",
+   "snippet": "data-rec=\"s2-formal\">\u201capple\u201d</text>",
+   "source": "data/provenance.json",
+   "expr": "d['ladder_digestive']['baseline_top'][0].strip()",
+   "expected": "apple",
+   "_": "Steps 2 and 6: the recorded top token of the formal-term row. Start here (restored 2026-11-11): the page fills this element from the data file when it loads; this entry guards the static copy a reader sees if the file does not load."
+  },
+  {
+   "page": "start-here/index.html",
+   "snippet": "hold 732 and 787 features and share 465",
+   "source": "data/simulated_scenarios.json",
+   "expr": "[next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==12)['circuit_diff'][k] for k in ('shared_features','unique_to_a','unique_to_b')]",
+   "expected": [
+    465,
+    267,
+    322
+   ],
+   "_": "Step 5 caption: 732 = 465 shared + 267 only in the medical wording's trace, 787 = 465 + 322. The page computes the sentence from circuit_diff when the file loads; this entry guards the static copy."
+  },
+  {
+   "page": "start-here/index.html",
+   "snippet": "data-rec=\"s6-pat\">\u201cice\u201d 29%</text>",
+   "source": "data/provenance.json",
+   "expr": "[d['translation_cases']['icecream_antacid']['patient'][0], round(round(d['translation_cases']['icecream_antacid']['patient'][1]*1000)/10+0.01)]",
+   "expected": [
+    "ice",
+    29
+   ],
+   "_": "Step 6: the recorded value is 0.285 to three decimals and the page prints a whole percent, half up on that decimal (the page's pct()). round(x*1000)/10+0.01 is the same rule without float error at .5. Start here (restored 2026-11-11): the page fills this element from the data file when it loads; this entry guards the static copy a reader sees if the file does not load."
+  },
+  {
+   "page": "start-here/index.html",
+   "snippet": "data-rec=\"s6-trans\">\u201cant\u201d 31%</text>",
+   "source": "data/provenance.json",
+   "expr": "[d['translation_cases']['icecream_antacid']['translated'][0], round(round(d['translation_cases']['icecream_antacid']['translated'][1]*1000)/10+0.01)]",
+   "expected": [
+    "ant",
+    31
+   ],
+   "_": "Step 6: the top token after the rewrite, a word piece, with its recorded probability as a whole percent. Start here (restored 2026-11-11): the page fills this element from the data file when it loads; this entry guards the static copy a reader sees if the file does not load."
+  },
+  {
+   "page": "start-here/index.html",
+   "snippet": "come out as ice at 29% and apple",
+   "source": "data/provenance.json",
+   "expr": "[d['translation_cases']['icecream_antacid']['patient'][0], round(round(d['translation_cases']['icecream_antacid']['patient'][1]*1000)/10+0.01), d['ladder_digestive']['baseline_top'][0].strip()]",
+   "expected": [
+    "ice",
+    29,
+    "apple"
+   ],
+   "_": "Step 6, the first diagram's text alternative. A script does not rewrite it, so this entry is its only check."
+  },
+  {
+   "page": "start-here/index.html",
+   "snippet": "comes out as the start of antacid at 31%",
+   "source": "data/provenance.json",
+   "expr": "[d['translation_cases']['icecream_antacid']['translated'][0], round(round(d['translation_cases']['icecream_antacid']['translated'][1]*1000)/10+0.01)]",
+   "expected": [
+    "ant",
+    31
+   ],
+   "_": "Step 6, the second diagram's text alternative; not rewritten by a script."
+  },
+  {
+   "page": "start-here/index.html",
+   "snippet": "restored the top prediction in 8 of 20",
+   "source": "data/provenance.json",
+   "expr": "[d['translation_cases']['summary']['recovered'], d['translation_cases']['summary']['n_downgrades']]",
+   "expected": [
+    8,
+    20
+   ],
+   "_": "Step 6 caption: the rewrite's outcome over the tested downgrade cases. Start here (restored 2026-11-11): the page fills this element from the data file when it loads; this entry guards the static copy a reader sees if the file does not load."
   }
  ]
 }
