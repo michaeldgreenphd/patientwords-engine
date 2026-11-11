@@ -69,14 +69,12 @@ PLACEHOLDER_PAYLOAD = {
 # 0.285 and 0.125 both sit on a rounding boundary in binary; the page rounds the recorded decimal half up.
 PLACEHOLDER_PROVENANCE = {
     "ladder_digestive": {"baseline_top": ["three", 0.2]},
-    "translation_cases": {"icecream_antacid": {"patient": ["two", 0.285], "translated": ["one", 0.125]},
-                          "summary": {"recovered": 1, "n_downgrades": 4}},
+    "translation_cases": {"icecream_antacid": {"patient": ["two", 0.285], "translated": ["one", 0.125]}},
 }
 FROM_PLACEHOLDERS = {
     "s2-clin": "“one”", "s2-pat": "“two”", "s2-formal": "“three”",
     "s5-counts": "hold 13 and 14 features and share 10",
     "s6-pat": "“two” 29%", "s6-trans": "“one” 13%",
-    "s6-summary": "restored the top prediction in 1 of 4",
 }
 
 
@@ -226,8 +224,7 @@ def test_recorded_values_follow_the_data_files_and_keep_their_checked_copies_wit
 
     static = {key: texts for key, texts in _static_copies(PAGE.read_text(encoding="utf-8")).items()}
     # No file, an empty record, and a record whose values are not numbers: the checked copy stays.
-    not_numbers = {"translation_cases": {"icecream_antacid": {"patient": ["two", None], "translated": ["one"]},
-                                         "summary": {"recovered": "1"}}}
+    not_numbers = {"translation_cases": {"icecream_antacid": {"patient": ["two", None], "translated": ["one"]}}}
     for payload, provenance in ((None, None), ({}, {}), ({"scenarios": []}, not_numbers)):
         page, errors = _open(browser, url, payload=payload, provenance=provenance)
         assert {key: set(values) for key, values in _recorded(page).items()} == static
