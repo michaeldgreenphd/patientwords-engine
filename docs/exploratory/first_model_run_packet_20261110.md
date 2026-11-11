@@ -490,8 +490,11 @@ item 1 adds the timing fields; peak memory needs one more line there.
 
 Each item is a reviewed pull request. Sizes are estimates made by reading the files they
 touch; item 3 was written on 2026-11-11 and the others were not. Item 3 lets stage A's
-verdict be computed by code. Items 1 and 2 are needed for the protocol to be completed and
-for load and measurement seconds to be recorded; stage A's verdict does not depend on them. Item 4 is needed for stage B. Items 5 and 6 are
+verdict be computed by code. Of item 1, the timing part was written on 2026-11-11 for the
+verify path only: a verify summary now records `inference.wall_seconds` (`load`, `measure`,
+`pairs_measured`, `seconds_per_pair`; `scripts/verify_probs.py`, `tests/test_verify_probs.py`).
+The rest of item 1 (token ids, tokenizer hash, model shape, and the logits path) and item 2
+are needed for the protocol to be completed; stage A's verdict does not depend on them. Item 4 is needed for stage B. Items 5 and 6 are
 needed only to bring a landed result into the experiment interface and are not needed for
 the two fires.
 
@@ -877,8 +880,9 @@ Each is a yes or no. Declining all of them changes nothing in either repository.
 
 1. **Do you approve one first attempt of the stage A fire as written in section 9.2?**
    `logits-eval`, `mode: verify`, `gemma-2-2b`, float32, the 10 rows of
-   `pairs_20260706T175614Z`. Section 8 item 3 is done; item 1 is not, so the run records no
-   load or measurement seconds and precondition 6 of section 6.2 is not evaluated. Cost ceiling: $0 of provider spend; one
+   `pairs_20260706T175614Z`. Section 8 item 3 is done, and the verify path records load
+   and measurement seconds. The rest of item 1 is not written, so precondition 6 of
+   section 6.2 is not evaluated. Cost ceiling: $0 of provider spend; one
    job of at most 240 runner minutes (estimate 17.7).
 2. **Do you approve one first attempt of the stage B fire as written in section 9.2,
    conditional on stage A not failing and not being inconclusive under section 10?**

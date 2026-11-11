@@ -149,3 +149,18 @@ def test_chunk_offset_becomes_the_global_join_key(tmp_path):
     path = vp.write_summary(tmp_path, s, start_index=51)
     assert path.name == "verify_summary.part_51.json"
     assert json.loads(path.read_text())["start_index"] == 51
+
+
+def test_timing_is_recorded_only_when_the_run_measured_it():
+    """Added 2026-11-11. A summary built without a timing record has no wall_seconds key, as every part
+    landed before that date; a run's record gives load and measurement seconds and the pairs they cover."""
+    assert "wall_seconds" not in vp.build_summary("model-x", "org/model-x", [])["inference"]
+    record = vp.wall_seconds(12.3456, 177.0, 2)                       # 177 s over 2 pairs is 88.5 s per pair
+    assert record["load"] == 12.346 and record["measure"] == 177.0 and record["pairs_measured"] == 2
+    assert record["seconds_per_pair"] == 88.5
+    assert vp.wall_seconds(1.0, 0.0, 0)["seconds_per_pair"] is None   # no pair measured: no rate, not zero
+    summary = vp.build_summary("model-x", "org/model-x", [], timing=record)
+    assert summary["inference"]["wall_seconds"] == record
+    # every earlier field is unchanged by the added key
+    plain = vp.build_summary("model-x", "org/model-x", [])
+    assert {k: v for k, v in summary["inference"].items() if k != "wall_seconds"} == plain["inference"]

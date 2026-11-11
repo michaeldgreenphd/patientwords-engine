@@ -238,8 +238,8 @@ through `scripts/fire_trigger.py`.
 | Quantity | Source | Status |
 |---|---|---|
 | Wall time of the job | the workflow run's start and completion times | recorded by the platform today |
-| Load seconds and measurement seconds | `inference` block of the landed summary | not recorded today; the run packet's section 8, item 1 adds the fields |
-| Throughput | pairs measured divided by measurement seconds, with the pair count | derived from the two above; reported with its sample size |
+| Load seconds and measurement seconds | `inference.wall_seconds` of the landed summary (`load`, `measure`, `pairs_measured`) | recorded by the verify path since 2026-11-11; no run has produced a value yet. The logits path does not record them |
+| Throughput | `seconds_per_pair`: measurement seconds divided by pairs measured, with the pair count | derived in the same record; reported with its sample size |
 | Peak memory | the lane | not recorded today |
 | Provider cost | the cost sidecar; $0 on the CPU lanes | recorded as 0 with its basis, not as an estimate |
 | Per-task runtime in the runner | `resources.runtime_seconds` of an envelope with `measured: true` | implemented; filled only by a real adapter |
