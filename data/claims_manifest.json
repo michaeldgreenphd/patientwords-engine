@@ -181,6 +181,17 @@
    "_": "D4 entry 2 (owner-approved 2026-08-21): n_paired must equal the count of distinct phrase indices, so replicated rows (e.g. daily-sentinel sweeps) can never inflate the public pair count again."
   },
   {
+   "page": "technical/index.html",
+   "snippet": "gemma-2-2b \u00b7 one measured pair. Pills:",
+   "source": "data/jspace.json",
+   "expr": "[d['empirical'], 'gemma-2-2b' in d['note']]",
+   "expected": [
+    true,
+    true
+   ],
+   "_": "Part 2, the measured three-panel caption: the model is fixed text because data/jspace.json has no model field (2026-11-11; the exporter's note moved into a fold and the caption kept the model). The check fails if the file stops being empirical or its note stops naming gemma-2-2b; the caption then needs a hand rewrite, or the exporter a model field."
+  },
+  {
    "page": "start-here/index.html",
    "snippet": "bars:[['inhaler',0.692,'#0f766e'],['mask',0.059,'#c3c9d2'],['set',0.028,'#c3c9d2']]",
    "source": "data/simulated_scenarios.json",
@@ -230,6 +241,28 @@
   },
   {
    "page": "start-here/index.html",
+   "snippet": "&ldquo;inhal&rdquo; is the first piece of &ldquo;inhaler&rdquo;",
+   "source": "data/simulated_scenarios.json",
+   "expr": "[next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==49)['top_clinical'][0].strip(), next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==49)['intended_target'].strip(), next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==49)['intended_target'].strip().startswith(next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==49)['top_clinical'][0].strip()), d['featured']['tap_demo']['batch_index'], d['featured']['tap_demo']['clinical']['bars'][0]['label']]",
+   "expected": [
+    "inhal",
+    "inhaler",
+    true,
+    49,
+    "inhaler"
+   ],
+   "_": "Step 3's caption, fixed text: the chart's first bar prints the whole word (the label in featured.tap_demo) and the record holds its first piece. The check fails if the recorded top token of the medical wording, the recorded target word, the pinned pair or the bar's label changes; the caption then needs a hand rewrite."
+  },
+  {
+   "page": "start-here/index.html",
+   "snippet": "id=\"ladder-cap\" hidden>Draft urgency scale</p>",
+   "source": "data/urgency_shift.json",
+   "expr": "any(w in d['vocabulary_status'].lower() for w in ('draft','pending'))",
+   "expected": true,
+   "_": "Step 4's caption, fixed text since 2026-11-11 (it printed vocabulary_status from the file before). The check fails when the recorded status of the urgency vocabulary says neither 'draft' nor 'pending'; the caption's 'Draft' and the paragraph's 'our draft care-urgency ladder' then need a hand rewrite."
+  },
+  {
+   "page": "start-here/index.html",
    "snippet": "data-rec=\"s2-clin\">\u201cant\u201d</text>",
    "source": "data/simulated_scenarios.json",
    "expr": "next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==12)['top_clinical'][0].strip()",
@@ -251,18 +284,6 @@
    "expr": "d['ladder_digestive']['baseline_top'][0].strip()",
    "expected": "apple",
    "_": "Steps 2 and 6: the recorded top token of the formal-term row. Start here (restored 2026-11-11): the page fills this element from the data file when it loads; this entry guards the static copy a reader sees if the file does not load."
-  },
-  {
-   "page": "start-here/index.html",
-   "snippet": "data-rec=\"s5-counts\">hold 732 and 787 features and share 465</span>",
-   "source": "data/simulated_scenarios.json",
-   "expr": "[next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==12)['circuit_diff'][k] for k in ('shared_features','unique_to_a','unique_to_b')]",
-   "expected": [
-    465,
-    267,
-    322
-   ],
-   "_": "Step 5 caption: 732 = 465 shared + 267 only in the medical wording's trace, 787 = 465 + 322. The page computes the sentence from circuit_diff when the file loads; this entry guards the static copy."
   },
   {
    "page": "start-here/index.html",
@@ -324,7 +345,7 @@
   },
   {
    "page": "start-here/index.html",
-   "snippet": "&ldquo;ant&rdquo; begins &ldquo;antacid&rdquo;",
+   "snippet": "class=\"sv-m\">start of \u201cantacid\u201d</text>",
    "source": "data/simulated_scenarios.json",
    "expr": "[next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==12)['top_clinical'][0].strip(), next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==12)['intended_target'].strip(), next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==12)['intended_target'].strip().startswith(next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==12)['top_clinical'][0].strip())]",
    "expected": [
@@ -332,7 +353,7 @@
     "antacid",
     true
    ],
-   "_": "Step 2's caption and the note beside the token in both drawings ('start of \u201cantacid\u201d'): fixed text. The check fails if the recorded top token stops being the start of the recorded target word."
+   "_": "Step 2: the note beside the token in both drawings ('start of \u201cantacid\u201d'), fixed text; the snippet is the wide drawing's. The caption that repeated it was removed on 2026-11-11. The check fails if the recorded top token stops being the start of the recorded target word."
   },
   {
    "page": "start-here/index.html",
