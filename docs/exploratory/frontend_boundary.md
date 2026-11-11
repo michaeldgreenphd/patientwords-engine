@@ -201,7 +201,13 @@ and `layout_complete_for_every_stage`. Its receipt was written outside the repos
 and is not committed: it binds a working tree with uncommitted changes. A receipt
 includes each deliberate rejection and restored pass, the skipped tests with their
 reasons, browser errors and attempted external requests. Generated-model regeneration
-was byte-identical. Hosted tests remain unrun. The boundary is in no CI workflow.
+was byte-identical. That run was not on a hosted runner. Since 2026-11-11 the paired
+job of `.github/workflows/pr_checks.yml` runs the boundary on engine pull requests.
+Its first hosted run, on that date (run 43083538251), passed 21 checks with Playwright
+1.61.0 and the Chromium it installs (149.0.7827.55), on engine merge commit `b1c54d73`
+beside site commit `e13b7aa`; generated-model regeneration was byte-identical. Its
+receipt names the evidence "local synthetic software test only": it is a software test
+on synthetic fixtures, not a test of the deployed site or of any measurement.
 
 ## Small extraction after protection
 

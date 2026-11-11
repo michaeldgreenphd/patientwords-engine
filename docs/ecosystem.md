@@ -67,7 +67,7 @@ Facts below were read in the engine or fork files for the manifest, or are marke
 - **Entry points.** Four console commands (`pyproject.toml`); `scripts/*.py`, indexed in [scripts/README.md](../scripts/README.md); eleven trigger lanes fired through `scripts/fire_trigger.py`; `python -m scripts.petri_audit.cli`; `python -m scripts.experiments.cli`.
 - **Formats.** In: `data/simulated/<stem>.json` batches (a JSON list of pairs, no id field). Out: `trace_out/<stem>[__<model>]/batch_summary.part_NN.json`, lens summaries, Petri run directories with a hash-chained manifest, site payloads.
 - **Environment.** Python `^3.10` declared; measurement lanes run 3.11 under `constraints.txt`; the Petri lane runs 3.12.3 under its lock; the boundary check needs 3.13 and `scripts/boundary_client/requirements.lock`.
-- **Tests and CI.** pytest under `tests/` and ruff. No pull-request pytest workflow exists (`verify.md:152`); the 13 workflows are measurement and operations lanes.
+- **Tests and CI.** pytest under `tests/` and ruff. One pull-request workflow, `.github/workflows/pr_checks.yml`, runs both on every pull request: once on the engine alone and once beside a resolved site commit (`verify.md:152`, `verify.md:169`). The other 13 workflows are measurement and operations lanes.
 - **Active versus historical.** `scripts/README.md` marks each script. `trace_out/` and `data/simulated/` are append-only. Dated documents describe their own revisions.
 - **Writers and readers.** CI writes measurements; sessions write code and documents; the Routine writes `ops/dashboard.json`. Readers: the site (through exports), the traces site, the verify app.
 - **Stable identifiers.** `(batch stem, 1-based index, model)` for a measurement; the repo-relative part path plus sha256 for a logits part; `(run stem, conversation_id, turn_id, kind, key, prompt_file_digest, judge_model)` for a Petri judgment.
@@ -225,7 +225,7 @@ A path is listed as exercised only where a test runs it. Files existing is not e
 | Forks' own suites | none run for this document | all of them: no interpreter here has torch, and no Inspect package is installed |
 | Experiment interface and ICA adapter | `tests/test_experiments_*.py` on synthetic fixtures (not run for this document) | any real model, real activation capture or parity with `icalens` |
 | This manifest | `tests/test_ecosystem_manifest.py`: schema, pin agreement with the pointer files, the status command on a synthetic git layout, the read-only guard | the remote mode against the network (a fake `ls-remote` is used); sibling checkouts, which CI does not have |
-| Whole suite | baseline at `d8d0855d`, 2026-11-10: 6506 passed, 4 failed, 20 skipped in 712 s (finding 2) | there is no pull-request test workflow, so this is a local result |
+| Whole suite | local baseline at `d8d0855d`, 2026-11-10: 6506 passed, 4 failed, 20 skipped in 712 s (finding 2). First hosted run of `.github/workflows/pr_checks.yml`, 2026-11-11, engine `02ce6e8a`: standalone 7913 passed, 65 skipped; paired beside site `e13b7aa`: 7950 passed, 28 skipped | in both hosted jobs, 18 tests that need `icalens` and torch, `inspect_petri` or `inspect_ai` skip; a manual run of the workflow with a `site_ref` has not been made |
 
 ## 6. Findings
 

@@ -1,0 +1,565 @@
+name: PR checks (offline)
+
+# Ordinary pull-request verification. It runs the offline checks of verify.md on a
+# hosted runner and nothing else. Two jobs:
+#
+#   standalone  The engine commit alone: no site checkout and no browser. The install
+#               of verify.md (Setup), ruff, the whole test suite, and the whitespace
+#               gate on the pull request's own diff. Tests that need the sibling site
+#               or Chromium skip, and the job lists every skip with its reason.
+#   paired      The same engine commit beside one site commit that is resolved to a
+#               SHA before anything is checked out. The same suite again, now with
+#               the site and Chromium present; the paired gates of verify.md on that
+#               site commit's committed files; and the synthetic exporter-to-browser
+#               boundary (tests/fixtures/frontend_boundary.json).
+#
+# What this workflow is not. It is not a measurement lane: it has no push trigger,
+# reads no trigger file and no repository secret, calls no model and no provider, and
+# commits, tags, releases and uploads nothing. It runs no exporter on landed
+# measurements and no release verification; the snapshot check of the publish chain
+# stays where it is. A pass is software evidence about one engine commit and one site
+# commit. It is not a measurement and not a release check.
+#
+# The site commit is chosen by the first rule that applies, and the job prints which:
+#   1. the site_ref input of a manual run (a branch, a tag or a full commit SHA);
+#   2. the site branch with the same name as the engine branch (exact refs/heads/ match);
+#   3. the site's main, labelled as the fallback.
+#
+# Checkout shape, from the tests' own git calls (verify.md, Pull-request checks):
+# full history without blobs, because five tests read earlier commits and skip in a
+# shallow clone. The engine's trace_out/ renders (*.html, *.png, 7.8 GB) are left off
+# disk: on 2026-11-11 a search of tests/ found no test that reads them, the suite passed
+# without them, and one run of the suite writes about 2.3 GB of temporary files.
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      site_ref:
+        description: 'Site revision to pair with: a branch, a tag or a full commit SHA of the site repository. Empty: the same-named site branch, else site main.'
+        type: string
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  PYTHONDONTWRITEBYTECODE: '1'
+  PIP_DISABLE_PIP_VERSION_CHECK: '1'
+  SITE_REPOSITORY: michaeldgreenphd/patientwords
+
+jobs:
+  standalone:
+    name: Standalone engine checks (no site checkout)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Check out the engine commit under test
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: patientwords-engine
+          fetch-depth: 0
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/trace_out/**/*.html
+            !/trace_out/**/*.png
+          persist-credentials: false
+
+      - name: Record the tested commit
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          for name in ANTHROPIC_API_KEY OPENROUTER_API_KEY GEMINI_API_KEY NEURONPEDIA_API_KEY HF_TOKEN; do
+            if [ -n "${!name:-}" ]; then
+              echo "::error::$name is set in this job. This workflow runs without provider keys."
+              exit 1
+            fi
+          done
+          if [ -e patientwords ] || [ -n "${PW_SITE_ROOT:-}" ]; then
+            echo "::error::a site checkout is present in the standalone job"
+            exit 1
+          fi
+          engine=patientwords-engine
+          tested=$(git -C "$engine" rev-parse HEAD)
+          if [ "$tested" != "$GITHUB_SHA" ]; then
+            echo "::error::the engine checkout is at $tested; this run is for $GITHUB_SHA"
+            exit 1
+          fi
+          if [ "$EVENT_NAME" = pull_request ]; then
+            merged_base=$(git -C "$engine" rev-parse 'HEAD^1')
+            merged_head=$(git -C "$engine" rev-parse 'HEAD^2')
+            if [ "$merged_head" != "$PR_HEAD_SHA" ]; then
+              echo "::error::the tested merge holds head $merged_head; the event names $PR_HEAD_SHA"
+              exit 1
+            fi
+            engine_head=$PR_HEAD_SHA
+            merge_line="$tested (parents: base $merged_base, head $merged_head)"
+            base_line=$PR_BASE_SHA
+          else
+            engine_head=$tested
+            merge_line="none (manual run on a branch, not a pull request)"
+            base_line="none (manual run on a branch, not a pull request)"
+          fi
+          {
+            echo "### Tested commits: standalone engine checks"
+            echo
+            echo "- event: $EVENT_NAME"
+            echo "- engine head SHA: $engine_head"
+            echo "- tested merge SHA: $merge_line"
+            echo "- base SHA: $base_line"
+            echo "- site: none. This job has no site checkout; tests that need one skip."
+            echo "- provider keys in the environment: none"
+            echo "- engine clone is shallow: $(git -C "$engine" rev-parse --is-shallow-repository)"
+            echo
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+
+      - name: Install (verify.md, Setup and sources of truth)
+        id: install
+        working-directory: patientwords-engine
+        run: |
+          set -euo pipefail
+          python -m pip install -e '.[llm]' 'pytest>=9.1,<9.2' 'ruff>=0.16,<0.17' 'pyyaml>=6,<7'
+          python --version
+          python -m pip show pytest ruff PyYAML requests matplotlib networkx anthropic
+
+      - name: Lint (ruff)
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        working-directory: patientwords-engine
+        run: python -m ruff check .
+
+      - name: Whitespace gate on the pull request's diff (git diff --check)
+        if: ${{ !cancelled() }}
+        working-directory: patientwords-engine
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" != pull_request ]; then
+            echo "NOT RUN: a manual run has no pull request base to compare with." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          # cr-at-eol: a carriage return that ends a line is part of the line ending, so a recorded
+          # CSV with CRLF line endings passes. Every other whitespace error is still reported.
+          git -c core.whitespace=cr-at-eol diff --check 'HEAD^1' HEAD
+          echo "git diff --check: clean between $(git rev-parse 'HEAD^1') and $(git rev-parse HEAD)"
+
+      - name: Test suite, standalone (python -m pytest -q -ra)
+        id: suite
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        working-directory: patientwords-engine
+        run: |
+          set -euo pipefail
+          python -m pytest -q -ra 2>&1 | tee "$RUNNER_TEMP/pytest_standalone.log"
+
+      - name: Report the suite result and every skip
+        if: ${{ always() }}
+        env:
+          SUITE_OUTCOME: ${{ steps.suite.outcome }}
+        run: |
+          set -euo pipefail
+          log="$RUNNER_TEMP/pytest_standalone.log"
+          {
+            echo "### Test suite: standalone (no site checkout, no browser)"
+            echo
+            echo "Step outcome: $SUITE_OUTCOME."
+            echo
+            if [ -s "$log" ]; then
+              echo '```'
+              tail -n 1 "$log"
+              echo '```'
+              echo
+              echo "A skipped test is not a passed test. Skips, failures and errors, with reasons:"
+              echo
+              echo '```'
+              grep -E '^(SKIPPED|FAILED|ERROR|XFAIL|XPASS) ' "$log" || echo "none"
+              echo '```'
+            else
+              echo "BLOCKED: the suite did not run, so no test result exists for this job."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  paired:
+    name: Paired checks (engine beside one resolved site commit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Resolve the site revision to a commit SHA (before any checkout)
+        id: site
+        env:
+          INPUT_SITE_REF: ${{ inputs.site_ref }}
+          ENGINE_BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          set -euo pipefail
+          url="https://github.com/${SITE_REPOSITORY}"
+          # Prints "<sha> <refname>" lines for the exact refs asked for, or nothing when the
+          # site has none of them. A query that fails is an error, not "no such ref": the
+          # fallback to main must never hide a failed lookup.
+          lookup() {
+            local out rc=0
+            out=$(git ls-remote --exit-code "$url" "$@") || rc=$?
+            if [ "$rc" -eq 2 ]; then return 0; fi
+            if [ "$rc" -ne 0 ]; then
+              echo "::error::BLOCKED: git ls-remote could not query the site repository (exit $rc). No site commit was chosen." >&2
+              return 1
+            fi
+            printf '%s\n' "$out"
+          }
+          sha_of() { awk -v want="$1" '$2 == want { print $1; exit }'; }
+          site_sha=""
+          if [ -n "$INPUT_SITE_REF" ]; then
+            rule="1: the site_ref input of this manual run"
+            site_ref=$INPUT_SITE_REF
+            if [[ "$INPUT_SITE_REF" =~ ^[0-9a-f]{40}$ ]]; then
+              site_sha=$INPUT_SITE_REF
+            else
+              found=$(lookup "refs/heads/$INPUT_SITE_REF" "refs/tags/$INPUT_SITE_REF" "refs/tags/$INPUT_SITE_REF^{}")
+              for want in "refs/heads/$INPUT_SITE_REF" "refs/tags/$INPUT_SITE_REF^{}" "refs/tags/$INPUT_SITE_REF"; do
+                if [ -z "$site_sha" ]; then site_sha=$(printf '%s\n' "$found" | sha_of "$want"); fi
+              done
+            fi
+            if [ -z "$site_sha" ]; then
+              echo "::error::BLOCKED: the site_ref input is not a branch, a tag or a full commit SHA of the site repository. An explicit ref has no fallback; nothing was tested."
+              exit 1
+            fi
+          else
+            found=$(lookup "refs/heads/$ENGINE_BRANCH")
+            site_sha=$(printf '%s\n' "$found" | sha_of "refs/heads/$ENGINE_BRANCH")
+            if [ -n "$site_sha" ]; then
+              rule="2: the site branch with the same name as the engine branch"
+              site_ref="refs/heads/$ENGINE_BRANCH"
+            else
+              found=$(lookup refs/heads/main)
+              site_sha=$(printf '%s\n' "$found" | sha_of refs/heads/main)
+              rule="3: FALLBACK to site main (the site has no branch named like the engine branch)"
+              site_ref=refs/heads/main
+            fi
+          fi
+          if ! [[ "$site_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::BLOCKED: no site commit could be resolved. Nothing was tested."
+            exit 1
+          fi
+          printf 'site ref:  %s\nsite SHA:  %s\nchosen by: rule %s\n' "$site_ref" "$site_sha" "$rule"
+          {
+            printf 'ref=%s\n' "$site_ref"
+            printf 'sha=%s\n' "$site_sha"
+            printf 'rule=%s\n' "$rule"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Check out the engine commit under test
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: patientwords-engine
+          fetch-depth: 0
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/trace_out/**/*.html
+            !/trace_out/**/*.png
+          persist-credentials: false
+
+      # The whole site, modes/ included: the seal check refuses a site checkout that
+      # keeps tracked files off disk, and the contract check reads the render paths.
+      - name: Check out the site at the resolved commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ${{ env.SITE_REPOSITORY }}
+          ref: ${{ steps.site.outputs.sha }}
+          path: patientwords
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
+
+      - name: Record the tested commits
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          SITE_REF: ${{ steps.site.outputs.ref }}
+          SITE_SHA: ${{ steps.site.outputs.sha }}
+          SITE_RULE: ${{ steps.site.outputs.rule }}
+        run: |
+          set -euo pipefail
+          for name in ANTHROPIC_API_KEY OPENROUTER_API_KEY GEMINI_API_KEY NEURONPEDIA_API_KEY HF_TOKEN; do
+            if [ -n "${!name:-}" ]; then
+              echo "::error::$name is set in this job. This workflow runs without provider keys."
+              exit 1
+            fi
+          done
+          engine=patientwords-engine
+          tested=$(git -C "$engine" rev-parse HEAD)
+          if [ "$tested" != "$GITHUB_SHA" ]; then
+            echo "::error::the engine checkout is at $tested; this run is for $GITHUB_SHA"
+            exit 1
+          fi
+          site_tested=$(git -C patientwords rev-parse HEAD)
+          if [ "$site_tested" != "$SITE_SHA" ]; then
+            echo "::error::the site checkout is at $site_tested; the resolved site commit is $SITE_SHA"
+            exit 1
+          fi
+          if [ "$EVENT_NAME" = pull_request ]; then
+            merged_base=$(git -C "$engine" rev-parse 'HEAD^1')
+            merged_head=$(git -C "$engine" rev-parse 'HEAD^2')
+            if [ "$merged_head" != "$PR_HEAD_SHA" ]; then
+              echo "::error::the tested merge holds head $merged_head; the event names $PR_HEAD_SHA"
+              exit 1
+            fi
+            engine_head=$PR_HEAD_SHA
+            merge_line="$tested (parents: base $merged_base, head $merged_head)"
+            base_line=$PR_BASE_SHA
+          else
+            engine_head=$tested
+            merge_line="none (manual run on a branch, not a pull request)"
+            base_line="none (manual run on a branch, not a pull request)"
+          fi
+          {
+            echo "### Tested commits: paired checks"
+            echo
+            echo "- event: $EVENT_NAME"
+            echo "- engine head SHA: $engine_head"
+            echo "- tested merge SHA: $merge_line"
+            echo "- base SHA: $base_line"
+            printf -- '- site ref: %s\n' "$SITE_REF"
+            echo "- site SHA: $site_tested"
+            echo "- site revision chosen by rule $SITE_RULE"
+            echo "- provider keys in the environment: none"
+            echo "- engine clone is shallow: $(git -C "$engine" rev-parse --is-shallow-repository)"
+            echo "- site clone is shallow: $(git -C patientwords rev-parse --is-shallow-repository)"
+            echo
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+
+      - name: Install (verify.md, Setup and sources of truth)
+        id: install
+        working-directory: patientwords-engine
+        run: |
+          set -euo pipefail
+          python -m pip install -e '.[llm]' 'pytest>=9.1,<9.2' 'ruff>=0.16,<0.17' 'pyyaml>=6,<7'
+          python --version
+          python -m pip show pytest ruff PyYAML requests matplotlib networkx anthropic
+
+      # One Playwright version for both environments of this job: the one the boundary
+      # lock pins. A browser that cannot be installed fails the job here; the browser
+      # tests would otherwise skip and the job would read as a pass.
+      - name: Install Playwright and Chromium (version from the boundary lock)
+        id: browser
+        working-directory: patientwords-engine
+        run: |
+          set -euo pipefail
+          pin=$(grep -m1 -E '^playwright==[0-9.]+$' scripts/boundary_client/requirements.lock)
+          python -m pip install "$pin"
+          python -m playwright install --with-deps chromium
+          python - <<'PY'
+          from pathlib import Path
+          from playwright.sync_api import sync_playwright
+          with sync_playwright() as playwright:
+              path = Path(playwright.chromium.executable_path)
+              assert path.is_file(), f"BLOCKED: no Chromium at {path}"
+              browser = playwright.chromium.launch()
+              print("Chromium", browser.version, "at", path)
+              browser.close()
+          PY
+
+      - name: Test suite, paired (python -m pytest -q -ra, site and Chromium present)
+        id: suite
+        if: ${{ !cancelled() && steps.install.outcome == 'success' && steps.browser.outcome == 'success' }}
+        working-directory: patientwords-engine
+        run: |
+          set -euo pipefail
+          PW_SITE_ROOT=$(cd ../patientwords && pwd)
+          export PW_SITE_ROOT
+          python -m pytest -q -ra 2>&1 | tee "$RUNNER_TEMP/pytest_paired.log"
+
+      - name: Report the suite result and every skip
+        if: ${{ always() }}
+        env:
+          SUITE_OUTCOME: ${{ steps.suite.outcome }}
+          SITE_REF: ${{ steps.site.outputs.ref }}
+          SITE_SHA: ${{ steps.site.outputs.sha }}
+          SITE_RULE: ${{ steps.site.outputs.rule }}
+        run: |
+          set -euo pipefail
+          log="$RUNNER_TEMP/pytest_paired.log"
+          {
+            echo "### Test suite: paired (site checkout and Chromium present)"
+            echo
+            echo "Step outcome: $SUITE_OUTCOME."
+            echo
+            if [ -s "$log" ]; then
+              echo '```'
+              tail -n 1 "$log"
+              echo '```'
+              echo
+              echo "A skipped test is not a passed test. Skips, failures and errors, with reasons:"
+              echo
+              echo '```'
+              grep -E '^(SKIPPED|FAILED|ERROR|XFAIL|XPASS) ' "$log" || echo "none"
+              echo '```'
+            else
+              echo "BLOCKED: the suite did not run, so no test result exists for this job."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          # This job provides the site and Chromium. A test whose skip reason names either did
+          # not run in the one job meant to run it, and that is a failure whatever the cause:
+          # the site or the browser was not found, or the paired site commit is older than the
+          # test requires. The message prints the skip lines and the site commit of this run.
+          if [ -s "$log" ] && skips=$(grep -E '^SKIPPED .*(sibling|site checkout|site page|site index|playwright|Chromium)' "$log"); then
+            echo "Skip lines whose reason names the site or the browser:"
+            printf '%s\n' "$skips"
+            printf 'site ref:  %s\nsite SHA:  %s\nchosen by: rule %s\n' "$SITE_REF" "$SITE_SHA" "$SITE_RULE"
+            echo "::error::A test skipped for a reason that names the site or the browser, so it did not run in this job. The skip lines are printed above. The paired site commit may be older than the test requires: site ref $SITE_REF, site SHA $SITE_SHA, chosen by rule $SITE_RULE. See verify.md, Pull-request checks."
+            exit 1
+          fi
+
+      # verify.md, Paired gates on existing artifacts. These read the files committed at
+      # the site commit above. They are not the release gate: no snapshot is checked and
+      # nothing is regenerated.
+      - name: Paired gate, contract (validate_frontend_contract.py, report mode)
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        working-directory: patientwords-engine
+        run: |
+          set -euo pipefail
+          PW_SITE_ROOT=$(cd ../patientwords && pwd)
+          python scripts/validate_frontend_contract.py --site "$PW_SITE_ROOT" --engine .
+
+      - name: Paired gate, claims (claim_check.py)
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        working-directory: patientwords-engine
+        run: |
+          set -euo pipefail
+          PW_SITE_ROOT=$(cd ../patientwords && pwd)
+          python scripts/claim_check.py --site "$PW_SITE_ROOT"
+
+      - name: Paired gate, holdout seal (seal_check.py)
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        working-directory: patientwords-engine
+        run: |
+          set -euo pipefail
+          PW_SITE_ROOT=$(cd ../patientwords && pwd)
+          python scripts/seal_check.py --site "$PW_SITE_ROOT"
+
+      - name: Paired gate, pages in Chromium (check_pages.py)
+        if: ${{ !cancelled() && steps.install.outcome == 'success' && steps.browser.outcome == 'success' }}
+        working-directory: patientwords-engine
+        run: |
+          set -euo pipefail
+          PW_SITE_ROOT=$(cd ../patientwords && pwd)
+          python scripts/check_pages.py --site "$PW_SITE_ROOT" --port 8901
+
+      # verify.md, Synthetic exporter-to-browser boundary. It has its own Python 3.13
+      # environment, pinned by scripts/boundary_client/requirements.lock. Every step
+      # above has finished with Python 3.12 before the interpreter changes here.
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        if: ${{ !cancelled() && steps.browser.outcome == 'success' }}
+        with:
+          python-version: '3.13'
+
+      - name: Install the boundary environment (scripts/boundary_client/requirements.lock)
+        id: boundary_env
+        if: ${{ !cancelled() && steps.browser.outcome == 'success' }}
+        working-directory: patientwords-engine
+        run: |
+          set -euo pipefail
+          python -m venv "$RUNNER_TEMP/pw-boundary-venv"
+          PW_BOUNDARY_PY="$RUNNER_TEMP/pw-boundary-venv/bin/python"
+          "$PW_BOUNDARY_PY" -m pip install -r scripts/boundary_client/requirements.lock
+          "$PW_BOUNDARY_PY" --version
+
+      - name: Synthetic exporter-to-browser boundary (check_frontend_boundary.py)
+        id: boundary
+        if: ${{ !cancelled() && steps.boundary_env.outcome == 'success' }}
+        working-directory: patientwords-engine
+        run: |
+          set -euo pipefail
+          PW_BOUNDARY_PY="$RUNNER_TEMP/pw-boundary-venv/bin/python"
+          PW_SITE_ROOT=$(cd ../patientwords && pwd)
+          PW_BOUNDARY_RECEIPT="$RUNNER_TEMP/frontend-boundary-receipt.json"
+          "$PW_BOUNDARY_PY" scripts/boundary_client/generate.py --check
+          "$PW_BOUNDARY_PY" scripts/check_frontend_boundary.py --site "$PW_SITE_ROOT" \
+            --receipt "$PW_BOUNDARY_RECEIPT"
+
+      - name: Report the boundary result
+        if: ${{ always() }}
+        env:
+          BOUNDARY_OUTCOME: ${{ steps.boundary.outcome }}
+        run: |
+          set -euo pipefail
+          receipt="$RUNNER_TEMP/frontend-boundary-receipt.json"
+          {
+            echo "### Synthetic exporter-to-browser boundary"
+            echo
+            echo "Step outcome: $BOUNDARY_OUTCOME."
+            echo
+            if [ -s "$receipt" ]; then
+              python3 - "$receipt" <<'PY'
+          # Field names are the ones scripts/check_frontend_boundary.py writes. A receipt that
+          # lacks one prints "not recorded" for it: this step reports, and the boundary step's
+          # own exit status decides the job.
+          import json
+          import sys
+
+
+          def field(holder, name):
+              value = holder.get(name) if isinstance(holder, dict) else None
+              return "not recorded" if value is None else value
+
+
+          try:
+              receipt = json.load(open(sys.argv[1], encoding="utf-8"))
+          except (OSError, ValueError) as exc:
+              print(f"BLOCKED: the receipt could not be read as JSON ({type(exc).__name__}).")
+              sys.exit(0)
+          if not isinstance(receipt, dict):
+              print("BLOCKED: the receipt is not a JSON object.")
+              sys.exit(0)
+          checks = receipt.get("checks")
+          checks = [check for check in checks if isinstance(check, dict)] if isinstance(checks, list) else []
+          print(f"- result: {field(receipt, 'result')} ({len(checks)} checks recorded)")
+          if receipt.get("result") != "passed":
+              print(f"- failure: {field(receipt, 'failure')} {receipt.get('failure_message') or ''}".rstrip())
+          print(f"- evidence: {field(receipt, 'evidence')}")
+          print(f"- engine HEAD in the receipt: {field(receipt.get('engine'), 'head')}")
+          print(f"- site HEAD in the receipt: {field(receipt.get('frontend'), 'head')}")
+          print(f"- fixture sha256: {field(receipt, 'fixture_sha256')}")
+          print()
+          print("Each recorded check, with the summary line and the skips the receipt holds for it.")
+          print("A skipped test is not a passed test.")
+          print()
+          print("```")
+          for check in checks:
+              print(f"{field(check, 'name')}: {field(check, 'result')}")
+              for name in ("summary", "reason"):
+                  if check.get(name):
+                      print(f"  {name}: {check[name]}")
+              skipped = check.get("skipped")
+              for line in skipped if isinstance(skipped, list) else []:
+                  print(f"  {line}")
+          if not checks:
+              print("none")
+          print("```")
+          PY
+            else
+              echo "BLOCKED: the boundary wrote no receipt, so it did not run."
+            fi
+          } | tee -a "$GITHUB_STEP_SUMMARY"

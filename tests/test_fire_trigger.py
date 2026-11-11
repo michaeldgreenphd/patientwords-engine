@@ -58,7 +58,11 @@ def write_dashboard(repo, spent, date=None, ceiling=2.0):
 
 
 @pytest.fixture
-def repo(tmp_path):
+def repo(tmp_path, monkeypatch):
+    # A hosted runner sets GITHUB_ACTIONS=true, and inside Actions the budget gate refuses a paid run that was
+    # handed no --push-before or --ref. The throwaway repo starts outside Actions wherever the suite runs; a
+    # test of the gate inside Actions sets the variable itself, after this fixture.
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
     (tmp_path / ".github" / "trigger").mkdir(parents=True)
     wf = tmp_path / ".github" / "workflows"
     wf.mkdir(parents=True)
@@ -3270,6 +3274,41 @@ def test_budget_gate_binds_the_reservation_to_the_ref_it_was_fired_on(repo, caps
     assert gate(ci=True) == 6
     assert "was not told which ref it is running on" in capsys.readouterr().err
     assert gate() == 0, "outside Actions there is no ref to compare with; every other check still ran"
+
+
+@pytest.fixture
+def hosted_runner(monkeypatch):
+    """The two variables a GitHub-hosted runner sets for every step. A test names this fixture before `repo`, so
+    they are in the environment when `repo` is built, as they are on the runner."""
+    monkeypatch.setenv("CI", "true")
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+
+
+def test_the_throwaway_repo_starts_outside_actions_on_a_hosted_runner(hosted_runner, repo, capsys, monkeypatch):
+    """Five gate tests in this file failed with GITHUB_ACTIONS=true in the environment and passed without it
+    (2026-11-11). They call the gate with no --push-before, which is a refusal inside Actions, and they did not
+    set the variable, so the result followed the machine the suite ran on. The `repo` fixture now clears it.
+    This is a statement about the test environment only: the gate's own rule is unchanged and is asserted in
+    the two tests above."""
+    assert "GITHUB_ACTIONS" not in os.environ, "the repo fixture clears the runner's flag"
+    paid = {"seeds_file": "docs/framework/petri_seeds.draft.json", "target": "anthropic/claude-haiku-4-5",
+            "mode": "run", "max_spend": "1.00", "judge": "false", "commit_outputs": "true", "_nonce": "pilot-1"}
+    content = json.dumps(paid, separators=(",", ":")) + "\n"
+    (repo / TRIGGER_SUBDIR / "petri-audit.json").write_text(content, encoding="utf-8")
+    journal_path(repo).write_text(json.dumps({
+        "trigger": "petri-audit", "fired_utc": ft.iso_utc(ft.utc_now()), "commit": "", "note": "pilot",
+        "resolved": False, "evicted": False, "nonce": "pilot-1", "max_spend": 1.0, "lane": "anthropic",
+        "params_sha256": ft.params_digest(content), "ref": "main"}) + "\n", encoding="utf-8")
+
+    def gate():
+        return ft.main(["budget-gate", "--repo", str(repo), "--trigger", "petri-audit"])
+
+    # the call the five tests make: no --push-before and no --ref
+    assert gate() == 0, capsys.readouterr().err
+    # a test that sets the variable after the fixture still gets the gate's refusal inside Actions
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    assert gate() == 6
+    assert "cannot tell a fire from a replay" in capsys.readouterr().err
 
 
 def test_a_fire_records_the_ref_it_was_made_on(repo):

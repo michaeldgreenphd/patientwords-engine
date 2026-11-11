@@ -25,6 +25,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -705,20 +706,62 @@ def test_a_directory_that_is_not_a_git_checkout_is_reported_and_not_enforced(tmp
     assert {s["batch"] for s in payload_of(site)["scenarios"]} == {B2}
 
 
-def test_a_checkout_git_cannot_read_is_refused_not_taken_for_a_disposable_copy(released):
+# Git words one error differently across versions. For a ``.git`` file that names a directory that does not
+# exist, git 2.43 prints "fatal: not a git repository: <directory>". The git on GitHub's hosted runners on
+# 2026-11-11 (2.56) prints a message that ends "... does not point to a valid repository: <site>/.git" (its
+# start was cut off in the log this was read from). The export has two guards that can refuse such a site.
+# The render-prune guard (scripts/sparse_guard.py) reads the first wording as "no checkout here" and lets
+# the export reach the disposition check, which refuses; under the second wording the prune guard refuses
+# first. The test pinned the disposition check's message and failed on the hosted runner for that reason.
+GIT_WORDINGS = ("the installed git", "a git that words a .git file pointing nowhere as the hosted runner's does")
+
+
+def _reword_git(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Put a stand-in ``git`` first on PATH. It runs the real git with the same arguments, output and exit
+    status, and replaces only the older wording of that one error with the newer wording."""
+    real = shutil.which("git")
+    assert real, "git is not installed"
+    shim = tmp_path / "git_shim" / "git"
+    _write(shim, "#!/bin/sh\n"
+                 'err=$(mktemp)\n'
+                 f'"{real}" "$@" 2>"$err"; rc=$?\n'
+                 "if [ $rc -ne 0 ] && grep -q 'not a git repository: /nonexistent/zq' \"$err\"; then\n"
+                 '  echo "fatal: .git file does not point to a valid repository: /nonexistent/zq" >&2\n'
+                 'else\n'
+                 '  cat "$err" >&2\n'
+                 'fi\n'
+                 'rm -f "$err"\n'
+                 'exit $rc\n')
+    shim.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{shim.parent}{os.pathsep}{os.environ['PATH']}")
+
+
+@pytest.mark.parametrize("wording", GIT_WORDINGS)
+def test_a_checkout_git_cannot_read_is_refused_not_taken_for_a_disposable_copy(released, wording, tmp_path,
+                                                                             monkeypatch):
     """Without this a site whose git answers with an error (a refused directory, a damaged ``.git``) would
-    read as a copy, and its differences would be printed and not enforced."""
+    read as a copy, and its differences would be printed and not enforced. Whichever guard refuses first,
+    the export stops with exit 1, says why, takes no difference for unenforced and leaves the site as it was."""
     engine, site = released
     part(engine, S1, "qwen3-4b", 1, "logits", {**QWEN, 2: (0.61, 0.2)})
     damaged = site.parent / "damaged"
     (site / ".git").rename(damaged)
     _write(site / ".git", "gitdir: /nonexistent/zq")
+    if wording != GIT_WORDINGS[0]:
+        _reword_git(tmp_path, monkeypatch)
     before = files(site)
     with pytest.raises(pd.DispositionError, match="git cannot say whether"):
         pd.site_reference(site)
     proc = export(engine, site)
-    assert proc.returncode == 1 and "cannot be compared with what the site publishes" in proc.stderr
-    assert "Nothing was written or pruned" in proc.stderr and files(site) == before
+    assert proc.returncode == 1, proc.stderr + proc.stdout
+    by_disposition_check = "cannot be compared with what the site publishes" in proc.stderr
+    by_prune_guard = "cannot tell whether the site checkout hides renders" in proc.stderr
+    assert by_disposition_check != by_prune_guard, proc.stderr          # exactly one guard speaks
+    if wording != GIT_WORDINGS[0]:
+        assert by_prune_guard, proc.stderr                              # the newer wording is not "no checkout"
+    if by_disposition_check:
+        assert "Nothing was written or pruned" in proc.stderr
+    assert "not enforced" not in proc.stdout and files(site) == before
 
 
 # ---------------------------------------------------------------- the backend label rule (decision D3)

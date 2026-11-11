@@ -147,10 +147,11 @@ or sandbox that denies loopback sockets prevents those checks from completing.
 Use an authorized writable/local-server environment and report the initial blocker;
 do not remove assertions or confuse local fixture HTTP with a live provider call.
 
-This checkout's `.github/workflows/` runs measurement, generation, archive,
-operational lanes and the separately approved exploratory preflight, not a generic
-pytest/ruff pull-request workflow. The commands
-above are the local regression gates; do not claim they reproduced all CI jobs.
+This checkout's `.github/workflows/` holds the measurement, generation, archive and
+operational lanes, the separately approved exploratory preflight, and one
+pull-request workflow, `.github/workflows/pr_checks.yml`, which runs the commands
+above on a hosted runner ([Pull-request checks](#pull-request-checks)). A local run
+is not a CI run: do not report one as the other.
 The frontend's `site_checks.yml` independently runs this engine's contract and
 browser scripts against the site, selecting engine `main` or a matching branch.
 Record the actual engine revision when reproducing that boundary locally.
@@ -164,6 +165,94 @@ is limited to the documented, separately labeled generation pilot. The newer own
 exception permits preparing the one-case route in
 [docs/exploratory/baseline_ci.md](docs/exploratory/baseline_ci.md); execution still
 needs separate owner approval. Neither exception authorizes a verification run here.
+
+## Pull-request checks
+
+`.github/workflows/pr_checks.yml` runs on every pull request and on a manual dispatch.
+It has no push trigger and is not a lane of [docs/triggers.md](docs/triggers.md). It
+reads no secret, calls no model or provider, and commits, pushes and uploads nothing.
+
+| Job | Checkout | What it runs |
+|---|---|---|
+| Standalone engine checks | The engine commit alone: no site, no browser | The setup block's install, `python -m ruff check .`, `python -m pytest -q -ra`, and `git diff --check` on the pull request's own diff |
+| Paired checks | The same engine commit beside one site commit | The same install, Playwright at the version `scripts/boundary_client/requirements.lock` pins with its Chromium, `python -m pytest -q -ra` again, the four [paired gates](#paired-gates-on-existing-artifacts) and the [synthetic boundary](#synthetic-exporter-to-browser-boundary) |
+
+The paired job runs the whole suite, not a selection of it. A test that needs the
+site or Chromium skips in the standalone job and runs in the paired job, so a new
+one is picked up with no change to the workflow. Each job lists every skip and its
+reason in the job summary, and the boundary's report lists the skips its receipt
+records. A skip is not a pass. In the paired job a test whose skip reason names the
+site or the browser fails the job. The step prints the skip lines and the site ref,
+SHA and rule of the run. This includes a test that skips because the paired site
+commit is older than the test requires. An engine pull request whose tests need a
+site change is paired with it by pushing that site change to a site branch of the
+same name. Against an older site commit the paired job fails at this step. The
+paired job still skips the tests that need a package outside the setup block
+(`inspect_petri`, `inspect_ai`, `icalens` with `torch`). No CI job runs those.
+
+Not run by this workflow: any measurement lane, `scripts/fire_trigger.py`, an exporter
+on landed measurements (the temporary regeneration below), the publication chain, and
+release verification (`scripts/results_snapshot.py check-release`). The paired gates
+read the files committed at the paired site commit, in report mode. They are not the
+release gate. The boundary reads the synthetic fixture only.
+
+The site commit is chosen by the first rule that applies. The job resolves it to a
+SHA before any checkout, checks out that SHA and prints the rule.
+
+1. The `site_ref` input of a manual dispatch: a branch, a tag or a full commit SHA.
+   A ref the site does not have fails the job. An explicit ref has no fallback.
+2. The site branch with the same name as the pull request's head branch, by an exact
+   `refs/heads/` match. On a manual dispatch, the branch the run started from.
+3. The site's `main`, printed as `FALLBACK`.
+
+Each job writes the tested commits to its log and its summary: the pull request's
+head SHA, the tested merge SHA with both parents, the base SHA and, in the paired
+job, the site ref, the site SHA and the rule. A pull-request run tests GitHub's merge
+of the head into the base, not the head commit alone. A manual dispatch has no base,
+so its whitespace gate prints `NOT RUN`. The gate runs
+`git -c core.whitespace=cr-at-eol diff --check`: a carriage return that ends a line,
+as in a recorded CSV with CRLF line endings, is not reported, and every other
+whitespace error is. A job fails, and does not skip, when a
+checkout is not at the commit it reports, when the site cannot be queried, or when
+Chromium cannot be installed.
+
+Both checkouts hold full history without blobs (`fetch-depth: 0`, `filter: blob:none`),
+because five tests read earlier commits and skip in a shallow clone: one in
+`tests/test_petri_audit_historical.py`, one in `tests/test_petri_openrouter_prices.py`,
+two in `tests/test_export_jev_calibration.py` and, for the site's history, one in
+`tests/test_validate_frontend_contract.py`. The engine checkout leaves the renders
+under `trace_out/` (`*.html` and `*.png`, 7.8 GB) off disk. On 2026-11-11 the suite
+passed in a clone without them, and no skip reason named a missing render. The
+workflow first ran on hosted runners on that date, on the pull request that added it
+(run 43083538251: engine head `02ce6e8a`, tested merge `b1c54d73`, site `e13b7aa`
+chosen by rule 2). Standalone: 7913 passed, 65 skipped. Paired: 7950 passed, 28
+skipped, the four gates clean, the boundary's 21 checks passed. A manual run with
+`site_ref` has not been made, and no pull request from a fork has run it.
+
+To reproduce the standalone job, use an engine checkout with no `../patientwords`
+beside it and `PW_SITE_ROOT` unset. Run the setup block, then the block under
+[Broader local gates](#broader-local-gates-and-ci-limits). To reproduce the paired
+job, put the site at the SHA the job printed in `../patientwords`, then, from the
+engine root with the setup block's environment active:
+
+```bash
+(
+set -euo pipefail
+git rev-parse HEAD
+git -C ../patientwords rev-parse HEAD
+python -m pip install "$(grep -m1 -E '^playwright==[0-9.]+$' scripts/boundary_client/requirements.lock)"
+python -m playwright install chromium
+python -m pytest -q -ra
+)
+```
+
+Then run the block under [Paired gates](#paired-gates-on-existing-artifacts) and the
+block under [Synthetic exporter-to-browser boundary](#synthetic-exporter-to-browser-boundary).
+A local run tests the working tree. To test what a pull-request run tested, merge the
+base branch into the head first. A local rehearsal of a workflow change sets `CI=true`
+and `GITHUB_ACTIONS=true` in the environment, because hosted runners set both: on
+2026-11-11 five tests in `tests/test_fire_trigger.py` failed with them set and passed
+without them.
 
 ## Artifact boundary
 
