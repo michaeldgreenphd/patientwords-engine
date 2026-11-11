@@ -121,3 +121,47 @@ runs in site CI.
 - The site's `docs/agent_reference.md` says 16 canonical tags; 18 authored pages carry one.
 - The message of engine commit `bf26567d` misstates how far the site fix is from the snapshot's site
   commit. The fix is site commit `6c5ef90a`, three commits after `2bf3c1e`.
+
+## Addendum, later on 2026-11-11: the restoration pass
+
+The owner merged engine 171 at 03:10 UTC with a merge commit (`21ad6657`), so `a40520d1` is an
+ancestor of `main`. 169 and 170 are closed as superseded. Steps 1 and 4 of *Release order* are done.
+
+Two statements above are superseded.
+
+- **Start here.** The owner rejected the redesign of that page listed under *Completed implementation*.
+  Site 29 now restores the page from its design of 2026-10-27 (site `ac82473`), corrects specific claims
+  in place, and adds a second drawing of each wide diagram for narrow screens. The standing preference
+  (preserve the diagram-led narrative and its interactions; make small, justified edits) is recorded in
+  the site's `docs/agent_reference.md`. The homepage, Results and Compare methods were shortened; no data
+  file changed.
+- **The instrument-validity scorer's state names.** `system_does_not_read_artifact` and
+  `recoverable_from_wording_alone` named a cause the comparison cannot show. Engine 172 renames them
+  (`no_advantage_over_control_artifact`, `no_advantage_over_wording_alone`) and corrects the rule. It
+  makes the same correction to `scorer_does_not_read_description`, in a separate commit.
+
+Remaining order:
+
+1. Merge site 29. Any merge method works for the site.
+2. Merge engine 172. It holds the claim entries and the browser test for the restored page, so between
+   the two merges `tests/test_claim_check.py::test_live_manifest_verifies_against_live_site` reports
+   warnings when engine `main` is paired with site `main`.
+3. Record the publication with the command in step 3 of *Release order* and commit the one-file index
+   change.
+
+Checked at engine `b2c1951a` and site `60c2d8e`, Python 3.12.3 unless stated:
+
+| Check | Result |
+|---|---|
+| Full engine suite | 7,799 passed, 33 skipped, 0 failed (the skips are the ones listed above) |
+| Boundary check, Python 3.13.18, with `--browser` set to the installed Chromium | exit 0, 21 checks. Without `--browser` it stopped before any check: that environment's Playwright expects a browser build that is not installed |
+| Results page check / comparison preview check | 69 of 69 / 56 of 56 (synthetic fixture) |
+| Page load check, contract gate `--strict`, claim check, seal check | 23 pages, 0 failing; 0 errors and 0 warnings; all claims verified; clean (183 sealed phrases) |
+| `check-release` | exit 0: one statistics file changes, the snapshot covers it, 0 published measurements change. No file under the site's `data/` or `modes/` changed after the snapshot's site commit `2bf3c1e` |
+| Site CI at `60c2d8e` | both `checks` runs succeeded |
+
+Found in this pass and not changed: the site's `data/provenance.json` gives the translation outcome
+twice and the two do not agree. `translation_cases.summary` says 8 recovered of 20 downgrades (7
+unrecovered, 5 unclassifiable). `translation_cases.all.cases` lists 18 cases: 8 recovered, 4 already
+correct, 3 unrecovered, 3 worsened. The Translation page prints the first. The restored Start here page
+prints neither count. An earlier review recorded the same disagreement (`docs/referee_panel_20260714.md`).
