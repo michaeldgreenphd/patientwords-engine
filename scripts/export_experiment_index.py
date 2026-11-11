@@ -141,7 +141,8 @@ def _default_row_restriction() -> RowRestriction:
 def check_exported_text(doc: Mapping[str, Any], relative: str, row_restriction: RowRestriction | None) -> int:
     """Ask the seal about every prompt an eligible bundle exports. Returns the number of families with text.
 
-    Raises ``IndexRefusal`` when a prompt is restricted. A ``SealError`` from the seal propagates to ``main``.
+    Raises ``IndexRefusal`` when a prompt, or a target text exported beside it, is restricted. A ``SealError``
+    from the seal propagates to ``main``.
     The seal is not consulted for a bundle without ``variant_text``."""
     families = [f for f in doc["protocol"]["families"] if isinstance(f, dict) and f.get("variant_text")]
     if not families:
@@ -164,6 +165,15 @@ def check_exported_text(doc: Mapping[str, Any], relative: str, row_restriction: 
             if restriction is not None:
                 raise IndexRefusal(f"data/{relative}: family {family_id}, variant {name}: the exported prompt "
                                    f"text is restricted ({restriction})")
+        targets = family.get("target_text")
+        for target_id in sorted(targets) if isinstance(targets, dict) else ():
+            target = targets[target_id].get("text") if isinstance(targets[target_id], dict) else None
+            if not target:
+                continue
+            restriction = check(None, None, target)
+            if restriction is not None:
+                raise IndexRefusal(f"data/{relative}: family {family_id}, target {target_id}: the exported "
+                                   f"target text is restricted ({restriction})")
     return len(families)
 
 

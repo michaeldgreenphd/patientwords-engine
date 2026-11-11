@@ -475,6 +475,49 @@ def test_an_excluded_marked_family_exports_no_text(protocol: dict, tmp_path: Pat
     assert "variant_text" in families["fam-1"] and "variant_text" not in families["fam-3"]
 
 
+# ------------------------------------------------------------------------- explicit target-text export
+
+def _target_marked(doc: dict, *family_ids: str) -> dict:
+    out = copy.deepcopy(doc)
+    for family in out["case_families"]:
+        if family["family_id"] in family_ids:
+            family["facts"].append(bundle_module.TARGET_TEXT_MARKER)
+    return out
+
+
+def test_bundle_exports_target_text_only_for_a_family_with_both_markers(protocol: dict, tmp_path: Path) -> None:
+    # fam-1 carries both markers, fam-2 the prompt marker alone, fam-3 neither.
+    marked = _target_marked(_marked(protocol, "fam-1", "fam-2"), "fam-1")
+    store = _finished(marked, tmp_path / "run")
+    built = bundle_module.build_bundle(store.run_dir, protocol=marked)
+    assert common.structural_errors(built, "bundle") == []
+    families = {f["family_id"]: f for f in built["protocol"]["families"]}
+    source = next(f for f in marked["case_families"] if f["family_id"] == "fam-1")
+    assert families["fam-1"]["target_text"] == {
+        t["id"]: {"text": t["text"], "n_tokens": len(t["token_ids"]), "partial_token_endpoint": False}
+        for t in source["targets"]}
+    assert families["fam-1"]["target_text_export"] == {
+        "basis": "protocol_marker", "marker": "publication:target_text_approved",
+        "seal_check": "not_applicable_synthetic"}
+    # The prompt marker alone exports prompts and no target text, as before the field existed.
+    assert "variant_text" in families["fam-2"]
+    for family_id in ("fam-2", "fam-3"):
+        assert "target_text" not in families[family_id] and "target_text_export" not in families[family_id]
+    # Without the protocol document nothing is exported, markers or not; and the bytes are reproducible.
+    silent = bundle_module.build_bundle(store.run_dir)
+    assert not [f for f in silent["protocol"]["families"] if "target_text" in f or "target_text_export" in f]
+    assert common.json_bytes(built) == common.json_bytes(bundle_module.build_bundle(store.run_dir, protocol=marked))
+
+
+def test_the_target_marker_without_the_prompt_marker_is_refused(protocol: dict, tmp_path: Path) -> None:
+    target_only = _target_marked(protocol, "fam-2")
+    store = _finished(target_only, tmp_path / "run")
+    with pytest.raises(Refusal) as refused:
+        bundle_module.build_bundle(store.run_dir, protocol=target_only)
+    assert refused.value.code == "target_text_without_prompt_text" and "fam-2" in str(refused.value)
+    assert not [t["text"] for f in target_only["case_families"] for t in f["targets"] if t["text"] in str(refused.value)]
+
+
 def _real_labelled(protocol: dict, visibility: str = "public", reasons: tuple[str, ...] = ()) -> tuple[dict, dict, dict]:
     """A non-synthetic protocol document, the plan fields ``approved_prompt_text`` reads and the hash entries
     of its variants. No plan is built: the fixture backend runs synthetic protocols only."""
@@ -526,6 +569,35 @@ def test_prompt_text_of_a_real_protocol_is_exported_only_after_the_seal_check_pa
 
     with pytest.raises(SealError):                    # a configuration error, never converted to "no restriction"
         bundle_module.approved_prompt_text(doc, plan, inputs, broken)
+
+
+def test_target_text_of_a_real_protocol_asks_the_seal_and_flags_a_partial_token_endpoint(protocol: dict) -> None:
+    doc, plan, inputs = _real_labelled(protocol)
+    doc = _target_marked(doc, "fam-1")
+    # A target that spans two tokens: the behaviour endpoint reads the first one only.
+    doc["case_families"][0]["targets"][0]["token_ids"] = [5, 6]
+    plan["protocol"]["sha256"] = common.digest(doc)
+    answer, other = (t["text"] for t in doc["case_families"][0]["targets"])
+    asked: list[tuple] = []
+
+    def open_seal(batch, index, prompt):
+        asked.append((batch, index, prompt))
+        return None
+
+    exported = bundle_module.approved_prompt_text(doc, plan, inputs, open_seal)["fam-1"]
+    first, second = (t["id"] for t in doc["case_families"][0]["targets"])
+    assert exported["target_text"][first] == {"text": answer, "n_tokens": 2, "partial_token_endpoint": True}
+    assert exported["target_text"][second] == {"text": other, "n_tokens": 1, "partial_token_endpoint": False}
+    assert exported["target_text_export"]["seal_check"] == "passed_at_export"
+    # The seal is asked about the row, the three prompts, then each target's text as a bare phrase.
+    assert asked[0][:2] == ("placeholder_batch", 3) and len(asked) == 1 + 3 + 2
+    assert {row[2] for row in asked[4:]} == {answer, other} and all(row[:2] == (None, None) for row in asked[4:])
+
+    with pytest.raises(Refusal) as refused:
+        bundle_module.approved_prompt_text(doc, plan, inputs, lambda batch, index, prompt: (
+            "sealed_holdout" if prompt == answer else None))
+    assert refused.value.code == "holdout_refusal" and f"fam-1:{first}" in str(refused.value)
+    assert answer not in str(refused.value)                                   # a refusal never repeats text
 
 
 @pytest.mark.parametrize("visibility, reasons", [("restricted", ("redistribution_limited_text",)),

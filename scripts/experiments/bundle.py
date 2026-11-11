@@ -2,7 +2,7 @@
 
 The bundle is the one file a browser preview reads: a protocol summary, plan totals, the per-family comparison
 blocks, the capability rows the plan used, evidence labels, provenance hashes and limitations. It copies no
-target text, and no prompt text unless the explicit export described below applies. It holds no clock value,
+prompt text and no target text unless the explicit exports described below apply. It holds no clock value,
 so the same run directory gives the same bytes.
 
 Fields added to version 1 on 2026-11-10 (second review round). Each is additive and optional in the schema, so
@@ -39,6 +39,22 @@ A synthetic protocol's placeholder text is exported under the same marker withou
 validation does for it; the bundle stays ``synthetic_fixture`` and ``not_published``. ``variant_inputs`` is
 unchanged and stays closed: a hash entry cannot hold text.
 
+Explicit target-text export (added 2026-11-11, optional in the schema). A reader of a paired comparison needs
+to know which word's probability moved. ``build_bundle`` writes ``protocol.families[].target_text`` and
+``protocol.families[].target_text_export`` only when the family's ``facts`` list holds a second marker,
+``publication:target_text_approved`` (``TARGET_TEXT_MARKER``), in addition to the prompt-text marker, and every
+condition of the prompt-text export above holds. The prompt-text marker alone exports no target text, as
+before. The target marker without the prompt marker is refused (``target_text_without_prompt_text``): a target
+shown without its prompts has no reading. For a non-synthetic protocol the seal is also asked about each
+target's text (``holdout_refusal``).
+
+``target_text`` is keyed by target id: ``{"text", "n_tokens", "partial_token_endpoint"}``. ``text`` is the
+protocol's own ``targets[].text``, copied; it is never derived from a token id. ``n_tokens`` is the length of
+the protocol's ``targets[].token_ids``. ``partial_token_endpoint`` is true when the target spans more than one
+token: the behaviour endpoint reads the first target token only (``first_target_token_only_no_sequence_scoring``
+below), so the value shown for such a target is the probability of its first token and not of the whole text.
+The text of that first token alone is not recorded anywhere and a page must not invent it.
+
 A bundle built from a synthetic protocol always lists ``synthetic_not_measurement``. It is a rendering input
 for a preview and is not a publication artifact: its evidence block says ``not_published``.
 """
@@ -74,6 +90,8 @@ GENERAL_LIMITATIONS = (
 # protocol schema is closed and has no dedicated field for this; ``facts`` is the per-family list of strings
 # the existing validator accepts. See docs/experiment_interface/preview.md, *Prompt text*.
 PROMPT_TEXT_MARKER = "publication:prompt_text_approved"
+# The second marker, for the family's target text. It is honoured only together with the prompt-text marker.
+TARGET_TEXT_MARKER = "publication:target_text_approved"
 RowRestriction = Callable[[str | None, int | None, str | None], str | None]
 
 
@@ -87,7 +105,8 @@ def approved_prompt_text(protocol: Mapping[str, Any] | None, plan: Mapping[str, 
                          variant_inputs: Mapping[str, Mapping[str, Mapping[str, Any]]],
                          row_restriction: RowRestriction | None = None) -> dict[str, dict[str, Any]]:
     """``{family_id: {"variant_text": {...}, "prompt_text_export": {...}}}`` for the families whose prompt
-    text may be written into a bundle. Empty when no protocol is passed or no family carries the marker.
+    text may be written into a bundle. Empty when no protocol is passed or no family carries the marker. A
+    family that also carries ``TARGET_TEXT_MARKER`` gets ``target_text`` and ``target_text_export`` as well.
 
     The rules are in this module's docstring. ``row_restriction`` defaults to
     ``scripts.results_policy.row_restriction``; tests pass a stub so that no sealed text is read. It is not
@@ -99,6 +118,11 @@ def approved_prompt_text(protocol: Mapping[str, Any] | None, plan: Mapping[str, 
             "protocol_mismatch", "The protocol passed for prompt-text export is not the protocol this run's plan "
             "was built from")
     marked = [family for family in protocol["case_families"] if PROMPT_TEXT_MARKER in family.get("facts", [])]
+    target_only = sorted(family["family_id"] for family in protocol["case_families"]
+                         if TARGET_TEXT_MARKER in family.get("facts", []) and family not in marked)
+    require(not target_only, "target_text_without_prompt_text",
+            f"{', '.join(target_only)}: the target-text marker is honoured only together with the prompt-text "
+            "marker; a target shown without its prompts has no reading")
     if not marked:
         return {}
     synthetic = plan["synthetic"]
@@ -136,11 +160,26 @@ def approved_prompt_text(protocol: Mapping[str, Any] | None, plan: Mapping[str, 
                     f"{family_id}:{name}: the protocol's prompt is not the prompt the plan's tasks were built "
                     "from (SHA-256 differs or the variant has no task)")
             text[name] = {"prompt": variants[name]["prompt"], "prompt_sha256": recorded}
+        seal_state = "not_applicable_synthetic" if synthetic else "passed_at_export"
         out[family_id] = {
             "variant_text": text,
-            "prompt_text_export": {
-                "basis": "protocol_marker", "marker": PROMPT_TEXT_MARKER,
-                "seal_check": "not_applicable_synthetic" if synthetic else "passed_at_export"}}
+            "prompt_text_export": {"basis": "protocol_marker", "marker": PROMPT_TEXT_MARKER,
+                                   "seal_check": seal_state}}
+        if TARGET_TEXT_MARKER in family.get("facts", []):
+            targets: dict[str, dict[str, Any]] = {}
+            for target in sorted(family["targets"], key=lambda t: t["id"]):
+                if check is not None:
+                    restriction = check(None, None, target["text"])
+                    require(restriction is None, "holdout_refusal",
+                            f"{family_id}:{target['id']}: the target's text is restricted: {restriction}; it is "
+                            "not exported")
+                n_tokens = len(target["token_ids"])
+                # Copied from the protocol. Never decoded from a token id: a plan and a payload hold ids only.
+                targets[target["id"]] = {"text": target["text"], "n_tokens": n_tokens,
+                                         "partial_token_endpoint": n_tokens > 1}
+            out[family_id]["target_text"] = targets
+            out[family_id]["target_text_export"] = {"basis": "protocol_marker", "marker": TARGET_TEXT_MARKER,
+                                                    "seal_check": seal_state}
     return out
 
 
