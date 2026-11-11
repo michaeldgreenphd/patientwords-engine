@@ -77,6 +77,9 @@
     "description_controls": {
       "$ref": "#/definitions/description_controls"
     },
+    "verbalizer_arms": {
+      "$ref": "#/definitions/verbalizer_arms"
+    },
     "evaluation_items": {
       "description": "Optional. The evaluation items of the held artifacts: one row per item, with its truth label, the cues its construction exposes and the scorer's verdict under each description condition. Without them the description controls report control_not_run and the held-artifact endpoint gets no verdict.",
       "type": "array",
@@ -484,6 +487,48 @@
             "null"
           ]
         }
+      }
+    },
+    "verbalizer_arms": {
+      "description": "Optional. For a label or score stage whose instrument reads an activation artifact (a verbalizer, a scorer): what the same system reports for the family's medical and everyday variants when it is given the wording alone (arm input_only) and when it is given a matched control artifact, the same-register artifact of another family fixed by a seeded derangement (arm control_artifact). The stage's own observations are the actual-artifact arm. Added on 2026-11-11; a bundle without it stays valid and the stage's arm state is arms_not_run.",
+      "type": "object",
+      "required": ["prespecified", "fixed_before_data", "margins", "stages"],
+      "additionalProperties": false,
+      "properties": {
+        "prespecified": {"type": "boolean"},
+        "fixed_before_data": {"description": "Where and when the two arm margins were fixed.", "type": "string"},
+        "margins": {
+          "description": "artifact_minus_input_only and artifact_minus_control_artifact, in fact-recovery rate.",
+          "type": "object",
+          "additionalProperties": {"type": "number"}
+        },
+        "stages": {
+          "description": "Keyed by stage name: label or score.",
+          "type": "object",
+          "additionalProperties": {"$ref": "#/definitions/verbalizer_arm_stage"}
+        }
+      }
+    },
+    "verbalizer_arm_stage": {
+      "type": "object",
+      "required": ["control_artifact_rule", "observations"],
+      "additionalProperties": false,
+      "properties": {
+        "control_artifact_rule": {"description": "How a control artifact is matched to the actual one (model revision, hook, layer, position class, register), written before data.", "type": "string"},
+        "observations": {"type": "array", "items": {"$ref": "#/definitions/verbalizer_arm_observation"}}
+      }
+    },
+    "verbalizer_arm_observation": {
+      "description": "What the system reported for one paired-register variant under one arm. A null fact status is a missing value and is never read as zero.",
+      "type": "object",
+      "required": ["family_id", "variant_id", "arm", "fact_recovery"],
+      "additionalProperties": false,
+      "properties": {
+        "family_id": {"type": "string"},
+        "variant_id": {"description": "The family's medical or everyday variant.", "type": "string"},
+        "arm": {"description": "input_only or control_artifact.", "type": "string"},
+        "control_family_id": {"description": "control_artifact rows only: the family whose same-register artifact was supplied.", "type": "string"},
+        "fact_recovery": {"type": "object", "additionalProperties": {"type": ["string", "null"]}}
       }
     },
     "description_controls": {

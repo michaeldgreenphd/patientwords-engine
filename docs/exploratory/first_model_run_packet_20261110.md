@@ -489,8 +489,9 @@ item 1 adds the timing fields; peak memory needs one more line there.
 ## 8. Implementation changes needed before the run
 
 Each item is a reviewed pull request. Sizes are estimates made by reading the files they
-touch; none was written. Items 1 to 3 are needed for stage A's verdict to be computed by
-code and for the protocol to be completed. Item 4 is needed for stage B. Items 5 and 6 are
+touch; item 3 was written on 2026-11-11 and the others were not. Item 3 lets stage A's
+verdict be computed by code. Items 1 and 2 are needed for the protocol to be completed and
+for load and measurement seconds to be recorded; stage A's verdict does not depend on them. Item 4 is needed for stage B. Items 5 and 6 are
 needed only to bring a landed result into the experiment interface and are not needed for
 the two fires.
 
@@ -498,7 +499,7 @@ the two fires.
 |---|---|---|---|---|
 | 1 | The verify and logits paths record, per side, the prompt's token ids, and per result the target's full token ids; the summary's `inference` block records the tokenizer repository and revision, the SHA-256 of `tokenizer.json`, the model's layer count and hidden size, and wall seconds for load and for measurement. Fields are added; no existing field changes. | `scripts/verify_probs.py`, `scripts/logits_eval.py`, `tests/test_verify_probs.py`, a new test file for the logits path | about 40 lines of code, 80 of tests | The protocol's token ids cannot be checked against the pinned tokenizer, the 7 remaining rows cannot be added to the protocol, and no rate is recorded. Stage A's hosted verdict can still be given. |
 | 2 | The completion step: after stage A lands, `python tests/test_first_run_packet.py --write` reads token ids from the landed verify summary in place of the hosted-lens records, and the protocol then covers all 10 rows. A new protocol version, a new plan hash. | `tests/test_first_run_packet.py` (the builder), `data/experiments/protocols/` | about 40 lines | The protocol stays at 3 rows with ids from the hosted service's tokenizer. |
-| 3 | The comparison refuses or sets aside a side whose two target labels differ, takes the comparison set and thresholds from the preview file, and writes a verdict field (`pass`, `fail`, `inconclusive`) with the reason. | `scripts/backend_agreement.py`, `tests/test_backend_agreement.py` | about 80 lines of code, 120 of tests | The verdict of section 6 is computed by hand from the script's rows, and the script's own summary counts 10 hosted misreads as disagreements. |
+| 3 | **Done 2026-11-11.** The comparison sets aside a side whose two target labels differ, takes the comparison set and thresholds from the preview file, and writes a `verdict` block (`pass` or `consistent`, `fail`, `inconclusive`) with every precondition and its outcome. A precondition that fails or cannot be checked gives `inconclusive`. | `scripts/backend_agreement.py` (`--criteria`, `--comparison`), `tests/test_backend_agreement.py` | 150 lines of code, 120 of tests | Not applicable. Checked without a model: on the two landed reference parts, with a candidate assembled from the landed CPU rows, the script reproduces the baseline of section 6.2 (9 sides, maximum 0.0124, mean 0.00476) and returns `fail` for it, as the criteria require of a bfloat16 candidate. |
 | 4 | The run-named copy of run 2's pairs file (`pilot/runs/pilot_v2_20261002/trace/pilot_v2_20261002_trace_pairs.json`), written by `pilot/analysis/trace_pairs.py`, and a current seal run over it. | one new file under `pilot/`; no code | 1 file | The lane refuses the stage B fire: run 2's legacy file name is not accepted under the pilot root. |
 | 5 | A route by which the interface accepts a result that was measured elsewhere. Today the planner marks every task on a non-fixture backend `unavailable`, and `collect` refuses a completed envelope for a task that is not planned `ready` (`plan_state_conflict`). Needed: a planned state or backend class for "import from a landed part", a `run-import` command, and an adapter that reads a landed `verify_summary` or `batch_summary` part by path and SHA-256 into a `behavior_next_token/1` payload. A legacy part records a 4-decimal probability and a top-k list, not a full-vocabulary rank, so the payload kind must allow `raw_rank` null with a `not_recorded` entry, or a second payload version is needed. | `scripts/experiments/planner.py`, `scripts/experiments/cli.py`, `scripts/experiments/store.py`, a new `scripts/experiments/adapters/behavior_landed_part.py`, `scripts/experiments/adapters/__init__.py` (one line), `schemas/experiments/`, tests | about 400 lines of code, 400 of tests | A landed stage A result stays a `verify_summary` file. It has no envelope, no comparison block and no bundle, and the site's experiments page lists nothing. A test of this adapter on a mocked part would not be evidence of real-model agreement. |
 | 6 | After stage A lands: a capability row for `gemma-2-2b` at the pin, `behavior_next_token`, `cpu_interp_engine`, float32, citing the landed file by path and SHA-256 and the verdict under section 6. The status is `artifact_available` if the revision is recorded, and `parity_passed` only on a pass. | `data/experiments/capability_matrix.v1.json`; then the `--write` command of section 5.2 | about 25 lines | The plan keeps saying `artifact identity unknown` for this route. |
@@ -597,15 +598,19 @@ fire placed outside a cron slot. Follow the repository's `fire-trigger-safe` and
 python scripts/backend_agreement.py \
   --reference trace_out/pairs_20260706T175614Z \
   --candidate trace_out/verify_pairs_20260706T175614Z__gemma-2-2b \
+  --criteria data/experiments/protocols/first_run_stage_a.preview.v1.json --comparison hosted \
   --out /path/outside/the/repository/interp_fp32_vs_hosted.json
 python scripts/backend_agreement.py \
   --reference trace_out/pairs_20260706T175614Z__gemma-2-2b \
   --candidate trace_out/verify_pairs_20260706T175614Z__gemma-2-2b \
+  --criteria data/experiments/protocols/first_run_stage_a.preview.v1.json --comparison cpu_bfloat16 \
   --out /path/outside/the/repository/interp_fp32_vs_local_bf16.json
 ```
 
-Without item 3 of section 8 the first report counts the 10 excluded hosted sides; the
-verdict is then taken from the 9 named sides by hand, and the record says so. The parity
+Each report's `verdict` block is the verdict of section 6.2: the 9 named sides for the
+hosted comparison, all 20 for the bfloat16 comparison, with the preconditions listed and
+their outcomes (item 3 of section 8, done 2026-11-11). The report's older summary fields
+still count every joined side and are not the verdict. The parity
 record that follows states both environments, the batch by stem and index, the dtype, each
 precondition, the per-side differences on the named set, the verdict, and what was not
 compared (`docs/upgrade_checklist.md` section 6). `verify_summary` files stay outside the
@@ -851,12 +856,29 @@ until their publishers' records or a manifest read settle them
 
 ## 14. Decisions that need the owner
 
+**The one request that starts anything (2026-11-11).** Approve one first attempt of the
+stage A fire, with the criteria of section 6.2 fixed as written.
+
+| | |
+|---|---|
+| Workload | one `logits-eval` job, `mode: verify`, 10 public rows (20 prompts) of `data/simulated/pairs_20260706T175614Z.json` |
+| Measured endpoint | full-vocabulary probability of the first target token, float32, interp-engine 1.5.1, CPU |
+| Model and inputs | `google/gemma-2-2b` at `c5ebcd40d208330abc697524c919956e692655cf`, tokenizer from the same commit; batch file and both reference parts at the SHA-256 values of section 3.1 |
+| Budget basis | $0 provider spend; one job of at most 240 runner minutes; estimate 17.7 minutes from a proxy rate on another model (an assumption, section 7) |
+| Acceptance | `scripts/backend_agreement.py --criteria ... --comparison hosted`: `pass` when all 9 named sides are at or below 0.0005, `fail` when any is above 0.0010, `inconclusive` otherwise or when a precondition does not hold |
+| Consequence you accept with it | the results catalogue lists the stage A directory at the next publish, with no rows and no numbers (decision 3) |
+
+It demonstrates that the pinned model, the lane and the comparison work on real weights. It
+cannot demonstrate the ICA hypothesis, clinical validity or throughput at scale. Decisions 1,
+3 and 4 below are this request. Decisions 2, 5, 6 and 7 do not block it and can wait for its
+result. The experiment it prepares is `docs/protocols/instrument_register_experiment_20261111.md`.
+
 Each is a yes or no. Declining all of them changes nothing in either repository.
 
 1. **Do you approve one first attempt of the stage A fire as written in section 9.2?**
    `logits-eval`, `mode: verify`, `gemma-2-2b`, float32, the 10 rows of
-   `pairs_20260706T175614Z`, after section 8 items 1 and 3 are merged (or with the stated
-   consequence if you choose to fire without them). Cost ceiling: $0 of provider spend; one
+   `pairs_20260706T175614Z`. Section 8 item 3 is done; item 1 is not, so the run records no
+   load or measurement seconds and precondition 6 of section 6.2 is not evaluated. Cost ceiling: $0 of provider spend; one
    job of at most 240 runner minutes (estimate 17.7).
 2. **Do you approve one first attempt of the stage B fire as written in section 9.2,
    conditional on stage A not failing and not being inconclusive under section 10?**

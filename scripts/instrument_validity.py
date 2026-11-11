@@ -41,6 +41,24 @@ Methods, all recorded in the report:
   margin. Any other state (CONTROL_STATES) replaces the held-artifact verdict. A missing control is never a pass.
 * Cue association: Pearson correlation between a cue and a score over families, with a permutation p-value from
   random.Random("<seed>:cue:<stage>:<cue>[:<register>]:<analysis set>"), (1 + count) / (1 + permutations).
+* Input-only and control-artifact arms (the label and score stages, optional). Where the stage's instrument reads an
+  activation artifact, the bundle may also carry what the same system reports when it is given the wording alone
+  (input_only) and when it is given the same-register artifact of another family (control_artifact; the other family
+  is fixed by seeded_derangement over the family ids with the label "<seed>:control_artifact:<stage>"). Per register
+  and analysis set, the family-clustered bootstrap interval of the mean of (actual-artifact rate minus arm rate) is
+  compared with the arm's prespecified margin, as for a description control. The stage then carries one arm state
+  (ARM_STATES). Only artifact_contributes supports reading the stage's fact recovery as coming from the artifact;
+  recoverable_from_wording_alone means the same credit is earned without it. The medical-minus-everyday difference is
+  reported for each arm, and the artifact arm's difference minus the input-only arm's difference with its interval.
+* Calibration record (--calibrate --quantile Q). For a bundle that holds discovery families only, per stage: the
+  absolute difference between each within-register paraphrase and its base variant, in fact-recovery rate and in
+  representation_value, averaged within family; then the median, the nearest-rank quantile Q and the maximum over
+  families. The quantile of the representation differences is what a study protocol may name as its
+  representation-change threshold. The record computes no margin: a margin is a stated judgement of the protocol,
+  and the record supplies the within-register variation it has to exceed. A bundle with any family outside
+  discovery is refused (calibration_reads_held_out), so held-out families cannot inform a threshold.
+* A medical or everyday text that occurs in two families is refused (repeated_phrase): a phrase is one unit, and a
+  repeated phrase scored as two families would be counted as two independent observations.
 
 Values are returned unrounded; rounding for display is the renderer's job.
 """
@@ -64,6 +82,7 @@ except ImportError:  # run as a script from scripts/
 
 SCHEMA = "patientwords.instrument-validity/1"
 REPORT_SCHEMA = "patientwords.instrument-validity-report/1"
+CALIBRATION_SCHEMA = "patientwords.instrument-validity-calibration/1"
 SCHEMA_PATH = Path(__file__).resolve().parents[1] / "schemas" / "protocols" / "instrument_validity.v1.schema.json"
 RUBRIC_PATH = SCHEMA_PATH.parents[2] / "data" / "protocols" / "instrument_validity_rubric.draft.json"
 STATUS_LINE = "proposed PatientWords contribution; no register bias has been measured with it"
@@ -116,6 +135,27 @@ EXPOSED, NOT_EXPOSED, PARTLY_RECORDED = "exposed", "not_exposed", "partly_record
 CUE_STATES = (EXPOSED, NOT_EXPOSED, PARTLY_RECORDED)
 ASSOCIATED, NOT_ASSOCIATED, NOT_COMPUTABLE = "association_detected", "association_not_detected", "not_computable"
 ASSOCIATION_STATES = (ASSOCIATED, NOT_ASSOCIATED, NOT_COMPUTABLE, NOT_EXPOSED, PARTLY_RECORDED)
+ARMS = ("input_only", "control_artifact")
+ARM_MARGINS = {arm: f"artifact_minus_{arm}" for arm in ARMS}
+ARTIFACT_CONTRIBUTES = "artifact_contributes"
+ARMS_NOT_RUN = "arms_not_run"
+ARMS_INCOMPLETE = "arms_incomplete"
+ARTIFACT_NOT_READ = "system_does_not_read_artifact"
+FROM_WORDING = "recoverable_from_wording_alone"
+SPECIFICITY_NOT_SHOWN = "artifact_specificity_not_shown"
+CONTRIBUTION_NOT_SHOWN = "artifact_contribution_not_shown"
+ARM_STATES = (ARTIFACT_CONTRIBUTES, ARMS_NOT_RUN, ARMS_INCOMPLETE, ARTIFACT_NOT_READ, FROM_WORDING,
+              SPECIFICITY_NOT_SHOWN, CONTRIBUTION_NOT_SHOWN)
+ARM_RULE = (
+    "A label or score stage whose instrument reads an activation artifact is described as reading that artifact only "
+    "in the state artifact_contributes: in each register, the whole family-clustered bootstrap interval of the mean of "
+    "(fact-recovery rate with the actual artifact minus the rate of the arm) lies above the prespecified arm margin, "
+    "for the matched control artifact and for the wording alone. The first state that applies is returned: "
+    "arms_not_run, arms_incomplete, system_does_not_read_artifact (the control artifact is not beaten), "
+    "recoverable_from_wording_alone (the wording alone is not beaten), artifact_specificity_not_shown, "
+    "artifact_contribution_not_shown. In every state but artifact_contributes the stage's fact-recovery result is "
+    "evidence about how the system reads the wording, not about the representation. Missing arm data is never read "
+    "as zero or as a pass.")
 CONTROL_RULE = (
     "The held-artifact endpoint of a description stage gets a verdict only in the state controls_passed: in each "
     "register, the whole family-clustered bootstrap interval of the mean of (matched score minus control score) lies "
@@ -133,6 +173,7 @@ LIMITATIONS = [
     "a cue reported as not_exposed was not checked; it is not a pass",
     "the explanation-free baseline is the best rule of a closed family; a rule outside the family is not excluded",
     "an association that was not detected is not evidence that the cue has no effect",
+    "an arm state other than artifact_contributes says the stage's reading was not shown to come from the artifact",
 ]
 
 
@@ -221,6 +262,7 @@ def _check_families(bundle: dict[str, Any]) -> dict[str, dict[str, Any]]:
     require(bool(bundle["families"]), "missing_families", "At least one case family is required")
     families: dict[str, dict[str, Any]] = {}
     text_split: dict[str, str] = {}
+    paired_text_family: dict[str, str] = {}
     for family in bundle["families"]:
         fid, split = family["family_id"], family["split"]
         require(_text(fid), "missing_family", "family_id must be a non-empty string")
@@ -246,6 +288,10 @@ def _check_families(bundle: dict[str, Any]) -> dict[str, dict[str, Any]]:
             entry["variants"][vid] = variant
             if register in PAIRED_REGISTERS:
                 require(register not in entry, "duplicate_register", f"Family {fid} has two {register} variants")
+                first = paired_text_family.setdefault(variant["text"], fid)
+                require(first == fid, "repeated_phrase",
+                        f"Variant {vid}: the same {register} text is a variant of family {first}; a phrase is one "
+                        "unit, so merge the two families or drop one")
                 require("base_register" not in variant and "changed_fact_id" not in variant, "register",
                         f"Variant {vid}: a {register} variant is not derived from another variant")
                 entry[register] = vid
@@ -439,6 +485,56 @@ def _check_controls(bundle: dict[str, Any], artifacts: dict[str, dict[str, Any]]
     return items
 
 
+def _check_verbalizer_arms(bundle: dict[str, Any],
+                           families: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """``{stage: {"rows": {(family_id, register, arm): row}, "mapping": {...}}}`` for the optional arms."""
+    section = bundle.get("verbalizer_arms")
+    if section is None:
+        return {}
+    require(section["prespecified"], "arm_margins_not_prespecified", "Arm margins must be fixed before data")
+    require(_text(section["fixed_before_data"]), "arm_margins_not_prespecified",
+            "Record where and when the arm margins were fixed")
+    for name in ARM_MARGINS.values():
+        require(name in section["margins"], "missing_arm_margins", f"No arm margin named {name}")
+        require(section["margins"][name] >= 0, "invalid_margin", f"The arm margin {name} must not be negative")
+    out: dict[str, dict[str, Any]] = {}
+    for stage, body in section["stages"].items():
+        require(stage in DESCRIPTION_STAGES, "unknown_stage",
+                f"verbalizer_arms: {stage!r} is not one of {DESCRIPTION_STAGES}")
+        require(stage in bundle["stages"], "arm_without_stage",
+                f"verbalizer_arms: stage {stage} has arm rows and no observations of its own")
+        require(_text(body["control_artifact_rule"]), "control_artifact_rule",
+                f"verbalizer_arms/{stage}: state how a control artifact is matched to the actual one")
+        derangement = seeded_derangement({fid: fid for fid in families}, f"{bundle['seed']}:control_artifact:{stage}")
+        mapping = derangement[0] if derangement else None
+        rows: dict[tuple[str, str, str], dict[str, Any]] = {}
+        for row in body["observations"]:
+            fid, vid, arm = row["family_id"], row["variant_id"], row["arm"]
+            where = f"verbalizer_arms/{stage}/{fid}/{vid}/{arm}"
+            require(fid in families, "unknown_family", f"{where}: unknown family")
+            require(arm in ARMS, "unknown_arm", f"{where}: arm must be one of {ARMS}")
+            register = families[fid]["variants"].get(vid, {}).get("register")
+            require(register in PAIRED_REGISTERS, "arm_variant",
+                    f"{where}: an arm row names the family's medical or everyday variant")
+            require((fid, register, arm) not in rows, "duplicate_observation", f"{where}: observed twice")
+            require(set(row["fact_recovery"]) <= set(families[fid]["fact_ids"]), "unknown_fact",
+                    f"{where}: fact_recovery names a fact outside the family's reference set")
+            require(all(status is None or status in FACT_STATUSES for status in row["fact_recovery"].values()),
+                    "fact_status", f"{where}: fact status must be one of {FACT_STATUSES} or null")
+            source = row.get("control_family_id")
+            if arm == "control_artifact":
+                require(mapping is not None, "control_artifact_mapping",
+                        f"{where}: a control artifact needs a second family; no assignment exists")
+                require(source == mapping[fid], "control_artifact_mapping_not_reproducible",
+                        f"{where}: control_family_id must be {mapping[fid]!r}, the family that "
+                        f"seeded_derangement('<seed>:control_artifact:{stage}') assigns")
+            else:
+                require(source is None, "arm_variant", f"{where}: an input_only row names no control artifact")
+            rows[fid, register, arm] = row
+        out[stage] = {"rows": rows, "mapping": mapping}
+    return out
+
+
 def _validate(bundle: Any, schema: dict[str, Any] | None = None) -> dict[str, Any]:
     require(isinstance(bundle, dict), "invalid_input", "A bundle is a JSON object")
     _refuse_non_finite(bundle)
@@ -459,7 +555,9 @@ def _validate(bundle: Any, schema: dict[str, Any] | None = None) -> dict[str, An
     index = _check_stages(bundle, families)
     artifacts = _check_held_artifact(bundle, families)
     items = _check_controls(bundle, artifacts)
-    return {"families": families, "family_ids": sorted(families), "artifacts": artifacts, "items": items, **index}
+    arms = _check_verbalizer_arms(bundle, families)
+    return {"families": families, "family_ids": sorted(families), "artifacts": artifacts, "items": items,
+            "arms": arms, **index}
 
 
 def validate_bundle(bundle: Any, schema: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -1097,6 +1195,96 @@ def _description_cues(stage: str, name: str, members: list[str], included: dict[
             "association_with_score_difference": association("medical_presented_first", "description_order")}}
 
 
+def _verbalizer_arms(stage: str, index: dict[str, Any], sets: dict[str, Any], bundle: dict[str, Any]) -> dict[str, Any]:
+    """The arm state of one description stage per analysis set; see ARM_RULE."""
+    if stage not in index["arms"]:
+        return {"status": ARMS_NOT_RUN,
+                "reason": "the bundle carries no input_only or control_artifact rows for this stage",
+                "state_by_analysis_set": dict.fromkeys(sets, ARMS_NOT_RUN)}
+    section, plan = bundle["verbalizer_arms"], bundle["analysis_plan"]
+    stage_rows, arm_rows = index["rows"][stage], index["arms"][stage]["rows"]
+    rate: dict[tuple[str, str, str], float | None] = {}
+    for fid in index["family_ids"]:
+        family = index["families"][fid]
+        for register in PAIRED_REGISTERS:
+            rate[fid, register, "artifact"] = fact_recovery_rate(stage_rows.get((fid, family[register])),
+                                                                 family["fact_ids"], plan["partial_credit"])
+            for arm in ARMS:
+                rate[fid, register, arm] = fact_recovery_rate(arm_rows.get((fid, register, arm)),
+                                                              family["fact_ids"], plan["partial_credit"])
+    keep = ("n_families", "n_included", "excluded", "mean_difference", "interval", "interval_status", "seed_label")
+    seed = f"{bundle['seed']}:verbalizer_arms_{stage}"
+
+    def register_difference(arm: str, fid: str) -> float | None:
+        medical, everyday = rate[fid, "medical", arm], rate[fid, "everyday", arm]
+        return None if medical is None or everyday is None else medical - everyday
+
+    by_set: dict[str, Any] = {}
+    for name, body in sets.items():
+        members = body["family_ids"]
+        comparisons: dict[str, dict[str, Any]] = {arm: {} for arm in ARMS}
+        not_run, incomplete = [], []
+        for arm in ARMS:
+            present = any(rate[fid, register, arm] is not None for fid in members for register in PAIRED_REGISTERS)
+            complete = True
+            for register in PAIRED_REGISTERS:
+                differences: dict[str, float | None] = {}
+                reasons: dict[str, str] = {}
+                for fid in members:
+                    actual, other = rate[fid, register, "artifact"], rate[fid, register, arm]
+                    if actual is None or other is None:
+                        reasons[fid] = (f"missing_artifact_arm:{register}" if actual is None else
+                                        f"missing_arm:{arm}:{register}")
+                    differences[fid] = None if fid in reasons else actual - other
+                complete = complete and not reasons
+                summary = summarize_paired(differences, reasons, members, margin=None, plan=plan,
+                                           seed_label=f"{seed}:{ARM_MARGINS[arm]}:{register}:{name}")
+                margin, interval = section["margins"][ARM_MARGINS[arm]], summary["interval"]
+                comparisons[arm][register] = {
+                    **{key: summary[key] for key in keep}, "arm_margin": margin,
+                    "outcome": (NOT_SHOWN if interval is None else BEATEN if interval[0] > margin else
+                                NOT_BEATEN if interval[1] <= margin else NOT_SHOWN)}
+            if not present:
+                not_run.append(arm)
+            elif not complete:
+                incomplete.append(arm)
+        outcomes = {arm: [entry["outcome"] for entry in comparisons[arm].values()] for arm in ARMS}
+        state = (ARMS_NOT_RUN if not_run else ARMS_INCOMPLETE if incomplete else
+                 ARTIFACT_NOT_READ if NOT_BEATEN in outcomes["control_artifact"] else
+                 FROM_WORDING if NOT_BEATEN in outcomes["input_only"] else
+                 SPECIFICITY_NOT_SHOWN if NOT_SHOWN in outcomes["control_artifact"] else
+                 CONTRIBUTION_NOT_SHOWN if NOT_SHOWN in outcomes["input_only"] else ARTIFACT_CONTRIBUTES)
+        by_arm = {}
+        for arm in ("artifact", *ARMS):
+            summary = summarize_paired({fid: register_difference(arm, fid) for fid in members}, {}, members,
+                                       margin=None, plan=plan, seed_label=f"{seed}:register_difference:{arm}:{name}")
+            by_arm[arm] = {key: summary[key] for key in keep}
+        beyond = {}
+        for fid in members:
+            with_artifact, wording = register_difference("artifact", fid), register_difference("input_only", fid)
+            beyond[fid] = None if with_artifact is None or wording is None else with_artifact - wording
+        summary = summarize_paired(beyond, {}, members, margin=None, plan=plan,
+                                   seed_label=f"{seed}:register_difference_beyond_input_only:{name}")
+        by_set[name] = {
+            "state": state, "arms_not_run": not_run, "arms_incomplete": incomplete,
+            "failed_comparisons": [f"{ARM_MARGINS[arm]}:{register}" for arm in ARMS
+                                   for register, entry in comparisons[arm].items() if entry["outcome"] != BEATEN],
+            "comparisons": comparisons,
+            "medical_minus_everyday_by_arm": {
+                "note": "the paired register difference in fact-recovery rate under each arm; a difference that is "
+                        "also present with the wording alone is a property of how the system reads the wording",
+                **by_arm},
+            "register_difference_beyond_input_only": {
+                "note": "per family, the artifact arm's medical-minus-everyday difference minus the input_only "
+                        "arm's; reported with its interval and given no verdict",
+                **{key: summary[key] for key in keep}}}
+    return {"status": "scored", "margins": section["margins"],
+            "control_artifact_rule": section["stages"][stage]["control_artifact_rule"],
+            "control_artifact_mapping": index["arms"][stage]["mapping"],
+            "analysis_sets": by_set,
+            "state_by_analysis_set": {name: body["state"] for name, body in by_set.items()}}
+
+
 def _held_artifact(index: dict[str, Any], sets: dict[str, Any], bundle: dict[str, Any]) -> dict[str, Any]:
     out: dict[str, Any] = {"manipulation": "the artifact is held fixed; only the register of a meaning-equivalent "
                                            "description varies, so a score difference is a presentation or scoring "
@@ -1207,6 +1395,16 @@ def _score(bundle: dict[str, Any], schema: dict[str, Any] | None) -> dict[str, A
     control_states = {stage: ({name: body["control_state"] for name, body in held[stage]["analysis_sets"].items()}
                            if held[stage]["status"] == "scored" else dict.fromkeys(sets, CONTROL_NOT_RUN))
                    for stage in DESCRIPTION_STAGES}
+    arm_states: dict[str, dict[str, str]] = {}
+    for stage in DESCRIPTION_STAGES:
+        if stages[stage]["status"] == "scored":
+            arms = _verbalizer_arms(stage, index, sets, bundle)
+            arm_states[stage] = arms["state_by_analysis_set"]
+            stages[stage]["verbalizer_arms"] = {
+                "applies_to": "a stage whose instrument reads an activation artifact (a verbalizer or a scorer)",
+                **arms,
+                "rule": "this stage's fact recovery is described as coming from the artifact only where the state "
+                        "is artifact_contributes; the fact-recovery verdict above is computed as before"}
     for stage in DESCRIPTION_STAGES:
         if stages[stage]["status"] == "scored":
             stages[stage]["description_controls"] = {
@@ -1219,7 +1417,8 @@ def _score(bundle: dict[str, Any], schema: dict[str, Any] | None) -> dict[str, A
         "analysis_set": primary,
         "fact_recovery_rate_difference": {
             stage: ({**{key: body["fact_recovery"]["analysis_sets"][primary][key] for key in keep},
-                     **({"description_control_state": control_states[stage][primary]}
+                     **({"description_control_state": control_states[stage][primary],
+                         "artifact_arm_state": arm_states[stage][primary]}
                         if stage in DESCRIPTION_STAGES else {})}
                     if body["status"] == "scored" else {"status": "not_supplied"})
             for stage, body in stages.items()},
@@ -1238,6 +1437,7 @@ def _score(bundle: dict[str, Any], schema: dict[str, Any] | None) -> dict[str, A
         "analysis_plan": plan, "equivalence_margins": bundle["equivalence_margins"],
         "thresholds": bundle["thresholds"], "development": bundle["development"],
         "identities": bundle["identities"], "verdict_rule": VERDICT_RULE, "control_rule": CONTROL_RULE,
+        "arm_rule": ARM_RULE,
         "control_randomness": {
             "generator": "random.Random",
             "shuffle_seed_rule": "'<description_controls.shuffle.seed>:shuffle:<stage>'",
@@ -1268,6 +1468,77 @@ def score_bundle(bundle: Any, schema: dict[str, Any] | None = None) -> dict[str,
         raise Refusal("invalid_input", str(exc)) from exc
 
 
+def _distribution(values: list[float], quantile: float) -> dict[str, Any]:
+    """Median, nearest-rank quantile and maximum of one value per family; nulls when no family has a value."""
+    ordered = sorted(values)
+    if not ordered:
+        return {"n_families": 0, "median": None, "quantile": None, "maximum": None}
+    return {"n_families": len(ordered), "median": statistics.median(ordered),
+            "quantile": ordered[max(1, math.ceil(quantile * len(ordered))) - 1], "maximum": ordered[-1]}
+
+
+def _calibrate(bundle: dict[str, Any], quantile: float, schema: dict[str, Any] | None) -> dict[str, Any]:
+    require(isinstance(quantile, float) and 0 < quantile < 1, "calibration_quantile",
+            "The quantile is a number strictly between 0 and 1, fixed in the protocol before calibration data")
+    index = _validate(bundle, schema)
+    families, plan = index["families"], bundle["analysis_plan"]
+    outside = sorted(fid for fid in families if families[fid]["split"] != "discovery")
+    require(not outside, "calibration_reads_held_out",
+            f"A calibration bundle holds discovery families only; {len(outside)} of {len(families)} families are in "
+            "another split, and a threshold may not be informed by them")
+    stages: dict[str, Any] = {}
+    for stage in STAGES:
+        if stage not in bundle["stages"]:
+            continue
+        rows = index["rows"][stage]
+        rate_values, representation_values, per_family = [], [], []
+        for fid in index["family_ids"]:
+            family = families[fid]
+            rates, representations = [], []
+            for vid in family["paraphrases"]:
+                pair = [rows.get((fid, family[family["variants"][vid]["base_register"]])), rows.get((fid, vid))]
+                pair_rates = [fact_recovery_rate(row, family["fact_ids"], plan["partial_credit"]) for row in pair]
+                if None not in pair_rates:
+                    rates.append(abs(pair_rates[1] - pair_rates[0]))
+                measured = [row["representation_value"] if row else None for row in pair]
+                if None not in measured:
+                    representations.append(abs(measured[1] - measured[0]))
+            entry = {"family_id": fid, "n_paraphrases": len(family["paraphrases"]),
+                     "fact_recovery_rate_abs_difference": _mean(rates),
+                     "representation_value_abs_difference": _mean(representations)}
+            per_family.append(entry)
+            if rates:
+                rate_values.append(entry["fact_recovery_rate_abs_difference"])
+            if representations:
+                representation_values.append(entry["representation_value_abs_difference"])
+        stages[stage] = {
+            "within_register_paraphrase": {
+                "unit": "one value per family: the mean absolute difference between a paraphrase and its base variant",
+                "fact_recovery_rate_abs_difference": _distribution(rate_values, quantile),
+                "representation_value_abs_difference": _distribution(representation_values, quantile),
+                "per_family": per_family},
+            "changed_fact_sensitivity": _changed_fact_sensitivity(stage, index, plan)["by_base_register"]}
+    return {
+        "schema_version": CALIBRATION_SCHEMA, "status": "calibrated", "benchmark_status": STATUS_LINE,
+        "execution_status": "synthetic", "synthetic": True, "evidence_label": SYNTHETIC_LABEL,
+        "bundle_sha256": digest(bundle), "quantile": quantile, "quantile_method": "nearest rank over families",
+        "families": index["family_ids"], "split": "discovery",
+        "use": "a study protocol may name representation_value_abs_difference.quantile of a stage as that stage's "
+               "representation-change threshold, and states each margin with its reason beside the within-register "
+               "variation recorded here; this record computes no margin and no verdict",
+        "stages": stages}
+
+
+def calibration_record(bundle: Any, quantile: float, schema: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Within-register variation of a discovery-only bundle; refuses a bundle that holds any other split."""
+    try:
+        return _calibrate(bundle, quantile, schema)
+    except Refusal:
+        raise
+    except (KeyError, TypeError, AttributeError, ValueError) as exc:
+        raise Refusal("invalid_input", str(exc)) from exc
+
+
 def _write_exclusive(out: Path, result: dict[str, Any]) -> None:
     require(out.name.startswith("instrument_validity_report.") and out.suffix == ".json", "output_namespace",
             "Use instrument_validity_report.<id>.json")
@@ -1289,9 +1560,19 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", type=Path,
                         help="write instrument_validity/instrument_validity_report.<id>.json (exclusive create, "
                              "outside every Git checkout); default prints to stdout")
+    parser.add_argument("--calibrate", action="store_true",
+                        help="write the calibration record of a discovery-only bundle in place of the scored report")
+    parser.add_argument("--quantile", type=float,
+                        help="with --calibrate: the quantile of the within-register differences, fixed in the "
+                             "protocol before calibration data; there is no default")
     args = parser.parse_args(argv)
     try:
-        result = score_bundle(load_bundle(args.bundle))
+        if args.calibrate:
+            require(args.quantile is not None, "calibration_quantile", "--calibrate needs --quantile; none is assumed")
+            result = calibration_record(load_bundle(args.bundle), args.quantile)
+        else:
+            require(args.quantile is None, "calibration_quantile", "--quantile applies to --calibrate only")
+            result = score_bundle(load_bundle(args.bundle))
         if args.out:
             _write_exclusive(args.out, result)
         else:

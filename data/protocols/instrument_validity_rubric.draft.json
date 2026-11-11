@@ -367,6 +367,69 @@
     "state_precedence": "The first state that applies, in this order: control_not_run, control_incomplete, scorer_does_not_read_description, baseline_not_beaten, description_reading_not_shown, baseline_advantage_not_shown, controls_passed.",
     "not_tested": "No scorer has been run under these controls. Whether a derangement across case families gives descriptions that are different enough, whether the placeholder is irrelevant to real items, and whether the closed rule family covers the cues a real scoring task exposes are unmeasured."
   },
+  "pair_equivalence_review": {
+    "_readme": "Review of one case family's medical and everyday wording, done before any model or instrument sees them (docs/protocols/instrument_register_experiment_20261111.md, section 4). Draft, added 2026-11-11; it has not been used on a real pair. It is separate from the annotation items above, which rate an instrument's output.",
+    "recorded_per": "case family",
+    "dimensions": [
+      {
+        "dimension": "clinical_facts",
+        "question": "Do both wordings state the same set of clinical facts, with none added and none dropped?"
+      },
+      {
+        "dimension": "negation",
+        "question": "Is every negated or absent finding negated in both wordings?"
+      },
+      {
+        "dimension": "timing",
+        "question": "Do onset, duration, sequence and frequency agree?"
+      },
+      {
+        "dimension": "uncertainty",
+        "question": "Is the degree of certainty the same, with no possibility turned into a statement of fact?"
+      },
+      {
+        "dimension": "severity",
+        "question": "Is the stated severity the same?"
+      },
+      {
+        "dimension": "urgency",
+        "question": "Would the two wordings call for the same urgency of response?"
+      }
+    ],
+    "values": [
+      "same",
+      "different",
+      "cannot_judge"
+    ],
+    "missing_value": {
+      "recorded_as": null,
+      "meaning": "The dimension was not reviewed. It is never entered as same."
+    },
+    "reviewers": [
+      {
+        "role": "clinician",
+        "reviews": [
+          "clinical_facts",
+          "negation",
+          "timing",
+          "uncertainty",
+          "severity",
+          "urgency"
+        ],
+        "also_establishes": "the reference facts of the family, and the one fact changed in each changed-fact control"
+      },
+      {
+        "role": "patient_language_reviewer",
+        "reviews": [
+          "plausible_patient_wording",
+          "same_meaning_to_a_lay_reader"
+        ],
+        "note": "Everyday wording is not rated as a degraded form of medical wording. The question is whether a patient would plausibly say it and whether a lay reader takes the same meaning from it."
+      }
+    ],
+    "status_rule": "A family is reviewed only when a clinician recorded 'same' on all six dimensions and a patient-language reviewer recorded both of their items. Any 'different' removes the family before the split. Anything else leaves review_status at domain_review_pending, and the family is reported in its own row.",
+    "not_a_review": "A language model's statement that two wordings are equivalent is not a review and is not recorded in this form."
+  },
   "open_questions": [
     "Whether partially can be applied consistently, or should be split into named sub-cases.",
     "Whether annotators can stay blind to source register when the output echoes the input wording.",

@@ -400,6 +400,69 @@ on average for its narrower autoencoders and 51% to 79% for the GemmaScope ones.
   excluded when the controls are passed. Which control margins are defensible. Whether a scoring task that
   does not return item verdicts can be given these controls at all.
 
+## Input-only and control-artifact arms
+
+Added on 2026-11-11, at the owner's decision on open design question 3. They apply to a `label` or `score`
+stage whose instrument reads an activation artifact: an activation verbalizer, or a scorer that is given
+activations. The question they answer: is what the instrument reports recoverable from the wording alone?
+
+The reference facts of a family are facts stated in its input. A verbalizer model that restates the input
+earns recovery credit without reading any activation, and a register difference in its recovery can then
+come from how that model reads the two wordings. Three arms separate these:
+
+| Arm | What the system is given | Where it lives in a bundle |
+|---|---|---|
+| actual artifact | the activation artifact of the family's variant | the stage's own `observations` |
+| `input_only` | the variant's wording and no activation | `verbalizer_arms.stages.<stage>.observations`, `arm: "input_only"` |
+| `control_artifact` | the same-register artifact of another family, and not the wording | the same list, `arm: "control_artifact"`, with `control_family_id` |
+
+The system, its prompt and its settings are the same in all three arms. The other family of the
+`control_artifact` arm is fixed before data by `seeded_derangement` over the sorted family ids with the
+label `"<seed>:control_artifact:<stage>"`, so no family is given its own artifact; the scorer recomputes the
+assignment and refuses a bundle that differs (`control_artifact_mapping_not_reproducible`). The study
+protocol states how a control artifact is matched (model revision, hook, layer, position class, register)
+in `control_artifact_rule`.
+
+Every arm is scored against the family's own reference facts, with the same fact-recovery rate as the
+stage. Per register and analysis set, the family-clustered bootstrap interval of the mean of (rate with the
+actual artifact − rate of the arm) is compared with the arm's margin, `artifact_minus_input_only` or
+`artifact_minus_control_artifact`, exactly as a description control is compared with the matched
+description. The stage then carries one state per analysis set, the first that applies:
+
+| State | Meaning |
+|---|---|
+| `arms_not_run` | The bundle has no arm rows for the stage, or no row at all for one of the two arms in this set |
+| `arms_incomplete` | An arm row, a fact status, or the actual-artifact row it is compared with is missing for some family of the set |
+| `system_does_not_read_artifact` | In some register the control artifact is `control_not_beaten`: another family's artifact earns as much |
+| `recoverable_from_wording_alone` | In some register the wording alone is `control_not_beaten`: the same credit is earned without the artifact |
+| `artifact_specificity_not_shown` | The advantage over the control artifact is `advantage_not_shown` |
+| `artifact_contribution_not_shown` | The advantage over the wording alone is `advantage_not_shown` |
+| `artifact_contributes` | All four comparisons are `control_beaten` |
+
+- A stage's fact recovery is described as coming from the artifact only in the state
+  `artifact_contributes`. In every other state it is evidence about how the system reads the wording. That
+  is still a property of the instrument, and it is reported as one.
+- The report gives the medical-minus-everyday difference under each arm, and the artifact arm's difference
+  minus the `input_only` arm's difference with its interval. A register difference that is equally large
+  with the wording alone was not produced by the representation. That last quantity gets no verdict.
+- The state does not replace the stage's fact-recovery verdict, which is computed as before. It is printed
+  beside it (`artifact_arm_state`), as the description-control state is.
+- Missing arm data is recorded as missing with its reason. It is never read as zero or as a pass.
+- The two arm margins are fixed in the study protocol before data, on calibration families, and copied
+  into the bundle with `prespecified: true`. The scorer refuses arms that are not prespecified
+  (`arm_margins_not_prespecified`) or lack a margin (`missing_arm_margins`). The value 0.125 in the tests
+  exercises the scorer. It is not a proposal.
+- For an instrument that reads no activation (a labeler given text only) the arms do not apply and the
+  state stays `arms_not_run`.
+
+**One unit per phrase.** A medical or everyday text that occurs in two families is refused
+(`repeated_phrase`). A phrase that recurs in several source rows is one family, and its rows are averaged
+before scoring, so that a repeated phrase is not counted as several independent observations.
+
+Implemented in `scripts/instrument_validity.py` and checked on synthetic rows by
+`tests/test_instrument_validity_arms.py`. Not tested: any real verbalizer or scorer; whether another
+family's artifact is a fair control for a given capture site; which arm margins are defensible.
+
 ## Controls and independence
 
 - **Surface confounds.** Tokenization, length, position and formatting differ between registers. Record
@@ -504,6 +567,8 @@ These apply when the `activation` stage uses an independent component basis.
 | `tests/fixtures/instrument_validity/synthetic_bundle.v1.json` | Synthetic fixture with abstract placeholder facts and wordings; its description controls are passed |
 | `tests/fixtures/instrument_validity/synthetic_control_states.v1.json` | Synthetic fixture for the description controls: one cell per control state, abstract placeholder items and verdicts, no stage observations |
 | `tests/test_instrument_validity.py` | Hand-computed expectations for the fixture, and the refusals |
+| `tests/test_instrument_validity_arms.py` | The input-only and control-artifact arms: one test per arm state, the refusals, and the repeated-phrase refusal |
+| `docs/protocols/instrument_register_experiment_20261111.md` | The first bounded experiment that uses this benchmark: its design, calibration rule and execution packet |
 | `docs/protocols/protocol_template.md` | The protocol a real run of this benchmark would fill in first |
 
 ```bash
@@ -528,8 +593,9 @@ thresholds, the verdict rule and the control rule. It keeps `model_behaviour` an
 instrument results in separate objects. Every random step writes its seed label: the bootstrap intervals,
 the shuffle of the descriptions and the cue permutation tests.
 
-`description_controls`, `evaluation_items` and the three per-description cue fields are optional. A bundle
-without them is still valid. Its held-artifact endpoint then reports `control_not_run` and gets no
+`description_controls`, `evaluation_items`, `verbalizer_arms` and the three per-description cue fields are
+optional. A bundle without them is still valid; without `verbalizer_arms` a description stage reports
+`arms_not_run`. Its held-artifact endpoint then reports `control_not_run` and gets no
 verdict; before 2026-11-10 it got one.
 
 **Version 1 admits synthetic bundles only.** A bundle with `synthetic: false` refuses
@@ -573,6 +639,11 @@ change that needs a reviewed lane, provenance fields and its own tests.
   margin, another metric, another rule family, another irrelevant description, a shuffle mapping that is
   not the seeded derangement, an item for an unknown artifact, a declared score that the item verdicts do
   not reproduce.
+- Input-only and control-artifact arms (2026-11-11, `tests/test_instrument_validity_arms.py`): each of the
+  seven arm states is reached from hand-worked rows; a bundle without the arms reports `arms_not_run` and
+  every earlier result is unchanged; a missing arm row, a missing fact status and a missing
+  actual-artifact row are `arms_incomplete`; the control assignment equals a re-run of the seeded
+  derangement; thirteen named refusals fire; the same phrase in two families is refused.
 
 These checks establish that the software computes what this file says. The fixtures' numbers were
 written by hand to exercise code paths. They describe no model, no instrument and no scorer.
@@ -592,6 +663,8 @@ written by hand to exercise code paths. They describe no model, no instrument an
   reviewed at scale.
 - Whether any real scorer passes or fails the description controls, and everything listed as not tested
   under [Description controls and cue checks](#specified-implemented-not-tested).
+- Whether any real verbalizer or scorer earns its fact recovery from the artifact or from the wording
+  alone. The arms were exercised on placeholder rows only.
 - Whether the hosted and local instruments expose what the bundle needs. A top-k interface cannot supply
   full-vocabulary ranks (`docs/exploratory/methods_integration.md`).
 - The lens-fit provenance questions that already block real readouts
@@ -765,7 +838,8 @@ review is needed before any statement about prior work appears outside this file
 Raised on 2026-11-10 by the sources above. Each names a place where a source gives a reason to doubt that
 a design choice measures what this file says it measures. The owner decided question 1 and part of
 question 2 on 2026-11-10; the rubric, the schema, the scorer and the fixtures were changed for those two
-only. Questions 3 and 4, and the rest of question 2, are for the owner to decide.
+only. On 2026-11-11 the owner decided question 3; the scorer, the schema and the tests were changed for it.
+The rest of question 2, and question 4 as a general rule, are for the owner to decide.
 
 1. **Decided by the owner, 2026-11-10: yes.** A mismatched-description control is required, together with
    an irrelevant description and an explanation-free baseline on the same items. The design is in
@@ -792,7 +866,10 @@ only. Questions 3 and 4, and the rest of question 2, are for the owner to decide
    medical one, which has not been measured here, a length effect would be reported as a
    medical-minus-everyday difference. Question: should the pairs be matched on formatting and bounded in
    length ratio, or should both be recorded per description and reported with the difference?
-3. **Open.** **The `label` stage has no input-only arm for a verbalizer.** Li et al. (arXiv:2509.13316v4)
+3. **Decided by the owner, 2026-11-11: yes.** The same system is compared when given the wording alone,
+   the actual artifact, and a matched control artifact. The design is in
+   [Input-only and control-artifact arms](#input-only-and-control-artifact-arms). The question as raised:
+   **The `label` stage has no input-only arm for a verbalizer.** Li et al. (arXiv:2509.13316v4)
    report that a verbalizer model given only the input text is competitive with verbalization methods
    given the target model's activations, and that the input can be reconstructed from those activations. The
    benchmark's reference facts are facts stated in the input. Inference: a verbalizer can earn recovery
@@ -801,7 +878,13 @@ only. Questions 3 and 4, and the rest of question 2, are for the owner to decide
    separates a difference in the representation from a difference in the labeler, and for a verbalizer
    that separation needs an arm in which the verbalizer sees the input text and no activation. Question:
    should the `label` stage require that arm when the instrument is a verbalizer?
-4. **Open.** **The "representation changed" fact does not use within-register variation.** The four-cell
+4. **Open as a general rule; fixed for the first experiment.** The owner's instruction of 2026-11-11 is that
+   within-register paraphrases and changed-fact controls are included and that thresholds are set on a
+   separate calibration set. `docs/protocols/instrument_register_experiment_20261111.md` therefore sets each
+   stage's representation threshold on calibration families from the within-register paraphrase
+   differences. The scorer's four-cell definition is unchanged: it takes the threshold as a value selected
+   on discovery families. The question as raised:
+   **The "representation changed" fact does not use within-register variation.** The four-cell
    report calls a family's representation changed when the medical-minus-everyday difference in
    `representation_value` is above a threshold selected on discovery families. Li et al.
    (arXiv:2505.16004v2) report that a one-word synonym replacement lowers the overlap of the top-k active
@@ -820,12 +903,13 @@ These are the owner's, and nothing here presumes them.
 
 1. Whether to pursue the benchmark at all, and on which model and instruments first.
 2. Who establishes and reviews reference facts, and under what clinical-review status.
-3. The margins, with their reasons: the equivalence margins, and the three control margins of
-   [Description controls and cue checks](#description-controls-and-cue-checks), which are placeholders.
+3. The margins, with their reasons: the equivalence margins, the three control margins of
+   [Description controls and cue checks](#description-controls-and-cue-checks) and the two arm margins of
+   [Input-only and control-artifact arms](#input-only-and-control-artifact-arms). All are placeholders.
 4. Whether real bundles are admitted, and through which CI lane.
 5. Where real outputs would live and which analysis membership, if any, they may enter
    (`docs/open_results_policy.md`).
-6. The open half of design question 2, and design questions 3 and 4.
+6. The open half of design question 2, and design question 4 as a general rule.
 7. Whether the verdict rule should also require the matched description to beat the highest-scoring rule
    of the closed family on each analysis set, as the source's criterion does, and not only the rule frozen
    on discovery families.

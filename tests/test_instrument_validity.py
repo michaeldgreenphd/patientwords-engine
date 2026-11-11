@@ -1344,9 +1344,12 @@ def test_specification_keeps_the_fixed_statements_and_defines_every_state() -> N
             "**The control margins are placeholders.**"):
         assert sentence in text, sentence
     names = (iv.CONTROL_STATES + iv.CONTROL_OUTCOMES + iv.CUE_STATES + iv.ASSOCIATION_STATES + iv.EXPLANATION_FREE_RULES
-             + tuple(iv.CONTROL_MARGINS.values()))
+             + tuple(iv.CONTROL_MARGINS.values()) + iv.ARM_STATES + iv.ARMS + tuple(iv.ARM_MARGINS.values()))
     for name in names:
         assert f"`{name}`" in text, name
     for question in ("1. **Decided by the owner, 2026-11-10: yes.**", "2. **Partly decided by the owner, 2026-11-10.**",
-                     "3. **Open.**", "4. **Open.**"):
+                     # Question 3 was decided by the owner on 2026-11-11 (the input-only and control-artifact
+                     # arms); question 4 stays open as a general rule and is fixed for the first experiment only.
+                     "3. **Decided by the owner, 2026-11-11: yes.**",
+                     "4. **Open as a general rule; fixed for the first experiment.**"):
         assert question in text, question
