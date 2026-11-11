@@ -232,5 +232,5 @@ git config --get core.hooksPath          # .githooks — the commit/push guards 
 ```
 
 Only then proceed with the daily cycle (`docs/routine_standing_prompt.md`).
-The full test suite additionally needs `pip install pytest matplotlib networkx
-pillow` in a fresh container.
+The full test suite needs the developer install in `verify.md` (*Setup and
+sources of truth*).

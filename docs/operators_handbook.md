@@ -6,7 +6,10 @@ session or human maintaining this repo. `AGENTS.md` states the conventions
 (the root `CLAUDE.md` imports it and adds only Claude Code mechanics and
 the owner's writing conventions); this book is the *procedures and case
 law* — what actually breaks and the exact drills that fix it. When this
-book and observed reality disagree, trust reality, then fix the book.
+book and observed reality disagree, trust reality, then fix the book. The
+reading order for an operator is in `docs/start_here.md` (*Operator*); the
+binding operational rules are in `docs/agent_reference.md` (*Execution and
+operations*).
 
 ## 1 · The system in one paragraph
 
@@ -38,9 +41,14 @@ cycles per `docs/routine_standing_prompt.md` (MAINTENANCE MODE since
   the study pin is advanced with a new snapshot (`scripts/publication_release.py`,
   `scripts/results_snapshot.py`).
 - **All nine trigger lanes are PARKED** (`fire_trigger.py park`; eight on
-  this date, and `petri-audit`, added 2026-09-16, since 2026-09-18). The tenth,
-  `jev-audit` (added 2026-10-14), has no trigger file until its first park on
-  `main`, which waits on the owner's approval.
+  this date, and `petri-audit`, added 2026-09-16, since 2026-09-18).
+  *Update, 2026-11-11:* nine was the count on 2026-09-18. The repository now
+  wires 11 lanes. `jev-audit` (added 2026-10-14) and `action-annotate` were first
+  parked on 2026-10-26 (`ops/trigger_journal.jsonl`). The current list is the
+  lane table in `AGENTS.md`, which `tests/test_trigger_docs.py` compares with
+  the workflows. `scripts/fire_trigger.py` also knows `pab-probe`, whose
+  workflow exists only on the PAB branch. `python scripts/fire_trigger.py
+  status` prints each lane's active entries and the queue.
   The standing exception is `archive-renders`: it stays un-parked from the cycle
   that fires its PNG sweep until the next cycle re-parks it
   (`docs/routine_standing_prompt.md` §3d). Each
@@ -88,8 +96,9 @@ config at rest. The waiver applies to the lane's exact park content only
 has no waiver, so on that day it refuses the park's own run, which spends
 nothing. That red run is expected; resolve it like any other.
 
-**Publish site data.** Only the sanctioned exporter chain (the
-*Data contracts* section of the site's `AGENTS.md` names every writer); then
+**Publish site data.** Only the sanctioned exporter chain
+(`.claude/skills/publish-site-data/SKILL.md`; the *Data contracts* section of
+`../patientwords/docs/agent_reference.md` holds the writer table); then
 `python scripts/validate_frontend_contract.py --site ../patientwords`
 (0 errors required) and `python scripts/seal_check.py --site
 ../patientwords --extra docs,ops,data/verification` (CLEAN required) before pushing. Data
@@ -192,7 +201,7 @@ say in any record which evidence was used.
   includes a trigger file appearing on a ref for the first time (branch
   creation, cherry-picks and rebases all count), and the resting-state rule
   (a trigger file at rest is a loaded default any branch operation can
-  pull). Both are stated in `AGENTS.md` (*Merge/copy danger*); parking
+  pull). Both are stated in `docs/agent_reference.md` (*Merge/copy danger*); parking
   implemented the second on 2026-08-29.
 - **2026-08-23 anthropic SDK `temperature` removal:** two $0 failed runs;
   fixed at the `_send` seam in `scripts/advice_eval.py` with
@@ -291,10 +300,12 @@ say in any record which evidence was used.
 | Operational state (Routine-written) | `ops/dashboard.json` |
 | Routine authority | `docs/routine_standing_prompt.md` |
 | Fresh-container bootstrap | `docs/fresh_session_bootstrap.md` |
-| Site data contract + validator | site `AGENTS.md` (*Data contracts*) + `scripts/validate_frontend_contract.py` |
+| Site data contract + validator | `../patientwords/docs/agent_reference.md` (*Data contracts*) + `scripts/validate_frontend_contract.py` |
 | Holdout seal check | `scripts/seal_check.py` |
 | Advice pipeline (elicit/judge/analyze) | `scripts/advice_eval.py` |
 | Judge agreement exporter | `scripts/export_judge_agreement.py` |
 | Backfill completion record | `docs/coordination/backfill_8b_complete_20260826.md` |
 | Clinician review packet | `docs/review_packet_clinician.md` |
-| Owner decision log | `docs/decisions_20260821_owner.md` (+ dated addenda) |
+| Owner decision log | `docs/decisions_20261014_owner.md` (latest); earlier dated records are listed under *Study records* in `docs/README.md` |
+| Lane reference (keys, park defaults, cost) | `docs/triggers.md` |
+| Binding operational rules (queue, single writer, spend) | `docs/agent_reference.md` (*Execution and operations*) |

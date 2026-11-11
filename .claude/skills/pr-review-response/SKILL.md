@@ -91,8 +91,11 @@ After any push that answers a review:
 
 Done is: CI green on the current head, `mergeable_state: clean`, every thread
 either resolved or answered. Webhooks do not reliably deliver CI success or merge
-conflicts, so re-check rather than assuming. Keep a check-in scheduled
-(`send_later`) until the pull request merges or closes.
+conflicts, so re-check both whenever an event wakes the session. Fallback
+check-ins (`send_later`) are bounded as `CLAUDE.md` (*Claude Code specifics*)
+states: at most two per pull request, the second only if the first found
+something to act on, and none recurring. Keep the subscription until the pull
+request merges or closes.
 
 **Never merge or approve.** That is the owner's, on both repos.
 

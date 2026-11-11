@@ -6,17 +6,34 @@ row, when a row names a script that no longer exists, or when a status is not
 one of the four below, so add or change the row in the same pull request as
 the script.
 
-The package `scripts/petri_audit/` is not indexed here. The `petri-audit` lane
-runs it (`python -m scripts.petri_audit.cli`, plus its `readapt.py`,
-`rejudge.py` and `summary.py`), and each module's docstring describes it.
+Reading paths by role, and the offline quickstart, are in
+[docs/start_here.md](../docs/start_here.md). This page answers one question:
+what a script is and who runs it.
+
+The packages under `scripts/` are not indexed here:
+
+- `scripts/petri_audit/`: the `petri-audit` lane runs it
+  (`python -m scripts.petri_audit.cli`, plus its `readapt.py`, `rejudge.py` and
+  `summary.py`), and each module's docstring describes it.
+- `scripts/experiments/`: the offline experiment interface
+  (`python -m scripts.experiments.cli`), documented in
+  [docs/experiment_interface/README.md](../docs/experiment_interface/README.md).
+- `scripts/boundary_client/`: the test client, its generated response models,
+  the fixture assertions, the temporary-layout helpers and the locked
+  requirements of the synthetic boundary check
+  ([docs/exploratory/frontend_boundary.md](../docs/exploratory/frontend_boundary.md)).
+- `scripts/contracts/`: the JSON Schemas and the OpenAPI description of the
+  exported site payloads. It holds no code.
+
 `ci_publish_judge_files.sh` is the advice/Petri CI publishing helper: it commits
 an explicit artifact list from a clean temporary worktree, preserving the
 original working tree for artifact recovery even when an output push failed.
 
-Facts are as of 2026-09-30, taken from each script's docstring and from
+Rows written on 2026-09-30 took their facts from each script's docstring and from
 `.github/workflows/`, `.claude/skills/`, `docs/routine_standing_prompt.md`,
-the site's `.github/workflows/site_checks.yml` and git history. A date in the
-table is the last commit that changed the output named.
+the site's `.github/workflows/site_checks.yml` and git history. A row added
+later describes its script as of the change that added it and may carry no
+date. A date in the table is the last commit that changed the output named.
 
 **Status**
 
@@ -44,7 +61,6 @@ publish-site-data skill, which the Routine runs in §5 when new results land.
 | `action_annotation_messages.py` | Builds synthetic Messages requests/replays and interprets bounded raw replies; no network/live CLI or source/budget admission | staged | Exclusive external `action_requests.json` / `action_annotations.json`; no measurement or ledger writer | owner or session for offline rehearsal; no CI lane |
 | `action_annotations.py` | Prepares blinded synthetic requests, validates evidence spans and compares annotations with an independent fixture key; no provider calls | staged | New `action_requests.json` or `action_annotations.json` outside Git; never measurement collectors | owner or session for offline rehearsal; no CI lane |
 | `action_annotation_transport.py` | Fixed-endpoint single-attempt Messages transport with write-ahead raw receipts; no CLI; admission belongs to action_pilot | staged | New `action_annotation_attempts/` outside the engine; never measurement collectors | action-annotate CI only; offline tests inject transport |
-
 | `action_pilot.py` | Executes the fixed assisted pass with CI identity, reservation and deadline gates; offline prepare mode | staged | New external run artifacts and cost receipt; no public payload | action-annotate CI lane after owner merge/fire |
 | `action_pilot_inputs.py` | Admits exact source bytes, joins, seal and frozen requests | staged | None; returns versioned blinded input packet | imported by action_pilot |
 | `action_pilot_budget.py` | Validates dated prices, token usage, next-call bound and conservative allocation | staged | None; unknown costs refuse | action_pilot and trigger admission |

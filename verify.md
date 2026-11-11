@@ -14,8 +14,8 @@ software-verification guide.
 Use Python 3.12 or later for normal development so recorded pilots sealed on that
 side of 3.12 can re-finalize (float summation changed in 3.12; see
 [docs/pilot_runs.md](docs/pilot_runs.md#the-python-312-line)). The main measurement
-workflows use Python 3.11; the Petri lane pins 3.12.3; the Jev pilot uses 3.12.
-These are distinct execution environments.
+workflows use Python 3.11; the Petri lane pins 3.12.3; the Jev pilot and the action-annotation
+lane use 3.12; the exploratory baseline preflight pins 3.12.14. These are distinct execution environments.
 
 There is no general Poetry/uv/pip lockfile in this checkout. The dev ranges below
 match `pyproject.toml`; installation resolves versions within those ranges, rather
@@ -98,9 +98,9 @@ script inventory and shared instructions, then lint and whitespace. The shared
 cross-repository checks require the frontend; `-ra` makes skip reasons visible.
 It does **not** test all engine behavior, generate measurements, validate every
 Markdown link, or render the site. Manually check new Markdown links and commands.
-`test_doc_paths.py` covers the fixed operations list and both repositories'
-`verify.md` and `docs/agent_reference.md`, including local Markdown file links and
-explicit companion references. It does not validate heading anchors or external URLs.
+`test_doc_paths.py` covers the fixed operations list, the onboarding documents and both repositories'
+`verify.md` and `docs/agent_reference.md`, including local Markdown file links and explicit companion
+references. It validates heading anchors in the onboarding documents only, and no external URL.
 
 ## Choose additional checks
 

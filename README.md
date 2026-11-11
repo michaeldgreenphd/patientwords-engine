@@ -1,58 +1,76 @@
 # patientwords-engine
 
-> **Research code, work in progress.** Findings are preliminary (the care-urgency tier
-> vocabulary is pending domain review). The study measures language-model behavior:
-> next-token probabilities, and the advice deployed assistants give for the same
-> situation phrased two ways, evaluated strictly for measurement. Nothing here produces
-> medical advice that should be implemented, and nothing is a clinical tool. If you use
-> this code or data, please cite it (see `CITATION.cff`).
+The Python research engine of PatientWords. PatientWords compares clinically matched
+everyday and medical wording of the same situation. It keeps three kinds of evidence
+apart: changes in a model's next-token predictions, judged assistant responses, and
+causal interventions. It tests equity implications and does not present them as
+established. Every result is a measurement of language-model behaviour. Assistant advice
+is elicited only to be measured, and nothing here is medical advice or a clinical tool.
 
-Backend engine for [patientwords](https://github.com/michaeldgreenphd/patientwords)
-(`medlang-circuits` Python package): a pipeline for comparing attribution graphs of
-two phrasings of the same next-token prompt (standard clinical terminology vs.
-colloquial patient language) on gemma-2-2b with Gemma Scope transcoders by default
-(other hosted models selectable — see *Choosing the traced model*). Built on
-Neuronpedia's graph stack — either the hosted neuronpedia.org generation API or a
-local graph server run from a Neuronpedia checkout.
+This repository generates the paired stimuli, runs and records the measurements,
+analyses them, and exports data and renders to the public site,
+[patientwords](https://github.com/michaeldgreenphd/patientwords). The site displays
+exported files and calls no live engine API. To cite the code or data, see
+[CITATION.cff](CITATION.cff).
 
-For development, start with [AGENTS.md](AGENTS.md), the architecture and decisions in
-[docs/agent_reference.md](docs/agent_reference.md), and the canonical
-[verify.md](verify.md) setup and verification guide. The public frontend consumes
-exported artifacts; it does not call a live engine API. The CLI examples below
-describe capabilities; measurements follow the execution policy and its narrowly
-scoped exceptions in AGENTS.md. The existing
-[frontend-boundary guide](docs/exploratory/frontend_boundary.md) documents the
+## Public results
+
+- Site: <https://michaeldgreenphd.github.io/patientwords/>
+- [Results catalogue](https://michaeldgreenphd.github.io/patientwords/results/): every
+  run under `trace_out/`, whatever its effect, with its evidence class and review status.
+  Sealed holdout rows are withheld. Being listed is not a claim
+  ([open-results policy](docs/open_results_policy.md)).
+- [Methods](https://michaeldgreenphd.github.io/patientwords/methods.html): the pipeline,
+  its audit and its limitations.
+
+The care-urgency tier vocabulary is a draft pending domain review. Before quoting a number,
+read [Known measurement limitations](docs/agent_reference.md#known-measurement-limitations).
+
+## Offline quickstart
+
+It calls no model and needs no API key, GPU stack or method fork. It needs Python 3.12 or
+later and package-index access for the install.
+
+1. Install: the setup block in [verify.md, Setup](verify.md#setup-and-sources-of-truth).
+2. Check: the block in [verify.md, Quick path](verify.md#quick-path).
+3. Run the offline experiment slice on a synthetic fixture: step 3 of
+   [Procedure A](docs/start_here.md#procedure-a-offline-quickstart), which also lists the
+   prerequisites and what the procedure does and does not show.
+
+No measurement comes from a developer machine. Model jobs run in CI lanes that start only
+through `scripts/fire_trigger.py` ([Procedure B](docs/start_here.md#procedure-b-model-execution);
+the policy is in [AGENTS.md](AGENTS.md#execution-model-nothing-paid-or-networked-runs-locally)).
+
+## Routes by role
+
+| Role | Reading path | Main documents |
+|---|---|---|
+| Researcher | [New researcher](docs/start_here.md#new-researcher) | [open-results policy](docs/open_results_policy.md), [protocol template](docs/protocols/protocol_template.md) |
+| Frontend contributor | [Frontend contributor](docs/start_here.md#frontend-contributor) | [paired gates](verify.md#paired-gates-on-existing-artifacts), [frontend boundary](docs/exploratory/frontend_boundary.md) |
+| Method developer | [Method developer](docs/start_here.md#method-developer) | [contributing a method](docs/contributing_a_method.md), [ecosystem map](docs/ecosystem.md) |
+| Operator | [Operator](docs/start_here.md#operator) | [lane reference](docs/triggers.md), [operators handbook](docs/operators_handbook.md) |
+| Every role | [AGENTS.md](AGENTS.md) (rules), [verify.md](verify.md) (setup and checks) | [documentation index](docs/README.md), [script index](scripts/README.md), [ecosystem map](docs/ecosystem.md) |
+
+## The `medlang-circuits` package
+
+The rest of this page documents the Python package `medlang-circuits`
+(`medlang_circuits/`) and the commands around it. The package is a pipeline for
+comparing attribution graphs of two phrasings of the same next-token prompt (standard
+clinical terminology vs. colloquial patient language) on gemma-2-2b with Gemma Scope
+transcoders by default (other hosted models selectable — see *Choosing the traced
+model*). It is built on Neuronpedia's graph stack — either the hosted neuronpedia.org
+generation API or a local graph server run from a Neuronpedia checkout.
+
+The CLI examples below describe capabilities; measurements follow the execution policy
+and its narrowly scoped exceptions in
+[AGENTS.md](AGENTS.md#execution-model-nothing-paid-or-networked-runs-locally). The
+architecture and decisions are in [docs/agent_reference.md](docs/agent_reference.md).
+The [frontend-boundary guide](docs/exploratory/frontend_boundary.md) documents the
 synthetic exporter-to-HTTP-to-browser check separately from live model evidence.
-
-## Provenance & acknowledgments
-
-Built on top of [Neuronpedia](https://github.com/hijohnnylin/neuronpedia)
-(MIT license, © Johnny Lin), whose hosted APIs this engine consumes for
-attribution-graph generation (`/api/graph/generate`, powered by
-[circuit-tracer](https://github.com/safety-research/circuit-tracer)) and feature
-autointerp descriptions (`/api/feature/...`). No Neuronpedia source files are
-vendored here; the coupling is the HTTP contract only.
-
-- Developed July 2026 inside a fork of the Neuronpedia monorepo
-  ([michaeldgreenphd/neuronpedia](https://github.com/michaeldgreenphd/neuronpedia),
-  branch `claude/medical-language-circuit-trace-1dge1c`, under
-  `apps/experiments/medlang-circuits/`), forked from upstream commit `458cb46`
-  ("package updates", 2026-06-17).
-- Ported to this standalone repository on 2026-07-06 with `git filter-repo`
-  (full commit history of the package preserved; branch tip at port time:
-  `64eb1df`).
-- To pull later work from the fork: re-run the same filter on the updated
-  branch and compare/cherry-pick, e.g.
-  `git filter-repo --path apps/experiments/medlang-circuits --path .github/workflows/model_evaluation.yml --path-rename apps/experiments/medlang-circuits/:''`.
-- Related repositories: [patientwords](https://github.com/michaeldgreenphd/patientwords)
-  (the public frontend/gallery this engine generates figures for) ·
-  [Neuronpedia](https://github.com/hijohnnylin/neuronpedia) ·
-  [circuit-tracer](https://github.com/safety-research/circuit-tracer) ·
-  [Gemma Scope](https://huggingface.co/google/gemma-scope-2b-pt-transcoders).
 
 ## What it does
 
-1. **Feature tagging (Task 1)** — `feature_tagger.annotate_graph` post-processes a
+1. **Feature tagging** — `feature_tagger.annotate_graph` post-processes a
    graph JSON (schema: `apps/webapp/app/api/graph/graph-schema.json` in the Neuronpedia repo): it fetches
    each transcoder feature's autointerp description + top activating tokens from
    Neuronpedia (disk-cached), classifies it into `clinical` / `off_target` /
@@ -60,13 +78,13 @@ vendored here; the coupling is the HTTP contract only.
    and appends `node["medlang"]` metadata plus a graph-level
    `metadata["medlang_summary"]`. The extra keys are additive, so tagged graphs
    still load in the standard Neuronpedia viewer.
-2. **Stacked comparison viz (Task 2)** — `compare_viz` renders two tagged graphs
+2. **Stacked comparison viz** — `compare_viz` renders two tagged graphs
    stacked vertically (clinical wording top, patient wording bottom; tokens on
    the x-axis, layers on the y-axis). Clinical features are green, off-target
    black, structural gray; edge width/opacity scales with |attribution weight|
    (negative edges solid red). Outputs a self-contained HTML file (hover
    tooltips, no external assets) and a matplotlib/networkx PNG.
-3. **Auto-translation pipeline (Task 3)** — `pipeline.run_comparison` takes a
+3. **Auto-translation pipeline** — `pipeline.run_comparison` takes a
    patient sentence, translates it to clinical terminology (Anthropic Messages
    API when configured, offline phrase table otherwise), traces both prompts,
    tags both graphs, renders the stacked comparison, and writes a divergence
@@ -83,7 +101,8 @@ vendored here; the coupling is the HTTP contract only.
    only in `targets.py` and its tests. Do not reason about a run's graphs as
    if they had been pruned to the targets.
 5. **Batch evaluation harness** — `batch_eval.run_batch` consumes a JSON array
-   of pair objects, traces/tags/retargets each sequentially, and writes
+   of pair objects, traces each sequentially, applies `select_logits` and tags
+   the graph, and writes
    numbered `index_01.html` / `index_01.png` outputs plus `batch_summary.json`.
    Four isolated visualization modes via `--mode` (2panel, 4quadrant,
    translation, dialect — the last two detailed under *Generating stress-test
@@ -669,3 +688,31 @@ paired frontend checks and their evidence limits. Offline tests use synthetic
 fixtures and committed artifacts; no provider API keys are required. Browser
 regressions need Playwright/Chromium and can otherwise skip. Historical test
 reports do not establish that the current checkout passes.
+
+## Provenance & acknowledgments
+
+Built on top of [Neuronpedia](https://github.com/hijohnnylin/neuronpedia)
+(MIT license, © Johnny Lin), whose hosted APIs this engine consumes for
+attribution-graph generation (`/api/graph/generate`, powered by
+[circuit-tracer](https://github.com/safety-research/circuit-tracer)) and feature
+autointerp descriptions (`/api/feature/...`). No Neuronpedia source files are
+vendored here; the coupling is the HTTP contract only.
+
+- Developed July 2026 inside a fork of the Neuronpedia monorepo
+  ([michaeldgreenphd/neuronpedia](https://github.com/michaeldgreenphd/neuronpedia),
+  branch `claude/medical-language-circuit-trace-1dge1c`, under
+  `apps/experiments/medlang-circuits/`), forked from upstream commit `458cb46`
+  ("package updates", 2026-06-17).
+- Ported to this standalone repository on 2026-07-06 with `git filter-repo`
+  (full commit history of the package preserved; branch tip at port time:
+  `64eb1df`).
+- To pull later work from the fork: re-run the same filter on the updated
+  branch and compare/cherry-pick, e.g.
+  `git filter-repo --path apps/experiments/medlang-circuits --path .github/workflows/model_evaluation.yml --path-rename apps/experiments/medlang-circuits/:''`.
+- Related repositories: [patientwords](https://github.com/michaeldgreenphd/patientwords)
+  (the public frontend/gallery this engine generates figures for) ·
+  [Neuronpedia](https://github.com/hijohnnylin/neuronpedia) ·
+  [circuit-tracer](https://github.com/safety-research/circuit-tracer) ·
+  [Gemma Scope](https://huggingface.co/google/gemma-scope-2b-pt-transcoders).
+  The method forks and the other PatientWords repositories are mapped in
+  [docs/ecosystem.md](docs/ecosystem.md).
