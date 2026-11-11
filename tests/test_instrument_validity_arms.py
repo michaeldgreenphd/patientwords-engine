@@ -171,6 +171,24 @@ def test_zero_recovery_in_every_arm_is_no_demonstrated_advantage_and_says_nothin
     for claim in ("does_not_read", "does not read", "recoverable_from_wording", "evidence about how the system reads"):
         assert claim not in text, claim
     assert "establishes nothing more" in iv.ARM_RULE and "is not evidence for either" in iv.ARM_RULE
+    # A family that was not measured did not "recover nothing": with the arm rows of all but one held-out family
+    # removed, the recorded family still scores zero everywhere, the state is arms_incomplete, and neither the
+    # flag nor the note is set. (Review finding, 2026-11-11: the flag was computed from the families that had a
+    # rate, so one recorded family set it for the whole set.)
+    partial = _with_arms(NONE, NONE)
+    for row in partial["stages"][STAGE]["observations"]:
+        if row["variant_id"] in paired:
+            row["fact_recovery"] = dict.fromkeys(row["fact_recovery"], NONE)
+    stage_arms = partial["verbalizer_arms"]["stages"][STAGE]
+    stage_arms["observations"] = [row for row in stage_arms["observations"] if row["family_id"] == "family_3"]
+    some = iv.score_bundle(partial)["stages"][STAGE]["verbalizer_arms"]["analysis_sets"]["held_out"]
+    entry = some["comparisons"]["input_only"]["medical"]
+    assert some["state"] == iv.ARMS_INCOMPLETE and entry["n_included"] == 1 < entry["n_families"]
+    assert some["mean_rates"]["input_only"] == {"medical": 0.0, "everyday": 0.0}      # the one recorded family
+    assert some["no_fact_recovered_in_any_arm"] is False and iv.NOTHING_RECOVERED_NOTE not in some["state_meaning"]
+    # A set with too few families has no interval: the state is a not_shown state and its meaning says so.
+    assert "too few families for an interval" in iv.ARM_STATE_MEANING[iv.SPECIFICITY_NOT_SHOWN]
+    assert "too few families for an interval" in iv.ARM_STATE_MEANING[iv.CONTRIBUTION_NOT_SHOWN]
     # A set where something was recovered does not carry the note.
     recovered = iv.score_bundle(_with_arms(ALL, NONE))["stages"][STAGE]["verbalizer_arms"]["analysis_sets"]["held_out"]
     assert recovered["no_fact_recovered_in_any_arm"] is False and iv.NOTHING_RECOVERED_NOTE not in recovered["state_meaning"]
@@ -235,7 +253,7 @@ def test_a_register_difference_that_the_wording_alone_also_shows_is_reported_bes
     assert body["comparisons"]["control_artifact"]["everyday"]["mean_difference"] == 0.5
     assert body["failed_comparisons"] == ["artifact_minus_input_only:medical", "artifact_minus_input_only:everyday"]
     # The stage's own fact-recovery verdict still says "different" (1/2 against a margin of 0.2); the arm state
-    # says the same difference is earned from the wording alone.
+    # says the artifact showed no advantage over the wording alone at the margin. It names no cause.
     primary = report["primary_results"]["fact_recovery_rate_difference"][STAGE]
     assert primary["verdict"] == iv.DIFFERENT and primary["artifact_arm_state"] == iv.NO_ADVANTAGE_OVER_WORDING
 

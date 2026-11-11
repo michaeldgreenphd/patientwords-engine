@@ -442,10 +442,12 @@ description. The stage then carries one state per analysis set, the first that a
 - A stage's fact recovery is described as coming from the artifact only in the state
   `artifact_contributes`. Every other state says that the advantage was not demonstrated at the margin,
   and nothing more. It does not establish that the system ignores the artifact, and it does not establish
-  that the output comes from the wording. When no arm recovers any fact, every difference is zero and the
-  state is `no_advantage_over_control_artifact`; the report then sets `no_fact_recovered_in_any_arm` and
-  says the comparison is uninformative. A missing or unsuccessful measurement is not evidence for either
-  explanation. (Until 2026-11-11 the two `no_advantage` states were named `system_does_not_read_artifact`
+  that the output comes from the wording. When no arm recovers any fact, every difference is zero: the
+  state is `no_advantage_over_control_artifact` where an interval is computed, and
+  `artifact_specificity_not_shown` where the set has too few families for one. Where every family of the
+  set has a rate in every arm and every rate is zero, the report sets `no_fact_recovered_in_any_arm` and
+  says the comparison is uninformative; a set with an arm that was not run or is partly recorded does not
+  get the flag. A missing or unsuccessful measurement is not evidence for either explanation. (Until 2026-11-11 the two `no_advantage` states were named `system_does_not_read_artifact`
   and `recoverable_from_wording_alone`, which stated a cause the comparison cannot show.)
 - The report gives each arm's mean rate (`mean_rates`) beside the state, the medical-minus-everyday
   difference under each arm, and the artifact arm's difference minus the `input_only` arm's difference

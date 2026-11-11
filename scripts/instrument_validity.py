@@ -167,9 +167,14 @@ ARM_STATE_MEANING = {
     NO_ADVANTAGE_OVER_WORDING: "in some register the actual artifact did not outperform the wording alone by the "
                                "margin; this is no demonstrated advantage, not a finding that the output came from "
                                "the wording",
-    SPECIFICITY_NOT_SHOWN: "the interval of the advantage over the control artifact contains the margin",
-    CONTRIBUTION_NOT_SHOWN: "the interval of the advantage over the wording alone contains the margin",
+    SPECIFICITY_NOT_SHOWN: "the advantage over the control artifact was not shown: its interval contains the margin, "
+                           "or the set has too few families for an interval",
+    CONTRIBUTION_NOT_SHOWN: "the advantage over the wording alone was not shown: its interval contains the margin, "
+                            "or the set has too few families for an interval",
 }
+# Said only where every family of the set has a rate in every arm and every rate is zero. A set with an arm that
+# was not run, or that is recorded for some families only, does not get it: a family that was not measured did
+# not "recover nothing".
 NOTHING_RECOVERED_NOTE = ("no arm recovered any fact in this set, so no arm could outperform another; the comparison "
                           "is uninformative about the artifact and about the wording")
 ARM_RULE = (
@@ -1291,7 +1296,9 @@ def _verbalizer_arms(stage: str, index: dict[str, Any], sets: dict[str, Any], bu
                                              if rate[fid, register, arm] is not None])
                             for register in PAIRED_REGISTERS} for arm in ("artifact", *ARMS)}
         recovered = [value for per_register in mean_rates.values() for value in per_register.values()]
-        nothing_recovered = bool(recovered) and None not in recovered and all(value == 0 for value in recovered)
+        measured_everywhere = bool(members) and all(rate[fid, register, arm] is not None for fid in members
+                                                    for register in PAIRED_REGISTERS for arm in ("artifact", *ARMS))
+        nothing_recovered = measured_everywhere and all(value == 0 for value in recovered)
         by_arm = {}
         for arm in ("artifact", *ARMS):
             summary = summarize_paired({fid: register_difference(arm, fid) for fid in members}, {}, members,

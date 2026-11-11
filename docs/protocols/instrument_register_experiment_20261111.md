@@ -197,7 +197,10 @@ count is reported.
 
 - A: a difference no larger than the within-register paraphrase difference.
 - B1: a score difference that survives only while the controls are not passed.
-- B2: an arm state other than `artifact_contributes`.
+- B2: the arm state `no_advantage_over_control_artifact` or `no_advantage_over_wording_alone`, in a set
+  where an interval was computed and some arm recovered a fact. Only `artifact_contributes` supports B2.
+  `arms_not_run`, `arms_incomplete`, the two `not_shown` states and a set in which no arm recovered
+  anything neither support nor weaken it.
 - C: representation differences below the calibration threshold, a changed-fact control that is not
   detected, or behaviour changes that occur equally with and without a detected representation change.
 
