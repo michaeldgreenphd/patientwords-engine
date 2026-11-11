@@ -8,8 +8,8 @@ The site's `multi-turn/index.html` reads two files, written here into `<site>/da
 - `petri_multiturn_conversations.json`: the measures, the mechanisms, the seeds, every conversation exchange by exchange
   with its graded reply and grades, the rule outcomes, and one scripted turn in its three wordings.
 
-The page reads both or neither (it falls back to the two `.sample.json` fixtures). `--write-samples` writes those two
-fixtures from SYNTHETIC input (scripts/petri_multiturn_synthetic.py), in the same shapes.
+The page reads both or neither; the two `.sample.json` fixtures are drawn only with `?sample=1`. `--write-samples`
+writes those two fixtures from SYNTHETIC input (scripts/petri_multiturn_synthetic.py), in the same shapes.
 
 Owner-run, once, after the design note's section 10 analysis (`scripts/petri_w2_register_contrast.py --final`) has run
 on the final data. It is not part of the daily Routine's publish chain. Usage:

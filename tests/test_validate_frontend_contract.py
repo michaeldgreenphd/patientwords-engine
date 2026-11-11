@@ -904,7 +904,7 @@ def _multiturn_page(site):
 def test_owner_run_multiturn_page_without_real_pair_or_samples_is_an_error(site):
     """Regression (Codex review of 2026-09-24): with neither pair on disk the validator passed, though the page then
     has nothing to fetch. The samples are required whenever the page is on the site and the real pair is not
-    published (one real file alone counts as not published: the page falls back to both samples)."""
+    published (one real file alone counts as not published: the page shows a failed load)."""
     _multiturn_page(site)
     rep = run(site, strict=True)
     assert any("petri_multiturn_summary.sample.json and petri_multiturn_conversations.sample.json" in e

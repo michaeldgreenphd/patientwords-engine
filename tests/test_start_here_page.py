@@ -18,7 +18,10 @@ that preference:
   as a schematic, the prospective sections are prospective in their own prose, and the status the
   examples share is stated once, in the endnote;
 * every recorded value printed in a diagram has its own claim entry, is replaced from the data files
-  when they load, and is named in the figure's text alternative with the value the figure shows.
+  when they load, and is named in the figure's text alternative with the value the figure shows;
+* the three stages of step 8's cycle reach assistive technology as three named tabs. That check reads
+  the browser's accessibility tree, because the attributes in the page can all be right while an
+  ancestor's role hides the tabs.
 
 The browser tests serve the site's real page from a temporary directory with placeholder data, so no
 study value is involved. Skipped where the sibling site checkout, Playwright or a Chromium is missing.
@@ -463,6 +466,102 @@ def test_the_wording_toggle_and_the_cycle_tabs_work_by_pointer_and_by_keyboard(s
     assert cycle() == (["true", "false", "false"], [False, True, True], ["0", "-1", "-1"])
     assert errors == []
     page.close()
+
+
+# ARIA roles whose children are presentational: assistive technology is given the element and nothing inside
+# it. Chromium's full accessibility tree still lists what is inside, so "the tab is in the tree" is not enough;
+# no ancestor of the tab may have one of these roles. Names as the Chrome DevTools Protocol reports them.
+CHILDREN_PRESENTATIONAL = frozenset({
+    "image", "img", "button", "checkbox", "math", "menuitemcheckbox", "menuitemradio", "meter", "option",
+    "progressbar", "radio", "scrollbar", "separator", "slider", "switch", "tab", "graphics-symbol", "doc-cover"})
+CYCLE_LIST = "Choose a loop stage to read its steps"
+CYCLE_STAGES = ["MEASURE", "MEND", "MAINTAIN"]
+
+
+def _exposed(page) -> list[dict]:
+    """The nodes assistive technology is given, read from the browser's own accessibility tree
+    (``Accessibility.getFullAXTree``): ignored nodes are passed over, and nothing below a role whose
+    children are presentational is kept. Each node carries its role, its name, its selected and focused
+    states and the roles above it."""
+    client = page.context.new_cdp_session(page)
+    client.send("Accessibility.enable")
+    nodes = client.send("Accessibility.getFullAXTree")["nodes"]
+    client.detach()
+    by_id = {node["nodeId"]: node for node in nodes}
+    found: list[dict] = []
+
+    def walk(node: dict, above: tuple[str, ...]) -> None:
+        if node.get("ignored"):
+            for child in node.get("childIds", []):
+                walk(by_id[child], above)
+            return
+        role = (node.get("role") or {}).get("value", "")
+        states = {p["name"]: p["value"].get("value") for p in node.get("properties", [])}
+        found.append({"role": role, "name": (node.get("name") or {}).get("value", ""), "above": above,
+                      "selected": states.get("selected"), "focused": states.get("focused", False)})
+        if role in CHILDREN_PRESENTATIONAL:
+            return
+        for child in node.get("childIds", []):
+            walk(by_id[child], (*above, role))
+
+    for node in nodes:
+        if "parentId" not in node:
+            walk(node, ())
+    return found
+
+
+def test_the_cycle_stages_reach_assistive_technology_as_three_named_tabs_at_both_widths(served) -> None:
+    """Regression (2026-11-11): the tab list sat inside an ``<svg role="img">``. An image's children are
+    presentational, so a screen reader was given the image and the selected panel and none of the three
+    tabs, while every attribute the test above reads was correct. This test reads the accessibility tree."""
+    browser, url = served
+
+    def cycle(page) -> dict:
+        exposed = _exposed(page)
+        tabs = [n for n in exposed if n["role"] == "tab"]
+        return {"tabs": [(n["name"], n["selected"]) for n in tabs],
+                "tab_parents": {n["above"][-1] for n in tabs},
+                "focused": [n["name"] for n in tabs if n["focused"]],
+                "lists": [n["name"] for n in exposed if n["role"] == "tablist"],
+                "panels": [n["name"] for n in exposed if n["role"] == "tabpanel"],
+                "drawings": [n["name"] for n in exposed if n["role"] == "image" and "three-stage cycle" in n["name"]]}
+
+    def state(selected: str, focused: str | None = None) -> dict:
+        return {"tabs": [(stage, stage == selected) for stage in CYCLE_STAGES], "tab_parents": {"tablist"},
+                "focused": [focused] if focused else [], "lists": [CYCLE_LIST], "panels": [selected]}
+
+    for width in (1280, 390):
+        page, errors = _open(browser, url, payload=None, provenance=None, width=width, height=900)
+        # No element with role="img" encloses a tab, and the drawing keeps its text alternative beside the tabs.
+        assert page.evaluate("[...document.querySelectorAll('[role=tab]')].every(t => !t.closest('[role=img]'))")
+        seen = cycle(page)
+        drawings = seen.pop("drawings")
+        assert len(drawings) == 1 and "Measure leads to mend" in drawings[0] and "re-measure" in drawings[0]
+        assert seen == state("MEASURE"), (width, seen)
+        # Playwright's own reading of the page's roles agrees: the tab list is not nested in an image.
+        section = page.locator("section", has=page.locator(".cycle-svg"))
+        if hasattr(section, "aria_snapshot"):
+            lines = section.aria_snapshot().splitlines()
+            at = lines.index(f'- tablist "{CYCLE_LIST}":')
+            assert lines[at + 1:at + 4] == ['  - tab "MEASURE" [selected]', '  - tab "MEND"', '  - tab "MAINTAIN"']
+            assert sum(line.lstrip().startswith("- tabpanel") for line in lines) == 1
+        # The keyboard moves the selection, and the tree follows it: arrows with wrap-around, End and Home.
+        page.focus("#tab-measure")
+        for key, stage in (("ArrowRight", "MEND"), ("ArrowRight", "MAINTAIN"), ("ArrowRight", "MEASURE"),
+                           ("ArrowLeft", "MAINTAIN"), ("Home", "MEASURE"), ("End", "MAINTAIN"),
+                           ("ArrowUp", "MEND"), ("ArrowDown", "MAINTAIN")):
+            page.keyboard.press(key)
+            seen = cycle(page)
+            seen.pop("drawings")
+            assert seen == state(stage, focused=stage), (width, key, seen)
+        # Enter and Space on a tab select it; the pointer does too.
+        page.focus("#tab-mend")
+        page.keyboard.press("Enter")
+        assert cycle(page)["tabs"] == state("MEND")["tabs"]
+        page.click("#tab-measure")
+        assert cycle(page)["panels"] == ["MEASURE"]
+        assert errors == []
+        page.close()
 
 
 def test_the_care_urgency_ladder_draws_from_its_data_and_stays_pending_without_it(served) -> None:
