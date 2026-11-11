@@ -201,7 +201,9 @@ and `layout_complete_for_every_stage`. Its receipt was written outside the repos
 and is not committed: it binds a working tree with uncommitted changes. A receipt
 includes each deliberate rejection and restored pass, the skipped tests with their
 reasons, browser errors and attempted external requests. Generated-model regeneration
-was byte-identical. Hosted tests remain unrun. The boundary is in no CI workflow.
+was byte-identical. Hosted tests remain unrun. Since 2026-11-11 the paired job of
+`.github/workflows/pr_checks.yml` runs the boundary on engine pull requests; that
+workflow had not run on a hosted runner on that date.
 
 ## Small extraction after protection
 
