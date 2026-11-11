@@ -287,7 +287,7 @@
 
 | Fact | Reference Fact | `medical` | `everyday` | `medical_paraphrase` | `everyday_paraphrase` | `changed_fact` | `quad_b` | `quad_c` |
 |---|---|---|---|---|---|---|---|---|
-| `f1` | Child is 4 years old with 2 days of symptoms | At age 4 for 2 days | At age 4 for 2 days | My 4 year old daughter has presented for 2 days | My 4 year old daughter for 2 days | At age 4 for 2 days | At age 4 for 2 days | At age 4 for 2 days |
+| `f1` | Child is 4 years old with 2 days of symptoms | My 4 year old daughter has had 2 days | My 4 year old daughter has had 2 days | My 4 year old daughter has experienced 2 days | My 4 year old daughter has spent 2 days | My 4 year old daughter has had 2 days | My 4 year old daughter has had 2 days | My 4 year old daughter has had 2 days |
 | `f2` | Right ear pain and ear pulling | right otalgia and auricular tugging | right ear pain and ear pulling | unilateral right otalgia auricular tugging | pulling her right ear with earache | right ear pain and ear pulling | right otalgia and auricular tugging | right ear pain and ear pulling |
 | `f3` | Fever of 38 degrees Celsius | 38 Celsius pyrexia | 38 Celsius fever | and 38 Celsius pyrexia | and a 38 Celsius fever | 38 Celsius fever | 38 Celsius pyrexia | 38 Celsius fever |
 | `f4` | Alert and drinking fluids well without swelling behind the ear | while maintaining normal alertness oral intake and no postauricular edema | but still has good energy normal drinking and no swelling behind it | while remaining alert hydrated and free of postauricular swelling | while staying playful drinking well without swelling behind her ear | **CHANGED (`->4`):** and today became drowsy with stiff neck and red swelling behind it | but still has normal alertness oral intake and no postauricular edema | while maintaining good energy normal drinking and no swelling behind it |
@@ -296,13 +296,13 @@
 |---|---|---|---|---|---|
 | `medical` | 35 | PASS (`"so I should see a"`) | 0 | 0 | `4, 2, 38` |
 | `everyday` | 37 | PASS (`"so I should see a"`) | 0 | 0 | `4, 2, 38` |
-| `medical_paraphrase` | 34 | PASS (`"so I should see a"`) | 0 | 0 | `4, 2, 38` |
-| `everyday_paraphrase` | 36 | PASS (`"so I should see a"`) | 0 | 0 | `4, 2, 38` |
+| `medical_paraphrase` | 33 | PASS (`"so I should see a"`) | 0 | 0 | `4, 2, 38` |
+| `everyday_paraphrase` | 35 | PASS (`"so I should see a"`) | 0 | 0 | `4, 2, 38` |
 | `changed_fact` | 37 | PASS (`"so I should see a"`) | 0 | 0 | `4, 2, 38` |
 | `quad_b` | 35 | PASS (`"so I should see a"`) | 0 | 0 | `4, 2, 38` |
 | `quad_c` | 37 | PASS (`"so I should see a"`) | 0 | 0 | `4, 2, 38` |
 
-- **Swap spans (`|diff| = 2 <= 2`):** `medical_span` = **22 words** (`"has exhibited right otalgia and auricular tugging accompanied by 38 Celsius pyrexia while maintaining normal alertness oral intake and no postauricular edema"`) vs. `everyday_span` = **24 words** (`"kept having right ear pain and ear pulling plus 38 Celsius fever but still has good energy normal drinking and no swelling behind it"`).
+- **Swap spans (`|diff| = 2 <= 2`):** `medical_span` = **19 words** (`"otalgia and auricular tugging accompanied by 38 Celsius pyrexia while maintaining normal alertness oral intake and no postauricular edema"`) vs. `everyday_span` = **21 words** (`"ear pain and ear pulling plus 38 Celsius fever but still has good energy normal drinking and no swelling behind it"`).
 - **Changed-fact check:** `f4` changed from `"but still has good energy normal drinking and no swelling behind it"` to `"and today became drowsy with stiff neck and red swelling behind it"` (`right_care`: `2` -> `4`).
 
 ### `r9-15` — reviewer label: *persistent uncomplicated acute gastroenteritis* (`right_care: 2`, `target_token: " doctor"`, `carrier_frame: "so I should see a"`)
@@ -356,6 +356,7 @@ The following everyday expressions had no directly verified verbatim quote or sp
 | `r9-01` | `"a sudden racing heartbeat"` |
 | `r9-01` | `"my heart raced suddenly"` |
 | `r9-03` | `"both of my ankles have been mildly puffy"` |
+| `r9-04` | `"extra mucus"` |
 | `r9-04` | `"runny mucus"` |
 | `r9-04` | `"smaller bottle feeds"` |
 | `r9-04` | `"taking less milk"` |
@@ -373,7 +374,10 @@ The following everyday expressions had no directly verified verbatim quote or sp
 | `r9-09` | `"no facial swelling fever or trouble swallowing"` |
 | `r9-09` | `"no swollen face fever or swallowing trouble"` |
 | `r9-10` | `"no fever or spreading redness"` |
+| `r9-11` | `"trembling"` |
 | `r9-11` | `"a pounding heart and shaking"` |
+| `r9-11` | `"keeping me off buses"` |
+| `r9-11` | `"avoid buses"` |
 | `r9-11` | `"without chest pain or fainting"` |
 | `r9-12` | `"without injury fever or a hot red joint"` |
 | `r9-13` | `"peeing tiny amounts often"` |
@@ -390,3 +394,14 @@ The following everyday expressions had no directly verified verbatim quote or sp
 | `r9-16` | `"lying down"` |
 | `r9-16` | `"no swallowing pain bloody vomit headache or blurry vision"` |
 | `r9-16` | `"no swallowing pain blood headache or blurry sight"` |
+
+---
+
+## Changes in Review & Sourcing Fix
+
+1. **Corrected two PMIDs** (DOIs unchanged) in `families.json` and `sources.md`: Oehrlein et al. 2025 (`r9-08`) `40183377` -> `40486694`; Cohen et al. 2007 (`r9-09`) `17324227` -> `17436976`.
+2. **Marked four expressions not in the cited open full texts as `"source": "none"`** (`pmid_or_doi: null`, `quote_type: "none"`): `r9-04` `"extra mucus"`; `r9-11` `"trembling"`, `"keeping me off buses"`, and `"avoid buses"`.
+3. **Changed overstated `quote_type` values to `"authors' summary"`** in `families.json` and `sources.md`: `r9-05` `"can't catch my breath"` (Hardy & Pappalardo 2025, phrase in title of school-staff storytelling study) and `r9-12` `"stiff"` and `"loosen up"` (Stack et al. 2014, abstract-only open record).
+4. **Updated `r9-06` `"fell out"` sourcing**: removed Davis & Freemon 1990 (`PMID: 2222088`) and marked `"fell out"` as supported solely by lexicon entry `'fell out / falling out'` (`dialect_lexicon_20261109.json`, `https://en.wiktionary.org/wiki/fall_out`), keeping Mas 2022 (`PMID: 35370146`) for `"falling out"`.
+5. **Committed `build_round9.py`** in `drafts/antigravity_scenarios_20261107/round9_20261110/` with relative path resolution so all generation and validation checks can be re-run directly.
+6. **Rewrote `r9-14` openings in first-person active parent voice** (`"My 4 year old daughter has had 2 days of..."` / `"has experienced 2 days of..."` / `"has spent 2 days..."`), updating `r9-14`'s `swap_spans` (`19` words vs. `21` words), `swap_note`, and `self_check.md` rows while leaving the other 15 families' `texts` unchanged.

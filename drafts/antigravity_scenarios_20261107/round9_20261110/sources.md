@@ -35,8 +35,8 @@ Every citation used in `families.json` is listed below with its full reference, 
 ## 6. Campbell A, Hartling L, Louie-Poon S, Scott SD (2020). Parent Experiences Caring for a Child With Bronchiolitis: A Qualitative Study. Journal of Patient Experience.
 
 - **PMID / DOI / URL:** `PMID: 33457588; DOI: 10.1177/2374373520924526`
-- **What it supports:** Supports parents' descriptions of 'extra mucus' ('excess mucous production') and 'hard breathing' / 'trouble breathing' ('difficulty breathing') in infants with acute bronchiolitis in r9-04 (authors' summary).
-- **Used in `families.json`:** `r9-04` (`"extra mucus"` — *authors' summary*), `r9-04` (`"hard breathing"` — *authors' summary*), `r9-04` (`"trouble breathing"` — *authors' summary*)
+- **What it supports:** Supports parents' descriptions of 'hard breathing' / 'trouble breathing' ('difficulty breathing') in infants with acute bronchiolitis in r9-04 (authors' summary).
+- **Used in `families.json`:** `r9-04` (`"hard breathing"` — *authors' summary*), `r9-04` (`"trouble breathing"` — *authors' summary*)
 
 ## 7. Wiktionary contributors (verified 2026-11-09 in dialect_lexicon_20261109.json). Entry 'short-winded'. Wiktionary, The Free Dictionary.
 
@@ -47,14 +47,14 @@ Every citation used in `families.json` is listed below with its full reference, 
 ## 8. Hardy P, Pappalardo AA (2025). "I can't breathe, I can't catch my breath:" the impact of school staff storytelling on asthma management. Journal of Asthma.
 
 - **PMID / DOI / URL:** `PMID: 39382247; DOI: 10.1080/02770903.2024.2414351`
-- **What it supports:** Supports "can't catch my breath" in r9-05 everyday_paraphrase (lexicon entry "can't catch my breath"; direct quote in study title and narrative).
-- **Used in `families.json`:** `r9-05` (`"can't catch my breath"` — *direct patient quote*)
+- **What it supports:** Supports "can't catch my breath" in r9-05 everyday_paraphrase (lexicon entry "can't catch my breath"; phrase in the title of a school-staff storytelling study, authors' summary).
+- **Used in `families.json`:** `r9-05` (`"can't catch my breath"` — *authors' summary*)
 
-## 9. Davis TL, Freemon FR (1990). Electroencephalography should not be routine in the evaluation of syncope in adults. Archives of Internal Medicine.
+## 9. dialect_lexicon_20261109.json, core entry 'fell out / falling out' (Wiktionary entry 'fall out', verified 2026-11-09).
 
-- **PMID / DOI / URL:** `PMID: 2222088`
-- **What it supports:** Supports 'fell out' / 'falling out' for loss of consciousness in r9-06 (lexicon entry 'fell out / falling out'; referral complaint wording reported in authors' summary, alongside Mas 2022 PMID: 35370146).
-- **Used in `families.json`:** `r9-06` (`"fell out"` — *authors' summary*)
+- **PMID / DOI / URL:** `https://en.wiktionary.org/wiki/fall_out`
+- **What it supports:** Supports 'fell out' for loss of consciousness in r9-06 via lexicon entry 'fell out / falling out' only (Wiktionary gloss 'To pass out').
+- **Used in `families.json`:** `r9-06` (`"fell out"` — *lexicon entry ('fell out / falling out')*)
 
 ## 10. Mas C (2022). "Falling-Out" in Miami and the History of Culture in American Medicine. Bulletin of the History of Medicine.
 
@@ -82,13 +82,13 @@ Every citation used in `families.json` is listed below with its full reference, 
 
 ## 14. Oehrlein EM, Schoch SC, Escontrias OA, Carver M, Eftekhari S, Marvel J, Pashos CL, Pistiner M, Rutta R, Voss J, Vandigo J (2025). US food allergy patients' experiences, priorities, and needs: A qualitative study. Journal of Allergy and Clinical Immunology: Global.
 
-- **PMID / DOI / URL:** `PMID: 40183377; DOI: 10.1016/j.jacig.2025.100482`
+- **PMID / DOI / URL:** `PMID: 40486694; DOI: 10.1016/j.jacig.2025.100482`
 - **What it supports:** Supports 'itching and breaking out in hives' and 'my throat swelled up' (direct patient quotes) and 'trouble breathing' ('difficulty breathing', authors' summary) in r9-08.
 - **Used in `families.json`:** `r9-08` (`"itching and breaking out in hives"` — *direct patient quote*), `r9-08` (`"my throat swelled up"` — *direct patient quote*), `r9-08` (`"trouble breathing"` — *authors' summary*)
 
 ## 15. Cohen LA, Harris SL, Bonito AJ, Manski RJ, Cornelius LJ (2007). Coping with toothache pain: a qualitative study of low-income persons and minorities. Journal of Public Health Dentistry, 67(1):28-35.
 
-- **PMID / DOI / URL:** `PMID: 17324227; DOI: 10.1111/j.1752-7325.2007.00005.x`
+- **PMID / DOI / URL:** `PMID: 17436976; DOI: 10.1111/j.1752-7325.2007.00005.x`
 - **What it supports:** Supports patient descriptions of 'throbbing pain' / 'intense throbbing ache' in toothache among low-income and minority adults in r9-09 (authors' summary: 'Toothache pain was described as intense, throbbing, miserable, or unbearable').
 - **Used in `families.json`:** `r9-09` (`"throbbing pain"` — *authors' summary*), `r9-09` (`"an intense throbbing ache"` — *authors' summary*)
 
@@ -101,14 +101,14 @@ Every citation used in `families.json` is listed below with its full reference, 
 ## 17. Baker HJ, Hollywood A, Waite P (2022). Adolescents' lived experience of panic disorder: an interpretative phenomenological analysis. BMC Psychology.
 
 - **PMID / DOI / URL:** `PMID: 35668509; DOI: 10.1186/s40359-022-00849-x`
-- **What it supports:** Supports patient descriptions of 'racing heart', 'trembling', 'fear of losing control', and situational avoidance in r9-11 (authors' summary).
-- **Used in `families.json`:** `r9-11` (`"racing heart"` — *authors' summary*), `r9-11` (`"trembling"` — *authors' summary*), `r9-11` (`"fear of losing control"` — *authors' summary*), `r9-11` (`"keeping me off buses"` — *authors' summary*), `r9-11` (`"avoid buses"` — *authors' summary*)
+- **What it supports:** Supports patient descriptions of 'racing heart' and 'fear of losing control' in r9-11 (authors' summary).
+- **Used in `families.json`:** `r9-11` (`"racing heart"` — *authors' summary*), `r9-11` (`"fear of losing control"` — *authors' summary*)
 
 ## 18. Stack RJ, van Tuyl LHD, Sloots M, van de Stadt LA, Hoogland W, Maat B, Mallen CD, Tiwana R, Raza K, van Schaardenburg D (2014). Symptom complexes in patients with seropositive arthralgia and in patients newly diagnosed with rheumatoid arthritis: a qualitative exploration of symptom development. Rheumatology (Oxford), 53(9):1646-1653.
 
 - **PMID / DOI / URL:** `PMID: 24729397; DOI: 10.1093/rheumatology/keu159`
-- **What it supports:** Supports patient descriptions of swollen painful hand/finger joints (authors' summary) and direct participant words 'stiff' and 'loosen up' ('they were stiff, and it took about 15 minutes just to loosen up') in r9-12.
-- **Used in `families.json`:** `r9-12` (`"swollen painful knuckles on both hands"` — *authors' summary*), `r9-12` (`"stiff"` — *direct patient quote*), `r9-12` (`"loosen up"` — *direct patient quote*)
+- **What it supports:** Supports patient descriptions of swollen painful hand/finger joints and morning stiffness in r9-12 (authors' summary; abstract-only open record).
+- **Used in `families.json`:** `r9-12` (`"swollen painful knuckles on both hands"` — *authors' summary*), `r9-12` (`"stiff"` — *authors' summary*), `r9-12` (`"loosen up"` — *authors' summary*)
 
 ## 19. Leydon GM, Turner S, Smith H, Little P, UTIS team (2010). Women's views about management and cause of urinary tract infection: qualitative interview study. BMJ, 340:c279.
 
