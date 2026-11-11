@@ -307,7 +307,9 @@ def test_the_fixture_tells_phrases_from_rows_at_every_stage_that_prints_them():
     assert wrong["n_phrases"] == summary["n_scored_rows"] and wrong["mean_phrase_deduped"] == summary["mean_rows_raw"]
     shown = {item["selector"]: item["text"] for item in EXPECTED["summary_sentences"]}
     before = {item["selector"]: item["text"] for item in FIXTURE["summary_defects"]["pre_correction_sentences"]}
-    assert shown.keys() == before.keys() and len(shown) == 3
+    # Two sentences since 2026-11-11: the home page states the summary once (#hero-caveat); its second,
+    # duplicate line (#sim-stat) was removed from the page.
+    assert shown.keys() == before.keys() == {"#hero-caveat", "#word-caveat"}
     for selector, text in shown.items():
         assert " 2 distinct " in text and "−6" in text, selector
         assert " 3 distinct " in before[selector] and "−8" in before[selector], selector

@@ -170,11 +170,13 @@ row count is 3. The values are asserted at three stages:
 2. the HTTP client's oracle, `assert_semantics` in
    [`assertions.py`](../../scripts/boundary_client/assertions.py), which also requires
    the repeated prompt on exactly the two expected rows, in different batches;
-3. the browser: `#sim-stat` and `#hero-caveat` on the home page and `#word-caveat` on
+3. the browser: `#hero-caveat` on the home page and `#word-caveat` on
    `wording-differences/`, each compared with a full sentence typed in the fixture
-   (`browser_summary_sentences_phrase_count_and_mean`).
+   (`browser_summary_sentences_phrase_count_and_mean`). Until 2026-11-11 the home page
+   printed the summary twice and a third sentence, `#sim-stat`, was compared; the page now
+   states it once.
 
-The home page and the wording-differences page are loaded for those three sentences
+The home page and the wording-differences page are loaded for those two sentences
 only. Their other sections show the site's own published content, and the temporary
 disclosure on them says so. The fixture distinguishes these wrong rules from the
 right one: every row its own phrase, phrases keyed on the patient prompt, deduplication
