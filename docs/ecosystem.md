@@ -57,10 +57,11 @@ J++ fork was seven commits ahead of `safety-research/jpp_lens` and none behind, 
 with full history. The two commits of 2026-11-11 raise the counts ahead to two and nine. On 2026-11-11
 `git ls-remote` returned the same upstream tip for J++, interp-engine and J-Lens, so those three stay none behind.
 It returned another tip for ICA (`9b7d1cbd`) and for Petri (`797c7c12` at 21:52 UTC, then `adf985b8` at 21:54
-UTC). For those two the commits behind were not counted, and the registry records `behind` as null. Their count
-ahead is from the 2026-11-10 tip: whether a new tip descends from it was not checked. The numbers of upstream
-commits the sync brought in (55 for interp-engine, 13 for Petri) are owner-reported: those two clones are shallow,
-so they cannot be re-derived. The default branches of the two core repositories had moved past the recorded heads
+UTC). Those two were counted on 2026-11-12, after each new tip was fetched into the local clone: each tip descends
+from the 2026-11-10 tip and is two commits past it, so each fork is two commits ahead of its upstream and two
+behind, with diverged histories. Bringing either fork up to date is a merge and is the owner's decision. The
+numbers of upstream commits the sync brought in (55 for interp-engine, 13 for Petri) are owner-reported: those
+two clones are shallow, so they cannot be re-derived. The default branches of the two core repositories had moved past the recorded heads
 by the time of the 2026-11-10 check (`61b33f96`, `f1504ce9`).
 
 ## 2. Each repository
@@ -103,7 +104,7 @@ Facts below were read in the engine or fork files for the manifest, or are marke
 ### patientwords-ica-lens-paper
 
 - **Purpose.** The ICA Lens paper repository around the installable library `icalens` 0.4.0. The paper is Sida Liu, Feijiang Han, Sarah Wiegreffe and Furong Huang, "Non-Gaussianity Reveals Interpretable Directions in Language Models", arXiv:2606.11722v2 (version 2 submitted 2026-10-19). VERIFIED (doc, ran): title, version, authors and date read on the arXiv abstract page on 2026-11-10 (record `arxiv.2606.11722v2` in `data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json`).
-- **Fork relationship.** Fork of `liusida/ica-lens-paper`. On 2026-11-10 the fork and the upstream were at the same tip, `aa3b95c9`. On 2026-11-11 the fork is two commits ahead of that tip: one README orientation note and the owner's merge commit for it, both of 2026-11-11. They change `README.md` only. On 2026-11-11 `git ls-remote` returned another upstream tip, `9b7d1cbd`. The commits behind were not counted. Whether the new tip descends from `aa3b95c9` was not checked. Project URLs and the model-framing registry URL still point upstream.
+- **Fork relationship.** Fork of `liusida/ica-lens-paper`. On 2026-11-10 the fork and the upstream were at the same tip, `aa3b95c9`. On 2026-11-11 the fork is two commits ahead of that tip: one README orientation note and the owner's merge commit for it, both of 2026-11-11. They change `README.md` only. On 2026-11-11 `git ls-remote` returned another upstream tip, `9b7d1cbd`. It descends from `aa3b95c9` and is two commits past it, so the fork is two ahead and two behind (counted 2026-11-12 with `git rev-list --left-right --count`). Project URLs and the model-framing registry URL still point upstream.
 - **Runtime role.** None in any engine lane. The adapter `scripts/experiments/adapters/ica.py` applies a saved basis with numpy and uses `icalens` only where it imports. It fits nothing.
 - **Licence.** MIT. `THIRD_PARTY_NOTICES.md` carries the FastICA_torch notice for `_fastica.py`; copied code must carry both.
 - **Maintenance.** Upstream authors; the upstream commit the fork holds (`aa3b95c9`) is dated 2026-11-10.
@@ -151,7 +152,7 @@ Facts below were read in the engine or fork files for the manifest, or are marke
 ### patientwords-inspect_petri
 
 - **Purpose.** Multi-turn audit harness on Inspect and Scout.
-- **Fork relationship.** Fork of `meridianlabs-ai/inspect_petri`. On 2026-11-10 the fork and the upstream were at the same tip, `de5dad81`. On 2026-11-11 the fork is two commits ahead of that tip: one README orientation note and the owner's merge commit for it, both of 2026-11-11. They change `README.md` only. On 2026-11-11 `git ls-remote` returned another upstream tip: `797c7c12` at 21:52 UTC, then `adf985b8` at 21:54 UTC. The commits behind were not counted. Whether either tip descends from `de5dad81` was not checked.
+- **Fork relationship.** Fork of `meridianlabs-ai/inspect_petri`. On 2026-11-10 the fork and the upstream were at the same tip, `de5dad81`. On 2026-11-11 the fork is two commits ahead of that tip: one README orientation note and the owner's merge commit for it, both of 2026-11-11. They change `README.md` only. On 2026-11-11 `git ls-remote` returned another upstream tip: `797c7c12` at 21:52 UTC, then `adf985b8` at 21:54 UTC. Both descend from `de5dad81`: they are the two commits the upstream added, so the fork is two ahead and two behind (counted 2026-11-12 with `git rev-list --left-right --count`).
 - **Runtime role.** The Petri lane installs every package in the lock with `==`, then the harness with `--no-deps` from git at the locked commit, then runs `verify-lock` (`.github/workflows/petri_audit.yml:426-443`). The engine supplies its own scripted controller and attaches no Petri scorer.
 - **Licence.** MIT; no NOTICE file.
 - **Maintenance.** Upstream, active (release 3.1.1).
