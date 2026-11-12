@@ -908,6 +908,16 @@ def test_results_study_context_states_each_fact_once(site) -> None:
             assert "exploratory_hand_authored" in row["stored"] or "exploratory_third_party_source" in row["stored"]
         # a row whose title does not name the class keeps the whole evidence label
         assert "exploratory, post-registration" in {row["evidence"] for row in rows}
+        # The page's own description of the column says eligibility too (review of patientwords#33, 2026-11-12):
+        # the subtitle, the meta description and About no longer say that an analysis includes a run.
+        wording = view.page.evaluate("""() => ({
+            description: document.querySelector('meta[name="description"]').content,
+            subtitle: document.querySelector('p.subtitle').textContent,
+            about: document.querySelector('#about').textContent})""")
+        for where, text in wording.items():
+            assert "includes" not in text and "included in" not in text, (where, text)
+        assert "analysis eligibility" in wording["description"] and "analysis eligibility" in wording["subtitle"]
+        assert "Eligibility is determined by the rules in Methods & source" in " ".join(wording["about"].split())
         assert view.errors == []
 
 

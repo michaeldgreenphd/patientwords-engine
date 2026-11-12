@@ -82,7 +82,7 @@ ORDER_DEFAULT, ORDER_DATE, ORDER_NEVER = "run id, A to Z", "batch date, newest f
 SEALED_IN_RUN = "withheld by the Tier B seal (counted, never shown)"
 METHODS_SOURCE = "Methods & source"
 # An open run states its own labels. Until 2026-11-11 a fifth label read "a listing, not a claim"; the statement is
-# made once, in About this catalogue (ABOUT_STATEMENTS), and an open run prints whether an analysis includes it.
+# made once, in About this catalogue (ABOUT_STATEMENTS), and an open run prints its analysis eligibility.
 RUN_LABELS = ("simulated stimuli", "evidence:", "clinical review:", "sampling:")
 # The wordings, as the page names them, and the order of the difference it prints. The files call the two
 # wordings clinical and patient; ``language_penalty`` is the patient value minus the clinical one.
