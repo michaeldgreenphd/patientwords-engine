@@ -1,0 +1,3782 @@
+{
+  "batch": {
+    "batch_id": "r9_20261110",
+    "families": 16,
+    "sha256": "d5e347fd46c48343bf6b8dbbca89461b4261a69247d2747893929b1c283f67f2",
+    "source": "draft/antigravity-scenarios-20261107@d4b27148:drafts/antigravity_scenarios_20261107/round9_20261110/families.json"
+  },
+  "comparisons_not_made": [
+    "Care tiers are not compared with each other: families at different tiers use different carrier phrases and target words, so their endpoints are probabilities of different tokens in different contexts.",
+    "Strata are not pooled: a register contrast, a patient-explanation contrast and a syntax crossing are different manipulations."
+  ],
+  "design": {
+    "file": "data/experiments/intake_design.v1.json",
+    "protocol": {
+      "file": "docs/protocols/instrument_register_experiment_20261111.md",
+      "manipulated_dimension": "register only",
+      "status": "draft, not signed"
+    },
+    "sha256": "6f033e45e6410d1098c5cdfcb432b39c4adb8b720b8fe8f0e5386f9ba921e727",
+    "status": "draft, 2026-11-12: proposed by the batch-intake change; not agreed. The owner agrees it by a commit that changes this line."
+  },
+  "eligibility_rules": {
+    "confirmatory": "a family's register contrast can enter a confirmatory statement only when the protocol is signed, the family has both reviews, it has no family flag, its split was assigned before measurement, and software validation passed",
+    "publication": "docs/open_results_policy.md: an intact result of a hand-authored family is shared under public-display/1 whatever its effect, with its evidence class and review status shown. Publication does not need the reviews; it needs the labels."
+  },
+  "endpoint": {
+    "definition": "the full-vocabulary probability of the first token of the family's declared target word at the position after the carrier phrase",
+    "is_not": [
+      "triage accuracy",
+      "the quality of an answer",
+      "evidence that a model understands a wording"
+    ],
+    "name": "first_token_probability",
+    "partial_when": "the target word is more than one token; the endpoint then reads its first token only and is labelled partial"
+  },
+  "estimated_work": {
+    "behavioural_pass_owner_kept": {
+      "cpu_logits": {
+        "assumptions": [
+          "time scales with the number of prompts, so a family of v variants is v / 2 pairs",
+          "failed_attempt_fraction = 0.0 is a stated allowance, not a measured rate",
+          "the rates are for the legacy first-token endpoint and include model load",
+          "runner seconds are not wall-clock time: queueing, install and parallelism are not modelled"
+        ],
+        "attempted_pair_equivalents": 70,
+        "formula": "runner_seconds = ceil(pair_equivalents * (1 + failed_attempt_fraction)) * seconds_per_pair, summed over models; pair_equivalents = case_families * replicates * prompts_per_family / 2; legs = ceil(attempted_pairs / max(1, min(max_pairs_per_leg, floor(leg_budget_seconds / seconds_per_pair))))",
+        "measured": false,
+        "pair_equivalents": 70.0,
+        "per_model": {
+          "gemma-2-2b-it": {
+            "legs": 1,
+            "pairs_per_leg": 81,
+            "runner_seconds": 6195.0,
+            "seconds_per_pair": 88.5
+          },
+          "gemma-3-4b-it": {
+            "legs": 2,
+            "pairs_per_leg": 44,
+            "runner_seconds": 11242.0,
+            "seconds_per_pair": 160.6
+          },
+          "llama-3.2-3b": {
+            "legs": 2,
+            "pairs_per_leg": 55,
+            "runner_seconds": 9058.0,
+            "seconds_per_pair": 129.4
+          },
+          "olmo-2-1b": {
+            "legs": 1,
+            "pairs_per_leg": 120,
+            "runner_seconds": 3080.0,
+            "seconds_per_pair": 44.0
+          },
+          "qwen3-1.7b": {
+            "legs": 1,
+            "pairs_per_leg": 107,
+            "runner_seconds": 4704.0,
+            "seconds_per_pair": 67.2
+          },
+          "qwen3-4b": {
+            "legs": 2,
+            "pairs_per_leg": 46,
+            "runner_seconds": 10906.0,
+            "seconds_per_pair": 155.8
+          }
+        },
+        "runner_seconds": 45185.0
+      },
+      "measured": false,
+      "no_recorded_rate": [
+        "gemma-2-2b"
+      ],
+      "pairs": 70,
+      "rates_label": "measured (slowest successful run per model; sample size not recorded)",
+      "rates_source": "scripts/backfill_planner.py SECONDS_PER_PAIR: the SLOWEST rate each model showed in its successful logits-eval runs on GitHub Actions up to 2026-10-09: the 'Measure next-token behavior' step's duration (model load included) over the pairs the run's trigger file asked for. Medians were about half these (gemma-3-4b-it 94, qwen3-1.7b 33, qwen3-4b 76, llama-3.2-3b 69, olmo-2-1b 37, gemma-2-2b-it 79 s/pair), so sizing on the slowest keeps a slow runner inside the timeout too"
+    },
+    "behavioural_pass_owner_kept_discovery": {
+      "cpu_logits": {
+        "assumptions": [
+          "time scales with the number of prompts, so a family of v variants is v / 2 pairs",
+          "failed_attempt_fraction = 0.0 is a stated allowance, not a measured rate",
+          "the rates are for the legacy first-token endpoint and include model load",
+          "runner seconds are not wall-clock time: queueing, install and parallelism are not modelled"
+        ],
+        "attempted_pair_equivalents": 38,
+        "formula": "runner_seconds = ceil(pair_equivalents * (1 + failed_attempt_fraction)) * seconds_per_pair, summed over models; pair_equivalents = case_families * replicates * prompts_per_family / 2; legs = ceil(attempted_pairs / max(1, min(max_pairs_per_leg, floor(leg_budget_seconds / seconds_per_pair))))",
+        "measured": false,
+        "pair_equivalents": 38.0,
+        "per_model": {
+          "gemma-2-2b-it": {
+            "legs": 1,
+            "pairs_per_leg": 81,
+            "runner_seconds": 3363.0,
+            "seconds_per_pair": 88.5
+          },
+          "gemma-3-4b-it": {
+            "legs": 1,
+            "pairs_per_leg": 44,
+            "runner_seconds": 6102.8,
+            "seconds_per_pair": 160.6
+          },
+          "llama-3.2-3b": {
+            "legs": 1,
+            "pairs_per_leg": 55,
+            "runner_seconds": 4917.2,
+            "seconds_per_pair": 129.4
+          },
+          "olmo-2-1b": {
+            "legs": 1,
+            "pairs_per_leg": 120,
+            "runner_seconds": 1672.0,
+            "seconds_per_pair": 44.0
+          },
+          "qwen3-1.7b": {
+            "legs": 1,
+            "pairs_per_leg": 107,
+            "runner_seconds": 2553.6,
+            "seconds_per_pair": 67.2
+          },
+          "qwen3-4b": {
+            "legs": 1,
+            "pairs_per_leg": 46,
+            "runner_seconds": 5920.400000000001,
+            "seconds_per_pair": 155.8
+          }
+        },
+        "runner_seconds": 24529.0
+      },
+      "measured": false,
+      "no_recorded_rate": [
+        "gemma-2-2b"
+      ],
+      "pairs": 38,
+      "rates_label": "measured (slowest successful run per model; sample size not recorded)",
+      "rates_source": "scripts/backfill_planner.py SECONDS_PER_PAIR: the SLOWEST rate each model showed in its successful logits-eval runs on GitHub Actions up to 2026-10-09: the 'Measure next-token behavior' step's duration (model load included) over the pairs the run's trigger file asked for. Medians were about half these (gemma-3-4b-it 94, qwen3-1.7b 33, qwen3-4b 76, llama-3.2-3b 69, olmo-2-1b 37, gemma-2-2b-it 79 s/pair), so sizing on the slowest keeps a slow runner inside the timeout too"
+    },
+    "domain_review": {
+      "families_awaiting_clinician": 16,
+      "families_awaiting_patient_language": 16,
+      "minutes": "not_recorded",
+      "texts_to_read": 92
+    },
+    "mechanistic_subset": {
+      "families": 4,
+      "formula": "families * (1 + controls per site) * minutes per pair",
+      "measured": false,
+      "register_contrasts": 4,
+      "runner_minutes": {
+        "high": 240,
+        "low": 160
+      },
+      "sites_per_contrast_with_controls": 4,
+      "source": "documented estimate in .github/workflows/activation_patching.yml and docs/activation_patching_design.md for gemma-2-2b; no landed part records a duration"
+    },
+    "note": "Arithmetic on recorded rates and documented estimates. Nothing here is a measurement."
+  },
+  "families": [
+    {
+      "admissible": true,
+      "carrier_frame": "so I need to go to the",
+      "contrasts": [
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday",
+          "bottom_sha256": "65b264f0a632478118b8dfff360b53bb007e5bbacbfdced31ce20ed87dc22a05",
+          "holds_constant": "the reference facts",
+          "id": "r9-01-reg",
+          "role": "contrast",
+          "stratum": "register_with_dialect",
+          "top": "medical",
+          "top_sha256": "a4ed97b3fbd4ccd39e84010fc4551ed12edcf03086a43b411b77d86c82d0557b",
+          "words": {
+            "bottom_stretch_words": 18,
+            "prefix_words": 4,
+            "suffix_words": 7,
+            "top_stretch_words": 16,
+            "word_edit_regions": 2
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "medical_paraphrase",
+          "bottom_sha256": "39727926910033b07d5ad685684cc5e0bb5e9f90727add6e4e6825e569598fd7",
+          "holds_constant": "the reference facts and the register",
+          "id": "r9-01-mpar",
+          "role": "paraphrase_control",
+          "stratum": "register_with_dialect",
+          "top": "medical",
+          "top_sha256": "a4ed97b3fbd4ccd39e84010fc4551ed12edcf03086a43b411b77d86c82d0557b",
+          "words": {
+            "bottom_stretch_words": 16,
+            "prefix_words": 0,
+            "suffix_words": 10,
+            "top_stretch_words": 17,
+            "word_edit_regions": 5
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday_paraphrase",
+          "bottom_sha256": "7b485a9d10787def3fcdf63fbd4384f064db471400d59b3cc454243947458eea",
+          "holds_constant": "the reference facts and the register",
+          "id": "r9-01-epar",
+          "role": "paraphrase_control",
+          "stratum": "register_with_dialect",
+          "top": "everyday",
+          "top_sha256": "65b264f0a632478118b8dfff360b53bb007e5bbacbfdced31ce20ed87dc22a05",
+          "words": {
+            "bottom_stretch_words": 22,
+            "prefix_words": 0,
+            "suffix_words": 7,
+            "top_stretch_words": 22,
+            "word_edit_regions": 6
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "changed_fact",
+          "bottom_sha256": "c1469d382e8feca4520721473eb9060800ffd0c2e7f3864fc94cf589d98e8d78",
+          "holds_constant": "the register and every reference fact but one",
+          "id": "r9-01-chg",
+          "role": "changed_fact_control",
+          "stratum": "register_with_dialect",
+          "top": "everyday",
+          "top_sha256": "65b264f0a632478118b8dfff360b53bb007e5bbacbfdced31ce20ed87dc22a05",
+          "words": {
+            "bottom_stretch_words": 10,
+            "prefix_words": 17,
+            "suffix_words": 7,
+            "top_stretch_words": 5,
+            "word_edit_regions": 1
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "quad_b",
+          "bottom_sha256": "cac9497c645611adeb9cda79a5cfa258497778c5e6b306c1999077f953fb6c29",
+          "holds_constant": "the reference facts and the medical terms",
+          "id": "r9-01-qb",
+          "role": "contrast",
+          "stratum": "syntax_crossing",
+          "top": "medical",
+          "top_sha256": "a4ed97b3fbd4ccd39e84010fc4551ed12edcf03086a43b411b77d86c82d0557b",
+          "words": {
+            "bottom_stretch_words": 12,
+            "prefix_words": 4,
+            "suffix_words": 11,
+            "top_stretch_words": 12,
+            "word_edit_regions": 3
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "quad_c",
+          "bottom_sha256": "4ac1e861496cac838022a7cd5d13a8c2066335fc8125c3a5665417e463378efc",
+          "holds_constant": "the reference facts and the medical sentence structure",
+          "id": "r9-01-qc",
+          "role": "contrast",
+          "stratum": "syntax_crossing",
+          "top": "medical",
+          "top_sha256": "a4ed97b3fbd4ccd39e84010fc4551ed12edcf03086a43b411b77d86c82d0557b",
+          "words": {
+            "bottom_stretch_words": 17,
+            "prefix_words": 5,
+            "suffix_words": 7,
+            "top_stretch_words": 15,
+            "word_edit_regions": 4
+          }
+        }
+      ],
+      "eligibility": {
+        "confirmatory": {
+          "applies_to": "the register contrast and its two controls only",
+          "blocked_by": [
+            "protocol_not_signed",
+            "clinician_review_missing",
+            "patient_language_review_missing",
+            "exploratory_stratum:register_with_dialect"
+          ],
+          "eligible": false
+        },
+        "publication": {
+          "labels_required": [
+            "exploratory, hand-authored",
+            "review status: domain_review_pending"
+          ],
+          "membership": "public-display/1",
+          "shareable": true
+        }
+      },
+      "family_id": "r9-01",
+      "family_sha256": "eddcf0ffa4a525cd685239c75c9e3be6b034a9a43f1fed22e0c69a9deec0febc",
+      "flags": [
+        "dialect"
+      ],
+      "register_stratum": "register_with_dialect",
+      "review": {
+        "clinician": {
+          "items": {
+            "clinical_facts": null,
+            "negation": null,
+            "severity": null,
+            "timing": null,
+            "uncertainty": null,
+            "urgency": null
+          },
+          "status": "not_reviewed"
+        },
+        "owner_read": {
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "e374bd21da7b4209b87ca4e9f4e4c5f9607e7096f49e64c59b5d011d1547cb2f",
+          "read_utc": "2026-11-11T02:41:33Z",
+          "reasons": [],
+          "status": "kept"
+        },
+        "patient_language_reviewer": {
+          "items": {
+            "plausible_patient_wording": null,
+            "same_meaning_to_a_lay_reader": null
+          },
+          "status": "not_reviewed"
+        },
+        "status": "domain_review_pending"
+      },
+      "right_care": 4,
+      "sources": {
+        "by_quote_type": {
+          "authors' summary": 2,
+          "dictionary definition": 2,
+          "none": 2
+        },
+        "expressions": 6,
+        "note": "Counts of what the author declared. This command does not open any source.",
+        "with_evidence_sentence": 0
+      },
+      "split": "discovery",
+      "split_source": "record 1",
+      "target": {
+        "endpoint_partial": "not_recorded",
+        "text": " ER",
+        "tokens": "not_recorded",
+        "words": 1
+      },
+      "texts_sha256": "b2ade6de1d966052db5e4e34f771a5c3cd8ab79dc3f5067e0ffd3680bf34f66a",
+      "validation": {
+        "errors": [],
+        "warnings": []
+      },
+      "variants": {
+        "changed_fact": {
+          "sha256": "c1469d382e8feca4520721473eb9060800ffd0c2e7f3864fc94cf589d98e8d78",
+          "words": 34
+        },
+        "everyday": {
+          "sha256": "65b264f0a632478118b8dfff360b53bb007e5bbacbfdced31ce20ed87dc22a05",
+          "words": 29
+        },
+        "everyday_paraphrase": {
+          "sha256": "7b485a9d10787def3fcdf63fbd4384f064db471400d59b3cc454243947458eea",
+          "words": 29
+        },
+        "medical": {
+          "sha256": "a4ed97b3fbd4ccd39e84010fc4551ed12edcf03086a43b411b77d86c82d0557b",
+          "words": 27
+        },
+        "medical_paraphrase": {
+          "sha256": "39727926910033b07d5ad685684cc5e0bb5e9f90727add6e4e6825e569598fd7",
+          "words": 26
+        },
+        "quad_b": {
+          "sha256": "cac9497c645611adeb9cda79a5cfa258497778c5e6b306c1999077f953fb6c29",
+          "words": 27
+        },
+        "quad_c": {
+          "sha256": "4ac1e861496cac838022a7cd5d13a8c2066335fc8125c3a5665417e463378efc",
+          "words": 29
+        }
+      }
+    },
+    {
+      "admissible": true,
+      "carrier_frame": "so I need to go to the",
+      "contrasts": [
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday",
+          "bottom_sha256": "255ce05233084a4e4ef6fb46deef2d9b7d2706ca5e032afc61815caeb7880d59",
+          "holds_constant": "the reference facts",
+          "id": "r9-02-reg",
+          "role": "contrast",
+          "stratum": "register_with_dialect",
+          "top": "medical",
+          "top_sha256": "bc9e3a596dc1d77344c0b2a0b8ebde90131bed17339daf70f9bfccac8dee8dab",
+          "words": {
+            "bottom_stretch_words": 16,
+            "prefix_words": 11,
+            "suffix_words": 9,
+            "top_stretch_words": 15,
+            "word_edit_regions": 3
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "medical_paraphrase",
+          "bottom_sha256": "bcc5a5f383b39e5c903e40c3ffe5be4c84742cce127da5a1030849e7765eebd7",
+          "holds_constant": "the reference facts and the register",
+          "id": "r9-02-mpar",
+          "role": "paraphrase_control",
+          "stratum": "register_with_dialect",
+          "top": "medical",
+          "top_sha256": "bc9e3a596dc1d77344c0b2a0b8ebde90131bed17339daf70f9bfccac8dee8dab",
+          "words": {
+            "bottom_stretch_words": 23,
+            "prefix_words": 0,
+            "suffix_words": 9,
+            "top_stretch_words": 26,
+            "word_edit_regions": 5
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday_paraphrase",
+          "bottom_sha256": "021cf242c99d83bb3b8115dde2cd74a8535a64315f88315dae0f9243b3a6d452",
+          "holds_constant": "the reference facts and the register",
+          "id": "r9-02-epar",
+          "role": "paraphrase_control",
+          "stratum": "register_with_dialect",
+          "top": "everyday",
+          "top_sha256": "255ce05233084a4e4ef6fb46deef2d9b7d2706ca5e032afc61815caeb7880d59",
+          "words": {
+            "bottom_stretch_words": 21,
+            "prefix_words": 1,
+            "suffix_words": 11,
+            "top_stretch_words": 24,
+            "word_edit_regions": 5
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "changed_fact",
+          "bottom_sha256": "d17ad51db7a0a92432651d410aa2027fd95396ab73476bbf3e9c4c08ca0d309d",
+          "holds_constant": "the register and every reference fact but one",
+          "id": "r9-02-chg",
+          "role": "changed_fact_control",
+          "stratum": "register_with_dialect",
+          "top": "everyday",
+          "top_sha256": "255ce05233084a4e4ef6fb46deef2d9b7d2706ca5e032afc61815caeb7880d59",
+          "words": {
+            "bottom_stretch_words": 9,
+            "prefix_words": 16,
+            "suffix_words": 10,
+            "top_stretch_words": 10,
+            "word_edit_regions": 1
+          }
+        }
+      ],
+      "eligibility": {
+        "confirmatory": {
+          "applies_to": "the register contrast and its two controls only",
+          "blocked_by": [
+            "protocol_not_signed",
+            "clinician_review_missing",
+            "patient_language_review_missing",
+            "exploratory_stratum:register_with_dialect"
+          ],
+          "eligible": false
+        },
+        "publication": {
+          "labels_required": [
+            "exploratory, hand-authored",
+            "review status: domain_review_pending"
+          ],
+          "membership": "public-display/1",
+          "shareable": true
+        }
+      },
+      "family_id": "r9-02",
+      "family_sha256": "ab8b81b56c46ef117b216e66aacd81919a1659c1e19acee62730ebde82a78530",
+      "flags": [
+        "dialect"
+      ],
+      "register_stratum": "register_with_dialect",
+      "review": {
+        "clinician": {
+          "items": {
+            "clinical_facts": null,
+            "negation": null,
+            "severity": null,
+            "timing": null,
+            "uncertainty": null,
+            "urgency": null
+          },
+          "status": "not_reviewed"
+        },
+        "owner_read": {
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "e374bd21da7b4209b87ca4e9f4e4c5f9607e7096f49e64c59b5d011d1547cb2f",
+          "read_utc": "2026-11-11T02:41:33Z",
+          "reasons": [],
+          "status": "kept"
+        },
+        "patient_language_reviewer": {
+          "items": {
+            "plausible_patient_wording": null,
+            "same_meaning_to_a_lay_reader": null
+          },
+          "status": "not_reviewed"
+        },
+        "status": "domain_review_pending"
+      },
+      "right_care": 4,
+      "sources": {
+        "by_quote_type": {
+          "authors' summary": 2
+        },
+        "expressions": 2,
+        "note": "Counts of what the author declared. This command does not open any source.",
+        "with_evidence_sentence": 0
+      },
+      "split": "validation",
+      "split_source": "record 1",
+      "target": {
+        "endpoint_partial": "not_recorded",
+        "text": " hospital",
+        "tokens": "not_recorded",
+        "words": 1
+      },
+      "texts_sha256": "28e10b116005e1a1c88fd9b8df8d023296a8810415f840a7b8fd194d9920eff7",
+      "validation": {
+        "errors": [],
+        "warnings": []
+      },
+      "variants": {
+        "changed_fact": {
+          "sha256": "d17ad51db7a0a92432651d410aa2027fd95396ab73476bbf3e9c4c08ca0d309d",
+          "words": 35
+        },
+        "everyday": {
+          "sha256": "255ce05233084a4e4ef6fb46deef2d9b7d2706ca5e032afc61815caeb7880d59",
+          "words": 36
+        },
+        "everyday_paraphrase": {
+          "sha256": "021cf242c99d83bb3b8115dde2cd74a8535a64315f88315dae0f9243b3a6d452",
+          "words": 33
+        },
+        "medical": {
+          "sha256": "bc9e3a596dc1d77344c0b2a0b8ebde90131bed17339daf70f9bfccac8dee8dab",
+          "words": 35
+        },
+        "medical_paraphrase": {
+          "sha256": "bcc5a5f383b39e5c903e40c3ffe5be4c84742cce127da5a1030849e7765eebd7",
+          "words": 32
+        }
+      }
+    },
+    {
+      "admissible": true,
+      "carrier_frame": "so I need to go to the",
+      "contrasts": [
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday",
+          "bottom_sha256": "001dbca335884f409b2023a1acade4c9ce4fd0fcb0532244de4ae9aa8b20d51d",
+          "holds_constant": "the reference facts",
+          "id": "r9-03-reg",
+          "role": "contrast",
+          "stratum": "register",
+          "top": "medical",
+          "top_sha256": "bd0c2c272113c91c804054c707a725e96d61fcecfc1d4e55f1b15fadcfe348c5",
+          "words": {
+            "bottom_stretch_words": 15,
+            "prefix_words": 14,
+            "suffix_words": 7,
+            "top_stretch_words": 13,
+            "word_edit_regions": 2
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "medical_paraphrase",
+          "bottom_sha256": "bbc88b55734ef9dce37ab34b75f43ca9cf10b05b152f34751ced9d5ee3c9c2b2",
+          "holds_constant": "the reference facts and the register",
+          "id": "r9-03-mpar",
+          "role": "paraphrase_control",
+          "stratum": "register",
+          "top": "medical",
+          "top_sha256": "bd0c2c272113c91c804054c707a725e96d61fcecfc1d4e55f1b15fadcfe348c5",
+          "words": {
+            "bottom_stretch_words": 29,
+            "prefix_words": 0,
+            "suffix_words": 7,
+            "top_stretch_words": 27,
+            "word_edit_regions": 9
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday_paraphrase",
+          "bottom_sha256": "b085b65cf23a9f7d8df1b07fe994e0a0ba87a923325748d78c1208db025a337d",
+          "holds_constant": "the reference facts and the register",
+          "id": "r9-03-epar",
+          "role": "paraphrase_control",
+          "stratum": "register",
+          "top": "everyday",
+          "top_sha256": "001dbca335884f409b2023a1acade4c9ce4fd0fcb0532244de4ae9aa8b20d51d",
+          "words": {
+            "bottom_stretch_words": 28,
+            "prefix_words": 0,
+            "suffix_words": 7,
+            "top_stretch_words": 29,
+            "word_edit_regions": 8
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "changed_fact",
+          "bottom_sha256": "b16d6addc9b02b12db1550a9dcd5dbd4eb8fe98c7f3cbf3efb1f9f676b4a343b",
+          "holds_constant": "the register and every reference fact but one",
+          "id": "r9-03-chg",
+          "role": "changed_fact_control",
+          "stratum": "register",
+          "top": "everyday",
+          "top_sha256": "001dbca335884f409b2023a1acade4c9ce4fd0fcb0532244de4ae9aa8b20d51d",
+          "words": {
+            "bottom_stretch_words": 11,
+            "prefix_words": 18,
+            "suffix_words": 8,
+            "top_stretch_words": 10,
+            "word_edit_regions": 3
+          }
+        }
+      ],
+      "eligibility": {
+        "confirmatory": {
+          "applies_to": "the register contrast and its two controls only",
+          "blocked_by": [
+            "protocol_not_signed",
+            "clinician_review_missing",
+            "patient_language_review_missing"
+          ],
+          "eligible": false
+        },
+        "publication": {
+          "labels_required": [
+            "exploratory, hand-authored",
+            "review status: domain_review_pending"
+          ],
+          "membership": "public-display/1",
+          "shareable": true
+        }
+      },
+      "family_id": "r9-03",
+      "family_sha256": "b4411ae461362c40222865aebe142cf3b44ae4a6ed3163747264b2ad67240c23",
+      "flags": [],
+      "register_stratum": "register",
+      "review": {
+        "clinician": {
+          "items": {
+            "clinical_facts": null,
+            "negation": null,
+            "severity": null,
+            "timing": null,
+            "uncertainty": null,
+            "urgency": null
+          },
+          "status": "not_reviewed"
+        },
+        "owner_read": {
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "e374bd21da7b4209b87ca4e9f4e4c5f9607e7096f49e64c59b5d011d1547cb2f",
+          "read_utc": "2026-11-11T02:41:33Z",
+          "reasons": [],
+          "status": "kept"
+        },
+        "patient_language_reviewer": {
+          "items": {
+            "plausible_patient_wording": null,
+            "same_meaning_to_a_lay_reader": null
+          },
+          "status": "not_reviewed"
+        },
+        "status": "domain_review_pending"
+      },
+      "right_care": 4,
+      "sources": {
+        "by_quote_type": {
+          "authors' summary": 3,
+          "none": 1
+        },
+        "expressions": 4,
+        "note": "Counts of what the author declared. This command does not open any source.",
+        "with_evidence_sentence": 0
+      },
+      "split": "fresh_test",
+      "split_source": "record 1",
+      "target": {
+        "endpoint_partial": "not_recorded",
+        "text": " hospital",
+        "tokens": "not_recorded",
+        "words": 1
+      },
+      "texts_sha256": "77bffde17aa459cdba1e98636f32b0b702a7c2344969b68c5a6e7f085dd8ed3b",
+      "validation": {
+        "errors": [],
+        "warnings": []
+      },
+      "variants": {
+        "changed_fact": {
+          "sha256": "b16d6addc9b02b12db1550a9dcd5dbd4eb8fe98c7f3cbf3efb1f9f676b4a343b",
+          "words": 37
+        },
+        "everyday": {
+          "sha256": "001dbca335884f409b2023a1acade4c9ce4fd0fcb0532244de4ae9aa8b20d51d",
+          "words": 36
+        },
+        "everyday_paraphrase": {
+          "sha256": "b085b65cf23a9f7d8df1b07fe994e0a0ba87a923325748d78c1208db025a337d",
+          "words": 35
+        },
+        "medical": {
+          "sha256": "bd0c2c272113c91c804054c707a725e96d61fcecfc1d4e55f1b15fadcfe348c5",
+          "words": 34
+        },
+        "medical_paraphrase": {
+          "sha256": "bbc88b55734ef9dce37ab34b75f43ca9cf10b05b152f34751ced9d5ee3c9c2b2",
+          "words": 36
+        }
+      }
+    },
+    {
+      "admissible": true,
+      "carrier_frame": "so I need to go to the",
+      "contrasts": [
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday",
+          "bottom_sha256": "a3b285eefa455dfc1a11ce4071351dd3ca3907d41671081e41129ad469fc2145",
+          "holds_constant": "the reference facts",
+          "id": "r9-04-reg",
+          "role": "contrast",
+          "stratum": "register",
+          "top": "medical",
+          "top_sha256": "766bb22a9228bbf55969f255a8a8431fee9e3a6a6f7775b56e53798bf2715b58",
+          "words": {
+            "bottom_stretch_words": 17,
+            "prefix_words": 10,
+            "suffix_words": 7,
+            "top_stretch_words": 16,
+            "word_edit_regions": 4
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "medical_paraphrase",
+          "bottom_sha256": "0b44fc115b569ddfd59470d078b30ccea2772580158a35bb85c61c6f7b98b49a",
+          "holds_constant": "the reference facts and the register",
+          "id": "r9-04-mpar",
+          "role": "paraphrase_control",
+          "stratum": "register",
+          "top": "medical",
+          "top_sha256": "766bb22a9228bbf55969f255a8a8431fee9e3a6a6f7775b56e53798bf2715b58",
+          "words": {
+            "bottom_stretch_words": 27,
+            "prefix_words": 0,
+            "suffix_words": 7,
+            "top_stretch_words": 26,
+            "word_edit_regions": 7
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday_paraphrase",
+          "bottom_sha256": "a6efba08cac45506e4909460a5bebeb928d9746bba2c14cbb790c6e335b4174a",
+          "holds_constant": "the reference facts and the register",
+          "id": "r9-04-epar",
+          "role": "paraphrase_control",
+          "stratum": "register",
+          "top": "everyday",
+          "top_sha256": "a3b285eefa455dfc1a11ce4071351dd3ca3907d41671081e41129ad469fc2145",
+          "words": {
+            "bottom_stretch_words": 29,
+            "prefix_words": 1,
+            "suffix_words": 7,
+            "top_stretch_words": 26,
+            "word_edit_regions": 9
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "changed_fact",
+          "bottom_sha256": "96f523b03ae73ca2eb43032df4922997aab5a5c78c5d61d3f12448057a033e53",
+          "holds_constant": "the register and every reference fact but one",
+          "id": "r9-04-chg",
+          "role": "changed_fact_control",
+          "stratum": "register",
+          "top": "everyday",
+          "top_sha256": "a3b285eefa455dfc1a11ce4071351dd3ca3907d41671081e41129ad469fc2145",
+          "words": {
+            "bottom_stretch_words": 8,
+            "prefix_words": 20,
+            "suffix_words": 7,
+            "top_stretch_words": 7,
+            "word_edit_regions": 2
+          }
+        }
+      ],
+      "eligibility": {
+        "confirmatory": {
+          "applies_to": "the register contrast and its two controls only",
+          "blocked_by": [
+            "protocol_not_signed",
+            "clinician_review_missing",
+            "patient_language_review_missing"
+          ],
+          "eligible": false
+        },
+        "publication": {
+          "labels_required": [
+            "exploratory, hand-authored",
+            "review status: domain_review_pending"
+          ],
+          "membership": "public-display/1",
+          "shareable": true
+        }
+      },
+      "family_id": "r9-04",
+      "family_sha256": "e04ee96afc485c1536a3e7e52d0722a4cbfc19c12b625de07b3eede9e053da48",
+      "flags": [],
+      "register_stratum": "register",
+      "review": {
+        "clinician": {
+          "items": {
+            "clinical_facts": null,
+            "negation": null,
+            "severity": null,
+            "timing": null,
+            "uncertainty": null,
+            "urgency": null
+          },
+          "status": "not_reviewed"
+        },
+        "owner_read": {
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "e374bd21da7b4209b87ca4e9f4e4c5f9607e7096f49e64c59b5d011d1547cb2f",
+          "read_utc": "2026-11-11T02:41:33Z",
+          "reasons": [],
+          "status": "kept"
+        },
+        "patient_language_reviewer": {
+          "items": {
+            "plausible_patient_wording": null,
+            "same_meaning_to_a_lay_reader": null
+          },
+          "status": "not_reviewed"
+        },
+        "status": "domain_review_pending"
+      },
+      "right_care": 4,
+      "sources": {
+        "by_quote_type": {
+          "authors' summary": 2,
+          "none": 6
+        },
+        "expressions": 8,
+        "note": "Counts of what the author declared. This command does not open any source.",
+        "with_evidence_sentence": 0
+      },
+      "split": "discovery",
+      "split_source": "record 1",
+      "target": {
+        "endpoint_partial": "not_recorded",
+        "text": " ER",
+        "tokens": "not_recorded",
+        "words": 1
+      },
+      "texts_sha256": "35df36b5f807294a103bca1cad90a56f964163a4d41c387086f13049cc5105fb",
+      "validation": {
+        "errors": [],
+        "warnings": []
+      },
+      "variants": {
+        "changed_fact": {
+          "sha256": "96f523b03ae73ca2eb43032df4922997aab5a5c78c5d61d3f12448057a033e53",
+          "words": 35
+        },
+        "everyday": {
+          "sha256": "a3b285eefa455dfc1a11ce4071351dd3ca3907d41671081e41129ad469fc2145",
+          "words": 34
+        },
+        "everyday_paraphrase": {
+          "sha256": "a6efba08cac45506e4909460a5bebeb928d9746bba2c14cbb790c6e335b4174a",
+          "words": 37
+        },
+        "medical": {
+          "sha256": "766bb22a9228bbf55969f255a8a8431fee9e3a6a6f7775b56e53798bf2715b58",
+          "words": 33
+        },
+        "medical_paraphrase": {
+          "sha256": "0b44fc115b569ddfd59470d078b30ccea2772580158a35bb85c61c6f7b98b49a",
+          "words": 34
+        }
+      }
+    },
+    {
+      "admissible": true,
+      "carrier_frame": "so I need to go to the",
+      "contrasts": [
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday",
+          "bottom_sha256": "d287aa2bf972683c036f5e66eebe7c5d526d07fe8852136574af94573a871e98",
+          "holds_constant": "the reference facts",
+          "id": "r9-05-reg",
+          "role": "contrast",
+          "stratum": "register_with_dialect",
+          "top": "medical",
+          "top_sha256": "e4034ecb1a5e747e4ed851c36f0528295d12199eb3ed9b5f409507b3bb69f3e6",
+          "words": {
+            "bottom_stretch_words": 15,
+            "prefix_words": 6,
+            "suffix_words": 8,
+            "top_stretch_words": 17,
+            "word_edit_regions": 4
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "medical_paraphrase",
+          "bottom_sha256": "e8aa7fd734e7ed55c5f036821d099aabc33bf06ee86ae703c91589f15fb0b9c6",
+          "holds_constant": "the reference facts and the register",
+          "id": "r9-05-mpar",
+          "role": "paraphrase_control",
+          "stratum": "register_with_dialect",
+          "top": "medical",
+          "top_sha256": "e4034ecb1a5e747e4ed851c36f0528295d12199eb3ed9b5f409507b3bb69f3e6",
+          "words": {
+            "bottom_stretch_words": 21,
+            "prefix_words": 0,
+            "suffix_words": 7,
+            "top_stretch_words": 24,
+            "word_edit_regions": 8
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday_paraphrase",
+          "bottom_sha256": "0032e5e4416dca1e5eebb3b4dd94a2033dd3f760edd78c9056cb5f547f820cb5",
+          "holds_constant": "the reference facts and the register",
+          "id": "r9-05-epar",
+          "role": "paraphrase_control",
+          "stratum": "register_with_dialect",
+          "top": "everyday",
+          "top_sha256": "d287aa2bf972683c036f5e66eebe7c5d526d07fe8852136574af94573a871e98",
+          "words": {
+            "bottom_stretch_words": 27,
+            "prefix_words": 0,
+            "suffix_words": 7,
+            "top_stretch_words": 22,
+            "word_edit_regions": 8
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "changed_fact",
+          "bottom_sha256": "8830b6dc208d624a05c154dba371d779d5c77b13239ffb1d1e370d33e2f7ddaf",
+          "holds_constant": "the register and every reference fact but one",
+          "id": "r9-05-chg",
+          "role": "changed_fact_control",
+          "stratum": "register_with_dialect",
+          "top": "everyday",
+          "top_sha256": "d287aa2bf972683c036f5e66eebe7c5d526d07fe8852136574af94573a871e98",
+          "words": {
+            "bottom_stretch_words": 11,
+            "prefix_words": 14,
+            "suffix_words": 7,
+            "top_stretch_words": 8,
+            "word_edit_regions": 2
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "quad_b",
+          "bottom_sha256": "7c891afd7534bc9f7c61de0442ff43385c33a8b6a31b9a0a2435ee331c905c6c",
+          "holds_constant": "the reference facts and the medical terms",
+          "id": "r9-05-qb",
+          "role": "contrast",
+          "stratum": "syntax_crossing",
+          "top": "medical",
+          "top_sha256": "e4034ecb1a5e747e4ed851c36f0528295d12199eb3ed9b5f409507b3bb69f3e6",
+          "words": {
+            "bottom_stretch_words": 15,
+            "prefix_words": 6,
+            "suffix_words": 10,
+            "top_stretch_words": 15,
+            "word_edit_regions": 4
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "quad_c",
+          "bottom_sha256": "24e707f4df4e518b7963462585d55812712a5fa4eb0a2bfb3f09edd526a620cf",
+          "holds_constant": "the reference facts and the medical sentence structure",
+          "id": "r9-05-qc",
+          "role": "contrast",
+          "stratum": "syntax_crossing",
+          "top": "medical",
+          "top_sha256": "e4034ecb1a5e747e4ed851c36f0528295d12199eb3ed9b5f409507b3bb69f3e6",
+          "words": {
+            "bottom_stretch_words": 13,
+            "prefix_words": 8,
+            "suffix_words": 8,
+            "top_stretch_words": 15,
+            "word_edit_regions": 4
+          }
+        }
+      ],
+      "eligibility": {
+        "confirmatory": {
+          "applies_to": "the register contrast and its two controls only",
+          "blocked_by": [
+            "protocol_not_signed",
+            "clinician_review_missing",
+            "patient_language_review_missing",
+            "exploratory_stratum:register_with_dialect"
+          ],
+          "eligible": false
+        },
+        "publication": {
+          "labels_required": [
+            "exploratory, hand-authored",
+            "review status: domain_review_pending"
+          ],
+          "membership": "public-display/1",
+          "shareable": true
+        }
+      },
+      "family_id": "r9-05",
+      "family_sha256": "9dddd9e9b457c1277457d1f7689db83a58896d6be178e5af1620425b8c84cc9c",
+      "flags": [
+        "dialect"
+      ],
+      "register_stratum": "register_with_dialect",
+      "review": {
+        "clinician": {
+          "items": {
+            "clinical_facts": null,
+            "negation": null,
+            "severity": null,
+            "timing": null,
+            "uncertainty": null,
+            "urgency": null
+          },
+          "status": "not_reviewed"
+        },
+        "owner_read": {
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "e374bd21da7b4209b87ca4e9f4e4c5f9607e7096f49e64c59b5d011d1547cb2f",
+          "read_utc": "2026-11-11T02:41:33Z",
+          "reasons": [],
+          "status": "kept"
+        },
+        "patient_language_reviewer": {
+          "items": {
+            "plausible_patient_wording": null,
+            "same_meaning_to_a_lay_reader": null
+          },
+          "status": "not_reviewed"
+        },
+        "status": "domain_review_pending"
+      },
+      "right_care": 4,
+      "sources": {
+        "by_quote_type": {
+          "authors' summary": 1,
+          "dictionary definition": 1,
+          "none": 4
+        },
+        "expressions": 6,
+        "note": "Counts of what the author declared. This command does not open any source.",
+        "with_evidence_sentence": 0
+      },
+      "split": "discovery",
+      "split_source": "record 1",
+      "target": {
+        "endpoint_partial": "not_recorded",
+        "text": " ER",
+        "tokens": "not_recorded",
+        "words": 1
+      },
+      "texts_sha256": "4f47f2b1ea2d69c948126aa5ec775ccbe1a6dd2e4cf6067c851000cb88f3d883",
+      "validation": {
+        "errors": [],
+        "warnings": []
+      },
+      "variants": {
+        "changed_fact": {
+          "sha256": "8830b6dc208d624a05c154dba371d779d5c77b13239ffb1d1e370d33e2f7ddaf",
+          "words": 32
+        },
+        "everyday": {
+          "sha256": "d287aa2bf972683c036f5e66eebe7c5d526d07fe8852136574af94573a871e98",
+          "words": 29
+        },
+        "everyday_paraphrase": {
+          "sha256": "0032e5e4416dca1e5eebb3b4dd94a2033dd3f760edd78c9056cb5f547f820cb5",
+          "words": 34
+        },
+        "medical": {
+          "sha256": "e4034ecb1a5e747e4ed851c36f0528295d12199eb3ed9b5f409507b3bb69f3e6",
+          "words": 31
+        },
+        "medical_paraphrase": {
+          "sha256": "e8aa7fd734e7ed55c5f036821d099aabc33bf06ee86ae703c91589f15fb0b9c6",
+          "words": 28
+        },
+        "quad_b": {
+          "sha256": "7c891afd7534bc9f7c61de0442ff43385c33a8b6a31b9a0a2435ee331c905c6c",
+          "words": 31
+        },
+        "quad_c": {
+          "sha256": "24e707f4df4e518b7963462585d55812712a5fa4eb0a2bfb3f09edd526a620cf",
+          "words": 29
+        }
+      }
+    },
+    {
+      "admissible": true,
+      "carrier_frame": "so I need to go to the",
+      "contrasts": [
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday",
+          "bottom_sha256": "e0bf74999b2982279351c2bc95ca29e306a8118b43ca98006b321710638a339e",
+          "holds_constant": "the reference facts",
+          "id": "r9-06-reg",
+          "role": "contrast",
+          "stratum": "register_with_dialect",
+          "top": "medical",
+          "top_sha256": "902b298529343cfa68224233a1bf9db0f020c7029e544e573e1000b7eb1422b5",
+          "words": {
+            "bottom_stretch_words": 14,
+            "prefix_words": 14,
+            "suffix_words": 7,
+            "top_stretch_words": 15,
+            "word_edit_regions": 3
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "medical_paraphrase",
+          "bottom_sha256": "bb6b06c7ecaadf770ac74dfa4fd2337fa1cde0da4f20bb3e6185455ea786a3d8",
+          "holds_constant": "the reference facts and the register",
+          "id": "r9-06-mpar",
+          "role": "paraphrase_control",
+          "stratum": "register_with_dialect",
+          "top": "medical",
+          "top_sha256": "902b298529343cfa68224233a1bf9db0f020c7029e544e573e1000b7eb1422b5",
+          "words": {
+            "bottom_stretch_words": 26,
+            "prefix_words": 0,
+            "suffix_words": 7,
+            "top_stretch_words": 29,
+            "word_edit_regions": 8
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday_paraphrase",
+          "bottom_sha256": "381e414dcfb533cd43ae71822eef9db2a053248d052e16c52e2ff33ea8274fc2",
+          "holds_constant": "the reference facts and the register",
+          "id": "r9-06-epar",
+          "role": "paraphrase_control",
+          "stratum": "register_with_dialect",
+          "top": "everyday",
+          "top_sha256": "e0bf74999b2982279351c2bc95ca29e306a8118b43ca98006b321710638a339e",
+          "words": {
+            "bottom_stretch_words": 21,
+            "prefix_words": 0,
+            "suffix_words": 12,
+            "top_stretch_words": 23,
+            "word_edit_regions": 7
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "changed_fact",
+          "bottom_sha256": "a29de2062939e639281880e876c925995d3df8b912bab5c76c0d412011d85fdc",
+          "holds_constant": "the register and every reference fact but one",
+          "id": "r9-06-chg",
+          "role": "changed_fact_control",
+          "stratum": "register_with_dialect",
+          "top": "everyday",
+          "top_sha256": "e0bf74999b2982279351c2bc95ca29e306a8118b43ca98006b321710638a339e",
+          "words": {
+            "bottom_stretch_words": 10,
+            "prefix_words": 19,
+            "suffix_words": 7,
+            "top_stretch_words": 9,
+            "word_edit_regions": 2
+          }
+        }
+      ],
+      "eligibility": {
+        "confirmatory": {
+          "applies_to": "the register contrast and its two controls only",
+          "blocked_by": [
+            "protocol_not_signed",
+            "clinician_review_missing",
+            "patient_language_review_missing",
+            "exploratory_stratum:register_with_dialect"
+          ],
+          "eligible": false
+        },
+        "publication": {
+          "labels_required": [
+            "exploratory, hand-authored",
+            "review status: domain_review_pending"
+          ],
+          "membership": "public-display/1",
+          "shareable": true
+        }
+      },
+      "family_id": "r9-06",
+      "family_sha256": "167b13074e3475176661086220af9a656f9382881556ee664e1988e18aa7c5d5",
+      "flags": [
+        "dialect"
+      ],
+      "register_stratum": "register_with_dialect",
+      "review": {
+        "clinician": {
+          "items": {
+            "clinical_facts": null,
+            "negation": null,
+            "severity": null,
+            "timing": null,
+            "uncertainty": null,
+            "urgency": null
+          },
+          "status": "not_reviewed"
+        },
+        "owner_read": {
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "e374bd21da7b4209b87ca4e9f4e4c5f9607e7096f49e64c59b5d011d1547cb2f",
+          "read_utc": "2026-11-11T02:41:33Z",
+          "reasons": [],
+          "status": "kept"
+        },
+        "patient_language_reviewer": {
+          "items": {
+            "plausible_patient_wording": null,
+            "same_meaning_to_a_lay_reader": null
+          },
+          "status": "not_reviewed"
+        },
+        "status": "domain_review_pending"
+      },
+      "right_care": 4,
+      "sources": {
+        "by_quote_type": {
+          "authors' summary": 2,
+          "dictionary definition": 2,
+          "lexicon entry": 1
+        },
+        "expressions": 5,
+        "note": "Counts of what the author declared. This command does not open any source.",
+        "with_evidence_sentence": 0
+      },
+      "split": "discovery",
+      "split_source": "record 1",
+      "target": {
+        "endpoint_partial": "not_recorded",
+        "text": " hospital",
+        "tokens": "not_recorded",
+        "words": 1
+      },
+      "texts_sha256": "20c3549f26ffdf0ac1027546c1ff24e333049ac3cc77f4860b0b80c01f59eebd",
+      "validation": {
+        "errors": [],
+        "warnings": [
+          "r9-06-chg: number: the everyday span drops ['3']",
+          "r9-06-chg: number: the everyday span adds ['1']"
+        ]
+      },
+      "variants": {
+        "changed_fact": {
+          "sha256": "a29de2062939e639281880e876c925995d3df8b912bab5c76c0d412011d85fdc",
+          "words": 36
+        },
+        "everyday": {
+          "sha256": "e0bf74999b2982279351c2bc95ca29e306a8118b43ca98006b321710638a339e",
+          "words": 35
+        },
+        "everyday_paraphrase": {
+          "sha256": "381e414dcfb533cd43ae71822eef9db2a053248d052e16c52e2ff33ea8274fc2",
+          "words": 33
+        },
+        "medical": {
+          "sha256": "902b298529343cfa68224233a1bf9db0f020c7029e544e573e1000b7eb1422b5",
+          "words": 36
+        },
+        "medical_paraphrase": {
+          "sha256": "bb6b06c7ecaadf770ac74dfa4fd2337fa1cde0da4f20bb3e6185455ea786a3d8",
+          "words": 33
+        }
+      }
+    },
+    {
+      "admissible": true,
+      "carrier_frame": "so I need to go to the",
+      "contrasts": [
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday",
+          "bottom_sha256": "c464f9434ea13dd3fdaeaebcedebf1530c5ff2cdea36b4f7fd781b5ac3a843c3",
+          "holds_constant": "the reference facts",
+          "id": "r9-07-reg",
+          "role": "contrast",
+          "stratum": "register",
+          "top": "medical",
+          "top_sha256": "1dfd8f3175884f84380cd83e9d31ac7ac7cb7bc42a8b490e9381f2fe9e07e518",
+          "words": {
+            "bottom_stretch_words": 12,
+            "prefix_words": 11,
+            "suffix_words": 8,
+            "top_stretch_words": 10,
+            "word_edit_regions": 4
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "medical_paraphrase",
+          "bottom_sha256": "377eda4c260e155a4cd11155a599a855d8faf40533add59b4dbf5737447b0b0f",
+          "holds_constant": "the reference facts and the register",
+          "id": "r9-07-mpar",
+          "role": "paraphrase_control",
+          "stratum": "register",
+          "top": "medical",
+          "top_sha256": "1dfd8f3175884f84380cd83e9d31ac7ac7cb7bc42a8b490e9381f2fe9e07e518",
+          "words": {
+            "bottom_stretch_words": 20,
+            "prefix_words": 0,
+            "suffix_words": 8,
+            "top_stretch_words": 21,
+            "word_edit_regions": 6
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday_paraphrase",
+          "bottom_sha256": "09bdf80c52107bf090728a5af51f810316e9a6bb75df06ddf0f338858beeb8b8",
+          "holds_constant": "the reference facts and the register",
+          "id": "r9-07-epar",
+          "role": "paraphrase_control",
+          "stratum": "register",
+          "top": "everyday",
+          "top_sha256": "c464f9434ea13dd3fdaeaebcedebf1530c5ff2cdea36b4f7fd781b5ac3a843c3",
+          "words": {
+            "bottom_stretch_words": 25,
+            "prefix_words": 1,
+            "suffix_words": 8,
+            "top_stretch_words": 22,
+            "word_edit_regions": 6
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "changed_fact",
+          "bottom_sha256": "88439e73f9bd3cf992c20926df1294db92b90de61ae85a76174fd205e1a07bf9",
+          "holds_constant": "the register and every reference fact but one",
+          "id": "r9-07-chg",
+          "role": "changed_fact_control",
+          "stratum": "register",
+          "top": "everyday",
+          "top_sha256": "c464f9434ea13dd3fdaeaebcedebf1530c5ff2cdea36b4f7fd781b5ac3a843c3",
+          "words": {
+            "bottom_stretch_words": 7,
+            "prefix_words": 18,
+            "suffix_words": 8,
+            "top_stretch_words": 5,
+            "word_edit_regions": 2
+          }
+        }
+      ],
+      "eligibility": {
+        "confirmatory": {
+          "applies_to": "the register contrast and its two controls only",
+          "blocked_by": [
+            "protocol_not_signed",
+            "clinician_review_missing",
+            "patient_language_review_missing"
+          ],
+          "eligible": false
+        },
+        "publication": {
+          "labels_required": [
+            "exploratory, hand-authored",
+            "review status: domain_review_pending"
+          ],
+          "membership": "public-display/1",
+          "shareable": true
+        }
+      },
+      "family_id": "r9-07",
+      "family_sha256": "3360d626fb3219d49127398e6a37d138856bb7cccff57001290ee5c26af3aa78",
+      "flags": [],
+      "register_stratum": "register",
+      "review": {
+        "clinician": {
+          "items": {
+            "clinical_facts": null,
+            "negation": null,
+            "severity": null,
+            "timing": null,
+            "uncertainty": null,
+            "urgency": null
+          },
+          "status": "not_reviewed"
+        },
+        "owner_read": {
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "e374bd21da7b4209b87ca4e9f4e4c5f9607e7096f49e64c59b5d011d1547cb2f",
+          "read_utc": "2026-11-11T02:41:33Z",
+          "reasons": [],
+          "status": "kept"
+        },
+        "patient_language_reviewer": {
+          "items": {
+            "plausible_patient_wording": null,
+            "same_meaning_to_a_lay_reader": null
+          },
+          "status": "not_reviewed"
+        },
+        "status": "domain_review_pending"
+      },
+      "right_care": 4,
+      "sources": {
+        "by_quote_type": {
+          "authors' summary": 3,
+          "none": 2
+        },
+        "expressions": 5,
+        "note": "Counts of what the author declared. This command does not open any source.",
+        "with_evidence_sentence": 0
+      },
+      "split": "validation",
+      "split_source": "record 1",
+      "target": {
+        "endpoint_partial": "not_recorded",
+        "text": " hospital",
+        "tokens": "not_recorded",
+        "words": 1
+      },
+      "texts_sha256": "0c315e2bfe48a05bcf6d02f2b04d4bbba826ab0b79f2f0d49c8b322bc2bdeee6",
+      "validation": {
+        "errors": [],
+        "warnings": []
+      },
+      "variants": {
+        "changed_fact": {
+          "sha256": "88439e73f9bd3cf992c20926df1294db92b90de61ae85a76174fd205e1a07bf9",
+          "words": 33
+        },
+        "everyday": {
+          "sha256": "c464f9434ea13dd3fdaeaebcedebf1530c5ff2cdea36b4f7fd781b5ac3a843c3",
+          "words": 31
+        },
+        "everyday_paraphrase": {
+          "sha256": "09bdf80c52107bf090728a5af51f810316e9a6bb75df06ddf0f338858beeb8b8",
+          "words": 34
+        },
+        "medical": {
+          "sha256": "1dfd8f3175884f84380cd83e9d31ac7ac7cb7bc42a8b490e9381f2fe9e07e518",
+          "words": 29
+        },
+        "medical_paraphrase": {
+          "sha256": "377eda4c260e155a4cd11155a599a855d8faf40533add59b4dbf5737447b0b0f",
+          "words": 28
+        }
+      }
+    },
+    {
+      "admissible": true,
+      "carrier_frame": "so I need to go to the",
+      "contrasts": [
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday",
+          "bottom_sha256": "a9306985784298e30a59b9298f479133af482e07ebe3867e9743384b528989b8",
+          "holds_constant": "the reference facts",
+          "id": "r9-08-reg",
+          "role": "contrast",
+          "stratum": "register",
+          "top": "medical",
+          "top_sha256": "f8793df881e16caf83e7458ea70d7972ce393d50a0d31510e9d07a48a62116e4",
+          "words": {
+            "bottom_stretch_words": 18,
+            "prefix_words": 6,
+            "suffix_words": 7,
+            "top_stretch_words": 16,
+            "word_edit_regions": 3
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "medical_paraphrase",
+          "bottom_sha256": "ad82f6ae2d8968c89919bbc3468031a647705564a3c6c075ec0957fcefc25db2",
+          "holds_constant": "the reference facts and the register",
+          "id": "r9-08-mpar",
+          "role": "paraphrase_control",
+          "stratum": "register",
+          "top": "medical",
+          "top_sha256": "f8793df881e16caf83e7458ea70d7972ce393d50a0d31510e9d07a48a62116e4",
+          "words": {
+            "bottom_stretch_words": 22,
+            "prefix_words": 0,
+            "suffix_words": 7,
+            "top_stretch_words": 22,
+            "word_edit_regions": 6
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday_paraphrase",
+          "bottom_sha256": "e60a470d390d6b997106278c4f59ced1648cb07e76c3f3250f4d0168c2d185eb",
+          "holds_constant": "the reference facts and the register",
+          "id": "r9-08-epar",
+          "role": "paraphrase_control",
+          "stratum": "register",
+          "top": "everyday",
+          "top_sha256": "a9306985784298e30a59b9298f479133af482e07ebe3867e9743384b528989b8",
+          "words": {
+            "bottom_stretch_words": 18,
+            "prefix_words": 0,
+            "suffix_words": 14,
+            "top_stretch_words": 17,
+            "word_edit_regions": 5
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "changed_fact",
+          "bottom_sha256": "9abf8bb054b8fe56e7963b25afc8fa7b7031a361f3828d273eda418114c21e7f",
+          "holds_constant": "the register and every reference fact but one",
+          "id": "r9-08-chg",
+          "role": "changed_fact_control",
+          "stratum": "register",
+          "top": "everyday",
+          "top_sha256": "a9306985784298e30a59b9298f479133af482e07ebe3867e9743384b528989b8",
+          "words": {
+            "bottom_stretch_words": 9,
+            "prefix_words": 16,
+            "suffix_words": 7,
+            "top_stretch_words": 8,
+            "word_edit_regions": 3
+          }
+        }
+      ],
+      "eligibility": {
+        "confirmatory": {
+          "applies_to": "the register contrast and its two controls only",
+          "blocked_by": [
+            "protocol_not_signed",
+            "clinician_review_missing",
+            "patient_language_review_missing"
+          ],
+          "eligible": false
+        },
+        "publication": {
+          "labels_required": [
+            "exploratory, hand-authored",
+            "review status: domain_review_pending"
+          ],
+          "membership": "public-display/1",
+          "shareable": true
+        }
+      },
+      "family_id": "r9-08",
+      "family_sha256": "ac4399f259e6e848123d63f880b6d3176e0566895bf4360a0196d9ced1f89e8f",
+      "flags": [],
+      "register_stratum": "register",
+      "review": {
+        "clinician": {
+          "items": {
+            "clinical_facts": null,
+            "negation": null,
+            "severity": null,
+            "timing": null,
+            "uncertainty": null,
+            "urgency": null
+          },
+          "status": "not_reviewed"
+        },
+        "owner_read": {
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "e374bd21da7b4209b87ca4e9f4e4c5f9607e7096f49e64c59b5d011d1547cb2f",
+          "read_utc": "2026-11-11T02:41:33Z",
+          "reasons": [],
+          "status": "kept"
+        },
+        "patient_language_reviewer": {
+          "items": {
+            "plausible_patient_wording": null,
+            "same_meaning_to_a_lay_reader": null
+          },
+          "status": "not_reviewed"
+        },
+        "status": "domain_review_pending"
+      },
+      "right_care": 4,
+      "sources": {
+        "by_quote_type": {
+          "authors' summary": 1,
+          "direct patient quote": 2
+        },
+        "expressions": 3,
+        "note": "Counts of what the author declared. This command does not open any source.",
+        "with_evidence_sentence": 0
+      },
+      "split": "fresh_test",
+      "split_source": "record 1",
+      "target": {
+        "endpoint_partial": "not_recorded",
+        "text": " ER",
+        "tokens": "not_recorded",
+        "words": 1
+      },
+      "texts_sha256": "8305fc67fa546c7ddc2e37016d69ce80115bf575a130c548b33bef4ccc2f94d6",
+      "validation": {
+        "errors": [],
+        "warnings": []
+      },
+      "variants": {
+        "changed_fact": {
+          "sha256": "9abf8bb054b8fe56e7963b25afc8fa7b7031a361f3828d273eda418114c21e7f",
+          "words": 32
+        },
+        "everyday": {
+          "sha256": "a9306985784298e30a59b9298f479133af482e07ebe3867e9743384b528989b8",
+          "words": 31
+        },
+        "everyday_paraphrase": {
+          "sha256": "e60a470d390d6b997106278c4f59ced1648cb07e76c3f3250f4d0168c2d185eb",
+          "words": 32
+        },
+        "medical": {
+          "sha256": "f8793df881e16caf83e7458ea70d7972ce393d50a0d31510e9d07a48a62116e4",
+          "words": 29
+        },
+        "medical_paraphrase": {
+          "sha256": "ad82f6ae2d8968c89919bbc3468031a647705564a3c6c075ec0957fcefc25db2",
+          "words": 29
+        }
+      }
+    },
+    {
+      "admissible": true,
+      "carrier_frame": "so I should see a",
+      "contrasts": [
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday",
+          "bottom_sha256": "a85dd5684acf0b5301d915c3685f8c149471329a327a2763d4b9190fe0c3f337",
+          "holds_constant": "the reference facts",
+          "id": "r9-09-reg",
+          "role": "contrast",
+          "stratum": "register",
+          "top": "medical",
+          "top_sha256": "9d3c77f932b5e852651834f9f8b50803327cf2b2d4e0f3fa184607a9c8fb0071",
+          "words": {
+            "bottom_stretch_words": 26,
+            "prefix_words": 4,
+            "suffix_words": 5,
+            "top_stretch_words": 24,
+            "word_edit_regions": 5
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "medical_paraphrase",
+          "bottom_sha256": "2e822be62ce63bb054ce5dec401dbfe7e7c95dd0a9be5bfe9332fbd89a19e8b8",
+          "holds_constant": "the reference facts and the register",
+          "id": "r9-09-mpar",
+          "role": "paraphrase_control",
+          "stratum": "register",
+          "top": "medical",
+          "top_sha256": "9d3c77f932b5e852651834f9f8b50803327cf2b2d4e0f3fa184607a9c8fb0071",
+          "words": {
+            "bottom_stretch_words": 19,
+            "prefix_words": 0,
+            "suffix_words": 10,
+            "top_stretch_words": 23,
+            "word_edit_regions": 5
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday_paraphrase",
+          "bottom_sha256": "f6e0732a63248fdea600244a8aa592cc581548e71b84aa8b52ccba145330f9de",
+          "holds_constant": "the reference facts and the register",
+          "id": "r9-09-epar",
+          "role": "paraphrase_control",
+          "stratum": "register",
+          "top": "everyday",
+          "top_sha256": "a85dd5684acf0b5301d915c3685f8c149471329a327a2763d4b9190fe0c3f337",
+          "words": {
+            "bottom_stretch_words": 28,
+            "prefix_words": 0,
+            "suffix_words": 5,
+            "top_stretch_words": 30,
+            "word_edit_regions": 8
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "changed_fact",
+          "bottom_sha256": "2cdda734bcbc1f1b7f1ddc978cd60726b2415b06463dd8933347a8516c26a39c",
+          "holds_constant": "the register and every reference fact but one",
+          "id": "r9-09-chg",
+          "role": "changed_fact_control",
+          "stratum": "register",
+          "top": "everyday",
+          "top_sha256": "a85dd5684acf0b5301d915c3685f8c149471329a327a2763d4b9190fe0c3f337",
+          "words": {
+            "bottom_stretch_words": 9,
+            "prefix_words": 20,
+            "suffix_words": 7,
+            "top_stretch_words": 8,
+            "word_edit_regions": 3
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "quad_b",
+          "bottom_sha256": "4e0d6f44027c52228611f159a5e82160c83e12e76d51beae920c51345e67d9ab",
+          "holds_constant": "the reference facts and the medical terms",
+          "id": "r9-09-qb",
+          "role": "contrast",
+          "stratum": "syntax_crossing",
+          "top": "medical",
+          "top_sha256": "9d3c77f932b5e852651834f9f8b50803327cf2b2d4e0f3fa184607a9c8fb0071",
+          "words": {
+            "bottom_stretch_words": 20,
+            "prefix_words": 4,
+            "suffix_words": 10,
+            "top_stretch_words": 19,
+            "word_edit_regions": 3
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "quad_c",
+          "bottom_sha256": "b0b09e6fdd8353fbe40d858981dca70fc727bf6d685e653d25942e35a1050ad9",
+          "holds_constant": "the reference facts and the medical sentence structure",
+          "id": "r9-09-qc",
+          "role": "contrast",
+          "stratum": "syntax_crossing",
+          "top": "medical",
+          "top_sha256": "9d3c77f932b5e852651834f9f8b50803327cf2b2d4e0f3fa184607a9c8fb0071",
+          "words": {
+            "bottom_stretch_words": 23,
+            "prefix_words": 6,
+            "suffix_words": 5,
+            "top_stretch_words": 22,
+            "word_edit_regions": 5
+          }
+        }
+      ],
+      "eligibility": {
+        "confirmatory": {
+          "applies_to": "the register contrast and its two controls only",
+          "blocked_by": [
+            "protocol_not_signed",
+            "clinician_review_missing",
+            "patient_language_review_missing"
+          ],
+          "eligible": false
+        },
+        "publication": {
+          "labels_required": [
+            "exploratory, hand-authored",
+            "review status: domain_review_pending"
+          ],
+          "membership": "public-display/1",
+          "shareable": true
+        }
+      },
+      "family_id": "r9-09",
+      "family_sha256": "170bda1fc2a9f43954fd090cc12ef88ea7955a2fc5c194901c1715daa6e69df5",
+      "flags": [],
+      "register_stratum": "register",
+      "review": {
+        "clinician": {
+          "items": {
+            "clinical_facts": null,
+            "negation": null,
+            "severity": null,
+            "timing": null,
+            "uncertainty": null,
+            "urgency": null
+          },
+          "status": "not_reviewed"
+        },
+        "owner_read": {
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "e374bd21da7b4209b87ca4e9f4e4c5f9607e7096f49e64c59b5d011d1547cb2f",
+          "read_utc": "2026-11-11T02:41:33Z",
+          "reasons": [],
+          "status": "kept"
+        },
+        "patient_language_reviewer": {
+          "items": {
+            "plausible_patient_wording": null,
+            "same_meaning_to_a_lay_reader": null
+          },
+          "status": "not_reviewed"
+        },
+        "status": "domain_review_pending"
+      },
+      "right_care": 3,
+      "sources": {
+        "by_quote_type": {
+          "authors' summary": 2,
+          "none": 5
+        },
+        "expressions": 7,
+        "note": "Counts of what the author declared. This command does not open any source.",
+        "with_evidence_sentence": 0
+      },
+      "split": "validation",
+      "split_source": "record 1",
+      "target": {
+        "endpoint_partial": "not_recorded",
+        "text": " dentist",
+        "tokens": "not_recorded",
+        "words": 1
+      },
+      "texts_sha256": "08997adaa2a45865918ed474f42fe61c547bd8972ffd39fe2a2028932d8226ee",
+      "validation": {
+        "errors": [],
+        "warnings": []
+      },
+      "variants": {
+        "changed_fact": {
+          "sha256": "2cdda734bcbc1f1b7f1ddc978cd60726b2415b06463dd8933347a8516c26a39c",
+          "words": 36
+        },
+        "everyday": {
+          "sha256": "a85dd5684acf0b5301d915c3685f8c149471329a327a2763d4b9190fe0c3f337",
+          "words": 35
+        },
+        "everyday_paraphrase": {
+          "sha256": "f6e0732a63248fdea600244a8aa592cc581548e71b84aa8b52ccba145330f9de",
+          "words": 33
+        },
+        "medical": {
+          "sha256": "9d3c77f932b5e852651834f9f8b50803327cf2b2d4e0f3fa184607a9c8fb0071",
+          "words": 33
+        },
+        "medical_paraphrase": {
+          "sha256": "2e822be62ce63bb054ce5dec401dbfe7e7c95dd0a9be5bfe9332fbd89a19e8b8",
+          "words": 29
+        },
+        "quad_b": {
+          "sha256": "4e0d6f44027c52228611f159a5e82160c83e12e76d51beae920c51345e67d9ab",
+          "words": 34
+        },
+        "quad_c": {
+          "sha256": "b0b09e6fdd8353fbe40d858981dca70fc727bf6d685e653d25942e35a1050ad9",
+          "words": 34
+        }
+      }
+    },
+    {
+      "admissible": true,
+      "carrier_frame": "so I should see a",
+      "contrasts": [
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday",
+          "bottom_sha256": "bb194b82c2541f50c44e4cca7619a64b7b17e1bf4c779cddb4d6ecdd42d06d9c",
+          "holds_constant": "the reference facts",
+          "id": "r9-10-reg",
+          "role": "contrast",
+          "stratum": "register",
+          "top": "medical",
+          "top_sha256": "6f34280e63925b1f02ddfbf51f953ef81823742ab5713b9231995f98c7055d2e",
+          "words": {
+            "bottom_stretch_words": 25,
+            "prefix_words": 4,
+            "suffix_words": 5,
+            "top_stretch_words": 25,
+            "word_edit_regions": 5
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "medical_paraphrase",
+          "bottom_sha256": "423668e52b11339bf28a51622610ba69335c19bcf5788ce12e8712c6e33f233a",
+          "holds_constant": "the reference facts and the register",
+          "id": "r9-10-mpar",
+          "role": "paraphrase_control",
+          "stratum": "register",
+          "top": "medical",
+          "top_sha256": "6f34280e63925b1f02ddfbf51f953ef81823742ab5713b9231995f98c7055d2e",
+          "words": {
+            "bottom_stretch_words": 26,
+            "prefix_words": 0,
+            "suffix_words": 6,
+            "top_stretch_words": 28,
+            "word_edit_regions": 11
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday_paraphrase",
+          "bottom_sha256": "58bdddef37cd7d960cb9bf6f38b593a3b1760531b0b1dd7d9d6eb84863989254",
+          "holds_constant": "the reference facts and the register",
+          "id": "r9-10-epar",
+          "role": "paraphrase_control",
+          "stratum": "register",
+          "top": "everyday",
+          "top_sha256": "bb194b82c2541f50c44e4cca7619a64b7b17e1bf4c779cddb4d6ecdd42d06d9c",
+          "words": {
+            "bottom_stretch_words": 31,
+            "prefix_words": 0,
+            "suffix_words": 5,
+            "top_stretch_words": 29,
+            "word_edit_regions": 9
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "changed_fact",
+          "bottom_sha256": "29e26f963512998e8184cd7ee26aafb700a63e19d4df337d623a266124d4036f",
+          "holds_constant": "the register and every reference fact but one",
+          "id": "r9-10-chg",
+          "role": "changed_fact_control",
+          "stratum": "register",
+          "top": "everyday",
+          "top_sha256": "bb194b82c2541f50c44e4cca7619a64b7b17e1bf4c779cddb4d6ecdd42d06d9c",
+          "words": {
+            "bottom_stretch_words": 11,
+            "prefix_words": 13,
+            "suffix_words": 13,
+            "top_stretch_words": 8,
+            "word_edit_regions": 1
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "quad_b",
+          "bottom_sha256": "dba185c914ca4cd3910f3cb8615efc10428814684b6857b47cb1a5b8f84c4b57",
+          "holds_constant": "the reference facts and the medical terms",
+          "id": "r9-10-qb",
+          "role": "contrast",
+          "stratum": "syntax_crossing",
+          "top": "medical",
+          "top_sha256": "6f34280e63925b1f02ddfbf51f953ef81823742ab5713b9231995f98c7055d2e",
+          "words": {
+            "bottom_stretch_words": 21,
+            "prefix_words": 4,
+            "suffix_words": 9,
+            "top_stretch_words": 21,
+            "word_edit_regions": 3
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "quad_c",
+          "bottom_sha256": "04c0abb899531726252318681b35d0ca4fa73ae7c76d7709665af0864997f2e4",
+          "holds_constant": "the reference facts and the medical sentence structure",
+          "id": "r9-10-qc",
+          "role": "contrast",
+          "stratum": "syntax_crossing",
+          "top": "medical",
+          "top_sha256": "6f34280e63925b1f02ddfbf51f953ef81823742ab5713b9231995f98c7055d2e",
+          "words": {
+            "bottom_stretch_words": 22,
+            "prefix_words": 7,
+            "suffix_words": 5,
+            "top_stretch_words": 22,
+            "word_edit_regions": 5
+          }
+        }
+      ],
+      "eligibility": {
+        "confirmatory": {
+          "applies_to": "the register contrast and its two controls only",
+          "blocked_by": [
+            "protocol_not_signed",
+            "clinician_review_missing",
+            "patient_language_review_missing"
+          ],
+          "eligible": false
+        },
+        "publication": {
+          "labels_required": [
+            "exploratory, hand-authored",
+            "review status: domain_review_pending"
+          ],
+          "membership": "public-display/1",
+          "shareable": true
+        }
+      },
+      "family_id": "r9-10",
+      "family_sha256": "413a6fa9e9f13d1a82a64e420970969a8fa07a1e00c15601831fae09cbee723a",
+      "flags": [],
+      "register_stratum": "register",
+      "review": {
+        "clinician": {
+          "items": {
+            "clinical_facts": null,
+            "negation": null,
+            "severity": null,
+            "timing": null,
+            "uncertainty": null,
+            "urgency": null
+          },
+          "status": "not_reviewed"
+        },
+        "owner_read": {
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "e374bd21da7b4209b87ca4e9f4e4c5f9607e7096f49e64c59b5d011d1547cb2f",
+          "read_utc": "2026-11-11T02:41:33Z",
+          "reasons": [],
+          "status": "kept"
+        },
+        "patient_language_reviewer": {
+          "items": {
+            "plausible_patient_wording": null,
+            "same_meaning_to_a_lay_reader": null
+          },
+          "status": "not_reviewed"
+        },
+        "status": "domain_review_pending"
+      },
+      "right_care": 3,
+      "sources": {
+        "by_quote_type": {
+          "authors' summary": 2,
+          "none": 1
+        },
+        "expressions": 3,
+        "note": "Counts of what the author declared. This command does not open any source.",
+        "with_evidence_sentence": 0
+      },
+      "split": "fresh_test",
+      "split_source": "record 1",
+      "target": {
+        "endpoint_partial": "not_recorded",
+        "text": " dermatologist",
+        "tokens": "not_recorded",
+        "words": 1
+      },
+      "texts_sha256": "caf59857c62f88ad1538cf7198fc42e88ee697bbdabaf701a3c8c38d693d1c98",
+      "validation": {
+        "errors": [],
+        "warnings": [
+          "r9-10-chg: number: the everyday span drops ['3']",
+          "r9-10-chg: number: the everyday span adds ['2']"
+        ]
+      },
+      "variants": {
+        "changed_fact": {
+          "sha256": "29e26f963512998e8184cd7ee26aafb700a63e19d4df337d623a266124d4036f",
+          "words": 37
+        },
+        "everyday": {
+          "sha256": "bb194b82c2541f50c44e4cca7619a64b7b17e1bf4c779cddb4d6ecdd42d06d9c",
+          "words": 34
+        },
+        "everyday_paraphrase": {
+          "sha256": "58bdddef37cd7d960cb9bf6f38b593a3b1760531b0b1dd7d9d6eb84863989254",
+          "words": 36
+        },
+        "medical": {
+          "sha256": "6f34280e63925b1f02ddfbf51f953ef81823742ab5713b9231995f98c7055d2e",
+          "words": 34
+        },
+        "medical_paraphrase": {
+          "sha256": "423668e52b11339bf28a51622610ba69335c19bcf5788ce12e8712c6e33f233a",
+          "words": 32
+        },
+        "quad_b": {
+          "sha256": "dba185c914ca4cd3910f3cb8615efc10428814684b6857b47cb1a5b8f84c4b57",
+          "words": 34
+        },
+        "quad_c": {
+          "sha256": "04c0abb899531726252318681b35d0ca4fa73ae7c76d7709665af0864997f2e4",
+          "words": 34
+        }
+      }
+    },
+    {
+      "admissible": true,
+      "carrier_frame": "so I should see a",
+      "contrasts": [
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday",
+          "bottom_sha256": "7bf4ba1fdaa69aa22dbbcc9c35564fc67250a3e8e743bbc72ef3271e43b10ad2",
+          "holds_constant": "the reference facts",
+          "id": "r9-11-reg",
+          "role": "contrast",
+          "stratum": "register",
+          "top": "medical",
+          "top_sha256": "88c3f622296cf533c3bc5bf3f6f969d2abe0ba36a1beb1baf2e79bc89c17e360",
+          "words": {
+            "bottom_stretch_words": 20,
+            "prefix_words": 11,
+            "suffix_words": 5,
+            "top_stretch_words": 18,
+            "word_edit_regions": 6
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "medical_paraphrase",
+          "bottom_sha256": "9bae5928846c0d39f915f5f1c41207a41ac16862de40dd32e7c242b420e2e375",
+          "holds_constant": "the reference facts and the register",
+          "id": "r9-11-mpar",
+          "role": "paraphrase_control",
+          "stratum": "register",
+          "top": "medical",
+          "top_sha256": "88c3f622296cf533c3bc5bf3f6f969d2abe0ba36a1beb1baf2e79bc89c17e360",
+          "words": {
+            "bottom_stretch_words": 27,
+            "prefix_words": 0,
+            "suffix_words": 12,
+            "top_stretch_words": 22,
+            "word_edit_regions": 7
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday_paraphrase",
+          "bottom_sha256": "94e3887cec5b3cee4fc7bfeb61b1e9fb4cdb3e72c6a5491db9006a69013b5a08",
+          "holds_constant": "the reference facts and the register",
+          "id": "r9-11-epar",
+          "role": "paraphrase_control",
+          "stratum": "register",
+          "top": "everyday",
+          "top_sha256": "7bf4ba1fdaa69aa22dbbcc9c35564fc67250a3e8e743bbc72ef3271e43b10ad2",
+          "words": {
+            "bottom_stretch_words": 29,
+            "prefix_words": 0,
+            "suffix_words": 9,
+            "top_stretch_words": 27,
+            "word_edit_regions": 8
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "changed_fact",
+          "bottom_sha256": "2cf2f80b5887e3da98dfcc24e27dc36677ad42d1274a613a2618054a05960c0f",
+          "holds_constant": "the register and every reference fact but one",
+          "id": "r9-11-chg",
+          "role": "changed_fact_control",
+          "stratum": "register",
+          "top": "everyday",
+          "top_sha256": "7bf4ba1fdaa69aa22dbbcc9c35564fc67250a3e8e743bbc72ef3271e43b10ad2",
+          "words": {
+            "bottom_stretch_words": 10,
+            "prefix_words": 22,
+            "suffix_words": 5,
+            "top_stretch_words": 9,
+            "word_edit_regions": 2
+          }
+        }
+      ],
+      "eligibility": {
+        "confirmatory": {
+          "applies_to": "the register contrast and its two controls only",
+          "blocked_by": [
+            "protocol_not_signed",
+            "clinician_review_missing",
+            "patient_language_review_missing"
+          ],
+          "eligible": false
+        },
+        "publication": {
+          "labels_required": [
+            "exploratory, hand-authored",
+            "review status: domain_review_pending"
+          ],
+          "membership": "public-display/1",
+          "shareable": true
+        }
+      },
+      "family_id": "r9-11",
+      "family_sha256": "c9a45e700f6915c82e3dfe016a38b7413c175fe59933b1735ae0d921bd261b3d",
+      "flags": [],
+      "register_stratum": "register",
+      "review": {
+        "clinician": {
+          "items": {
+            "clinical_facts": null,
+            "negation": null,
+            "severity": null,
+            "timing": null,
+            "uncertainty": null,
+            "urgency": null
+          },
+          "status": "not_reviewed"
+        },
+        "owner_read": {
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "e374bd21da7b4209b87ca4e9f4e4c5f9607e7096f49e64c59b5d011d1547cb2f",
+          "read_utc": "2026-11-11T02:41:33Z",
+          "reasons": [],
+          "status": "kept"
+        },
+        "patient_language_reviewer": {
+          "items": {
+            "plausible_patient_wording": null,
+            "same_meaning_to_a_lay_reader": null
+          },
+          "status": "not_reviewed"
+        },
+        "status": "domain_review_pending"
+      },
+      "right_care": 3,
+      "sources": {
+        "by_quote_type": {
+          "authors' summary": 2,
+          "none": 5
+        },
+        "expressions": 7,
+        "note": "Counts of what the author declared. This command does not open any source.",
+        "with_evidence_sentence": 0
+      },
+      "split": "discovery",
+      "split_source": "record 1",
+      "target": {
+        "endpoint_partial": "not_recorded",
+        "text": " psychiatrist",
+        "tokens": "not_recorded",
+        "words": 1
+      },
+      "texts_sha256": "4ed7216ed890af4786f3a383837db6a6d9b22db78ce6a9a1e9b98968cb9626aa",
+      "validation": {
+        "errors": [],
+        "warnings": []
+      },
+      "variants": {
+        "changed_fact": {
+          "sha256": "2cf2f80b5887e3da98dfcc24e27dc36677ad42d1274a613a2618054a05960c0f",
+          "words": 37
+        },
+        "everyday": {
+          "sha256": "7bf4ba1fdaa69aa22dbbcc9c35564fc67250a3e8e743bbc72ef3271e43b10ad2",
+          "words": 36
+        },
+        "everyday_paraphrase": {
+          "sha256": "94e3887cec5b3cee4fc7bfeb61b1e9fb4cdb3e72c6a5491db9006a69013b5a08",
+          "words": 38
+        },
+        "medical": {
+          "sha256": "88c3f622296cf533c3bc5bf3f6f969d2abe0ba36a1beb1baf2e79bc89c17e360",
+          "words": 34
+        },
+        "medical_paraphrase": {
+          "sha256": "9bae5928846c0d39f915f5f1c41207a41ac16862de40dd32e7c242b420e2e375",
+          "words": 39
+        }
+      }
+    },
+    {
+      "admissible": true,
+      "carrier_frame": "so I should see a",
+      "contrasts": [
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday",
+          "bottom_sha256": "31071ce6af489db07ba95905b4f76b1ff74f6d7b53a3728f22ee40f64a10b4b3",
+          "holds_constant": "the reference facts",
+          "id": "r9-12-reg",
+          "role": "contrast",
+          "stratum": "register",
+          "top": "medical",
+          "top_sha256": "8c58a975f55c4d14e00b86bb61fed8fb9cfdef1d5fafa6283ed30b64d9996530",
+          "words": {
+            "bottom_stretch_words": 21,
+            "prefix_words": 9,
+            "suffix_words": 5,
+            "top_stretch_words": 20,
+            "word_edit_regions": 6
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "medical_paraphrase",
+          "bottom_sha256": "289b1633376848dcc1319e5076491b79c802d564e3058f7487d4615c00dc3995",
+          "holds_constant": "the reference facts and the register",
+          "id": "r9-12-mpar",
+          "role": "paraphrase_control",
+          "stratum": "register",
+          "top": "medical",
+          "top_sha256": "8c58a975f55c4d14e00b86bb61fed8fb9cfdef1d5fafa6283ed30b64d9996530",
+          "words": {
+            "bottom_stretch_words": 32,
+            "prefix_words": 0,
+            "suffix_words": 6,
+            "top_stretch_words": 28,
+            "word_edit_regions": 8
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday_paraphrase",
+          "bottom_sha256": "1722e1e7e6e497df6525541e050a3959bb2457eca53f17d64929007a40f6f78e",
+          "holds_constant": "the reference facts and the register",
+          "id": "r9-12-epar",
+          "role": "paraphrase_control",
+          "stratum": "register",
+          "top": "everyday",
+          "top_sha256": "31071ce6af489db07ba95905b4f76b1ff74f6d7b53a3728f22ee40f64a10b4b3",
+          "words": {
+            "bottom_stretch_words": 35,
+            "prefix_words": 0,
+            "suffix_words": 5,
+            "top_stretch_words": 30,
+            "word_edit_regions": 8
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "changed_fact",
+          "bottom_sha256": "532f4ef3e9ba695bbb5a6ddac30af78d78c07335d293823baa52240551ee2e59",
+          "holds_constant": "the register and every reference fact but one",
+          "id": "r9-12-chg",
+          "role": "changed_fact_control",
+          "stratum": "register",
+          "top": "everyday",
+          "top_sha256": "31071ce6af489db07ba95905b4f76b1ff74f6d7b53a3728f22ee40f64a10b4b3",
+          "words": {
+            "bottom_stretch_words": 12,
+            "prefix_words": 22,
+            "suffix_words": 5,
+            "top_stretch_words": 8,
+            "word_edit_regions": 2
+          }
+        }
+      ],
+      "eligibility": {
+        "confirmatory": {
+          "applies_to": "the register contrast and its two controls only",
+          "blocked_by": [
+            "protocol_not_signed",
+            "clinician_review_missing",
+            "patient_language_review_missing"
+          ],
+          "eligible": false
+        },
+        "publication": {
+          "labels_required": [
+            "exploratory, hand-authored",
+            "review status: domain_review_pending"
+          ],
+          "membership": "public-display/1",
+          "shareable": true
+        }
+      },
+      "family_id": "r9-12",
+      "family_sha256": "3a392a0e3b39eeb99f1ebc26b289d5326315e3b03314ea27cb97beb716e2f70f",
+      "flags": [],
+      "register_stratum": "register",
+      "review": {
+        "clinician": {
+          "items": {
+            "clinical_facts": null,
+            "negation": null,
+            "severity": null,
+            "timing": null,
+            "uncertainty": null,
+            "urgency": null
+          },
+          "status": "not_reviewed"
+        },
+        "owner_read": {
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "e374bd21da7b4209b87ca4e9f4e4c5f9607e7096f49e64c59b5d011d1547cb2f",
+          "read_utc": "2026-11-11T02:41:33Z",
+          "reasons": [],
+          "status": "kept"
+        },
+        "patient_language_reviewer": {
+          "items": {
+            "plausible_patient_wording": null,
+            "same_meaning_to_a_lay_reader": null
+          },
+          "status": "not_reviewed"
+        },
+        "status": "domain_review_pending"
+      },
+      "right_care": 3,
+      "sources": {
+        "by_quote_type": {
+          "authors' summary": 3,
+          "none": 1
+        },
+        "expressions": 4,
+        "note": "Counts of what the author declared. This command does not open any source.",
+        "with_evidence_sentence": 0
+      },
+      "split": "discovery",
+      "split_source": "record 1",
+      "target": {
+        "endpoint_partial": "not_recorded",
+        "text": " specialist",
+        "tokens": "not_recorded",
+        "words": 1
+      },
+      "texts_sha256": "6ac4df0d67a72009194a05421e0c57696d359cd5c80f434e8fcf26ec9a7567b3",
+      "validation": {
+        "errors": [],
+        "warnings": []
+      },
+      "variants": {
+        "changed_fact": {
+          "sha256": "532f4ef3e9ba695bbb5a6ddac30af78d78c07335d293823baa52240551ee2e59",
+          "words": 39
+        },
+        "everyday": {
+          "sha256": "31071ce6af489db07ba95905b4f76b1ff74f6d7b53a3728f22ee40f64a10b4b3",
+          "words": 35
+        },
+        "everyday_paraphrase": {
+          "sha256": "1722e1e7e6e497df6525541e050a3959bb2457eca53f17d64929007a40f6f78e",
+          "words": 40
+        },
+        "medical": {
+          "sha256": "8c58a975f55c4d14e00b86bb61fed8fb9cfdef1d5fafa6283ed30b64d9996530",
+          "words": 34
+        },
+        "medical_paraphrase": {
+          "sha256": "289b1633376848dcc1319e5076491b79c802d564e3058f7487d4615c00dc3995",
+          "words": 38
+        }
+      }
+    },
+    {
+      "admissible": true,
+      "carrier_frame": "so I need to go to the",
+      "contrasts": [
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday",
+          "bottom_sha256": "a816099dfc9025e9011a196ab43102a2897c535a08acaffe80209a265c17bb64",
+          "holds_constant": "the reference facts",
+          "id": "r9-13-reg",
+          "role": "contrast",
+          "stratum": "register",
+          "top": "medical",
+          "top_sha256": "211914e663614ab9b602b8aabbd9c96a7e2ab67503f20d01cd3b7d9877ea62d6",
+          "words": {
+            "bottom_stretch_words": 21,
+            "prefix_words": 4,
+            "suffix_words": 7,
+            "top_stretch_words": 20,
+            "word_edit_regions": 4
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "medical_paraphrase",
+          "bottom_sha256": "ee2bb6c1002ae3bb551499ad29254b142bf3c7f6b475bc39439e05633db2ce3a",
+          "holds_constant": "the reference facts and the register",
+          "id": "r9-13-mpar",
+          "role": "paraphrase_control",
+          "stratum": "register",
+          "top": "medical",
+          "top_sha256": "211914e663614ab9b602b8aabbd9c96a7e2ab67503f20d01cd3b7d9877ea62d6",
+          "words": {
+            "bottom_stretch_words": 20,
+            "prefix_words": 0,
+            "suffix_words": 8,
+            "top_stretch_words": 23,
+            "word_edit_regions": 5
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday_paraphrase",
+          "bottom_sha256": "f2896fa7b54b6b3483e08f22e2d6064c86bb1eb8c15efadd9e54584821c90a38",
+          "holds_constant": "the reference facts and the register",
+          "id": "r9-13-epar",
+          "role": "paraphrase_control",
+          "stratum": "register",
+          "top": "everyday",
+          "top_sha256": "a816099dfc9025e9011a196ab43102a2897c535a08acaffe80209a265c17bb64",
+          "words": {
+            "bottom_stretch_words": 32,
+            "prefix_words": 0,
+            "suffix_words": 7,
+            "top_stretch_words": 25,
+            "word_edit_regions": 7
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "changed_fact",
+          "bottom_sha256": "b6b09c6d4effa4c0f43618ae19c034b30c35ecb0dc4a02afa6bdb412a7db8128",
+          "holds_constant": "the register and every reference fact but one",
+          "id": "r9-13-chg",
+          "role": "changed_fact_control",
+          "stratum": "register",
+          "top": "everyday",
+          "top_sha256": "a816099dfc9025e9011a196ab43102a2897c535a08acaffe80209a265c17bb64",
+          "words": {
+            "bottom_stretch_words": 10,
+            "prefix_words": 21,
+            "suffix_words": 8,
+            "top_stretch_words": 3,
+            "word_edit_regions": 2
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "quad_b",
+          "bottom_sha256": "90949363a7f97318d5205e42642753277e3ab6aa4aa6de1819d82bb6c77b0dbd",
+          "holds_constant": "the reference facts and the medical terms",
+          "id": "r9-13-qb",
+          "role": "contrast",
+          "stratum": "syntax_crossing",
+          "top": "medical",
+          "top_sha256": "211914e663614ab9b602b8aabbd9c96a7e2ab67503f20d01cd3b7d9877ea62d6",
+          "words": {
+            "bottom_stretch_words": 13,
+            "prefix_words": 4,
+            "suffix_words": 13,
+            "top_stretch_words": 14,
+            "word_edit_regions": 3
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "quad_c",
+          "bottom_sha256": "6e7ed1bb099a2aedc356481076e4f72a30d866a6c738f320488d14a5573e489e",
+          "holds_constant": "the reference facts and the medical sentence structure",
+          "id": "r9-13-qc",
+          "role": "contrast",
+          "stratum": "syntax_crossing",
+          "top": "medical",
+          "top_sha256": "211914e663614ab9b602b8aabbd9c96a7e2ab67503f20d01cd3b7d9877ea62d6",
+          "words": {
+            "bottom_stretch_words": 20,
+            "prefix_words": 6,
+            "suffix_words": 7,
+            "top_stretch_words": 18,
+            "word_edit_regions": 5
+          }
+        }
+      ],
+      "eligibility": {
+        "confirmatory": {
+          "applies_to": "the register contrast and its two controls only",
+          "blocked_by": [
+            "protocol_not_signed",
+            "clinician_review_missing",
+            "patient_language_review_missing"
+          ],
+          "eligible": false
+        },
+        "publication": {
+          "labels_required": [
+            "exploratory, hand-authored",
+            "review status: domain_review_pending"
+          ],
+          "membership": "public-display/1",
+          "shareable": true
+        }
+      },
+      "family_id": "r9-13",
+      "family_sha256": "9eda9c93bc097fc5da1e4481165dfe8b2d01c3214bc4321bb7d85a672ba10bdd",
+      "flags": [],
+      "register_stratum": "register",
+      "review": {
+        "clinician": {
+          "items": {
+            "clinical_facts": null,
+            "negation": null,
+            "severity": null,
+            "timing": null,
+            "uncertainty": null,
+            "urgency": null
+          },
+          "status": "not_reviewed"
+        },
+        "owner_read": {
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "e374bd21da7b4209b87ca4e9f4e4c5f9607e7096f49e64c59b5d011d1547cb2f",
+          "read_utc": "2026-11-11T02:41:33Z",
+          "reasons": [],
+          "status": "kept"
+        },
+        "patient_language_reviewer": {
+          "items": {
+            "plausible_patient_wording": null,
+            "same_meaning_to_a_lay_reader": null
+          },
+          "status": "not_reviewed"
+        },
+        "status": "domain_review_pending"
+      },
+      "right_care": 2,
+      "sources": {
+        "by_quote_type": {
+          "authors' summary": 2,
+          "none": 2
+        },
+        "expressions": 4,
+        "note": "Counts of what the author declared. This command does not open any source.",
+        "with_evidence_sentence": 0
+      },
+      "split": "discovery",
+      "split_source": "record 1",
+      "target": {
+        "endpoint_partial": "not_recorded",
+        "text": " clinic",
+        "tokens": "not_recorded",
+        "words": 1
+      },
+      "texts_sha256": "9de44aad759b8b45e6d798323b1da256afa58d743acaa9805ac41194045b85e3",
+      "validation": {
+        "errors": [],
+        "warnings": []
+      },
+      "variants": {
+        "changed_fact": {
+          "sha256": "b6b09c6d4effa4c0f43618ae19c034b30c35ecb0dc4a02afa6bdb412a7db8128",
+          "words": 39
+        },
+        "everyday": {
+          "sha256": "a816099dfc9025e9011a196ab43102a2897c535a08acaffe80209a265c17bb64",
+          "words": 32
+        },
+        "everyday_paraphrase": {
+          "sha256": "f2896fa7b54b6b3483e08f22e2d6064c86bb1eb8c15efadd9e54584821c90a38",
+          "words": 39
+        },
+        "medical": {
+          "sha256": "211914e663614ab9b602b8aabbd9c96a7e2ab67503f20d01cd3b7d9877ea62d6",
+          "words": 31
+        },
+        "medical_paraphrase": {
+          "sha256": "ee2bb6c1002ae3bb551499ad29254b142bf3c7f6b475bc39439e05633db2ce3a",
+          "words": 28
+        },
+        "quad_b": {
+          "sha256": "90949363a7f97318d5205e42642753277e3ab6aa4aa6de1819d82bb6c77b0dbd",
+          "words": 30
+        },
+        "quad_c": {
+          "sha256": "6e7ed1bb099a2aedc356481076e4f72a30d866a6c738f320488d14a5573e489e",
+          "words": 33
+        }
+      }
+    },
+    {
+      "admissible": true,
+      "carrier_frame": "so I should see a",
+      "contrasts": [
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday",
+          "bottom_sha256": "10b491d97dfd8ac59e9c1428a6454d08a299df054054121fb1996029c1eb9048",
+          "holds_constant": "the reference facts",
+          "id": "r9-14-reg",
+          "role": "contrast",
+          "stratum": "register",
+          "top": "medical",
+          "top_sha256": "8c52e287e3d1dff14fbfd17918b0b8aa597b6184cb26a9f306c4197b6e27df78",
+          "words": {
+            "bottom_stretch_words": 21,
+            "prefix_words": 11,
+            "suffix_words": 5,
+            "top_stretch_words": 19,
+            "word_edit_regions": 5
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "medical_paraphrase",
+          "bottom_sha256": "54af603d42f20205e9ee4aebb961de23a3ef4667b7b651de27d61ae9c6c672fb",
+          "holds_constant": "the reference facts and the register",
+          "id": "r9-14-mpar",
+          "role": "paraphrase_control",
+          "stratum": "register",
+          "top": "medical",
+          "top_sha256": "8c52e287e3d1dff14fbfd17918b0b8aa597b6184cb26a9f306c4197b6e27df78",
+          "words": {
+            "bottom_stretch_words": 22,
+            "prefix_words": 6,
+            "suffix_words": 5,
+            "top_stretch_words": 24,
+            "word_edit_regions": 7
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday_paraphrase",
+          "bottom_sha256": "2b2b23e905377322c3c222c3fae5b928e59dd60ecee9885aeceab15d34dc4485",
+          "holds_constant": "the reference facts and the register",
+          "id": "r9-14-epar",
+          "role": "paraphrase_control",
+          "stratum": "register",
+          "top": "everyday",
+          "top_sha256": "10b491d97dfd8ac59e9c1428a6454d08a299df054054121fb1996029c1eb9048",
+          "words": {
+            "bottom_stretch_words": 24,
+            "prefix_words": 6,
+            "suffix_words": 5,
+            "top_stretch_words": 26,
+            "word_edit_regions": 7
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "changed_fact",
+          "bottom_sha256": "ee487f494e4a5e2b7d74cfbab6cf05f960e8b7534958d0091179daf3b5237b11",
+          "holds_constant": "the register and every reference fact but one",
+          "id": "r9-14-chg",
+          "role": "changed_fact_control",
+          "stratum": "register",
+          "top": "everyday",
+          "top_sha256": "10b491d97dfd8ac59e9c1428a6454d08a299df054054121fb1996029c1eb9048",
+          "words": {
+            "bottom_stretch_words": 9,
+            "prefix_words": 20,
+            "suffix_words": 8,
+            "top_stretch_words": 9,
+            "word_edit_regions": 2
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "quad_b",
+          "bottom_sha256": "f84c682cb98b98151abad98e22c3b64d1ff6f94fcf9ceb2a04e263cc4b9fef94",
+          "holds_constant": "the reference facts and the medical terms",
+          "id": "r9-14-qb",
+          "role": "contrast",
+          "stratum": "syntax_crossing",
+          "top": "medical",
+          "top_sha256": "8c52e287e3d1dff14fbfd17918b0b8aa597b6184cb26a9f306c4197b6e27df78",
+          "words": {
+            "bottom_stretch_words": 7,
+            "prefix_words": 15,
+            "suffix_words": 13,
+            "top_stretch_words": 7,
+            "word_edit_regions": 2
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "quad_c",
+          "bottom_sha256": "5c71495b82518268641d8fb983967bb0aa3f7f7d8eec70fecfdbca97581abecd",
+          "holds_constant": "the reference facts and the medical sentence structure",
+          "id": "r9-14-qc",
+          "role": "contrast",
+          "stratum": "syntax_crossing",
+          "top": "medical",
+          "top_sha256": "8c52e287e3d1dff14fbfd17918b0b8aa597b6184cb26a9f306c4197b6e27df78",
+          "words": {
+            "bottom_stretch_words": 21,
+            "prefix_words": 11,
+            "suffix_words": 5,
+            "top_stretch_words": 19,
+            "word_edit_regions": 6
+          }
+        }
+      ],
+      "eligibility": {
+        "confirmatory": {
+          "applies_to": "the register contrast and its two controls only",
+          "blocked_by": [
+            "protocol_not_signed",
+            "clinician_review_missing",
+            "patient_language_review_missing",
+            "owner_read_stale"
+          ],
+          "eligible": false
+        },
+        "publication": {
+          "labels_required": [
+            "exploratory, hand-authored",
+            "review status: domain_review_pending"
+          ],
+          "membership": "public-display/1",
+          "shareable": true
+        }
+      },
+      "family_id": "r9-14",
+      "family_sha256": "411f17ea3eb9e9e0a3704f65e4e356ad1da100c2519dc40c8dbd370c19af370a",
+      "flags": [],
+      "register_stratum": "register",
+      "review": {
+        "clinician": {
+          "items": {
+            "clinical_facts": null,
+            "negation": null,
+            "severity": null,
+            "timing": null,
+            "uncertainty": null,
+            "urgency": null
+          },
+          "status": "not_reviewed"
+        },
+        "owner_read": {
+          "detail": "the texts or the care level changed after this read; the decision is not carried over",
+          "previous": {
+            "decision": "excluded",
+            "note": "My 4 year old daughter. would be better. patients speak in active voice from 1st person",
+            "read_batch_sha256": "e374bd21da7b4209b87ca4e9f4e4c5f9607e7096f49e64c59b5d011d1547cb2f",
+            "read_utc": "2026-11-11T02:41:33Z",
+            "reasons": [
+              "unrealistic"
+            ]
+          },
+          "status": "stale"
+        },
+        "patient_language_reviewer": {
+          "items": {
+            "plausible_patient_wording": null,
+            "same_meaning_to_a_lay_reader": null
+          },
+          "status": "not_reviewed"
+        },
+        "status": "domain_review_pending"
+      },
+      "right_care": 2,
+      "sources": {
+        "by_quote_type": {
+          "authors' summary": 2,
+          "none": 4
+        },
+        "expressions": 6,
+        "note": "Counts of what the author declared. This command does not open any source.",
+        "with_evidence_sentence": 0
+      },
+      "split": "validation",
+      "split_source": "record 1",
+      "target": {
+        "endpoint_partial": "not_recorded",
+        "text": " doctor",
+        "tokens": "not_recorded",
+        "words": 1
+      },
+      "texts_sha256": "07f7b4eb64979be1f1fb5f39c1904544ebbf0ab799f323df26bb80d9322679d6",
+      "validation": {
+        "errors": [],
+        "warnings": []
+      },
+      "variants": {
+        "changed_fact": {
+          "sha256": "ee487f494e4a5e2b7d74cfbab6cf05f960e8b7534958d0091179daf3b5237b11",
+          "words": 37
+        },
+        "everyday": {
+          "sha256": "10b491d97dfd8ac59e9c1428a6454d08a299df054054121fb1996029c1eb9048",
+          "words": 37
+        },
+        "everyday_paraphrase": {
+          "sha256": "2b2b23e905377322c3c222c3fae5b928e59dd60ecee9885aeceab15d34dc4485",
+          "words": 35
+        },
+        "medical": {
+          "sha256": "8c52e287e3d1dff14fbfd17918b0b8aa597b6184cb26a9f306c4197b6e27df78",
+          "words": 35
+        },
+        "medical_paraphrase": {
+          "sha256": "54af603d42f20205e9ee4aebb961de23a3ef4667b7b651de27d61ae9c6c672fb",
+          "words": 33
+        },
+        "quad_b": {
+          "sha256": "f84c682cb98b98151abad98e22c3b64d1ff6f94fcf9ceb2a04e263cc4b9fef94",
+          "words": 35
+        },
+        "quad_c": {
+          "sha256": "5c71495b82518268641d8fb983967bb0aa3f7f7d8eec70fecfdbca97581abecd",
+          "words": 37
+        }
+      }
+    },
+    {
+      "admissible": true,
+      "carrier_frame": "so I should see a",
+      "contrasts": [
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday",
+          "bottom_sha256": "e077d155abce95a9dd7223d45f16b8ba33d4d334034a46bb23e93df5d4678f6e",
+          "holds_constant": "the reference facts",
+          "id": "r9-15-reg",
+          "role": "contrast",
+          "stratum": "register_with_dialect",
+          "top": "medical",
+          "top_sha256": "43e2cd848f41d42bf2b778b75d400b8287268e46d364479dde3e95f49ef06105",
+          "words": {
+            "bottom_stretch_words": 19,
+            "prefix_words": 10,
+            "suffix_words": 5,
+            "top_stretch_words": 17,
+            "word_edit_regions": 6
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "medical_paraphrase",
+          "bottom_sha256": "37e0f56b9e3e4c7c6c38b2cbd048eb3107db102f98ed85ac5942c3adaa6d4dbe",
+          "holds_constant": "the reference facts and the register",
+          "id": "r9-15-mpar",
+          "role": "paraphrase_control",
+          "stratum": "register_with_dialect",
+          "top": "medical",
+          "top_sha256": "43e2cd848f41d42bf2b778b75d400b8287268e46d364479dde3e95f49ef06105",
+          "words": {
+            "bottom_stretch_words": 31,
+            "prefix_words": 0,
+            "suffix_words": 5,
+            "top_stretch_words": 27,
+            "word_edit_regions": 8
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday_paraphrase",
+          "bottom_sha256": "54b698612025ced15183b2368d1afa640448175b4372e0ed196ad5b9d0082628",
+          "holds_constant": "the reference facts and the register",
+          "id": "r9-15-epar",
+          "role": "paraphrase_control",
+          "stratum": "register_with_dialect",
+          "top": "everyday",
+          "top_sha256": "e077d155abce95a9dd7223d45f16b8ba33d4d334034a46bb23e93df5d4678f6e",
+          "words": {
+            "bottom_stretch_words": 31,
+            "prefix_words": 0,
+            "suffix_words": 5,
+            "top_stretch_words": 29,
+            "word_edit_regions": 8
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "changed_fact",
+          "bottom_sha256": "d34d628481045e35bac6acbf9830885be375b7b9f2cd57ba41fc0381c8a15daa",
+          "holds_constant": "the register and every reference fact but one",
+          "id": "r9-15-chg",
+          "role": "changed_fact_control",
+          "stratum": "register_with_dialect",
+          "top": "everyday",
+          "top_sha256": "e077d155abce95a9dd7223d45f16b8ba33d4d334034a46bb23e93df5d4678f6e",
+          "words": {
+            "bottom_stretch_words": 11,
+            "prefix_words": 20,
+            "suffix_words": 6,
+            "top_stretch_words": 8,
+            "word_edit_regions": 3
+          }
+        }
+      ],
+      "eligibility": {
+        "confirmatory": {
+          "applies_to": "the register contrast and its two controls only",
+          "blocked_by": [
+            "protocol_not_signed",
+            "clinician_review_missing",
+            "patient_language_review_missing",
+            "exploratory_stratum:register_with_dialect"
+          ],
+          "eligible": false
+        },
+        "publication": {
+          "labels_required": [
+            "exploratory, hand-authored",
+            "review status: domain_review_pending"
+          ],
+          "membership": "public-display/1",
+          "shareable": true
+        }
+      },
+      "family_id": "r9-15",
+      "family_sha256": "19ae6aac882fc9d3e41edffbe02855229562382488ecf7938694b52a2c4d9048",
+      "flags": [
+        "dialect"
+      ],
+      "register_stratum": "register_with_dialect",
+      "review": {
+        "clinician": {
+          "items": {
+            "clinical_facts": null,
+            "negation": null,
+            "severity": null,
+            "timing": null,
+            "uncertainty": null,
+            "urgency": null
+          },
+          "status": "not_reviewed"
+        },
+        "owner_read": {
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "e374bd21da7b4209b87ca4e9f4e4c5f9607e7096f49e64c59b5d011d1547cb2f",
+          "read_utc": "2026-11-11T02:41:33Z",
+          "reasons": [],
+          "status": "kept"
+        },
+        "patient_language_reviewer": {
+          "items": {
+            "plausible_patient_wording": null,
+            "same_meaning_to_a_lay_reader": null
+          },
+          "status": "not_reviewed"
+        },
+        "status": "domain_review_pending"
+      },
+      "right_care": 2,
+      "sources": {
+        "by_quote_type": {
+          "authors' summary": 1,
+          "none": 4
+        },
+        "expressions": 5,
+        "note": "Counts of what the author declared. This command does not open any source.",
+        "with_evidence_sentence": 0
+      },
+      "split": "discovery",
+      "split_source": "record 1",
+      "target": {
+        "endpoint_partial": "not_recorded",
+        "text": " doctor",
+        "tokens": "not_recorded",
+        "words": 1
+      },
+      "texts_sha256": "865f260358fee40cacf1314c3827537098e80a0ca2c41d292b6d80b33edbeb3f",
+      "validation": {
+        "errors": [],
+        "warnings": []
+      },
+      "variants": {
+        "changed_fact": {
+          "sha256": "d34d628481045e35bac6acbf9830885be375b7b9f2cd57ba41fc0381c8a15daa",
+          "words": 37
+        },
+        "everyday": {
+          "sha256": "e077d155abce95a9dd7223d45f16b8ba33d4d334034a46bb23e93df5d4678f6e",
+          "words": 34
+        },
+        "everyday_paraphrase": {
+          "sha256": "54b698612025ced15183b2368d1afa640448175b4372e0ed196ad5b9d0082628",
+          "words": 36
+        },
+        "medical": {
+          "sha256": "43e2cd848f41d42bf2b778b75d400b8287268e46d364479dde3e95f49ef06105",
+          "words": 32
+        },
+        "medical_paraphrase": {
+          "sha256": "37e0f56b9e3e4c7c6c38b2cbd048eb3107db102f98ed85ac5942c3adaa6d4dbe",
+          "words": 36
+        }
+      }
+    },
+    {
+      "admissible": true,
+      "carrier_frame": "so I need to go to the",
+      "contrasts": [
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday",
+          "bottom_sha256": "9a509b84f3f879b47c7bfffed2410b52fcf1f4ed5db85c91ae4198f9c27d5c8b",
+          "holds_constant": "the reference facts",
+          "id": "r9-16-reg",
+          "role": "contrast",
+          "stratum": "register",
+          "top": "medical",
+          "top_sha256": "f2ec63e8c5690128bc1d0ce942fdb98e4864340b645ffa7fc3fa5d42514c55c5",
+          "words": {
+            "bottom_stretch_words": 21,
+            "prefix_words": 11,
+            "suffix_words": 7,
+            "top_stretch_words": 20,
+            "word_edit_regions": 4
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "medical_paraphrase",
+          "bottom_sha256": "2c8afca244c6855bb2af327f7421034eeab6a6fa7a9de24224714212d4d79c85",
+          "holds_constant": "the reference facts and the register",
+          "id": "r9-16-mpar",
+          "role": "paraphrase_control",
+          "stratum": "register",
+          "top": "medical",
+          "top_sha256": "f2ec63e8c5690128bc1d0ce942fdb98e4864340b645ffa7fc3fa5d42514c55c5",
+          "words": {
+            "bottom_stretch_words": 22,
+            "prefix_words": 0,
+            "suffix_words": 13,
+            "top_stretch_words": 25,
+            "word_edit_regions": 6
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday_paraphrase",
+          "bottom_sha256": "1d6dc1f119cb321d9ed472f751f152eeaf01f8db80f9ae2e8627192c4ecc233f",
+          "holds_constant": "the reference facts and the register",
+          "id": "r9-16-epar",
+          "role": "paraphrase_control",
+          "stratum": "register",
+          "top": "everyday",
+          "top_sha256": "9a509b84f3f879b47c7bfffed2410b52fcf1f4ed5db85c91ae4198f9c27d5c8b",
+          "words": {
+            "bottom_stretch_words": 26,
+            "prefix_words": 3,
+            "suffix_words": 7,
+            "top_stretch_words": 29,
+            "word_edit_regions": 7
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "changed_fact",
+          "bottom_sha256": "b8d6cb680672963ca1076c372520beb9618d459bf6a32304f4f172b5505dabb6",
+          "holds_constant": "the register and every reference fact but one",
+          "id": "r9-16-chg",
+          "role": "changed_fact_control",
+          "stratum": "register",
+          "top": "everyday",
+          "top_sha256": "9a509b84f3f879b47c7bfffed2410b52fcf1f4ed5db85c91ae4198f9c27d5c8b",
+          "words": {
+            "bottom_stretch_words": 10,
+            "prefix_words": 22,
+            "suffix_words": 7,
+            "top_stretch_words": 10,
+            "word_edit_regions": 1
+          }
+        }
+      ],
+      "eligibility": {
+        "confirmatory": {
+          "applies_to": "the register contrast and its two controls only",
+          "blocked_by": [
+            "protocol_not_signed",
+            "clinician_review_missing",
+            "patient_language_review_missing"
+          ],
+          "eligible": false
+        },
+        "publication": {
+          "labels_required": [
+            "exploratory, hand-authored",
+            "review status: domain_review_pending"
+          ],
+          "membership": "public-display/1",
+          "shareable": true
+        }
+      },
+      "family_id": "r9-16",
+      "family_sha256": "da4cfe6fd7f198544d7af52478030947af72e2bf5f8bcff7b98227d48b632de3",
+      "flags": [],
+      "register_stratum": "register",
+      "review": {
+        "clinician": {
+          "items": {
+            "clinical_facts": null,
+            "negation": null,
+            "severity": null,
+            "timing": null,
+            "uncertainty": null,
+            "urgency": null
+          },
+          "status": "not_reviewed"
+        },
+        "owner_read": {
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "e374bd21da7b4209b87ca4e9f4e4c5f9607e7096f49e64c59b5d011d1547cb2f",
+          "read_utc": "2026-11-11T02:41:33Z",
+          "reasons": [],
+          "status": "kept"
+        },
+        "patient_language_reviewer": {
+          "items": {
+            "plausible_patient_wording": null,
+            "same_meaning_to_a_lay_reader": null
+          },
+          "status": "not_reviewed"
+        },
+        "status": "domain_review_pending"
+      },
+      "right_care": 2,
+      "sources": {
+        "by_quote_type": {
+          "authors' summary": 4,
+          "none": 4
+        },
+        "expressions": 8,
+        "note": "Counts of what the author declared. This command does not open any source.",
+        "with_evidence_sentence": 0
+      },
+      "split": "fresh_test",
+      "split_source": "record 1",
+      "target": {
+        "endpoint_partial": "not_recorded",
+        "text": " clinic",
+        "tokens": "not_recorded",
+        "words": 1
+      },
+      "texts_sha256": "05de094bf075dce93818b6871623519f1f0f2e36e5bcca272190b647a30d4484",
+      "validation": {
+        "errors": [],
+        "warnings": [
+          "r9-16-chg: number: the everyday span adds ['1']"
+        ]
+      },
+      "variants": {
+        "changed_fact": {
+          "sha256": "b8d6cb680672963ca1076c372520beb9618d459bf6a32304f4f172b5505dabb6",
+          "words": 39
+        },
+        "everyday": {
+          "sha256": "9a509b84f3f879b47c7bfffed2410b52fcf1f4ed5db85c91ae4198f9c27d5c8b",
+          "words": 39
+        },
+        "everyday_paraphrase": {
+          "sha256": "1d6dc1f119cb321d9ed472f751f152eeaf01f8db80f9ae2e8627192c4ecc233f",
+          "words": 36
+        },
+        "medical": {
+          "sha256": "f2ec63e8c5690128bc1d0ce942fdb98e4864340b645ffa7fc3fa5d42514c55c5",
+          "words": 38
+        },
+        "medical_paraphrase": {
+          "sha256": "2c8afca244c6855bb2af327f7421034eeab6a6fa7a9de24224714212d4d79c85",
+          "words": 35
+        }
+      }
+    }
+  ],
+  "inputs": {
+    "lexicon": {
+      "name": "dialect_lexicon_20261109.json",
+      "sha256": "e39ce3ca5f2d2f88e8141f1d91213cfa52c44beb087a6449b59b26dfcdf9abc1"
+    },
+    "pairs_file": {
+      "name": "agscen_r9_pairs.json",
+      "sha256": "478de1ab99539775d6ec80536eebc2fd58735a57f189642b544b11143741b699"
+    },
+    "read_batches": [
+      {
+        "name": "families_r9_8f5f61c8.json",
+        "sha256": "e374bd21da7b4209b87ca4e9f4e4c5f9607e7096f49e64c59b5d011d1547cb2f"
+      }
+    ],
+    "split_records": [
+      {
+        "name": "gt_r9_splits.json",
+        "sha256": "337954a7cec939d0707ce4bbcee614e6e247dafb57d4d83d3c6b352dd8ed319c"
+      }
+    ],
+    "verdicts": [
+      {
+        "name": "gt_r9.json",
+        "sha256": "6d403429777b075ebb20c9eabf2eb216ff65d153ebb02bdcc81a8182b41ade1c"
+      }
+    ]
+  },
+  "inventory": {
+    "all_admissible": {
+      "contrasts": 76,
+      "contrasts_by_stratum_and_role": {
+        "register/changed_fact_control": 11,
+        "register/contrast": 11,
+        "register/paraphrase_control": 22,
+        "register_with_dialect/changed_fact_control": 5,
+        "register_with_dialect/contrast": 5,
+        "register_with_dialect/paraphrase_control": 10,
+        "syntax_crossing/contrast": 12
+      },
+      "families": 16,
+      "families_by_carrier_and_target": {
+        "so I need to go to the | ER": 4,
+        "so I need to go to the | clinic": 2,
+        "so I need to go to the | hospital": 4,
+        "so I should see a | dentist": 1,
+        "so I should see a | dermatologist": 1,
+        "so I should see a | doctor": 2,
+        "so I should see a | psychiatrist": 1,
+        "so I should see a | specialist": 1
+      },
+      "families_by_register_stratum": {
+        "register": 11,
+        "register_with_dialect": 5
+      },
+      "families_by_split": {
+        "discovery": 8,
+        "fresh_test": 4,
+        "validation": 4
+      },
+      "prompts": 92
+    },
+    "confirmatory_eligible": 0,
+    "owner_kept": {
+      "contrasts": 70,
+      "contrasts_by_stratum_and_role": {
+        "register/changed_fact_control": 10,
+        "register/contrast": 10,
+        "register/paraphrase_control": 20,
+        "register_with_dialect/changed_fact_control": 5,
+        "register_with_dialect/contrast": 5,
+        "register_with_dialect/paraphrase_control": 10,
+        "syntax_crossing/contrast": 10
+      },
+      "families": 15,
+      "families_by_carrier_and_target": {
+        "so I need to go to the | ER": 4,
+        "so I need to go to the | clinic": 2,
+        "so I need to go to the | hospital": 4,
+        "so I should see a | dentist": 1,
+        "so I should see a | dermatologist": 1,
+        "so I should see a | doctor": 1,
+        "so I should see a | psychiatrist": 1,
+        "so I should see a | specialist": 1
+      },
+      "families_by_register_stratum": {
+        "register": 10,
+        "register_with_dialect": 5
+      },
+      "families_by_split": {
+        "discovery": 8,
+        "fresh_test": 4,
+        "validation": 3
+      },
+      "prompts": 85
+    },
+    "owner_kept_discovery": {
+      "contrasts": 38,
+      "contrasts_by_stratum_and_role": {
+        "register/changed_fact_control": 4,
+        "register/contrast": 4,
+        "register/paraphrase_control": 8,
+        "register_with_dialect/changed_fact_control": 4,
+        "register_with_dialect/contrast": 4,
+        "register_with_dialect/paraphrase_control": 8,
+        "syntax_crossing/contrast": 6
+      },
+      "families": 8,
+      "families_by_carrier_and_target": {
+        "so I need to go to the | ER": 3,
+        "so I need to go to the | clinic": 1,
+        "so I need to go to the | hospital": 1,
+        "so I should see a | doctor": 1,
+        "so I should see a | psychiatrist": 1,
+        "so I should see a | specialist": 1
+      },
+      "families_by_register_stratum": {
+        "register": 4,
+        "register_with_dialect": 4
+      },
+      "families_by_split": {
+        "discovery": 8
+      },
+      "prompts": 46
+    },
+    "owner_read": {
+      "kept": 15,
+      "stale": 1
+    },
+    "review_status": {
+      "domain_review_pending": 16
+    }
+  },
+  "lane_input": {
+    "absent": [
+      "r9-14-chg",
+      "r9-14-epar",
+      "r9-14-mpar",
+      "r9-14-qb",
+      "r9-14-qc",
+      "r9-14-reg"
+    ],
+    "differs": [],
+    "identical": 70,
+    "index_of": {
+      "r9-01-chg": 4,
+      "r9-01-epar": 3,
+      "r9-01-mpar": 2,
+      "r9-01-qb": 5,
+      "r9-01-qc": 6,
+      "r9-01-reg": 1,
+      "r9-02-chg": 10,
+      "r9-02-epar": 9,
+      "r9-02-mpar": 8,
+      "r9-02-reg": 7,
+      "r9-03-chg": 14,
+      "r9-03-epar": 13,
+      "r9-03-mpar": 12,
+      "r9-03-reg": 11,
+      "r9-04-chg": 18,
+      "r9-04-epar": 17,
+      "r9-04-mpar": 16,
+      "r9-04-reg": 15,
+      "r9-05-chg": 22,
+      "r9-05-epar": 21,
+      "r9-05-mpar": 20,
+      "r9-05-qb": 23,
+      "r9-05-qc": 24,
+      "r9-05-reg": 19,
+      "r9-06-chg": 28,
+      "r9-06-epar": 27,
+      "r9-06-mpar": 26,
+      "r9-06-reg": 25,
+      "r9-07-chg": 32,
+      "r9-07-epar": 31,
+      "r9-07-mpar": 30,
+      "r9-07-reg": 29,
+      "r9-08-chg": 36,
+      "r9-08-epar": 35,
+      "r9-08-mpar": 34,
+      "r9-08-reg": 33,
+      "r9-09-chg": 40,
+      "r9-09-epar": 39,
+      "r9-09-mpar": 38,
+      "r9-09-qb": 41,
+      "r9-09-qc": 42,
+      "r9-09-reg": 37,
+      "r9-10-chg": 46,
+      "r9-10-epar": 45,
+      "r9-10-mpar": 44,
+      "r9-10-qb": 47,
+      "r9-10-qc": 48,
+      "r9-10-reg": 43,
+      "r9-11-chg": 52,
+      "r9-11-epar": 51,
+      "r9-11-mpar": 50,
+      "r9-11-reg": 49,
+      "r9-12-chg": 56,
+      "r9-12-epar": 55,
+      "r9-12-mpar": 54,
+      "r9-12-reg": 53,
+      "r9-13-chg": 60,
+      "r9-13-epar": 59,
+      "r9-13-mpar": 58,
+      "r9-13-qb": 61,
+      "r9-13-qc": 62,
+      "r9-13-reg": 57,
+      "r9-15-chg": 66,
+      "r9-15-epar": 65,
+      "r9-15-mpar": 64,
+      "r9-15-reg": 63,
+      "r9-16-chg": 70,
+      "r9-16-epar": 69,
+      "r9-16-mpar": 68,
+      "r9-16-reg": 67
+    },
+    "not_in_this_batch": [],
+    "pairs": 70,
+    "pairs_file": "agscen_r9_pairs.json"
+  },
+  "measurements": {
+    "existing_run_directories": [],
+    "note": "Directories under trace_out/ whose name starts with the stem. This command reads their names only and never their contents.",
+    "stem": "agscen_r9_20261110"
+  },
+  "mechanistic_subset": {
+    "candidates": 4,
+    "controls_per_site": [
+      "random_site",
+      "size_matched",
+      "reverse_direction"
+    ],
+    "families": [
+      "r9-04",
+      "r9-11",
+      "r9-12",
+      "r9-13"
+    ],
+    "ica_basis": "one fitted basis per model, fitted on discovery families only, used unchanged for every register and every stratum",
+    "outcome_selected": false,
+    "requested": 4,
+    "rule": "A method states which alignment classes it reads. A family is never rewritten to reach a class: unnatural patient wording is a worse defect than a coarser alignment.",
+    "seed": 20261112,
+    "selection": "a seeded draw of families, made before any measurement of the batch, from owner-kept discovery families in the register stratum without flags; care levels are visited in turn. Held-out families are not drawn: a mechanism developed on them could not be confirmed on them.",
+    "status": "selected_before_outcomes"
+  },
+  "models": [
+    {
+      "hf_id": "google/gemma-2-2b",
+      "identity_source": "scripts/logits_eval.py HF_IDS and HF_REVISIONS; the lane loads the tokenizer from the same pinned commit as the weights",
+      "revision": "c5ebcd40d208330abc697524c919956e692655cf",
+      "study_id": "gemma-2-2b",
+      "tokenizer_id": "google/gemma-2-2b",
+      "tokenizer_revision": "c5ebcd40d208330abc697524c919956e692655cf"
+    },
+    {
+      "hf_id": "google/gemma-2-2b-it",
+      "identity_source": "scripts/logits_eval.py HF_IDS and HF_REVISIONS; the lane loads the tokenizer from the same pinned commit as the weights",
+      "revision": "299a8560bedf22ed1c72a8a11e7dce4a7f9f51f8",
+      "study_id": "gemma-2-2b-it",
+      "tokenizer_id": "google/gemma-2-2b-it",
+      "tokenizer_revision": "299a8560bedf22ed1c72a8a11e7dce4a7f9f51f8"
+    },
+    {
+      "hf_id": "google/gemma-3-4b-it",
+      "identity_source": "scripts/logits_eval.py HF_IDS and HF_REVISIONS; the lane loads the tokenizer from the same pinned commit as the weights",
+      "revision": "093f9f388b31de276ce2de164bdc2081324b9767",
+      "study_id": "gemma-3-4b-it",
+      "tokenizer_id": "google/gemma-3-4b-it",
+      "tokenizer_revision": "093f9f388b31de276ce2de164bdc2081324b9767"
+    },
+    {
+      "hf_id": "meta-llama/Llama-3.2-3B",
+      "identity_source": "scripts/logits_eval.py HF_IDS and HF_REVISIONS; the lane loads the tokenizer from the same pinned commit as the weights",
+      "revision": "13afe5124825b4f3751f836b40dafda64c1ed062",
+      "study_id": "llama-3.2-3b",
+      "tokenizer_id": "meta-llama/Llama-3.2-3B",
+      "tokenizer_revision": "13afe5124825b4f3751f836b40dafda64c1ed062"
+    },
+    {
+      "hf_id": "allenai/OLMo-2-0425-1B",
+      "identity_source": "scripts/logits_eval.py HF_IDS and HF_REVISIONS; the lane loads the tokenizer from the same pinned commit as the weights",
+      "revision": "a1847dff35000b4271fa70afc5db10fd29fedbdf",
+      "study_id": "olmo-2-1b",
+      "tokenizer_id": "allenai/OLMo-2-0425-1B",
+      "tokenizer_revision": "a1847dff35000b4271fa70afc5db10fd29fedbdf"
+    },
+    {
+      "hf_id": "Qwen/Qwen3-1.7B",
+      "identity_source": "scripts/logits_eval.py HF_IDS and HF_REVISIONS; the lane loads the tokenizer from the same pinned commit as the weights",
+      "revision": "70d244cc86ccca08cf5af4e1e306ecf908b1ad5e",
+      "study_id": "qwen3-1.7b",
+      "tokenizer_id": "Qwen/Qwen3-1.7B",
+      "tokenizer_revision": "70d244cc86ccca08cf5af4e1e306ecf908b1ad5e"
+    },
+    {
+      "hf_id": "Qwen/Qwen3-4B",
+      "identity_source": "scripts/logits_eval.py HF_IDS and HF_REVISIONS; the lane loads the tokenizer from the same pinned commit as the weights",
+      "revision": "1cfa9a7208912126459214e8b04321603b3df60c",
+      "study_id": "qwen3-4b",
+      "tokenizer_id": "Qwen/Qwen3-4B",
+      "tokenizer_revision": "1cfa9a7208912126459214e8b04321603b3df60c"
+    }
+  ],
+  "review_layers": {
+    "clinician_review": "six dimensions of the rubric, recorded by a clinician",
+    "owner_read": "the owner's keep or exclude decision on a named version of the texts. It is not a clinician's review.",
+    "patient_language_review": "two items of the rubric, recorded by a patient-language reviewer",
+    "software_validation": "structural checks by this command. It says nothing about clinical content or patient language."
+  },
+  "schema": "patientwords.batch-intake/1",
+  "software_validation": {
+    "by_check": {
+      "number": 5
+    },
+    "errors": 0,
+    "is": "structural checks by this command. It says nothing about clinical content or patient language.",
+    "status": "passed",
+    "unusable_families": [],
+    "warnings": 5
+  },
+  "splits": {
+    "counts": {
+      "discovery": 8,
+      "fresh_test": 4,
+      "validation": 4
+    },
+    "method": "python random.Random(seed); for each care level from highest to lowest: sort the family ids, rng.shuffle, first half discovery, next quarter validation, rest fresh_test",
+    "newly_assigned": [],
+    "open": "families per split is not fixed in the protocol (its section 14)",
+    "records_checked": [],
+    "seed_for_new_assignments": null,
+    "source": {
+      "r9-01": "record 1",
+      "r9-02": "record 1",
+      "r9-03": "record 1",
+      "r9-04": "record 1",
+      "r9-05": "record 1",
+      "r9-06": "record 1",
+      "r9-07": "record 1",
+      "r9-08": "record 1",
+      "r9-09": "record 1",
+      "r9-10": "record 1",
+      "r9-11": "record 1",
+      "r9-12": "record 1",
+      "r9-13": "record 1",
+      "r9-14": "record 1",
+      "r9-15": "record 1",
+      "r9-16": "record 1"
+    },
+    "unit": "case family: every wording of a case is in the family's split"
+  },
+  "tokenization": {
+    "note": "No tokenizer file is available offline. Token ids come from a recorded run; until then alignment is known at word level only.",
+    "status": "not_recorded"
+  }
+}
