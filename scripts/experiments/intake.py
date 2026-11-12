@@ -422,11 +422,12 @@ def assign_splits(strata: Mapping[str, int], seed: int) -> dict[str, str]:
 
 def _splits(families: Sequence[Mapping[str, Any]], records: Sequence[Mapping[str, Any]], seed: int | None,
             removed: set[str], measured: bool, stem: str | None) -> dict[str, Any]:
-    """Recorded splits are read, never redrawn. This command cannot see when a record was written. Once the batch
-    has measurements it therefore accepts a record only if the record is bound to this batch (its strata are
-    exactly this batch's families and care levels) and is the seeded draw its own seed gives; a bare mapping, a
-    record of another batch or a hand-chosen assignment is refused. That the record predates the measurements
-    is shown by the commit that added it, not by this command, and the manifest says so."""
+    """Recorded splits are read, never redrawn. A record is accepted only if it is bound to this batch (its strata
+    are exactly this batch's families and care levels) and is the seeded draw its own seed gives, whether or not
+    the batch has measurements: a bare mapping, a record of another batch or a hand-chosen assignment is refused,
+    because the design's split is a recorded seeded draw and nothing else. This command cannot see when a record
+    was written. That a record predates the measurements is shown by the commit that added it, not by this
+    command, and the manifest says so."""
     recorded: dict[str, str] = {}
     sources: dict[str, str] = {}
     reproduced: list[dict[str, Any]] = []
@@ -435,20 +436,20 @@ def _splits(families: Sequence[Mapping[str, Any]], records: Sequence[Mapping[str
         body = record.get("split_assignment", record)
         require(isinstance(body.get("splits"), dict) and set(body["splits"].values()) <= set(SPLITS), "invalid_split_record",
                 f"split record {n} needs a splits object with values from {list(SPLITS)}")
-        if measured:
-            require(integer(body.get("seed")) and isinstance(body.get("strata"), dict)
-                    and body["strata"] == batch_strata
-                    and assign_splits(body["strata"], body["seed"]) == body["splits"], "split_record_unbound",
-                    f"split record {n}: the batch already has measurements, so a record is accepted only when its "
-                    "strata are exactly this batch's families and care levels and its splits are the draw its seed "
-                    "gives. This one is not; a split is not assigned or adopted after measurement")
+        # The draw is recomputed over this batch's own families and care levels, so a record need not repeat them;
+        # when it does, they must be the batch's.
+        require(integer(body.get("seed")) and body.get("strata", batch_strata) == batch_strata
+                and assign_splits(batch_strata, body["seed"]) == body["splits"], "split_record_unbound",
+                f"split record {n}: a record is accepted only when it carries a seed and its splits are exactly the "
+                "draw that seed gives over this batch's families and care levels (and its strata, if it lists them, "
+                "are the batch's). This one is not; a hand-chosen assignment or a record of another batch is not a "
+                "recorded split of this batch")
         for fid, split in body["splits"].items():
             require(recorded.setdefault(fid, split) == split, "split_conflict",
                     f"{fid} is in {recorded[fid]} in one split record and in {split} in another")
             sources.setdefault(fid, f"record {n}")
-        if integer(body.get("seed")) and isinstance(body.get("strata"), dict):
-            reproduced.append({"record": n, "seed": body["seed"],
-                               "reproduces_from_its_seed": assign_splits(body["strata"], body["seed"]) == body["splits"]})
+        reproduced.append({"record": n, "seed": body["seed"], "reproduces_from_its_seed": True,
+                           "lists_its_strata": isinstance(body.get("strata"), dict)})
     strata = {f["family_id"]: f["right_care"] for f in families}
     new = {fid: care for fid, care in strata.items() if fid not in recorded and fid not in removed}
     assigned: dict[str, str] = {}
@@ -539,14 +540,22 @@ def _mechanistic(candidates: Mapping[str, int], n: int, seed: int | None, measur
             "status": "selected_before_outcomes", "outcome_selected": False, "restored_from_previous_manifest": False}
 
 
+def _token_ids(value: Any) -> bool:
+    """A recorded tokenization: a non-empty list of non-negative integers. A string is not one."""
+    return isinstance(value, list) and bool(value) and all(integer(v) for v in value)
+
+
 def _tokenizers(docs: Sequence[Mapping[str, Any]]) -> dict[tuple[str, str], Mapping[str, Any]]:
     out: dict[tuple[str, str], Mapping[str, Any]] = {}
     for doc in docs:
         require(isinstance(doc, dict) and doc.get("schema") == TOKENIZATION_SCHEMA and text(doc.get("tokenizer_id"))
                 and bool(HEX40.fullmatch(str(doc.get("tokenizer_revision")))) and text(doc.get("source"))
-                and isinstance(doc.get("prompts"), dict), "invalid_tokenization",
+                and isinstance(doc.get("prompts"), dict) and isinstance(doc.get("targets", {}), dict)
+                and all(_token_ids(v) for table in (doc["prompts"], doc.get("targets", {})) for v in table.values()),
+                "invalid_tokenization",
                 f"Expected a {TOKENIZATION_SCHEMA} document with tokenizer_id, a 40-hex tokenizer_revision, a source "
-                "saying where the ids were recorded, and prompts keyed by prompt SHA-256")
+                "saying where the ids were recorded, and prompts keyed by prompt SHA-256. Every prompt and target "
+                "value is a non-empty list of integer token ids")
         out[(doc["tokenizer_id"], doc["tokenizer_revision"])] = doc
     return out
 

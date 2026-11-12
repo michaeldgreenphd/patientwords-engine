@@ -145,10 +145,12 @@ separate fields because an exploratory or null result is shared, not hidden.
 **Splits and the mechanistic subset.** A split is drawn per family (every wording of a
 case together), per care level, from a recorded seed. A recorded split
 (`--split-record`) is read and never redrawn; two records that disagree refuse
-`split_conflict`. When `trace_out/` already holds a directory for `--stem`, nothing is
-drawn or adopted. A new split refuses `split_after_measurement`. A split record is accepted
-only when its strata are exactly this batch's families and care levels and its splits are
-the draw its own seed gives; anything else refuses `split_record_unbound`. The command
+`split_conflict`. A split record is accepted, before or after measurement, only when it
+carries a seed and its splits are exactly the draw that seed gives over this batch's
+families and care levels (if it lists strata, they must be the batch's); a bare mapping or
+a hand-placed assignment refuses `split_record_unbound`.
+When `trace_out/` already holds a directory for `--stem`, nothing is drawn: a new split
+refuses `split_after_measurement`. The command
 cannot see when a record was written: the commit that added it is the evidence, and the
 manifest says so (`records_timing`). A subset is restored only from `--previous-manifest`
 when that file is an intake manifest of this batch and this stem, written while no run
@@ -177,8 +179,9 @@ listed, and `lane_input.clean` is true only when no such row exists and no contr
 `differs`. Absent contrasts and rows of other batches are listed, not judged.
 
 **Tokenization.** Alignment classes (`position_aligned`, `suffix_aligned`) are computed
-only from `--tokenization` records of real token ids. Without one the manifest says
-`not_recorded`. No family is rewritten to reach a class.
+only from `--tokenization` records of real token ids (every prompt and target value a
+non-empty list of integers; anything else refuses `invalid_tokenization`). Without one the
+manifest says `not_recorded`. No family is rewritten to reach a class.
 
 **Reruns.** The same inputs give byte-identical outputs. An existing output with the same
 bytes is `unchanged`; with other bytes the command refuses `output_differs` and writes

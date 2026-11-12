@@ -51,6 +51,21 @@ def _run(batch: list[dict] | None = None, **options) -> dict:
                              design_sha256=sha256_bytes(intake.DESIGN_PATH.read_bytes()), **options)
 
 
+def _seeded_record(predicate=lambda splits: True) -> dict:
+    """A split record the command accepts: this batch's strata and the draw of a seed. The first seed whose draw
+    satisfies ``predicate`` is used, so a test can ask for a draw with a given discovery set without choosing one."""
+    strata = {f["family_id"]: f["right_care"] for f in _batch()}
+    for seed in range(2000):
+        splits = intake.assign_splits(strata, seed)
+        if predicate(splits):
+            return {"seed": seed, "strata": strata, "splits": splits}
+    raise AssertionError("no seed gives such a draw")
+
+
+def _discovery(record: dict) -> set[str]:
+    return {fid for fid, split in record["splits"].items() if split == "discovery"}
+
+
 def _family(manifest: dict, fid: str) -> dict:
     return next(r for r in manifest["families"] if r["family_id"] == fid)
 
@@ -141,7 +156,7 @@ def test_splits_keep_a_family_whole_are_seeded_and_are_never_redrawn() -> None:
     unassigned = _run()
     assert {r["split"] for r in unassigned["families"]} == {None}
     assert "split_unassigned" in unassigned["families"][0]["eligibility"]["confirmatory"]["blocked_by"]
-    clash = {"splits": {**record["splits"], "s-01": "validation" if record["splits"]["s-01"] != "validation" else "discovery"}}
+    clash = _seeded_record(lambda splits: splits != record["splits"])              # another seed's draw of the same batch
     with pytest.raises(Refusal) as refusal:
         _run(split_records=[record, clash])
     assert refusal.value.code == "split_conflict"
@@ -173,7 +188,7 @@ def test_no_split_and_no_subset_is_chosen_after_measurement(measured_root: Path)
     assert before["mechanistic_subset"]["status"] == "selected_before_outcomes" and "timing" not in before["mechanistic_subset"]
 
 
-def test_after_measurement_a_split_record_must_be_this_batchs_seeded_draw() -> None:
+def test_a_split_record_must_be_this_batchs_seeded_draw_before_and_after_measurement() -> None:
     strata = {f["family_id"]: f["right_care"] for f in _batch()}
     drawn = intake.assign_splits(strata, 7)
     swapped = dict(drawn)
@@ -182,15 +197,24 @@ def test_after_measurement_a_split_record_must_be_this_batchs_seeded_draw() -> N
     other_batch = {**strata, "s-99": 4}
     for label, record in (
             ("a bare mapping", {"splits": drawn}),
+            ("every family hand-placed in a held-out split", {"splits": {fid: "fresh_test" for fid in strata}}),
             ("a hand-chosen assignment", {"seed": 7, "strata": strata, "splits": swapped}),
             ("a record of another batch", {"seed": 7, "strata": other_batch, "splits": intake.assign_splits(other_batch, 7)}),
             ("a record with other care levels", {"seed": 7, "strata": {**strata, "s-01": 1},
                                                  "splits": intake.assign_splits({**strata, "s-01": 1}, 7)})):
-        with pytest.raises(Refusal) as refusal:
-            _run(split_records=[record], stem=MEASURED_STEM)
-        assert refusal.value.code == "split_record_unbound", label
-        assert _run(split_records=[{"splits": record["splits"]}] if label == "a bare mapping" else [record])  # read freely before
-    assert _run(split_records=[{"seed": 7, "strata": strata, "splits": drawn}], stem=MEASURED_STEM)["splits"]["newly_assigned"] == []
+        for stem in (None, LATER_STEM, MEASURED_STEM):                              # no stem, not measured, measured
+            with pytest.raises(Refusal) as refusal:
+                _run(split_records=[record], stem=stem)
+            assert refusal.value.code == "split_record_unbound", (label, stem)
+    good = {"seed": 7, "strata": strata, "splits": drawn}
+    without_strata = {"seed": 7, "splits": drawn}                                   # the draw is recomputed over the batch
+    for stem in (None, LATER_STEM, MEASURED_STEM):
+        assert _run(split_records=[good], stem=stem)["splits"]["newly_assigned"] == []
+        checked = _run(split_records=[without_strata], stem=stem)["splits"]["records_checked"]
+        assert checked == [{"record": 1, "seed": 7, "reproduces_from_its_seed": True, "lists_its_strata": False}]
+        with pytest.raises(Refusal) as refusal:                                     # a seed does not excuse other splits
+            _run(split_records=[{"seed": 7, "splits": swapped}], stem=stem)
+        assert refusal.value.code == "split_record_unbound"
 
 
 def test_after_measurement_a_subset_is_restored_only_from_a_manifest_of_this_batch_and_stem_written_before(
@@ -261,29 +285,31 @@ def test_after_measurement_no_family_is_reported_as_eligible_for_a_confirmatory_
 
 
 def test_the_mechanistic_subset_is_a_seeded_draw_from_kept_unflagged_discovery_families() -> None:
-    record = {"splits": {f["family_id"]: "discovery" for f in _batch()}}
-    manifest = _run(split_records=[record], verdicts=[_verdicts(s_06="excluded")], mechanistic_families=3, mechanistic_seed=11)
+    plain = {r["family_id"] for r in _run()["families"] if not r["flags"]} - {"s-06"}
+    record = _seeded_record(lambda splits: len(_discovery({"splits": splits})) == 2 and _discovery({"splits": splits}) <= plain)
+    chosen = sorted(_discovery(record))
+    options = dict(split_records=[record], verdicts=[_verdicts(s_06="excluded")], mechanistic_seed=11)
+    manifest = _run(**options, mechanistic_families=8)                               # more than there are candidates
     subset = manifest["mechanistic_subset"]
     assert subset["status"] == "selected_before_outcomes" and subset["outcome_selected"] is False
-    assert len(subset["families"]) == 3 and subset == _run(
-        split_records=[record], verdicts=[_verdicts(s_06="excluded")], mechanistic_families=3, mechanistic_seed=11)["mechanistic_subset"]
-    assert not {"s-02", "s-05", "s-06"} & set(subset["families"])                  # dialect, new carrier, excluded
+    assert subset["families"] == chosen and subset["candidates"] == 2                # held-out families are not drawn
+    assert subset == _run(**options, mechanistic_families=8)["mechanistic_subset"]
+    assert len(_run(**options, mechanistic_families=1)["mechanistic_subset"]["families"]) == 1
     work = manifest["estimated_work"]["mechanistic_subset"]
-    assert work["sites_per_contrast_with_controls"] == 4 and work["runner_minutes"] == {"low": 120, "high": 180}
+    assert work["sites_per_contrast_with_controls"] == 4 and work["runner_minutes"] == {"low": 80, "high": 120}
     assert work["measured"] is False and "one fitted basis per model" in subset["ica_basis"]
-    held_out = _run(split_records=[{"splits": {f["family_id"]: "fresh_test" for f in _batch()}}],
-                    verdicts=[_verdicts()], mechanistic_families=3, mechanistic_seed=11)
-    assert held_out["mechanistic_subset"]["families"] == []                         # held-out families are not drawn
+    # A dialect family and an owner-excluded family are not candidates, even in discovery.
+    flagged = _seeded_record(lambda splits: _discovery({"splits": splits}) == {"s-02", "s-06"})
+    assert _run(split_records=[flagged], verdicts=[_verdicts(s_06="excluded")], mechanistic_families=8,
+                mechanistic_seed=11)["mechanistic_subset"]["families"] == []
     assert _run()["mechanistic_subset"]["status"] == "not_selected"
     # A family that a review removed is not drawn, even when it is kept by the owner and already in discovery.
     basis = {r["family_id"]: r["review_basis_sha256"] for r in _run()["families"]}
-    unflagged = [r["family_id"] for r in _run()["families"] if not r["flags"]]
     removed = {"schema": intake.REVIEWS_SCHEMA, "reviews": [
-        _review(unflagged[0], "clinician", basis[unflagged[0]], items={"severity": "different"})]}
+        _review(chosen[0], "clinician", basis[chosen[0]], items={"severity": "different"})]}
     drawn = _run(split_records=[record], verdicts=[_verdicts()], reviews=[removed], mechanistic_families=8, mechanistic_seed=11)
-    assert _family(drawn, unflagged[0])["review"]["status"] == "removed_by_review" and _family(drawn, unflagged[0])["split"] == "discovery"
-    assert unflagged[0] not in drawn["mechanistic_subset"]["families"]
-    assert sorted(drawn["mechanistic_subset"]["families"]) == sorted(unflagged[1:])
+    assert _family(drawn, chosen[0])["review"]["status"] == "removed_by_review" and _family(drawn, chosen[0])["split"] == "discovery"
+    assert drawn["mechanistic_subset"]["families"] == chosen[1:]
 
 
 @pytest.mark.parametrize("mutate, expected", [
@@ -391,6 +417,14 @@ def test_alignment_is_read_from_recorded_token_ids_and_is_not_recorded_without_t
     assert _family(manifest, "s-02")["target"]["endpoint_partial"] is True               # a two-token target
     assert _family(manifest, "s-03")["target"]["tokens"][key] == "not_recorded"
     assert manifest["tokenization"][0]["prompts_recorded"] == len(prompts)
+    some = next(iter(prompts))
+    for bad in ({**doc, "prompts": {**prompts, some: "abc"}},                        # a string is not a list of token ids
+                {**doc, "prompts": {**prompts, some: [1, "2"]}}, {**doc, "prompts": {**prompts, some: [True, 2]}},
+                {**doc, "prompts": {**prompts, some: []}}, {**doc, "targets": {" ER": "ab"}}, {**doc, "targets": {" ER": [1.0]}},
+                {**doc, "targets": [1, 2]}):
+        with pytest.raises(Refusal) as refusal:
+            _run(tokenizations=[bad])
+        assert refusal.value.code == "invalid_tokenization"
 
 
 def test_the_inventory_names_pinned_models_and_estimates_from_recorded_rates_only() -> None:
