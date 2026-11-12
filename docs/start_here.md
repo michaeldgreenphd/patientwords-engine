@@ -85,8 +85,8 @@ clinical situation measured against each other: in a study batch, one row `(batc
 clinical wording and an everyday wording. The gallery lists pairs, and each row of a catalogue run is one
 pair. A **case family** is the unit of an experiment protocol: one clinical situation with a fixed set of
 reference facts and all of its wordings (`variants`). A protocol names the pairs of variants it compares
-(`comparisons`), a family joins a study pair through `legacy_join`, and the family is the independent unit
-of every analysis
+(`comparisons`). A family taken from an existing study row joins that row through `legacy_join`, which is
+optional. The family is the independent unit of every analysis
 ([protocol template, section 3](protocols/protocol_template.md#3-population-and-independent-unit)).
 
 Each row links the documents that govern its step, and a quoted command is written as its
