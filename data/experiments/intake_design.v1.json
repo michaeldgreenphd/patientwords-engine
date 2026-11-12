@@ -148,7 +148,7 @@
       "fresh_test"
     ],
     "method": "python random.Random(seed); for each care level from highest to lowest: sort the family ids, rng.shuffle, first half discovery, next quarter validation, rest fresh_test",
-    "assigned": "per batch, once, before any measurement of the batch; a recorded assignment is never redrawn",
+    "assigned": "per batch, once, before any measurement of the batch; a recorded assignment is never redrawn. After measurement a record is accepted only when its strata are exactly the batch's families and care levels and its splits are the draw its seed gives; when it was written is shown by its commit, not by the intake command",
     "open": "families per split is not fixed in the protocol (its section 14)"
   },
   "mechanistic_subset": {
@@ -164,7 +164,8 @@
       "size_matched",
       "reverse_direction"
     ],
-    "ica_basis": "one fitted basis per model, fitted on discovery families only, used unchanged for every register and every stratum"
+    "ica_basis": "one fitted basis per model, fitted on discovery families only, used unchanged for every register and every stratum",
+    "after_measurement": "nothing is drawn; the subset is restored only from an intake manifest of the same batch that was written before any run directory existed, with the same seed and count, and only while each chosen family keeps its review basis"
   },
   "review": {
     "rubric": "data/protocols/instrument_validity_rubric.draft.json#pair_equivalence_review",

@@ -135,9 +135,16 @@ separate fields because an exploratory or null result is shared, not hidden.
 **Splits and the mechanistic subset.** A split is drawn per family (every wording of a
 case together), per care level, from a recorded seed. A recorded split
 (`--split-record`) is read and never redrawn; two records that disagree refuse
-`split_conflict`. When `trace_out/` already holds a directory for `--stem`, a new split
-refuses `split_after_measurement` and a new subset refuses `subset_after_measurement`
-unless `--previous-manifest` shows the same subset was chosen earlier. The mechanistic
+`split_conflict`. When `trace_out/` already holds a directory for `--stem`, nothing is
+drawn or adopted. A new split refuses `split_after_measurement`. A split record is accepted
+only when its strata are exactly this batch's families and care levels and its splits are
+the draw its own seed gives; anything else refuses `split_record_unbound`. The command
+cannot see when a record was written: the commit that added it is the evidence, and the
+manifest says so (`records_timing`). A subset is restored only from `--previous-manifest`
+when that file is an intake manifest of this batch, written while no run directory existed,
+with the same seed and count, and every chosen family still has the review basis it had
+then; otherwise `subset_after_measurement` or `subset_family_changed`. A concern is
+withdrawn only by whoever raised it. The mechanistic
 subset is a seeded draw from owner-kept, unflagged discovery families, so it is not
 outcome-selected, and its estimate includes the three controls per site.
 

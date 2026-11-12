@@ -139,15 +139,66 @@ def test_no_split_and_no_subset_is_chosen_after_measurement() -> None:
     with pytest.raises(Refusal) as refusal:
         _run(split_seed=7, stem=MEASURED_STEM)
     assert refusal.value.code == "split_after_measurement"
-    record = {"splits": {r["family_id"]: r["split"] for r in _run(split_seed=7)["families"]}}
-    read_back = _run(split_records=[record], stem=MEASURED_STEM)                    # a recorded split is only read
+    strata = {f["family_id"]: f["right_care"] for f in _batch()}
+    record = {"seed": 7, "strata": strata, "splits": {r["family_id"]: r["split"] for r in _run(split_seed=7)["families"]}}
+    read_back = _run(split_records=[record], stem=MEASURED_STEM)                    # a bound, seeded record is only read
     assert read_back["measurements"]["existing_run_directories"] and read_back["splits"]["newly_assigned"] == []
+    assert read_back["splits"]["records_timing"].startswith("Not verified by this command")
+    assert _run(split_records=[record])["splits"]["records_timing"] == "The batch has no measurements under its stem."
     options = dict(split_records=[record], verdicts=[_verdicts()], mechanistic_families=1, mechanistic_seed=3)
     before = _run(**options)
+    assert before["mechanistic_subset"]["restored_from_previous_manifest"] is False
     with pytest.raises(Refusal) as refusal:
         _run(**options, stem=MEASURED_STEM)
     assert refusal.value.code == "subset_after_measurement"
-    assert _run(**options, stem=MEASURED_STEM, previous_manifest=before)["mechanistic_subset"] == before["mechanistic_subset"]
+    restored = _run(**options, stem=MEASURED_STEM, previous_manifest=before)["mechanistic_subset"]
+    assert restored["families"] == before["mechanistic_subset"]["families"] and restored["restored_from_previous_manifest"] is True
+    assert restored["status"] == "selected_before_outcomes" and restored["outcome_selected"] is False
+
+
+def test_after_measurement_a_split_record_must_be_this_batchs_seeded_draw() -> None:
+    strata = {f["family_id"]: f["right_care"] for f in _batch()}
+    drawn = intake.assign_splits(strata, 7)
+    swapped = dict(drawn)
+    a, b = next((x, y) for x in drawn for y in drawn if drawn[x] != drawn[y])
+    swapped[a], swapped[b] = drawn[b], drawn[a]
+    other_batch = {**strata, "s-99": 4}
+    for label, record in (
+            ("a bare mapping", {"splits": drawn}),
+            ("a hand-chosen assignment", {"seed": 7, "strata": strata, "splits": swapped}),
+            ("a record of another batch", {"seed": 7, "strata": other_batch, "splits": intake.assign_splits(other_batch, 7)}),
+            ("a record with other care levels", {"seed": 7, "strata": {**strata, "s-01": 1},
+                                                 "splits": intake.assign_splits({**strata, "s-01": 1}, 7)})):
+        with pytest.raises(Refusal) as refusal:
+            _run(split_records=[record], stem=MEASURED_STEM)
+        assert refusal.value.code == "split_record_unbound", label
+        assert _run(split_records=[{"splits": record["splits"]}] if label == "a bare mapping" else [record])  # read freely before
+    assert _run(split_records=[{"seed": 7, "strata": strata, "splits": drawn}], stem=MEASURED_STEM)["splits"]["newly_assigned"] == []
+
+
+def test_after_measurement_a_subset_is_restored_only_from_a_manifest_of_this_batch_written_before() -> None:
+    strata = {f["family_id"]: f["right_care"] for f in _batch()}
+    record = {"seed": 7, "strata": strata, "splits": intake.assign_splits(strata, 7)}
+    options = dict(split_records=[record], verdicts=[_verdicts()], mechanistic_families=1, mechanistic_seed=3)
+    before = _run(**options)
+    chosen = before["mechanistic_subset"]["families"]
+    forged = [
+        {"mechanistic_subset": {"families": chosen}},                                    # a bare family list
+        {**before, "schema": "something-else/1"},
+        {**before, "batch": {**before["batch"], "batch_id": "another"}},
+        {**before, "measurements": {**before["measurements"], "existing_run_directories": ["x__model"]}},   # written after
+        {**before, "mechanistic_subset": {**before["mechanistic_subset"], "seed": 4}},
+        {**before, "mechanistic_subset": {**before["mechanistic_subset"], "status": "not_selected"}},
+        None]
+    for previous in forged:
+        with pytest.raises(Refusal) as refusal:
+            _run(**options, stem=MEASURED_STEM, previous_manifest=previous)
+        assert refusal.value.code == "subset_after_measurement"
+    changed = _batch()
+    next(f for f in changed if f["family_id"] == chosen[0])["reference_facts"][0]["text"] = "another abstract fact"
+    with pytest.raises(Refusal) as refusal:                                             # the chosen family is another version now
+        _run(changed, **{**options, "verdicts": []}, stem=MEASURED_STEM, previous_manifest=before)
+    assert refusal.value.code == "subset_family_changed"
 
 
 def test_the_mechanistic_subset_is_a_seeded_draw_from_kept_unflagged_discovery_families() -> None:
@@ -402,6 +453,11 @@ def test_a_concern_resolved_by_a_revision_reopens_for_any_other_version() -> Non
         with pytest.raises(Refusal) as refusal:
             _run(concerns=[_concerns(bad)])
         assert refusal.value.code == "invalid_concerns"
+    for by, kind in (("another model", "model"), ("placeholder reviewer", "human"), ("placeholder owner", "human")):
+        with pytest.raises(Refusal) as refusal:                                     # only the raiser withdraws a concern
+            _run(concerns=[_concerns(_concern("c-9", "s-01", ["reg"], status="withdrawn", by=by, by_kind=kind,
+                                              date="2000-01-02", note="not mine to withdraw"))])
+        assert refusal.value.code == "not_a_disposition"
 
 
 @pytest.mark.parametrize("mutate, part", [

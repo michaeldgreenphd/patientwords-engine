@@ -331,8 +331,14 @@ def _concerns(families: Mapping[str, Mapping[str, Any]], basis: Mapping[str, str
             if state == "closed":
                 require(text(disposition.get("by")) and text(disposition.get("date")) and text(disposition.get("note")),
                         "invalid_concerns", f"{cid}: a closing disposition needs by, date and note")
-                require(status == "withdrawn" or disposition.get("by_kind") == "human", "not_a_disposition",
-                        f"{cid}: {status} is a person's decision; a model's statement does not close a concern")
+                if status == "withdrawn":
+                    require((disposition["by"], disposition.get("by_kind")) == (row["raised_by"], row["raised_by_kind"]),
+                            "not_a_disposition",
+                            f"{cid}: a concern is withdrawn only by whoever raised it ({row['raised_by']!r}); anyone "
+                            "else records accepted_as_is or resolved_by_revision")
+                else:
+                    require(disposition.get("by_kind") == "human", "not_a_disposition",
+                            f"{cid}: {status} is a person's decision; a model's statement does not close a concern")
                 if status == "resolved_by_revision" and disposition.get("resolved_in_review_basis_sha256") != basis[fid]:
                     state, why = "open", "the disposition names another version of the family than the one in this batch"
             raised_on_basis = row.get("raised_on_review_basis_sha256")
@@ -394,13 +400,26 @@ def assign_splits(strata: Mapping[str, int], seed: int) -> dict[str, str]:
 
 def _splits(families: Sequence[Mapping[str, Any]], records: Sequence[Mapping[str, Any]], seed: int | None,
             removed: set[str], measured: bool) -> dict[str, Any]:
+    """Recorded splits are read, never redrawn. This command cannot see when a record was written. Once the batch
+    has measurements it therefore accepts a record only if the record is bound to this batch (its strata are
+    exactly this batch's families and care levels) and is the seeded draw its own seed gives; a bare mapping, a
+    record of another batch or a hand-chosen assignment is refused. That the record predates the measurements
+    is shown by the commit that added it, not by this command, and the manifest says so."""
     recorded: dict[str, str] = {}
     sources: dict[str, str] = {}
     reproduced: list[dict[str, Any]] = []
+    batch_strata = {f["family_id"]: f["right_care"] for f in families}
     for n, record in enumerate(records, 1):
         body = record.get("split_assignment", record)
         require(isinstance(body.get("splits"), dict) and set(body["splits"].values()) <= set(SPLITS), "invalid_split_record",
                 f"split record {n} needs a splits object with values from {list(SPLITS)}")
+        if measured:
+            require(integer(body.get("seed")) and isinstance(body.get("strata"), dict)
+                    and body["strata"] == batch_strata
+                    and assign_splits(body["strata"], body["seed"]) == body["splits"], "split_record_unbound",
+                    f"split record {n}: the batch already has measurements, so a record is accepted only when its "
+                    "strata are exactly this batch's families and care levels and its splits are the draw its seed "
+                    "gives. This one is not; a split is not assigned or adopted after measurement")
         for fid, split in body["splits"].items():
             require(recorded.setdefault(fid, split) == split, "split_conflict",
                     f"{fid} is in {recorded[fid]} in one split record and in {split} in another")
@@ -423,17 +442,46 @@ def _splits(families: Sequence[Mapping[str, Any]], records: Sequence[Mapping[str
                        for fid in strata},
             "seed_for_new_assignments": seed if assigned else None, "newly_assigned": sorted(assigned),
             "records_checked": reproduced,
+            "records_timing": ("Not verified by this command. The batch has measurements; each record matches this "
+                               "batch's families and care levels and reproduces from its seed. That it was written "
+                               "before the measurements is shown by the commit that added it."
+                               if measured and records else
+                               "The batch has no measurements under its stem." if records else None),
             "counts": dict(sorted(collections.Counter(str(v) for v in per_family.values()).items()))}
 
 
 def _mechanistic(candidates: Mapping[str, int], n: int, seed: int | None, measured: bool,
-                 previous: Mapping[str, Any] | None, design: Mapping[str, Any]) -> dict[str, Any]:
+                 previous: Mapping[str, Any] | None, design: Mapping[str, Any], batch_id: str,
+                 basis: Mapping[str, str]) -> dict[str, Any]:
+    """A seeded draw before measurement. After measurement nothing is drawn: the subset is restored from a
+    manifest of this batch that was itself written before any run directory existed, and only while every
+    family of that subset still has the review basis it had then."""
     base = {"selection": design["mechanistic_subset"]["selection"], "rule": design["mechanistic_subset"]["rule"],
             "controls_per_site": design["mechanistic_subset"]["controls_per_site"],
             "ica_basis": design["mechanistic_subset"]["ica_basis"]}
     if not n:
         return {**base, "families": [], "status": "not_selected"}
     require(seed is not None, "missing_seed", "--mechanistic-seed is required with --mechanistic-families")
+    if measured:
+        refusal = ("The batch already has measurements. A mechanistic subset is selected before outcomes: pass "
+                   "--previous-manifest, an intake manifest of this batch written before any run directory existed, "
+                   "or report the families as outcome-selected and exploratory")
+        earlier = (previous or {}).get("mechanistic_subset") if isinstance(previous, dict) else None
+        require(isinstance(previous, dict) and previous.get("schema") == SCHEMA
+                and (previous.get("batch") or {}).get("batch_id") == batch_id
+                and (previous.get("measurements") or {}).get("existing_run_directories") == []
+                and isinstance(earlier, dict) and earlier.get("status") == "selected_before_outcomes"
+                and isinstance(earlier.get("families"), list) and bool(earlier["families"])
+                and earlier.get("seed") == seed and earlier.get("requested") == n, "subset_after_measurement", refusal)
+        then = {r.get("family_id"): r.get("review_basis_sha256") for r in previous.get("families") or []
+                if isinstance(r, dict)}
+        moved = sorted(f for f in earlier["families"] if then.get(f) is None or then.get(f) != basis.get(f))
+        require(not moved, "subset_family_changed",
+                f"{moved}: the earlier manifest chose these families in another version than the batch now holds, or "
+                "does not record their version; its subset cannot be restored for this batch")
+        return {**base, "families": sorted(earlier["families"]), "seed": seed, "requested": n,
+                "candidates": earlier.get("candidates"), "status": "selected_before_outcomes", "outcome_selected": False,
+                "restored_from_previous_manifest": True}
     rng = random.Random(seed)
     queues = []
     for care in sorted(set(candidates.values()), reverse=True):
@@ -445,13 +493,8 @@ def _mechanistic(candidates: Mapping[str, int], n: int, seed: int | None, measur
         for queue in queues:
             if queue and len(drawn) < n:
                 drawn.append(queue.pop(0))
-    if measured:
-        earlier = ((previous or {}).get("mechanistic_subset") or {}).get("families")
-        require(earlier == sorted(drawn), "subset_after_measurement",
-                "The batch already has measurements. A mechanistic subset is selected before outcomes: pass "
-                "--previous-manifest with the same subset, or report the families as outcome-selected and exploratory")
     return {**base, "families": sorted(drawn), "seed": seed, "requested": n, "candidates": len(candidates),
-            "status": "selected_before_outcomes", "outcome_selected": False}
+            "status": "selected_before_outcomes", "outcome_selected": False, "restored_from_previous_manifest": False}
 
 
 def _tokenizers(docs: Sequence[Mapping[str, Any]]) -> dict[tuple[str, str], Mapping[str, Any]]:
@@ -683,7 +726,8 @@ def run_intake(batch: Any, *, batch_id: str, batch_sha256: str, source_ref: str,
     kept_rows = [r for r in admissible_rows if r["review"]["owner_read"]["status"] == "kept"]
     subset_candidates = {r["family_id"]: r["right_care"] for r in kept_rows
                          if not r["flags"] and r["split"] == SPLITS[0]}
-    subset = _mechanistic(subset_candidates, mechanistic_families, mechanistic_seed, measured, previous_manifest, design)
+    subset = _mechanistic(subset_candidates, mechanistic_families, mechanistic_seed, measured, previous_manifest, design,
+                          batch_id, basis_sha)
 
     def pairs_of(rows: Iterable[Mapping[str, Any]]) -> list[Mapping[str, Any]]:
         return [c for r in rows for c in r["contrasts"]]
