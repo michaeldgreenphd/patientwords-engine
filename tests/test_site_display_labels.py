@@ -39,6 +39,10 @@ Every test here fails on site revision 9132d57 (the revision before the label cl
 One guards a defect of the cleanup itself (two open runs with one heading had rows tables named alike); it fails
 there on the form of the name, which that revision built from a file name and a run id.
 
+Three tests of the follow-up of 2026-11-12 fail on site revision a9350a6, the revision before it: the titles of the
+two subsets of the translated corpus on ``results/``, the spelling "self-care" on ``multi-turn/``, and the label
+"whitespace token" for a top prediction with no stored text on the two ``simulated-scenarios/`` pages.
+
 Skipped where the sibling site checkout, Playwright or a Chromium is missing.
 """
 from __future__ import annotations
@@ -323,6 +327,49 @@ def test_multi_turn_prints_a_grade_value_or_turn_type_without_an_entry_as_record
         listed_cells = [cell for cell in cells if cell not in (UNLISTED_VALUE, "n/a", "\u2014", "")]
         assert listed_cells and all(len(cell) <= 3 for cell in listed_cells), sorted(set(listed_cells))
         assert all(len(text) <= 5 for text, _ in heads if text != UNLISTED_ROLE), heads
+        assert view.errors == []
+
+
+# Every text node, title and accessible name of the page, in every fold, outside the recorded messages (``.bub``):
+# a message is the script's or a model's words, not a label of the page.
+_LABEL_TEXTS = """() => { const out = [];
+    const walk = (node) => { for (const child of node.childNodes) {
+        if (child.nodeType === 3) { out.push(child.nodeValue); continue; }
+        if (child.nodeType !== 1) continue;
+        if (['SCRIPT', 'STYLE', 'TEMPLATE', 'NOSCRIPT'].includes(child.tagName) || child.matches('.bub')) continue;
+        for (const name of ['title', 'aria-label']) if (child.hasAttribute(name)) out.push(child.getAttribute(name));
+        walk(child); } };
+    walk(document.body); return out; }"""
+_MEASURE_CHIPS = "() => [...document.querySelectorAll('#measure-chips .chip')].map((chip) => chip.dataset.measure)"
+
+
+@pytest.mark.parametrize("mode", ["published", "sample"])
+def test_multi_turn_spells_the_self_care_tier_with_a_hyphen(site, mode) -> None:
+    """(2026-11-12, owner request) The tier whose stored id is ``self_care`` was labelled "self care" in the Method
+    sentence and wherever the page printed the value: the strip key, the figures, hover texts and accessible
+    names. The label is "self-care", as on the LLM and Methods pages; the stored id and the cell text "SC" are
+    unchanged. With the committed files, and with the sample files under ``?sample=1``: every scenario and every
+    measure is selected in turn. Only labels are read; no grade or count is asserted."""
+    browser, base = site
+    name = "petri_multiturn_conversations.json" if mode == "published" else "petri_multiturn_conversations.sample.json"
+    _need(name)
+    tiered = {measure["id"] for measure in _fixture(name)["measures"] if "self_care" in measure["values"]}
+    assert tiered, f"data/{name} holds no measure with the value self_care"
+    spaced = re.compile(r"\bself care\b", re.IGNORECASE)
+    keys: list[str] = []
+    with _Page(browser, base, MULTI_TURN + ("" if mode == "published" else "?sample=1")) as view:
+        page = view.page
+        assert "ranked self-care, routine" in page.text_content("#sec-method")
+        for scenario in page.evaluate(_OPTION_VALUES, "pick-seed"):
+            page.select_option("#pick-seed", scenario)
+            for measure in page.evaluate(_MEASURE_CHIPS):
+                page.click(f'#measure-chips .chip[data-measure="{measure}"]')
+                if measure in tiered:
+                    keys.append(page.inner_text("#strip-key"))
+                found = [text for text in page.evaluate(_LABEL_TEXTS) if spaced.search(text)]
+                assert found == [], (scenario, measure, found[:3])
+        # the strip key pairs the unchanged cell text with the label
+        assert keys and all("SC self-care" in key for key in keys), keys[:1]
         assert view.errors == []
 
 
@@ -999,6 +1046,40 @@ def test_results_rows_tables_of_two_runs_with_one_heading_are_named_apart(site) 
         assert view.errors == []
 
 
+CORPUS_SUBSET = "Translated corpus, 352-pair subset"
+_SET_STAMP = re.compile(r"_(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})\d{2}Z)?$")
+
+
+def _batch_date(stem: str) -> str:
+    """The batch date a row title ends with, read from the date stamp that ends a stimulus set name."""
+    year, month, day, hour, minute = _SET_STAMP.search(stem).groups()
+    return f"{year}-{month}-{day}" + (f" {hour}:{minute} UTC" if hour else "")
+
+
+def test_results_titles_the_two_subsets_of_the_translated_corpus(site) -> None:
+    """(2026-11-12, owner request) The runs of two stimulus sets, ``txcorpus_priority_`` and ``txcorpus_priority2_``,
+    were titled "Unclassified stimulus set": their families had no entry in the page's table. Each now has one.
+    The second set holds the items of the first in another order, and its title says so. The committed index is
+    read as it is; a run id, a set name and a title are compared, and no count or measured value is asserted."""
+    browser, base = site
+    _need("results_catalogue/index.json")
+    wanted: dict[str, str] = {}
+    for run in _fixture("results_catalogue/index.json")["runs"]:
+        if run["stem"].startswith("txcorpus_priority2_"):
+            wanted[run["run_dir"]] = f"{CORPUS_SUBSET}, reordered · {_batch_date(run['stem'])}"
+        elif run["stem"].startswith("txcorpus_priority_"):
+            wanted[run["run_dir"]] = f"{CORPUS_SUBSET} · {_batch_date(run['stem'])}"
+    assert len({title.split(" · ")[0] for title in wanted.values()}) == 2, "the index holds no run of one of the two sets"
+    with _Page(browser, base, RESULTS) as view:
+        view.page.wait_for_selector("#cat-body tr.cat-run")
+        while view.page.is_visible("#cat-more"):
+            view.page.click("#cat-more")
+        titles = {row["run"]: row["title"] for row in view.page.evaluate(_RESULT_ROWS) if row["run"] in wanted}
+        assert not any("Unclassified stimulus set" in title for title in titles.values()), titles
+        assert titles == wanted
+        assert view.errors == []
+
+
 # ------------------------------------------------------------------ Scenarios
 
 LISTED_TOPIC, UNLISTED_TOPIC = "infectious_skin", "made_up_code-value"
@@ -1060,6 +1141,57 @@ def test_a_scenario_without_a_target_token_gets_one_dash_and_a_named_quantity(si
             '#sim-card details.spread > summary, #sim-card p.sim-probs')].map((node) => node.textContent)""")
         assert len(lines) == 2
         assert all(line.startswith("target probability = ") and "prob(" not in line for line in lines)
+        assert view.errors == []
+
+
+WHITESPACE = "whitespace token"
+_TOP_CELLS = """() => [...document.querySelectorAll('#sim-sum-body tr:not(.sim-detail)')].map(
+    (row) => row.lastElementChild.textContent)"""
+_PROBABILITY_LINES = """() => [...document.querySelectorAll(
+    '#sim-card details.spread > summary, #sim-card p.sim-probs')].map((node) => node.textContent)"""
+
+
+def test_a_top_prediction_with_no_stored_text_is_labelled_a_whitespace_token(site) -> None:
+    """(2026-11-12, owner request) The exporter stores no text for a top prediction made of whitespace only: the
+    token is null, or an empty string, beside its probability. The scenario page and the series index printed the
+    word "null" for it (nothing for the empty string). Both now print "whitespace token", the Dialect page's label.
+    A scenario with no top entry at all keeps its dash. The committed payload is cut to three scenarios whose top
+    predictions are placeholders set in memory; 0.81 and 0.5 are placeholders, and no stored value is asserted."""
+    browser, base = site
+    _need("simulated_scenarios.json")
+    payload = _scenarios_file(3)
+    tops = ({"top_clinical": [None, 0.81], "top_patient": ["placeholder", 0.5], "flipped": True},
+            {"top_clinical": ["", 0.81], "top_patient": ["", 0.81], "flipped": False},
+            {"top_clinical": None, "top_patient": None, "flipped": False})
+    for scenario, top in zip(payload["scenarios"], tops, strict=True):
+        for record in (scenario, *(scenario.get("models") or {}).values()):
+            record.update(top, screening={**(record.get("screening") or {}), "status": "passed"})
+    redirected, unchanged, absent = payload["scenarios"]
+    routes = {SCENARIOS_FILE: _json(payload)}
+    with _Page(browser, base, GALLERY, routes) as view:
+        view.page.wait_for_selector("#sim-sum-body tr")
+        cells = view.page.evaluate(_TOP_CELLS)
+        assert f"{WHITESPACE} → placeholder (redirected)" in cells and f"{WHITESPACE} (unchanged)" in cells, cells
+        assert "— (unchanged)" in cells, cells                    # no top entry: the dash, as before
+        assert [cell for cell in cells if re.search(r"\bnull\b", cell)] == [], cells
+        # the filter box finds a row by the label it prints
+        view.page.fill("#sim-filter", "whitespace")
+        view.page.wait_for_function("document.querySelectorAll('#sim-sum-body tr').length > 0")
+        found = view.page.evaluate(_TOP_CELLS)
+        assert found and all(WHITESPACE in cell for cell in found) and len(found) < len(cells), found
+        assert view.errors == []
+    for scenario, clinical, patient in ((redirected, f"{WHITESPACE} (0.81)", "placeholder (0.50)"),
+                                        (unchanged, f"{WHITESPACE} (0.81)", f"{WHITESPACE} (0.81)")):
+        with _Page(browser, base, f"{SCENARIO}?sim={scenario['index']}", routes) as view:
+            view.page.wait_for_selector("#sim-card .sim-prompts")
+            lines = view.page.evaluate(_PROBABILITY_LINES)
+            assert len(lines) == 2 and not any(re.search(r"\bnull\b", line) for line in lines), lines
+            assert all(f" · top prediction: {top}" in line for top, line in zip((clinical, patient), lines)), lines
+            assert view.errors == []
+    with _Page(browser, base, f"{SCENARIO}?sim={absent['index']}", routes) as view:
+        view.page.wait_for_selector("#sim-card .sim-prompts")
+        lines = view.page.evaluate(_PROBABILITY_LINES)
+        assert len(lines) == 2 and not any("top prediction" in line for line in lines), lines
         assert view.errors == []
 
 

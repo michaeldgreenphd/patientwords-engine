@@ -119,7 +119,7 @@ READER_LABELS = {
     "Compare methods": "method-comparison bundle",
     "Cases": "Case families",
     "Run status": "Execution state",
-    "Included in analysis": "Analysis membership",
+    "Analysis eligibility": "Analysis membership",
     "Study version": "analysis pin",
     "Methods & source": "Provenance",
 }
@@ -1367,8 +1367,8 @@ def assert_reader_labels(page: Any, protocol: Mapping[str, Any]) -> dict[str, An
         assert retired.upper() not in upper, f"the retired heading {retired!r} is still a heading or a column head"
     assert found["run_status_head"].upper() == "RUN STATUS", f"the status column is headed {found['run_status_head']!r}"
     context = {label.upper(): value for label, value in found["context"].items()}
-    included, schema = context["INCLUDED IN ANALYSIS"]
-    assert included == "no" and "evidence.analysis_memberships" in schema, (included, schema)
+    declared, schema = context["ANALYSIS ELIGIBILITY"]
+    assert declared == "none declared" and "evidence.analysis_memberships" in schema, (declared, schema)
     version, schema = context["STUDY VERSION"]
     assert version == f"{protocol['protocol_id']} · version {protocol['version']}" and "protocol.sha256" in schema, (
         version, schema)
@@ -2139,7 +2139,8 @@ def check_family_folds(s: Session) -> dict[str, Any]:
         assert not first["context_fold_open"] and first["guide_folded"] and not first["capability_fold_open"], (
             "a fold of Methods & source or of the run status is open on load")
         context = {label: value for label, value in first["context"]}
-        wanted = {"Clinical review": s.protocol["evidence"]["clinical_review"], "Included in analysis": "no",
+        wanted = {"Clinical review": s.protocol["evidence"]["clinical_review"],
+                  "Analysis eligibility": "none declared",
                   "Evidence class": s.protocol["evidence"]["evidence_class"]}
         assert {label: context.get(label) for label in wanted} == wanted, first["context"]
         # One primary target first: the only plot on load is the first case's primary target, and no table of

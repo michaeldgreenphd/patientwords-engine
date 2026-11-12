@@ -29,6 +29,15 @@ the revision of its own date.
 | [`docs/protocols/protocol_template.md`](protocols/protocol_template.md) | Reusable research protocol template: copy it and fill every field before collecting or opening data for a new study. Its companions are listed under *Designs and plans, by arm*. |
 | [`docs/upgrade_checklist.md`](upgrade_checklist.md) | Repeatable procedure for syncing a fork without losing local patches and for evaluating a runtime pin change in isolation (interp-engine, Petri and Inspect): the checks to run, the parity record, one pin per commit, and the manifest update. States that the 2026-11-10 fork sync was not a runtime migration. |
 
+### Author and review a case
+
+| File | What it is |
+|---|---|
+| [`docs/start_here.md`](start_here.md#case-lifecycle) | The case lifecycle: where a paired stimulus is authored, reviewed, measured and published, with the command and who runs each step. |
+| [`docs/review/README.md`](review/README.md) | Owner and rater review material, with the rater instructions for the stimulus review packet. |
+| [`docs/verification_protocol.md`](verification_protocol.md) | Draft protocol for physician ratings of pairs, advice questions and scripts. The rating app is in a private repository. |
+| [`scripts/README.md`](../scripts/README.md#analysis-and-checks) | The row for `scripts/check_candidate_pairs.py`, the mechanical check of hand-written candidate pairs. |
+
 ### Share and publish results
 
 | File | What it is |

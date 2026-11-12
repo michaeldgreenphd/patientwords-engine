@@ -78,6 +78,21 @@ Each path is the shortest set of documents for one kind of work. Read them in or
 6. [Execution and operations](agent_reference.md#execution-and-operations): the
    single-writer, queue and spend rules.
 
+## Case lifecycle
+
+A case is one paired stimulus: a clinical wording and an everyday wording of one situation.
+Each row links the documents that govern its step, and a quoted command is written as its
+source writes it. [Trace A](ecosystem.md#3-trace-a-one-real-result-from-stimulus-to-page)
+follows one real result from stimulus to page.
+
+| Step | Where | Command | Who runs it | Governing document |
+|---|---|---|---|---|
+| Authored: generated batch | The `scenario-generation` lane, in CI, appends a batch and its `.report.json` cost sidecar under `data/simulated/`. Batches are append-only | `python scripts/fire_trigger.py fire --trigger <t> --params '<json>' --note '<why, with settle-bypass evidence if used>'`, with `scenario-generation` as `<t>` | A session that fires, through the script. The lane is paid: only on the owner's explicit words in a live chat | [Operators handbook, section 3](operators_handbook.md#3--standard-operating-procedures); [lanes](triggers.md#lanes); [invariants](../AGENTS.md#research-and-compatibility-invariants); [the generator](../README.md#generating-stress-test-scenarios) |
+| Authored: hand-written set | Candidates and the owner's verdicts are files on a draft branch. The committed set is `data/simulated/agscen_*.json`; its `.report.json` sidecar names those files and their commits. These sets are in no analysis membership | `python scripts/check_candidate_pairs.py CANDIDATES.json`; the options are in the script's docstring | A session, before each hand-authored round | [Script index](../scripts/README.md#analysis-and-checks); [memberships](open_results_policy.md#memberships) |
+| Reviewed | Review status per stimulus family: `clinical_review` in `data/results_policy/policy.v1.json`. Owner and rater material: `docs/review/` | None. A family gets its status with its `stimulus_classes` entry in that file | The owner and raters; physicians, in a private rating app (draft protocol) | [Open-results policy](open_results_policy.md#the-rule), with [adding a family](open_results_policy.md#adding-things); [review index](review/README.md); [physician protocol](verification_protocol.md) |
+| Measured | CI lanes. Trace and logits summaries land under `trace_out/`. A locally produced value is not a measurement | `python scripts/fire_trigger.py status`, then the fire command above with the lane's trigger; when the run is terminal and every expected output has landed, `python scripts/fire_trigger.py resolve --trigger <name>` | Every session that fires, and the Routine. A paid fire only on the owner's explicit words | [Procedure B](#procedure-b-model-execution); [fire-trigger-safe skill](../.claude/skills/fire-trigger-safe/SKILL.md); [harvest-resolve skill](../.claude/skills/harvest-resolve/SKILL.md); [script index](../scripts/README.md#ops-tooling-and-the-routine) |
+| Published | The chain writes `../patientwords/data/` and `../patientwords/modes/simulated/`. The site push is the publication: GitHub Pages serves the site's `main` | The chain, in the skill's order. `python scripts/results_snapshot.py check-release --site ../patientwords` must exit 0 before any push | The Routine, when new results land; by hand under the same skill. Data files only, never page text | [publish-site-data skill](../.claude/skills/publish-site-data/SKILL.md); [script index](../scripts/README.md#publish-chain); the site's `../patientwords/verify.md` |
+
 ## Procedure A: offline quickstart
 
 This procedure calls no model, needs no API key, no GPU stack and no method fork.

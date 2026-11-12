@@ -137,7 +137,7 @@ before its machinery:
    own mark, then every planned method with its run status and reason. The capability rows
    the planner used are in a fold.
 5. **Methods & source.** The labels that say what the comparison may be used for (model,
-   evidence class, clinical review, *Included in analysis*, *Study version*, visibility),
+   evidence class, clinical review, *Analysis eligibility*, *Study version*, visibility),
    the protocol, model and tokenizer as recorded, the definition of the endpoint, the
    schema term of each reader-facing label, planned tasks and run counts, external links,
    the file path, the schema string and the source hashes, and the limitations.
@@ -247,7 +247,7 @@ source*.
 | Cases | case families | `protocol.families`, `comparisons[].family_id` |
 | Medical wording, Everyday wording, Rewritten wording | the variants `clinical`, `colloquial`, `normalized` | `protocol.families[].variants` |
 | Run status | execution state | `execution.by_state`, `methods_not_run[].states` |
-| Included in analysis | analysis membership | `evidence.analysis_memberships` |
+| Analysis eligibility | analysis membership, as the protocol declares it | `evidence.analysis_memberships` |
 | Study version | analysis pin | `protocol.id`, `protocol.version`, `protocol.sha256` |
 | Methods & source | provenance | `provenance`, `plan_totals`, `execution` |
 | Target-token probability | `behavior_next_token` / `full_vocab_probability` | `comparisons[].comparisons[].behavior` |
