@@ -1177,7 +1177,7 @@ def check_first_view(s: Session, recorder: Recorder) -> None:
                 review = by_id[name].get("clinical_review")
                 differs = (_text(review) or "not recorded") != common
                 if differs:
-                    assert own == "review: " + label_of(x.labels.table("REVIEW_LABEL"), review), (
+                    assert own == label_of(x.labels.table("REVIEW_LABEL"), review), (
                         f"the row of {name} does not state its own review status")
                     assert (_text(review) or "not recorded") in (title or ""), (
                         f"the review status of {name} does not keep its stored value in its title")

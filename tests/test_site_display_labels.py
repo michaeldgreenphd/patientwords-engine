@@ -849,19 +849,58 @@ def test_results_run_keeps_its_identifiers_under_methods_and_source(site) -> Non
             assert identifier in kept["text"], identifier
         labels = view.page.evaluate(_ROWS_TABLE_NAMES)
         assert labels and all(run["stem"] not in label and ".json" not in label for label in labels)
-        # one wording for the study rule: the row's badge, the filter option and the open run's line
-        included = [badge for badge in row["badges"] if badge.startswith("in ")]
-        assert len(included) == 1
-        phrase = re.fullmatch(r"in (.+?)(?: \(\d+ of \d+ parts\))?", included[0]).group(1)
+        # The study rule has a short wording and a full name. The short one ("study analysis") is the badge of
+        # the row and of each part, with no filler word before it; the full name, which holds the short wording,
+        # is in the filter option and in the open run's line.
+        short = "study analysis"
+        included = [badge for badge in row["badges"] if badge.endswith("analysis") or " analysis " in badge
+                    or badge.endswith(" only")]
+        assert len(included) == 1 and re.fullmatch(rf"{short}(?: \(\d+ of \d+ parts\))?", included[0]), row["badges"]
+        assert not any(badge.startswith(("in ", "review:")) for badge in row["badges"]), row["badges"]
         said = view.page.evaluate("""() => {
             const lines = document.querySelectorAll('#cat-body tr.cat-detail .det > dl.kv dd');
             return {filter: [...document.querySelectorAll('#f-membership option')].map((option) => option.textContent),
                     open_run: lines[lines.length - 1].textContent,
                     parts: [...document.querySelectorAll('#cat-body tr.cat-detail section.part .part-state .bdg')].map(
                         (badge) => badge.textContent)}; }""")
-        assert [option for option in said["filter"] if option.startswith(f"in the {phrase} (")] != [], said["filter"]
+        named = [option for option in said["filter"] if option.startswith("in the ") and f"{short} (" in option]
+        assert len(named) == 1, said["filter"]
+        phrase = named[0][len("in the "):named[0].index(" (")]
+        assert phrase.endswith(short), phrase
         assert [option for option in said["filter"] if option.startswith(f"not in the {phrase} (")] != []
-        assert said["open_run"].startswith(f"{phrase}: ") and f"in {phrase}" in said["parts"], said
+        assert said["open_run"].startswith(f"{phrase}: ") and short in said["parts"], said
+        assert view.errors == []
+
+
+def test_results_study_context_states_each_fact_once(site) -> None:
+    """(2026-11-12, owner request) The Study context cell of a run's row holds only the words the row needs: no
+    filler word before the analysis wording, no ``review:`` before a review status, and no evidence-class words
+    that the experiment title of the same row already gives. The stored evidence class and its definition stay in
+    the badge's title."""
+    browser, base = site
+    _need("results_catalogue/index.json")
+    with _Page(browser, base, RESULTS) as view:
+        view.page.wait_for_selector("#cat-body tr.cat-run")
+        while view.page.is_visible("#cat-more"):
+            view.page.click("#cat-more")
+        rows = view.page.evaluate("""() => [...document.querySelectorAll('#cat-body tr.cat-run')].map((row) => {
+            const cell = row.querySelector('td.c-ctx'), evidence = cell.querySelector('.bdg');
+            return {title: row.querySelector('td.c-exp .cat-x').innerText,
+                    lines: [...cell.querySelectorAll('.ln')].map((n) => n.innerText.trim()),
+                    evidence: evidence.textContent, stored: evidence.getAttribute('title')}; })""")
+        assert rows
+        for row in rows:
+            assert not any(line.startswith(("in ", "review:")) for line in row["lines"]), row
+            analysis = row["lines"][1].split(" (")[0]
+            assert analysis in ("study analysis", "no analysis") or analysis.endswith(" analysis only"), row
+            assert row["stored"].startswith("evidence_class: "), row
+        named = [row for row in rows if row["title"].startswith(("Hand-authored set", "Third-party text set"))]
+        assert len({row["title"].split(" ")[0] for row in named}) == 2          # both classes are in the index
+        for row in named:
+            assert row["evidence"] == "exploratory", row
+            assert "exploratory_hand_authored" in row["stored"] or "exploratory_third_party_source" in row["stored"]
+        # a row whose title does not name the class keeps the whole evidence label
+        assert "exploratory, post-registration" in {row["evidence"] for row in rows}
         assert view.errors == []
 
 

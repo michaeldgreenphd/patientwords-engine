@@ -565,7 +565,7 @@ def test_the_page_carries_the_ids_and_strings_the_checker_reads() -> None:
     for text in ("'Medical wording'", "'Everyday wording'", "['Target-token probability','num','medical wording']",
                  "['Target-token probability','num','everyday wording']", f"['Difference','','{crp.DIFFERENCE_ORDER}']",
                  *crp.SHARED_STATUS, *crp.DIFFERENCE_NOTE, "DASH+' not measured'", "'data-exception','review'",
-                 "'review: '+labelOf(REVIEW_LABEL,r.clinical_review)"):
+                 "el('span','ln',labelOf(REVIEW_LABEL,r.clinical_review))"):
         assert text in script.replace("\u2019s", "").replace("\u2019", ""), text
     assert "'Clinical wording'" not in script and "'Patient wording'" not in script
     assert "var(--penalty)" not in source and "bdg-restricted" not in source and "draft-flag" not in source
