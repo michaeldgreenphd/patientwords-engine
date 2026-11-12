@@ -753,6 +753,11 @@ _RESULT_ROWS = """() => [...document.querySelectorAll('#cat-body tr.cat-run')].m
             badges: [...row.querySelectorAll('td.c-ctx .bdg')].map((n) => n.textContent)}; })"""
 
 
+_PART_ELIGIBILITY = """() => [...document.querySelectorAll(
+    '#cat-body tr.cat-detail details.det-src td[data-l="Eligibility"]')].map(
+        (cell) => [...cell.querySelectorAll('.ln')].map((line) => line.textContent))"""
+
+
 def _code_tokens(stem: str) -> list[str]:
     """The tokens of a stimulus-set name that are codes, not words: a letter and a digit together (``r2``,
     ``s2p5``, ``k200``, ``2panel``). The date stamp is not one."""
@@ -868,6 +873,17 @@ def test_results_run_keeps_its_identifiers_under_methods_and_source(site) -> Non
         assert [option for option in said["filter"] if option.startswith(f"not eligible for the {phrase} (")] != []
         assert not any(option.startswith(("in the ", "not in the ")) for option in said["filter"]), said["filter"]
         assert said["open_run"].startswith(f"{phrase}: ") and short in said["parts"], said
+        # Methods & source words each part the same way (Codex review of patientwords#33, 2026-11-12): the analysis
+        # rules that admit a part are listed as "eligible under", never as "in". The display rule is not an
+        # analysis rule: it is listed under its recorded purpose, so a part that only the display rule admits
+        # does not read as eligible.
+        cells = view.page.evaluate(_PART_ELIGIBILITY)
+        assert cells, "the open run's Methods & source lists no part"
+        analysis = {name for name, rule in index["memberships"].items() if rule.get("purpose") == "analysis"}
+        for lines in cells:
+            assert lines[0].startswith("eligible under: "), lines              # this run is in the study rule
+            assert set(lines[0][len("eligible under: "):].split(", ")) <= analysis, lines
+            assert all(line.startswith(("outside ", "display: ")) for line in lines[1:]), lines
         assert view.errors == []
 
 
