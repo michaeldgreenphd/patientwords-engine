@@ -297,9 +297,11 @@ def _concerns(families: Mapping[str, Mapping[str, Any]], basis: Mapping[str, str
               design: Mapping[str, Any]) -> dict[str, list[dict[str, Any]]]:
     """family_id -> its known concerns, each with the state its recorded disposition gives it for this version.
 
-    Nothing but a recorded disposition closes a concern. ``accepted_as_is`` is a person's decision, so a model
-    cannot record it. ``resolved_by_revision`` names the version that resolved it; for any other version the
-    concern is open again."""
+    Nothing but a recorded disposition closes a concern. ``accepted_as_is`` and ``resolved_by_revision`` are a
+    person's decisions, so a model cannot record them: a revision made to address a concern leaves it open as
+    ``revised_pending_reread`` until a person confirms it. ``resolved_by_revision`` names the version that resolved
+    it; for any other version the concern is open again. ``label`` in ``applies_to`` means the reviewer-only
+    condition label, which is in no prompt."""
     rules = design["concerns"]
     suffixes = {c["suffix"]: c for c in design["contrasts"]}
     out: dict[str, list[dict[str, Any]]] = {fid: [] for fid in families}
@@ -315,8 +317,9 @@ def _concerns(families: Mapping[str, Mapping[str, Any]], basis: Mapping[str, str
             require(fid in families, "invalid_concerns", f"{cid}: {fid!r} is not a usable family of this batch")
             applies = row.get("applies_to")
             present = {s for s, c in suffixes.items() if {c["top"], c["bottom"]} <= set(families[fid]["texts"])}
-            require(isinstance(applies, list) and bool(applies) and set(applies) <= present | {"family"},
-                    "invalid_concerns", f"{cid}: applies_to must name 'family' or contrasts of {fid}: {sorted(present)}")
+            require(isinstance(applies, list) and bool(applies) and set(applies) <= present | {"family", "label"},
+                    "invalid_concerns",
+                    f"{cid}: applies_to must name 'family', 'label' or contrasts of {fid}: {sorted(present)}")
             require(row.get("kind") in rules["kinds"] and text(row.get("text")) and text(row.get("raised_by"))
                     and row.get("raised_by_kind") in ("human", "model") and text(row.get("raised_on")), "invalid_concerns",
                     f"{cid}: needs a kind from {sorted(rules['kinds'])}, text, raised_by, raised_by_kind and raised_on")
@@ -328,8 +331,8 @@ def _concerns(families: Mapping[str, Mapping[str, Any]], basis: Mapping[str, str
             if state == "closed":
                 require(text(disposition.get("by")) and text(disposition.get("date")) and text(disposition.get("note")),
                         "invalid_concerns", f"{cid}: a closing disposition needs by, date and note")
-                require(status != "accepted_as_is" or disposition.get("by_kind") == "human", "not_a_disposition",
-                        f"{cid}: accepted_as_is is a person's decision; a model's statement does not close a concern")
+                require(status == "withdrawn" or disposition.get("by_kind") == "human", "not_a_disposition",
+                        f"{cid}: {status} is a person's decision; a model's statement does not close a concern")
                 if status == "resolved_by_revision" and disposition.get("resolved_in_review_basis_sha256") != basis[fid]:
                     state, why = "open", "the disposition names another version of the family than the one in this batch"
             raised_on_basis = row.get("raised_on_review_basis_sha256")

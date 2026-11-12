@@ -376,17 +376,27 @@ def test_a_concern_survives_the_owners_keep_and_is_closed_only_by_its_own_dispos
 
 def test_a_concern_resolved_by_a_revision_reopens_for_any_other_version() -> None:
     basis = _family(_run(), "s-01")["review_basis_sha256"]
-    resolved = _concern("c-1", "s-01", ["reg"], kind="wording", status="resolved_by_revision", by="placeholder reviewer",
-                        by_kind="model", date="2000-01-02", note="reworded", resolved_in_review_basis_sha256=basis)
+    resolved = _concern("c-1", "s-01", ["reg"], kind="wording", status="resolved_by_revision", by="placeholder owner",
+                        by_kind="human", date="2000-01-02", note="reworded", resolved_in_review_basis_sha256=basis)
     assert _family(_run(concerns=[_concerns(resolved)]), "s-01")["concerns"]["records"][0]["state"] == "closed"
     revised = _batch()
     revised[0]["reference_facts"][0]["text"] = "another abstract fact"
     record = _family(_run(revised, concerns=[_concerns(resolved)]), "s-01")["concerns"]["records"][0]
     assert record["state"] == "open" and "another version" in record["state_reason"]
-    with pytest.raises(Refusal) as refusal:                                         # a model cannot accept a concern
-        _run(concerns=[_concerns(_concern("c-9", "s-01", ["reg"], status="accepted_as_is", by="a model", by_kind="model",
-                                          date="2000-01-02", note="looks fine"))])
-    assert refusal.value.code == "not_a_disposition"
+    for status in ("accepted_as_is", "resolved_by_revision"):                       # a model cannot close a concern
+        with pytest.raises(Refusal) as refusal:
+            _run(concerns=[_concerns(_concern("c-9", "s-01", ["reg"], status=status, by="a model", by_kind="model",
+                                              date="2000-01-02", note="looks fine", resolved_in_review_basis_sha256=basis))])
+        assert refusal.value.code == "not_a_disposition"
+    pending = _run(concerns=[_concerns(
+        _concern("c-7", "s-01", ["reg"], kind="wording", status="revised_pending_reread", note="reworded by the reviewer"),
+        _concern("c-8", "s-01", ["label"], kind="label"),
+        _concern("c-6", "s-02", ["reg"], status="withdrawn", by="placeholder reviewer", by_kind="model",
+                 date="2000-01-02", note="raised in error"))])
+    row = _family(pending, "s-01")
+    assert [c["state"] for c in row["concerns"]["records"]] == ["open", "open"]     # a revision alone closes nothing
+    assert row["eligibility"]["confirmatory"]["blocked_by"][-1] == "open_concern_on_register_pair:c-7"   # the label does not block
+    assert _family(pending, "s-02")["concerns"]["closed"] == 1
     for bad in (_concern("c-9", "s-99", ["reg"]), _concern("c-9", "s-02", ["qb"]), _concern("c-9", "s-01", ["reg"], kind="nope"),
                 _concern("c-9", "s-01", ["reg"], status="withdrawn")):
         with pytest.raises(Refusal) as refusal:

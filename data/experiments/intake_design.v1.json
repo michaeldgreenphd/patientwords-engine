@@ -207,15 +207,17 @@
     "open_statuses": [
       "open",
       "pending_clinical_review",
-      "pending_patient_language_review"
+      "pending_patient_language_review",
+      "revised_pending_reread"
     ],
     "closed_statuses": [
       "accepted_as_is",
       "resolved_by_revision",
       "withdrawn"
     ],
-    "closing": "accepted_as_is is a person's decision and names that person. resolved_by_revision names the review basis of the version that resolved it and applies to that version only. withdrawn is recorded by whoever raised the concern, with the reason.",
-    "effect": "An open concern that applies to the family or to its register contrast blocks a confirmatory statement on the register pair. An open concern on a control is reported on that control and does not block the pair."
+    "closing": "accepted_as_is and resolved_by_revision are a person's decisions and name that person; a model cannot record either. A revision made to address a concern leaves it open as revised_pending_reread until a person confirms it. resolved_by_revision names the review basis of the version that resolved it and applies to that version only. withdrawn is recorded by whoever raised the concern, with the reason.",
+    "effect": "An open concern that applies to the family or to its register contrast blocks a confirmatory statement on the register pair. An open concern on a control, on another contrast or on the label is reported there and does not block the pair.",
+    "applies_to": "a contrast suffix of the family, 'family' for the whole family, or 'label' for the reviewer-only condition label, which is in no prompt"
   },
   "sources": {
     "verification": "a recorded check that the cited record exists and contains the evidence sentence",

@@ -100,12 +100,14 @@ changes, with or without a change of prompt text, the owner's read and both revi
 about a family's content (a control that adds a fact, a disputed level, a stated negative,
 source fit) is a record of its own, with a kind, the contrasts it applies to, who raised it
 and a disposition. The owner keeping a family does not close a concern, and neither does a
-review: only its recorded disposition does. `accepted_as_is` is a person's decision and a
-model cannot record it (`not_a_disposition`). `resolved_by_revision` names the review
-basis of the version that resolved it; for any other version the concern is open again.
-An open concern on the family or its register contrast blocks a confirmatory statement on
-the register pair. An open concern on a control is listed on that control
-(`controls_with_open_concerns`) and does not block the pair. The packet prints every
+review: only its recorded disposition does. `accepted_as_is` and `resolved_by_revision`
+are a person's decisions and a model cannot record either (`not_a_disposition`); a revision
+made to address a concern leaves it open as `revised_pending_reread` until a person
+confirms it. `resolved_by_revision` names the review basis of the version that resolved
+it; for any other version the concern is open again. An open concern on the family or its
+register contrast blocks a confirmatory statement on the register pair. An open concern on
+a control is listed on that control (`controls_with_open_concerns`) and does not block the
+pair; neither does one on the reviewer-only label. The packet prints every
 concern with its disposition; the review form lists the open ones.
 
 **Source verification and source fit.** `--source-check` (schema
