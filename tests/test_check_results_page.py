@@ -1,12 +1,14 @@
 """Tests for ``scripts/check_results_page.py``.
 
-The unit tests cover the parts that need no browser: the mirror of the page's search rule, the choices the
-checker makes from a catalogue index, the recorder and its exit codes, the read-only server and the exits of a
-run that cannot start. One test compares the page source with the ids and strings the checker reads. One test
-runs the whole checker in Chromium against the sibling site checkout; it skips with the reason when Chromium or
-the site is absent. A skip is a check that did not run, not a pass.
+The unit tests cover the parts that need no browser: the mirror of the page's label and search rules, the choices
+the checker makes from a catalogue index, the recorder and its exit codes, the read-only server and the exits of a
+run that cannot start. The page's label tables exist once, in the page: the checker reads them from the page
+source, and the unit tests here give it an invented page source with tables of the same form. Two tests compare
+the real page source with the ids, strings and tables the checker reads. One test runs the whole checker in
+Chromium against the sibling site checkout; it skips with the reason when Chromium or the site is absent. A skip
+is a check that did not run, not a pass.
 
-The toy runs here are invented. No stimulus text is in this file.
+The toy runs and the toy label tables here are invented. No stimulus text is in this file.
 """
 from __future__ import annotations
 
@@ -37,6 +39,33 @@ def _load(name: str, path: Path):
 
 crp = _load("check_results_page", ROOT / "scripts" / "check_results_page.py")
 SHA = "ab" * 32
+
+# An invented page source: the label tables in the form the page writes them, one JSON object per table.
+TOY_TABLES: dict[str, dict[str, str]] = {
+    "CLASS_LABEL": {"study_batch": "Study batch", "hand_authored_exploratory": "Hand-authored set",
+                    "redistribution_limited_text": "Third-party text set"},
+    "FAMILY_LABEL": {"pairs": "Study batch", "pairs_extra_v2": "Study batch, second extra arm",
+                     "handset": "Hand-authored set", "thirdparty": "Third-party text set"},
+    "EVIDENCE_LABEL": {"registered_cohort": "registered cohort", "exploratory_set": "exploratory, toy set"},
+    "STATE_LABEL": {"completed": "completed", "partial": "partial",
+                    "completion_not_recorded": "completion not recorded"},
+    "REVIEW_LABEL": {"a_pending": "review A pending"},
+    "SAMPLING_LABEL": {"other": "other stimulus family"},
+    "SCREENING_LABEL": {"screened_out": "screened out"},
+    "RESTRICTION_LABEL": {"sealed_holdout": "Sealed holdout"},
+    "INSTRUMENT_LABEL": {"toy-lens": "Toy-lens readout"},
+    "SUFFIX_LABEL": {"lenspairs": "lens reader pairs"},
+    "RULE_LABEL": {"study/1": "study analysis"},
+}
+
+
+def _toy_page(tables: dict[str, Any] | None = None, class_other: str = '"Other stimulus set"') -> str:
+    tables = TOY_TABLES if tables is None else tables
+    lines = [f"  var {name}={json.dumps(table, indent=1)};" for name, table in tables.items()]
+    return "<script>\n" + "\n".join(lines) + f"\n  var CLASS_OTHER={class_other};\n</script>\n"
+
+
+LABELS = crp.page_labels(_toy_page())
 
 
 def _run(run_dir: str, **fields: Any) -> dict[str, Any]:
@@ -71,33 +100,127 @@ def _toy_runs() -> list[dict[str, Any]]:
 
 # ------------------------------------------------------------------------------------------ the page's rules
 
-def test_experiment_title_follows_the_pages_derivation() -> None:
-    title = crp.experiment_title
+def test_the_label_tables_are_read_from_the_page_source_and_a_malformed_table_is_refused() -> None:
+    assert dict(LABELS.tables) == TOY_TABLES and LABELS.class_other == "Other stimulus set"
+    assert set(LABELS.tables) == set(crp.LABEL_TABLES)                       # every table the checker names
+    assert LABELS.table("FAMILY_LABEL")["pairs"] == "Study batch"
+    without = {name: table for name, table in TOY_TABLES.items() if name != "FAMILY_LABEL"}
+    with pytest.raises(crp.SetupProblem, match="no label table FAMILY_LABEL"):
+        crp.page_labels(_toy_page(without))
+    with pytest.raises(crp.SetupProblem, match="no label table CLASS_LABEL"):
+        crp.page_labels("<script>var CLASS_LABEL={study_batch:'Study batch'};</script>")     # not at a line start
+    # The earlier form of the page, a JavaScript object with bare keys, is not a JSON object: it is refused, so a
+    # table the checker cannot read is never replaced by a guess.
+    bare = _toy_page().replace(json.dumps(TOY_TABLES["RULE_LABEL"], indent=1), "{study:'study analysis'}")
+    with pytest.raises(crp.SetupProblem, match="RULE_LABEL .* is not a JSON object"):
+        crp.page_labels(bare)
+    for bad, reason in (({"a": 1}, "does not map each stored value"), ({"a": ""}, "does not map each stored value")):
+        with pytest.raises(crp.SetupProblem, match=reason):
+            crp.page_labels(_toy_page({**TOY_TABLES, "SUFFIX_LABEL": bad}))
+    twice = _toy_page().replace('"a_pending": "review A pending"', '"a_pending": "one", "a_pending": "two"')
+    with pytest.raises(crp.SetupProblem, match="REVIEW_LABEL .* lists a stored value twice"):
+        crp.page_labels(twice)
+    with pytest.raises(crp.SetupProblem, match="no label CLASS_OTHER"):
+        crp.page_labels(_toy_page(class_other="'Other stimulus set'"))                 # not a JSON string
+
+
+def test_experiment_title_is_the_family_label_and_the_date_the_stem_carries() -> None:
+    def title(run: dict[str, Any]) -> str:
+        return crp.experiment_title(run, LABELS)
+
     assert title({"run_dir": "r", "stem": "pairs_20260710T011743Z", "stimulus_class": "study_batch"}) == (
         "Study batch · 2026-07-10 01:17 UTC")
-    assert title({"run_dir": "r", "stem": "agscen_20261108", "stimulus_class": "hand_authored_exploratory"}) == (
+    assert title({"run_dir": "r", "stem": "handset_20261108", "stimulus_class": "hand_authored_exploratory"}) == (
         "Hand-authored set · 2026-11-08")
+    # The family is the stem with its date stamp removed, wherever the stamp stands; its label is the table's.
+    assert crp.stem_family("pairs_extra_20260710_v2") == ("pairs_extra_v2", "2026-07-10")
     assert title({"run_dir": "r", "stem": "pairs_extra_20260710_v2", "stimulus_class": "study_batch"}) == (
-        "Study batch extra v2 · 2026-07-10")
-    assert title({"run_dir": "r", "stem": "dialects_20260708T215356Z", "stimulus_class": "unclassified"}) == (
-        "Dialects · 2026-07-08 21:53 UTC")
-    assert title({"run_dir": "r", "stem": "no_date_here", "stimulus_class": None}) == "No date here"
-    assert title({"run_dir": "r", "stem": "set_19991231"}) == "Set 19991231"          # a year the page does not read
-    assert title({"run_dir": "r", "stem": "set_20261341"}) == "Set 20261341"          # not a month
-    assert title({"run_dir": "run_only"}) == "Run only"                               # no stem: the run id is used
+        "Study batch, second extra arm · 2026-07-10")
+    assert crp.stem_family("pairs") == ("pairs", "") and crp.stem_family("pairs_20260710T011743Z")[0] == "pairs"
+    assert title({"run_dir": "r", "stem": "pairs"}) == "Study batch"                  # no date in the stem: none shown
+    assert title({"run_dir": "pairs_20260101"}) == "Study batch · 2026-01-01"         # no stem: the run id is read
+    assert crp.stem_family("set_19991231") == ("set_19991231", "")                    # a year the page does not read
+    assert crp.stem_family("set_20261341") == ("set_20261341", "")                    # not a month
     assert title({"run_dir": "r", "stem": "pairs_20260710T996100Z", "stimulus_class": "study_batch"}) == (
         "Study batch · 2026-07-10")                                              # not a time of day
+    assert crp.stem_family("20260710") == ("", "2026-07-10")                          # the stamp alone: no family
+
+
+def test_a_family_with_no_label_gets_its_class_label_keeps_its_stem_line_and_nothing_is_made_from_the_stem() -> None:
+    known = _run("pairs_20260101T010203Z__toy-a")
+    extra = _run("pairs_boostgrid_s2p5_20260101__toy-a")                          # study class, family with no entry
+    other = _run("zzfam_lowrank_r2_20260202", stimulus_class="unclassified")       # neither family nor class entry
+    undated = _run("featured_sim85", stimulus_class=None)
+    runs = [known, extra, other, undated]
+    stems = crp.title_stems(runs, LABELS)
+    assert [crp.family_is_labelled(run, LABELS) for run in runs] == [True, False, False, False]
+    # The label of the stimulus class, or the page's label for any other set; then the date. Never a stem token.
+    assert crp.experiment_title(extra, LABELS) == "Study batch · 2026-01-01"
+    assert crp.experiment_title(other, LABELS) == "Other stimulus set · 2026-02-02"
+    assert crp.experiment_title(undated, LABELS) == "Other stimulus set"
+    for run in (extra, other, undated):
+        title = crp.experiment_title(run, LABELS).lower()
+        tokens = [token for token in run["stem"].lower().split("_") if not token.isdigit()]
+        assert tokens and not [token for token in tokens if token in title], (run["stem"], title)
+    # The row of an unlabelled family keeps its stimulus set name; a labelled one does not print it.
+    assert [crp.stem_line_shown(run, LABELS, stems) for run in runs] == [False, True, True, True]
+    # Two labelled sets with one title (made in the same minute): both rows keep the name, to tell them apart.
+    twins = [_run("pairs_20260101T010203Z__toy-a"), _run("pairs_20260101T010259Z__toy-a"),
+             _run("pairs_20260101T010300Z__toy-a")]
+    stems = crp.title_stems(twins, LABELS)
+    assert stems["Study batch · 2026-01-01 01:02 UTC"] == {"pairs_20260101T010203Z", "pairs_20260101T010259Z"}
+    assert [crp.stem_line_shown(run, LABELS, stems) for run in twins] == [True, True, False]
+
+
+def test_a_stored_value_with_no_table_entry_is_printed_as_stored() -> None:
+    evidence = LABELS.table("EVIDENCE_LABEL")
+    assert crp.label_of(evidence, "exploratory_set") == "exploratory, toy set"       # an entry: its label
+    for unmapped in ("exploratory_post_registration", "a_b_c", "Mixed_Case-value/1", "two  spaces"):
+        assert crp.label_of(evidence, unmapped) == unmapped                          # no entry: exactly as stored
+    assert crp.label_of(evidence, None) == crp.label_of(evidence, "") == crp.label_of(evidence, 3) == crp.DASH
+    assert crp.label_of({}, "completion_not_recorded") == "completion_not_recorded"   # no underscore is replaced
+    assert crp.stored("recorded_match") == "recorded_match" and crp.stored(None) == crp.stored("") == "not recorded"
+    # An instrument with an entry is named by it; one without keeps its stored code.
+    assert crp.instrument_label({"instrument": "toy-lens"}, LABELS) == "Toy-lens readout"
+    assert crp.instrument_label({"instrument": "new_probe"}, LABELS) == "instrument: new_probe"
+    assert crp.instrument_label({"instrument": None}, LABELS) == crp.instrument_label({}, LABELS) == ""
 
 
 def test_search_text_holds_what_the_page_searches_and_matches_every_term() -> None:
     run = _toy_runs()[3]
-    text = crp.search_text(run)
-    assert text == ("handset_20260303 handset_20260303  toy-lens hand-authored set · 2026-03-03 "
-                    "exploratory set completed partial")
-    assert crp.search_matches(run, "TOY-LENS partial") and crp.search_matches(run, "  hand-authored  ")
-    assert crp.search_matches(run, "") and not crp.search_matches(run, "toy-lens toy-b")
-    assert not crp.search_matches(run, "exploratory_set")          # the page searches the printed form, with a space
-    assert crp.human("a_b_c") == "a b c" and crp.human(None) == crp.human("") == crp.DASH
+    text = crp.search_text(run, LABELS)
+    assert text == ("handset_20260303 handset_20260303  toy-lens hand-authored set · 2026-03-03 toy-lens readout "
+                    "exploratory, toy set completed partial")
+
+    def matches(query: str, of: dict[str, Any] = run) -> bool:
+        return crp.search_matches(of, query, LABELS)
+
+    assert matches("TOY-LENS partial") and matches("  hand-authored  ") and matches("readout")
+    assert matches("") and not matches("toy-lens toy-b")
+    assert matches("exploratory, toy") and not matches("exploratory_set")     # the label is searched, not the value
+    unmapped = _run("handset_20260303__x", evidence_class="new_class", execution_states={"new_state": 1})
+    assert matches("new_class new_state", unmapped)                           # a value with no entry: as stored
+
+
+def test_search_still_matches_stems_run_ids_and_instrument_codes() -> None:
+    def matches(run: dict[str, Any], query: str) -> bool:
+        return crp.search_matches(run, query, LABELS)
+
+    labelled = _run("pairs_20260101T010203Z__toy-b", model="toy-b")
+    assert crp.experiment_title(labelled, LABELS) == "Study batch · 2026-01-01 01:02 UTC"   # no stem in the label
+    assert matches(labelled, "pairs_20260101T010203Z")                        # the stimulus set name (stem)
+    assert matches(labelled, "pairs_20260101T010203Z__toy-b")                 # the run id
+    assert matches(labelled, "toy-b") and matches(labelled, "PAIRS_2026")
+    # An instrument run: the stored code and the run id match, and so does the instrument's label.
+    lens = _run("zzfam_r2_20260202__lenspairs__toy-lens_toy-b", model=None, instrument="toy-lens",
+                stimulus_class="unclassified")
+    assert crp.experiment_title(lens, LABELS) == "Other stimulus set · 2026-02-02"
+    for query in ("toy-lens", "zzfam_r2_20260202", "zzfam_r2_20260202__lenspairs__toy-lens_toy-b", "lenspairs",
+                  "readout", "other stimulus set"):
+        assert matches(lens, query), query
+    coded = _run("zzfam_20260202__new_probe", model=None, instrument="new_probe", stimulus_class="unclassified")
+    assert matches(coded, "new_probe") and matches(coded, "instrument:")      # no entry: the stored code is shown
+    assert not matches(labelled, "toy-lens") and not matches(lens, "pairs_20260101T010203Z")
 
 
 def test_listed_runs_has_rows_has_issue_and_the_no_rows_statement() -> None:
@@ -184,32 +307,33 @@ def test_assert_focus_needs_every_control_in_order_with_an_outline() -> None:
 
 def test_the_search_term_is_the_model_name_that_selects_the_most_runs_and_not_all() -> None:
     runs = _toy_runs()
-    term, matched = crp.pick_search_term(runs)
+    term, matched = crp.pick_search_term(runs, LABELS)
     # "toy-a" and "toy-b" each select two runs; of two terms that select as many, the first name is taken.
-    counts = {name: sum(crp.search_matches(run, name) for run in runs) for name in ("toy-a", "toy-b")}
+    counts = {name: sum(crp.search_matches(run, name, LABELS) for run in runs) for name in ("toy-a", "toy-b")}
     assert counts == {"toy-a": 2, "toy-b": 2}
     assert term == "toy-a" and matched == ["pairs_20260101T010203Z__toy-a", "thirdparty_20260404"]     # index order
     more = [*runs, _run("pairs_20260505__toy-b", model="toy-b")]
-    assert crp.pick_search_term(more)[0] == "toy-b" and len(crp.pick_search_term(more)[1]) == 3   # the most runs
+    assert crp.pick_search_term(more, LABELS)[0] == "toy-b"                                       # the most runs
+    assert len(crp.pick_search_term(more, LABELS)[1]) == 3
     same = [_run("a__m"), _run("b__m")]
     for run in same:
         run["model"] = "m"
-    assert crp.pick_search_term(same)[0] in ("a", "a__m")           # every run has the model: a stem is taken
-    assert crp.pick_search_term([_run("only")]) is None             # one run: nothing narrows the list
+    assert crp.pick_search_term(same, LABELS)[0] in ("a", "a__m")   # every run has the model: a stem is taken
+    assert crp.pick_search_term([_run("only")], LABELS) is None     # one run: nothing narrows the list
 
 
 def test_the_opened_run_prefers_sealed_rows_and_is_selected_alone_by_its_run_id() -> None:
     runs = _toy_runs()
-    assert crp.pick_open_run(runs)["run_dir"] == "pairs_20260101T010203Z__toy-b"          # the run with sealed rows
+    assert crp.pick_open_run(runs, LABELS)["run_dir"] == "pairs_20260101T010203Z__toy-b"  # the run with sealed rows
     unsealed = [run for run in runs if run["counts"]["rows_withheld_sealed"] == 0]
-    assert crp.pick_open_run(unsealed)["run_dir"] == "pairs_20260101T010203Z__toy-a"      # else the first usable
+    assert crp.pick_open_run(unsealed, LABELS)["run_dir"] == "pairs_20260101T010203Z__toy-a"   # else the first usable
     # A run id that is also the start of another run id is not selected alone, so it is not opened.
     prefix = [_run("pairs_2026"), _run("pairs_2026__toy-b", model="toy-b")]
-    assert crp.pick_open_run(prefix)["run_dir"] == "pairs_2026__toy-b"
+    assert crp.pick_open_run(prefix, LABELS)["run_dir"] == "pairs_2026__toy-b"
     for unusable in ({"n_parts": 2}, {"rows_file": None}, {"rows_file": "../rows/x.json"}, {"visibility": "restricted"},
                      {"parts": [{"name": "p", "sha256": "short"}]}, {"counts": {"rows_public": 0}}):
         with pytest.raises(crp.SetupProblem, match="open-run checks cannot run"):
-            crp.pick_open_run([_run("solo", **unusable)])
+            crp.pick_open_run([_run("solo", **unusable)], LABELS)
 
 
 def test_the_evidence_class_the_filter_checks_use() -> None:
@@ -231,8 +355,8 @@ def test_the_run_without_rows_is_a_partial_one_when_there_is_one() -> None:
 
 def test_expectations_are_read_from_the_index_and_hold_keys_and_counts_only() -> None:
     index = {"runs": _toy_runs(), "policy": {"default_membership": "study/1"}}
-    expected = crp.expectations(index)
-    assert expected.total == 5 and expected.run_ids[0] == "pairs_20260101T010203Z__toy-a"
+    expected = crp.expectations(index, LABELS)
+    assert expected.labels is LABELS and expected.total == 5 and expected.run_ids[0] == "pairs_20260101T010203Z__toy-a"
     assert expected.partial == ["handset_20260303"] and expected.restricted == ["thirdparty_20260404"]
     assert expected.no_rows == ["handset_20260303", "thirdparty_20260404"] and expected.issue == 1
     assert expected.sealed == 2 and expected.evidence == ("registered_cohort", 3, 2)
@@ -420,11 +544,13 @@ def test_the_page_carries_the_ids_and_strings_the_checker_reads() -> None:
         assert hook in script, hook
     for view in ("all", "partial", "norows", "restricted", "issue"):       # the ids the page builds as view-<id>
         assert f"id:'{view}'" in script, view
-    # The search rule the checker mirrors, and the label rule it reads: a change to either line fails here.
-    for line in crp.PAGE_SEARCH_RULE:
+    # The search rule and the label rules the checker mirrors: a change to one of these lines fails here, so that
+    # the mirror is changed with it. The label tables are not mirrored: the checker reads them from this source.
+    for line in (*crp.PAGE_SEARCH_RULE, *crp.PAGE_LABEL_RULES):
         assert line in script, line
-    for value, label in crp.CLASS_LABEL.items():
-        assert f"{value}:'{label}'" in script, value
+    labels = crp.page_labels(source)
+    assert set(labels.tables) == set(crp.LABEL_TABLES) and labels.class_other
+    assert "replace(/_/g" not in script and "toUpperCase()" not in script        # no label is made from an identifier
     assert f"var PAGE_SIZE={crp.PAGE_SIZE};" in script
     assert "fmtInt(filtered.length)+' of '+fmtInt(RUNS.length)+' runs'" in script        # count_text
     # Reader-visible strings the checks compare.
@@ -439,7 +565,7 @@ def test_the_page_carries_the_ids_and_strings_the_checker_reads() -> None:
     for text in ("'Medical wording'", "'Everyday wording'", "['Target-token probability','num','medical wording']",
                  "['Target-token probability','num','everyday wording']", f"['Difference','','{crp.DIFFERENCE_ORDER}']",
                  *crp.SHARED_STATUS, *crp.DIFFERENCE_NOTE, "DASH+' not measured'", "'data-exception','review'",
-                 "'review: '+human(r.clinical_review)"):
+                 "'review: '+labelOf(REVIEW_LABEL,r.clinical_review)"):
         assert text in script.replace("\u2019s", "").replace("\u2019", ""), text
     assert "'Clinical wording'" not in script and "'Patient wording'" not in script
     assert "var(--penalty)" not in source and "bdg-restricted" not in source and "draft-flag" not in source
@@ -469,6 +595,45 @@ def test_the_page_carries_the_ids_and_strings_the_checker_reads() -> None:
     for parameter in ("state", "evidence", "rows", "membership", "visibility", "stimulus", "sort"):
         assert f"{parameter}:'f-{parameter}'" in script, parameter
     assert "p.get('q')" in script and "p.get('run')" in script
+
+
+def test_the_pages_label_tables_cover_the_sites_index_and_the_fallback_is_the_class_label() -> None:
+    """The real page's tables against the real index. What is fixed here is the rule, not the catalogue: a
+    family that lands without a table entry passes, with its class label and its stimulus set name on the row."""
+    page, index_file = SITE / crp.PAGE, SITE / crp.INDEX_FILE
+    if not page.is_file() or not index_file.is_file():
+        pytest.skip(f"no sibling site checkout with {crp.PAGE} and {crp.INDEX_FILE} at {SITE}; the table check "
+                    "did not run")
+    labels = crp.page_labels(page.read_text(encoding="utf-8"))
+    runs = crp.listed_runs(json.loads(index_file.read_text(encoding="utf-8")))
+    family, classes = labels.table("FAMILY_LABEL"), labels.table("CLASS_LABEL")
+    # A label is words: none carries the underscore of an identifier.
+    assert not [label for table in labels.tables.values() for label in table.values() if "_" in label]
+    stems = crp.title_stems(runs, labels)
+    explicit = set(family.values()) | set(classes.values()) | {labels.class_other}
+    unlabelled = 0
+    for run in runs:
+        title = crp.experiment_title(run, labels)
+        date = crp.stem_family(run["stem"])[1]
+        name = title[:-len(f" · {date}")] if date else title
+        assert name in explicit, (run["run_dir"], name)                         # a label of a table, word for word
+        if not crp.family_is_labelled(run, labels):
+            unlabelled += 1
+            assert name == classes.get(run.get("stimulus_class") or "", labels.class_other), run["run_dir"]
+            assert crp.stem_line_shown(run, labels, stems), run["run_dir"]       # the set's name stays on the row
+        # Identifiers stay searchable whatever the row shows.
+        for term in (run["run_dir"], run["stem"], run.get("instrument") or run["run_dir"]):
+            assert crp.search_matches(run, term, labels), (run["run_dir"], term)
+    # Rows that share a title belong to one stimulus set, or print the set's name.
+    for title, names in stems.items():
+        if len(names) > 1:
+            shared = [run for run in runs if crp.experiment_title(run, labels) == title]
+            assert all(crp.stem_line_shown(run, labels, stems) for run in shared), title
+    assert unlabelled < len(runs)
+    # Every stored value the rows above show through a table is either in its table or printed as stored.
+    for key, name in (("evidence_class", "EVIDENCE_LABEL"), ("clinical_review", "REVIEW_LABEL")):
+        for value in sorted({run.get(key) for run in runs if isinstance(run.get(key), str)}):
+            assert crp.label_of(labels.table(name), value) in (labels.table(name).get(value), value)
 
 
 # ------------------------------------------------------------------------------------------ the browser run
@@ -542,6 +707,10 @@ def test_the_results_page_check_passes_in_chromium(tmp_path: Path) -> None:
     assert set(rows["by_sign"]) <= {"negative", "zero", "positive", "missing"}
     shared = results["shared_status_is_stated_once_and_a_row_adds_only_its_exception"]
     assert shared["rows_read"] == min(crp.PAGE_SIZE, receipt["catalogue"]["runs"])
+    listed = results["first_page_of_runs_is_rendered"]
+    assert listed["experiment_labels_compared"] == listed["rows"] == shared["rows_read"]
+    assert 0 <= listed["rows_with_the_stimulus_set_name"] <= listed["rows"]
+    assert results["join_instructions_and_field_definitions_open_beside_the_downloads"]["stored_values_listed"] > 0
     assert min(results[name]["smallest_px"] for name in ("smallest_visible_text_at_1280_is_at_least_12_px",
                                                          "smallest_visible_text_at_390_is_at_least_12_px")) >= 12
     # The expectations came from the site's own files.

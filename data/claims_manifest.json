@@ -192,6 +192,18 @@
    "_": "Part 2, the measured three-panel caption: the model is fixed text because data/jspace.json has no model field (2026-11-11; the exporter's note moved into a fold and the caption kept the model). The check fails if the file stops being empirical or its note stops naming gemma-2-2b; the caption then needs a hand rewrite, or the exporter a model field."
   },
   {
+   "page": "methods.html",
+   "snippet": "gemma-2-2b \u00b7 one measured pair",
+   "source": "data/jspace.json",
+   "expr": "[d['empirical'], 'gemma-2-2b' in d['note'], 'chosen by scanning every committed census pair for a triple whose final-layer readouts carry the story at top-1' in d['note']]",
+   "expected": [
+    true,
+    true,
+    true
+   ],
+   "_": "Step 4, the measured two-panel caption (2026-11-12): the model is fixed text because data/jspace.json has no model field, and the selection clause is the exporter's own, printed only when the file's note holds it word for word (the note itself is in the fold under the figure). The check fails if the file stops being empirical, its note stops naming gemma-2-2b, or the note words the selection rule another way; the caption then needs a hand rewrite, or the exporter a model field."
+  },
+  {
    "page": "start-here/index.html",
    "snippet": "bars:[['inhaler',0.692,'#0f766e'],['mask',0.059,'#c3c9d2'],['set',0.028,'#c3c9d2']]",
    "source": "data/simulated_scenarios.json",

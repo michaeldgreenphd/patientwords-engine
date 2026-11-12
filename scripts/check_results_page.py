@@ -8,7 +8,9 @@ What runs, in order:
 1. The site's ``data/results_catalogue/index.json`` is read. Every expectation that depends on data (the number
    of runs, the search term, the filter values, the run that is opened, its row count and its sealed-row count)
    is worked out from that file and from the rows file of the opened run. Nothing of the kind is written in this
-   script, so a regenerated catalogue is checked against itself.
+   script, so a regenerated catalogue is checked against itself. The display labels (experiment, evidence class,
+   run status, clinical review, instrument) are read from the page's own tables, which the page writes as JSON
+   objects: there is one copy of each table, in ``results/index.html``.
 2. The site checkout is served in place over HTTP on a loopback port (an ephemeral one unless ``--port`` is
    given), under ``/patientwords/`` as GitHub Pages publishes it. The server answers GET and HEAD only and
    nothing is copied or written: the site is read where it is.
@@ -101,6 +103,8 @@ ALERT_COLOUR = "rgb(180, 72, 61)"
 WORDING_COLOURS = {"medical": "rgb(21, 128, 61)", "everyday": "rgb(17, 24, 39)"}
 JOIN_AND_FIELDS = ("join on stem and index", "own_clinical_prompt", "language_penalty", "completion_not_recorded",
                    "recorded_match")
+# Fields whose stored values the field definitions list, each beside its definition or the label the page shows.
+LISTED_VALUE_FIELDS = ("evidence_class", "clinical_review", "stimulus_class", "sampling")
 ABOUT_STATEMENTS = ("not a claim", "first encoded target token", "not statements from patients")
 EXPLAINED_ONCE = "first encoded target token"
 EXCLUDED_PHRASES = ("answer accuracy", "clinical risk", "patient understanding")
@@ -120,7 +124,22 @@ PAGE_HOOKS = ("cat-run", "cat-x", "cat-detail", "c-status", "c-meas", "det-label
 # The page's search rule, as written in the page. ``search_text`` below mirrors it; the offline test fails when
 # the page's line changes, so that the mirror is changed with it.
 PAGE_SEARCH_RULE = ("return (str(r.run_dir)+' '+str(r.stem)+' '+str(r.model)+' '+str(r.instrument)+' '+x.title+' '+",
-                    "human(r.evidence_class)+' '+Object.keys(obj(r.execution_states)).map(human).join(' ')).toLowerCase();")
+                    "(str(r.instrument)?instrumentLabel(r):'')+' '+labelOf(EVIDENCE_LABEL,r.evidence_class)+' '+",
+                    "Object.keys(obj(r.execution_states)).map(stateLabel).join(' ')).toLowerCase();")
+# The page's label rules, as written in the page. ``label_of``, ``experiment_title``, ``stem_line_shown`` and
+# ``instrument_label`` below mirror them; the offline test fails when one of these lines changes.
+PAGE_LABEL_RULES = (
+    "function labelOf(map,v){return typeof v==='string'&&v?(has(map,v)?map[v]:v):DASH;}",
+    "family=(stem.slice(0,m.index)+'_'+stem.slice(m.index+m[0].length)).split('_').filter(function(x){return x;}).join('_');",
+    "var name=labelled?FAMILY_LABEL[family]:(has(CLASS_LABEL,r.stimulus_class)?CLASS_LABEL[r.stimulus_class]:CLASS_OTHER);",
+    "function stemLineShown(x){return !x.labelled||Object.keys(obj(TITLE_STEMS[x.title])).length>1;}",
+    "return has(INSTRUMENT_LABEL,r.instrument)?INSTRUMENT_LABEL[r.instrument]:'instrument: '+r.instrument;",
+)
+# The page's label tables, each written in the page as ``var NAME={...};`` with a JSON object. ``page_labels``
+# reads them from the page source. They are not restated here.
+LABEL_TABLES = ("CLASS_LABEL", "FAMILY_LABEL", "EVIDENCE_LABEL", "STATE_LABEL", "REVIEW_LABEL", "SAMPLING_LABEL",
+                "SCREENING_LABEL", "RESTRICTION_LABEL", "INSTRUMENT_LABEL", "SUFFIX_LABEL", "RULE_LABEL")
+LABEL_STRINGS = ("CLASS_OTHER",)
 
 # The check names, in the order they run. The run stops with an error if what was recorded differs from this.
 CHECKS: tuple[str, ...] = (
@@ -210,8 +229,6 @@ class Blocked(Exception):
 
 # ------------------------------------------------------------------------------------------ the page's rules
 
-CLASS_LABEL = {"study_batch": "Study batch", "hand_authored_exploratory": "Hand-authored set",
-               "redistribution_limited_text": "Third-party text set"}
 _STEM_DATE = re.compile(r"(?:^|_)(\d{4})(\d{2})(\d{2})(T\d*Z?)?(?=_|\Z)", re.ASCII)
 _STEM_TIME = re.compile(r"T(\d{2})(\d{2})(\d{2})Z", re.ASCII)
 _ROWS_FILE = re.compile(r"rows/[A-Za-z0-9._-]+\.json")
@@ -234,44 +251,138 @@ def _mapping(value: Any) -> Mapping[str, Any]:
     return value if isinstance(value, dict) else {}
 
 
-def human(value: Any) -> str:
-    """How the page prints a schema value: underscores as spaces, a dash for a missing value."""
-    return value.replace("_", " ") if isinstance(value, str) and value else DASH
+@dataclass(frozen=True)
+class PageLabels:
+    """The label tables of the page, read from the page source: ``tables`` maps a table name (``LABEL_TABLES``)
+    to its stored-value-to-label entries, ``class_other`` is the label of a stimulus set whose family and class
+    both have no entry. The checker holds no label of its own."""
+    tables: Mapping[str, Mapping[str, str]]
+    class_other: str
+
+    def table(self, name: str) -> Mapping[str, str]:
+        return self.tables[name]
 
 
-def experiment_title(run: Mapping[str, Any]) -> str:
-    """The experiment label the page derives from a run's stem and stimulus class (``experiment`` in the page):
-    a family name, then the batch date the stem carries. Mirrored here because the page's search reads it."""
-    stem = _text(run.get("stem")) or _text(run.get("run_dir"))
-    date, rest = "", stem
+def page_labels(source: str) -> PageLabels:
+    """Read the label tables out of the page source. Each is ``var NAME={...};`` holding one JSON object whose
+    keys and values are strings. ``SetupProblem`` when a table is absent or is not such an object: the mirrored
+    rules below then have nothing to read, and no label is guessed."""
+    tables: dict[str, dict[str, str]] = {}
+    for name in LABEL_TABLES:
+        found = re.search(rf"^\s*var {name}=(\{{.*?\}});", source, re.DOTALL | re.MULTILINE)
+        if not found:
+            raise SetupProblem(f"{PAGE} has no label table {name} written as 'var {name}={{...}};'")
+        try:
+            pairs = json.loads(found[1], object_pairs_hook=list)
+        except ValueError as exc:
+            raise SetupProblem(f"the label table {name} of {PAGE} is not a JSON object ({exc})") from exc
+        if not all(isinstance(label, str) and label for _value, label in pairs):
+            raise SetupProblem(f"the label table {name} of {PAGE} does not map each stored value to a label")
+        if len({value for value, _label in pairs}) != len(pairs):
+            raise SetupProblem(f"the label table {name} of {PAGE} lists a stored value twice")
+        tables[name] = dict(pairs)
+    strings: dict[str, str] = {}
+    for name in LABEL_STRINGS:
+        found = re.search(rf'^\s*var {name}=("(?:[^"\\]|\\.)*");', source, re.MULTILINE)
+        if not found:
+            raise SetupProblem(f"{PAGE} has no label {name} written as a JSON string")
+        strings[name] = json.loads(found[1])
+    return PageLabels(tables=tables, class_other=strings["CLASS_OTHER"])
+
+
+def load_page_labels(site: Path) -> PageLabels:
+    """The label tables of the site's results page."""
+    try:
+        source = (site / PAGE).read_text(encoding="utf-8")
+    except OSError as exc:
+        raise SetupProblem(f"{PAGE} could not be read ({type(exc).__name__})") from exc
+    return page_labels(source)
+
+
+def label_of(table: Mapping[str, str], value: Any) -> str:
+    """How the page prints a stored value (``labelOf`` in the page): its entry in the table; with no entry, the
+    value exactly as stored; a dash for a missing value. Nothing is made from the value."""
+    if not isinstance(value, str) or not value:
+        return DASH
+    return table.get(value, value)
+
+
+def stored(value: Any) -> str:
+    """How the page prints a schema value in Methods & source: as stored, or ``not recorded`` when missing."""
+    return value if isinstance(value, str) and value else "not recorded"
+
+
+def stem_family(stem: str) -> tuple[str, str]:
+    """``(family, date)`` of a stimulus set name: the stem with its date stamp removed, and the batch date the
+    stamp gives, with the time of day when the stamp carries one. A stem with no date the page reads is its
+    own family and has no date."""
     found = _STEM_DATE.search(stem)
-    if found and 2000 <= int(found[1]) < 2100 and 1 <= int(found[2]) <= 12 and 1 <= int(found[3]) <= 31:
-        date = f"{found[1]}-{found[2]}-{found[3]}"
-        clock = _STEM_TIME.fullmatch(found[4] or "")
-        if clock and int(clock[1]) < 24 and int(clock[2]) < 60:
-            date += f" {clock[1]}:{clock[2]} UTC"
-        rest = stem[:found.start()] + "_" + stem[found.end():]
-    tokens = [token for token in rest.split("_") if token]
-    known = CLASS_LABEL.get(_text(run.get("stimulus_class")), "")
-    if known:
-        name = known + (" " + " ".join(tokens[1:]) if len(tokens) > 1 else "")
-    else:
-        name = " ".join(tokens) or stem
-        name = name[:1].upper() + name[1:]
+    if not (found and 2000 <= int(found[1]) < 2100 and 1 <= int(found[2]) <= 12 and 1 <= int(found[3]) <= 31):
+        return stem, ""
+    date = f"{found[1]}-{found[2]}-{found[3]}"
+    clock = _STEM_TIME.fullmatch(found[4] or "")
+    if clock and int(clock[1]) < 24 and int(clock[2]) < 60:
+        date += f" {clock[1]}:{clock[2]} UTC"
+    rest = stem[:found.start()] + "_" + stem[found.end():]
+    return "_".join(token for token in rest.split("_") if token), date
+
+
+def _stem(run: Mapping[str, Any]) -> str:
+    return _text(run.get("stem")) or _text(run.get("run_dir"))
+
+
+def family_is_labelled(run: Mapping[str, Any], labels: PageLabels) -> bool:
+    """Whether the page's FAMILY_LABEL has an entry for the family of this run's stimulus set."""
+    return stem_family(_stem(run))[0] in labels.table("FAMILY_LABEL")
+
+
+def experiment_title(run: Mapping[str, Any], labels: PageLabels) -> str:
+    """The experiment label of a run (``experiment`` in the page): the FAMILY_LABEL entry of its stimulus set's
+    family, then the batch date the stem carries. A family with no entry gets the CLASS_LABEL entry of the run's
+    stimulus class, or the page's label for any other set. No word of the label is made from the stem."""
+    family, date = stem_family(_stem(run))
+    name = labels.table("FAMILY_LABEL").get(family)
+    if name is None:
+        name = labels.table("CLASS_LABEL").get(_text(run.get("stimulus_class")), labels.class_other)
     return name + (f" · {date}" if date else "")
 
 
-def search_text(run: Mapping[str, Any]) -> str:
-    """The text the page's search box is matched against for one run (``searchText`` in the page)."""
-    states = " ".join(human(key) for key in _mapping(run.get("execution_states")))
+def title_stems(runs: Sequence[Mapping[str, Any]], labels: PageLabels) -> dict[str, set[str]]:
+    """Experiment title -> the stimulus set names that carry it (``TITLE_STEMS`` in the page)."""
+    out: dict[str, set[str]] = {}
+    for run in runs:
+        out.setdefault(experiment_title(run, labels), set()).add(_stem(run))
+    return out
+
+
+def stem_line_shown(run: Mapping[str, Any], labels: PageLabels, stems: Mapping[str, set[str]]) -> bool:
+    """Whether a run's row prints the stimulus set name under its title (``stemLineShown`` in the page): only
+    where the title does not identify the set, because the family has no label or because another set of the
+    index has the same title. ``stems`` is ``title_stems`` of the whole index."""
+    return not family_is_labelled(run, labels) or len(stems.get(experiment_title(run, labels), ())) > 1
+
+
+def instrument_label(run: Mapping[str, Any], labels: PageLabels) -> str:
+    """The first line of an instrument run's Model cell (``instrumentLabel`` in the page): the INSTRUMENT_LABEL
+    entry, or the stored code after ``instrument:`` for an instrument with no entry. Empty for a model run."""
+    instrument = _text(run.get("instrument"))
+    if not instrument:
+        return ""
+    return labels.table("INSTRUMENT_LABEL").get(instrument, "instrument: " + instrument)
+
+
+def search_text(run: Mapping[str, Any], labels: PageLabels) -> str:
+    """The text the page's search box is matched against for one run (``searchText`` in the page): the run id,
+    the stimulus set name, the model id and the instrument code as stored, then the labels the row shows."""
+    states = " ".join(label_of(labels.table("STATE_LABEL"), key) for key in _mapping(run.get("execution_states")))
     return " ".join([_text(run.get("run_dir")), _text(run.get("stem")), _text(run.get("model")),
-                     _text(run.get("instrument")), experiment_title(run), human(run.get("evidence_class")),
-                     states]).lower()
+                     _text(run.get("instrument")), experiment_title(run, labels), instrument_label(run, labels),
+                     label_of(labels.table("EVIDENCE_LABEL"), run.get("evidence_class")), states]).lower()
 
 
-def search_matches(run: Mapping[str, Any], query: str) -> bool:
+def search_matches(run: Mapping[str, Any], query: str, labels: PageLabels) -> bool:
     """Whether the page lists ``run`` for ``query``: every whitespace-separated term is in the run's text."""
-    hay = search_text(run)
+    hay = search_text(run, labels)
     return all(term in hay for term in query.lower().split())
 
 
@@ -381,7 +492,7 @@ def load_catalogue(site: Path) -> dict[str, Any]:
     return index
 
 
-def pick_search_term(runs: Sequence[Mapping[str, Any]]) -> tuple[str, list[str]] | None:
+def pick_search_term(runs: Sequence[Mapping[str, Any]], labels: PageLabels) -> tuple[str, list[str]] | None:
     """A search term that narrows the list, and the run ids the page must then list, in index order.
 
     The term is the model name that selects the most runs while leaving at least one out (ties: the first
@@ -393,7 +504,7 @@ def pick_search_term(runs: Sequence[Mapping[str, Any]]) -> tuple[str, list[str]]
         for term in sorted({_text(run.get(key)) for run in runs}):
             if not term or term != term.strip() or len(term.split()) != 1:
                 continue
-            matched = [run["run_dir"] for run in runs if search_matches(run, term)]
+            matched = [run["run_dir"] for run in runs if search_matches(run, term, labels)]
             if 0 < len(matched) < total and (best is None or len(matched) > best[0]):
                 best = (len(matched), term, matched)
         if best is not None:
@@ -401,7 +512,7 @@ def pick_search_term(runs: Sequence[Mapping[str, Any]]) -> tuple[str, list[str]]
     return None
 
 
-def pick_open_run(runs: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+def pick_open_run(runs: Sequence[Mapping[str, Any]], labels: PageLabels) -> dict[str, Any]:
     """The run the check opens: public, one part with a recorded SHA-256, public rows in a rows file, and a
     run id that the page's search matches for this run alone. A run with sealed rows is preferred, so that the
     sealed count has something to show. ``SetupProblem`` when the catalogue holds no such run."""
@@ -412,7 +523,7 @@ def pick_open_run(runs: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
                 and bool(_SHA256.fullmatch(_text(parts[0].get("sha256"))))
                 and bool(_ROWS_FILE.fullmatch(_text(run.get("rows_file"))))
                 and len(run["run_dir"].split()) == 1
-                and sum(1 for other in runs if search_matches(other, run["run_dir"])) == 1)
+                and sum(1 for other in runs if search_matches(other, run["run_dir"], labels)) == 1)
 
     fallback = None
     for run in runs:
@@ -457,8 +568,10 @@ def pick_run_without_rows(runs: Sequence[Mapping[str, Any]]) -> dict[str, Any] |
 
 @dataclass
 class Expected:
-    """Everything the checks expect, worked out from the site's index before the browser starts."""
+    """Everything the checks expect, worked out from the site's index and the page's label tables before the
+    browser starts."""
     index: dict[str, Any]
+    labels: PageLabels
     runs: list[dict[str, Any]]
     search: tuple[str, list[str]] | None
     evidence: tuple[str, int, int]
@@ -496,11 +609,11 @@ class Expected:
         }
 
 
-def expectations(index: dict[str, Any]) -> Expected:
+def expectations(index: dict[str, Any], labels: PageLabels) -> Expected:
     runs = listed_runs(index)
-    search = pick_search_term(runs)
+    search = pick_search_term(runs, labels)
     default_membership = _text(_mapping(index.get("policy")).get("default_membership"))
-    open_run = pick_open_run(runs)
+    open_run = pick_open_run(runs, labels)
     query_filter = None
     if search is not None:
         by_id = {run["run_dir"]: run for run in runs}
@@ -510,7 +623,7 @@ def expectations(index: dict[str, Any]) -> Expected:
         if usable:
             query_filter = (usable[0][0], usable[0][1], pairs[usable[0]])
     return Expected(
-        index=index, runs=runs, search=search, evidence=pick_evidence_class(runs, default_membership),
+        index=index, labels=labels, runs=runs, search=search, evidence=pick_evidence_class(runs, default_membership),
         partial=[run["run_dir"] for run in runs if _count(_mapping(run.get("execution_states")).get("partial")) > 0],
         no_rows=[run["run_dir"] for run in runs if not has_rows(run)],
         restricted=[run["run_dir"] for run in runs if run.get("visibility") == "restricted"],
@@ -694,7 +807,13 @@ LOAD_STATE = """() => {
         context: rows.map((row) => {
             const cell = row.querySelector('td.c-ctx');
             const own = cell.querySelector('[data-exception="review"]');
-            return [row.getAttribute('data-run'), own ? own.innerText.trim() : null, row.innerText];
+            return [row.getAttribute('data-run'), own ? own.innerText.trim() : null, row.innerText,
+                    own ? own.getAttribute('title') : null];
+        }),
+        labels: rows.map((row) => {
+            const title = row.querySelector('td.c-exp .cat-x'), set = row.querySelector('td.c-exp .x-set');
+            return [row.getAttribute('data-run'), title ? title.innerText.trim() : null,
+                    set && set.checkVisibility() ? set.innerText.trim() : null];
         }),
         heads: Array.from(document.querySelectorAll('.cat-table > thead th')).map(
             (th) => th.innerText.split('\\n')[0].trim().toLowerCase()),
@@ -1001,7 +1120,34 @@ def check_first_view(s: Session, recorder: Recorder) -> None:
 
         def one_page() -> dict[str, Any]:
             assert len(state["runs"]) == min(PAGE_SIZE, x.total), f"{len(state['runs'])} rows rendered"
-            return {"rows": len(state["runs"])}
+            # Each row is headed by the label the page's own tables give its stimulus set, and prints the set's
+            # name under it only where that label does not identify the set.
+            by_id = {run["run_dir"]: run for run in x.runs}
+            stems = title_stems(x.runs, x.labels)
+            wrong = [name for name, title, _line in state["labels"] if title != experiment_title(by_id[name], x.labels)]
+            assert not wrong, f"{len(wrong)} row(s) are not headed by their experiment label; first: {wrong[:1]}"
+            lines = 0
+            for name, _title, line in state["labels"]:
+                wanted = _stem(by_id[name]) if stem_line_shown(by_id[name], x.labels, stems) else None
+                assert line == wanted, (
+                    f"the row of {name} " + ("does not print its stimulus set name" if wanted else
+                                             "prints a stimulus set name under a label that identifies the set"))
+                lines += line is not None
+            # The first page may hold no row that prints the name. Where the catalogue has such a run, its row
+            # is read too, in a list narrowed to its run id: the run is the first match in index order.
+            named = next((run for run in x.runs if stem_line_shown(run, x.labels, stems)), None)
+            if named is not None:
+                fresh = s.page(s.desktop)
+                try:
+                    s.load(fresh, "?q=" + quote(named["run_dir"], safe=""))
+                    found = {name: (title, line) for name, title, line in fresh.evaluate(LOAD_STATE)["labels"]}
+                finally:
+                    fresh.close()
+                assert found.get(named["run_dir"]) == (experiment_title(named, x.labels), _stem(named)), (
+                    f"the row of {named['run_dir']} does not print its experiment label and its stimulus set name")
+            return {"rows": len(state["runs"]), "experiment_labels_compared": len(state["labels"]),
+                    "rows_with_the_stimulus_set_name": lines,
+                    "stimulus_set_name_read_on_the_row_of": named["run_dir"] if named is not None else None}
 
         def defaults() -> dict[str, Any]:
             assert state["selects"] and all(value == "" for value in state["selects"]) and state["query"] == "", (
@@ -1027,11 +1173,14 @@ def check_first_view(s: Session, recorder: Recorder) -> None:
             common = shared_review(runs)
             by_id = {run["run_dir"]: run for run in runs}
             exceptions = repeated = 0
-            for name, own, text in state["context"]:
-                differs = (_text(by_id[name].get("clinical_review")) or "not recorded") != common
+            for name, own, text, title in state["context"]:
+                review = by_id[name].get("clinical_review")
+                differs = (_text(review) or "not recorded") != common
                 if differs:
-                    assert own == "review: " + human(by_id[name].get("clinical_review")), (
+                    assert own == "review: " + label_of(x.labels.table("REVIEW_LABEL"), review), (
                         f"the row of {name} does not state its own review status")
+                    assert (_text(review) or "not recorded") in (title or ""), (
+                        f"the review status of {name} does not keep its stored value in its title")
                     exceptions += 1
                 else:
                     assert own is None, f"the row of {name} repeats the review status every run shares"
@@ -1427,7 +1576,11 @@ def check_open_run(s: Session, recorder: Recorder) -> None:
         text = page.locator("#cat-legend").inner_text()
         missing = [wanted for wanted in JOIN_AND_FIELDS if wanted not in text]
         assert not missing, f"the join instructions or definitions lack {missing}"
-        return {"key": "Enter", "strings": len(JOIN_AND_FIELDS)}
+        # A label stands for a stored value in the rows above; the stored values themselves are listed here.
+        values = sorted({_text(run.get(key)) for run in x.runs for key in LISTED_VALUE_FIELDS} - {""})
+        unlisted = [value for value in values if value not in text]
+        assert not unlisted, f"the field definitions do not list the stored value(s) {unlisted}"
+        return {"key": "Enter", "strings": len(JOIN_AND_FIELDS), "stored_values_listed": len(values)}
 
     def page_source_closed() -> dict[str, Any]:
         need(page, "#methods-source", "#restrictions")
@@ -1553,7 +1706,7 @@ def check_addresses(s: Session, recorder: Recorder) -> None:
         assert source.evaluate("(node) => node.open"), "Methods & source of a run without rows is closed"
         assert run["parts"][0]["sha256"] in detail.inner_text(), "the part's SHA-256 is not shown"
         text = source.inner_text()
-        states = sorted({human(_mapping(part).get("execution_state")) for part in run["parts"]})
+        states = sorted({stored(_mapping(part).get("execution_state")) for part in run["parts"]})
         missing = [state for state in states if state not in text]
         assert not missing, f"the run status {missing} of a part is not shown"
         return {"run": run["run_dir"], "status_box": shown, "part_states": states}
@@ -1754,7 +1907,7 @@ def run(site: Path, browser_path: str | None, port: int, shots: Path | None, rec
         raise SetupProblem("the playwright package is not importable; this check is blocked, not passed: "
                            f"{exc}") from exc
 
-    expected = expectations(load_catalogue(site))
+    expected = expectations(load_catalogue(site), load_page_labels(site))
     receipt["catalogue"] = expected.summary()
     before = input_hashes(site)
     recorder = Recorder(receipt)
