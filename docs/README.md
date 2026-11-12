@@ -13,7 +13,7 @@ before the dated records. Add a line here when you add a document.
 | [`AGENTS.md`](../AGENTS.md) (repository root) | The rules every agent and reviewer works from. |
 | [`verify.md`](../verify.md) (repository root) | Canonical developer setup, change-specific verification and evidence requirements. |
 | [`docs/agent_reference.md`](agent_reference.md) | Detailed architecture, operational rules, research limitations and review decisions linked from AGENTS.md. |
-| [`docs/ecosystem.md`](ecosystem.md) | Current map of the repositories, forks and external services (2026-11-10): what the engine consumes from each and as what type, the recorded heads against the executed pins, two identifier traces (one real result; the synthetic boundary check), test coverage, and a prioritised findings table with evidence and status. Machine-readable form: `data/ecosystem/repositories.v1.json`, checked by `scripts/ecosystem_status.py`. |
+| [`docs/ecosystem.md`](ecosystem.md) | Current map of the repositories, forks and external services (2026-11-11): what the engine consumes from each and as what type, the recorded heads against the executed pins, two identifier traces (one real result; the synthetic boundary check), test coverage, and a prioritised findings table with evidence and status. Machine-readable form: `data/ecosystem/repositories.v1.json`, checked by `scripts/ecosystem_status.py`. |
 
 ## Current guides, by task
 
