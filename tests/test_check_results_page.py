@@ -189,7 +189,7 @@ def test_a_stored_value_with_no_table_entry_is_printed_as_stored() -> None:
 def test_search_text_holds_what_the_page_searches_and_matches_every_term() -> None:
     run = _toy_runs()[3]
     text = crp.search_text(run, LABELS)
-    assert text == ("handset_20260303 handset_20260303  toy-lens hand-authored set · 2026-03-03 toy-lens readout "
+    assert text == ("handset_20260303 handset_20260303  toy-lens hand-authored set · 2026-03-03  toy-lens readout "
                     "exploratory, toy set completed partial")
 
     def matches(query: str, of: dict[str, Any] = run) -> bool:
@@ -200,6 +200,23 @@ def test_search_text_holds_what_the_page_searches_and_matches_every_term() -> No
     assert matches("exploratory, toy") and not matches("exploratory_set")     # the label is searched, not the value
     unmapped = _run("handset_20260303__x", evidence_class="new_class", execution_states={"new_state": 1})
     assert matches("new_class new_state", unmapped)                           # a value with no entry: as stored
+
+
+def test_the_second_line_of_a_model_cell_is_read_from_the_run_id_and_is_searched() -> None:
+    """Regression (2026-11-12, review of patientwords#33): the page printed a label on the second line of a Model
+    cell (``lens reader pairs``) and did not search it. ``second_line`` mirrors the page's rule, and the search
+    text holds it beside the stored run id."""
+    models = crp.model_ids([_run("pairs_20260101T010203Z__toy-b", model="toy-b"), _run("x", model=None)])
+    assert models == frozenset({"toy-b"})
+    run = _run("pairs_20260101T010203Z__lenspairs__toy-lens_toy-b", instrument="toy-lens", model=None)
+    assert crp.second_line(run, LABELS, models) == "toy-b · lens reader pairs"
+    assert crp.second_line(run, LABELS) == "lens reader pairs · toy-lens_toy-b"            # no model id listed: as stored
+    assert crp.second_line(_run("pairs_20260101T010203Z__toy-lens", instrument="toy-lens", model=None), LABELS) == ""
+    assert crp.second_line(_run("pairs_20260101T010203Z__toy-b", model="toy-b"), LABELS, models) == ""
+    assert crp.second_line(_run("pairs_20260101T010203Z__odd_piece", model=None), LABELS) == "odd_piece"
+    assert crp.search_matches(run, "lens reader pairs", LABELS, models)                    # the label a row shows
+    assert crp.search_matches(run, "lenspairs", LABELS, models)                            # the stored code
+    assert not crp.search_matches(_run("pairs_20260101T010203Z__toy-b", model="toy-b"), "reader", LABELS, models)
 
 
 def test_search_still_matches_stems_run_ids_and_instrument_codes() -> None:

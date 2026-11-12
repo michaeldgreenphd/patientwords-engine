@@ -57,7 +57,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from functools import partial
 from pathlib import Path
-from typing import Any, Callable, Mapping, Sequence
+from typing import Any, Callable, Collection, Iterable, Mapping, Sequence
 from urllib.parse import quote, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -123,17 +123,24 @@ PAGE_HOOKS = ("cat-run", "cat-x", "cat-detail", "c-status", "c-meas", "det-label
               "src-id", "part-sha", "row-table", "sum-dl", "chip-ct", "'view-'+v.id")
 # The page's search rule, as written in the page. ``search_text`` below mirrors it; the offline test fails when
 # the page's line changes, so that the mirror is changed with it.
-PAGE_SEARCH_RULE = ("return (str(r.run_dir)+' '+str(r.stem)+' '+str(r.model)+' '+str(r.instrument)+' '+x.title+' '+",
+PAGE_SEARCH_RULE = ("return (str(r.run_dir)+' '+str(r.stem)+' '+str(r.model)+' '+str(r.instrument)+' '+x.title+' '+x.second+' '+",
                     "(str(r.instrument)?instrumentLabel(r):'')+' '+labelOf(EVIDENCE_LABEL,r.evidence_class)+' '+",
                     "Object.keys(obj(r.execution_states)).map(stateLabel).join(' ')).toLowerCase();")
-# The page's label rules, as written in the page. ``label_of``, ``experiment_title``, ``stem_line_shown`` and
-# ``instrument_label`` below mirror them; the offline test fails when one of these lines changes.
+# The page's label rules, as written in the page. ``label_of``, ``experiment_title``, ``stem_line_shown``,
+# ``instrument_label`` and ``second_line`` below mirror them; the offline test fails when one of these lines
+# changes.
 PAGE_LABEL_RULES = (
     "function labelOf(map,v){return typeof v==='string'&&v?(has(map,v)?map[v]:v):DASH;}",
     "family=(stem.slice(0,m.index)+'_'+stem.slice(m.index+m[0].length)).split('_').filter(function(x){return x;}).join('_');",
     "var name=labelled?FAMILY_LABEL[family]:(has(CLASS_LABEL,r.stimulus_class)?CLASS_LABEL[r.stimulus_class]:CLASS_OTHER);",
     "function stemLineShown(x){return !x.labelled||Object.keys(obj(TITLE_STEMS[x.title])).length>1;}",
     "return has(INSTRUMENT_LABEL,r.instrument)?INSTRUMENT_LABEL[r.instrument]:'instrument: '+r.instrument;",
+    "if(suffix&&suffix!==str(r.model)){",
+    "if(!seg||(inst&&seg===inst))return;",
+    "var after=inst&&seg.indexOf(inst+'_')===0?seg.slice(inst.length+1):'';",
+    "if(after&&!model&&MODEL_IDS[after]){model=after;return;}",
+    "rest.push(labelOf(SUFFIX_LABEL,seg));",
+    "second:(model?[model]:[]).concat(rest).join(' · ')};",
 )
 # The page's label tables, each written in the page as ``var NAME={...};`` with a JSON object. ``page_labels``
 # reads them from the page source. They are not restated here.
@@ -371,18 +378,47 @@ def instrument_label(run: Mapping[str, Any], labels: PageLabels) -> str:
     return labels.table("INSTRUMENT_LABEL").get(instrument, "instrument: " + instrument)
 
 
-def search_text(run: Mapping[str, Any], labels: PageLabels) -> str:
+def model_ids(runs: Iterable[Mapping[str, Any]]) -> frozenset[str]:
+    """Every model id the index lists (``MODEL_IDS`` in the page)."""
+    return frozenset(_text(run.get("model")) for run in runs if _text(run.get("model")))
+
+
+def second_line(run: Mapping[str, Any], labels: PageLabels, models: Collection[str] = frozenset()) -> str:
+    """The second line of a run's Model cell (``second`` of ``experiment`` in the page): what the run id holds
+    after the stimulus set name. The instrument alone is left out, since the first line names it; a model is read
+    from it only when that text equals a model id the index lists (``models``); any other piece is its
+    SUFFIX_LABEL entry, or the piece as stored. Empty when the run id ends with the set name or with the model."""
+    key, stem, instrument = _text(run.get("run_dir")), _stem(run), _text(run.get("instrument"))
+    suffix = key[len(stem) + 2:] if key.startswith(stem + "__") else ""
+    if not suffix or suffix == _text(run.get("model")):
+        return ""
+    model, rest = "", []
+    for piece in suffix.split("__"):
+        if not piece or (instrument and piece == instrument):
+            continue
+        after = piece[len(instrument) + 1:] if instrument and piece.startswith(instrument + "_") else ""
+        if after and not model and after in models:
+            model = after
+            continue
+        rest.append(label_of(labels.table("SUFFIX_LABEL"), piece))
+    return " · ".join(([model] if model else []) + rest)
+
+
+def search_text(run: Mapping[str, Any], labels: PageLabels, models: Collection[str] = frozenset()) -> str:
     """The text the page's search box is matched against for one run (``searchText`` in the page): the run id,
-    the stimulus set name, the model id and the instrument code as stored, then the labels the row shows."""
+    the stimulus set name, the model id and the instrument code as stored, then the labels the row shows, the
+    second line of its Model cell among them. ``models`` is ``model_ids`` of the whole index."""
     states = " ".join(label_of(labels.table("STATE_LABEL"), key) for key in _mapping(run.get("execution_states")))
     return " ".join([_text(run.get("run_dir")), _text(run.get("stem")), _text(run.get("model")),
-                     _text(run.get("instrument")), experiment_title(run, labels), instrument_label(run, labels),
+                     _text(run.get("instrument")), experiment_title(run, labels), second_line(run, labels, models),
+                     instrument_label(run, labels),
                      label_of(labels.table("EVIDENCE_LABEL"), run.get("evidence_class")), states]).lower()
 
 
-def search_matches(run: Mapping[str, Any], query: str, labels: PageLabels) -> bool:
+def search_matches(run: Mapping[str, Any], query: str, labels: PageLabels,
+                   models: Collection[str] = frozenset()) -> bool:
     """Whether the page lists ``run`` for ``query``: every whitespace-separated term is in the run's text."""
-    hay = search_text(run, labels)
+    hay = search_text(run, labels, models)
     return all(term in hay for term in query.lower().split())
 
 
@@ -498,13 +534,13 @@ def pick_search_term(runs: Sequence[Mapping[str, Any]], labels: PageLabels) -> t
     The term is the model name that selects the most runs while leaving at least one out (ties: the first
     name). When no model name does that, a stem and then a run id is tried. None when no term narrows the list.
     """
-    total = len(runs)
+    total, models = len(runs), model_ids(runs)
     for key in ("model", "stem", "run_dir"):
         best: tuple[int, str, list[str]] | None = None
         for term in sorted({_text(run.get(key)) for run in runs}):
             if not term or term != term.strip() or len(term.split()) != 1:
                 continue
-            matched = [run["run_dir"] for run in runs if search_matches(run, term, labels)]
+            matched = [run["run_dir"] for run in runs if search_matches(run, term, labels, models)]
             if 0 < len(matched) < total and (best is None or len(matched) > best[0]):
                 best = (len(matched), term, matched)
         if best is not None:
@@ -516,6 +552,8 @@ def pick_open_run(runs: Sequence[Mapping[str, Any]], labels: PageLabels) -> dict
     """The run the check opens: public, one part with a recorded SHA-256, public rows in a rows file, and a
     run id that the page's search matches for this run alone. A run with sealed rows is preferred, so that the
     sealed count has something to show. ``SetupProblem`` when the catalogue holds no such run."""
+    models = model_ids(runs)
+
     def usable(run: Mapping[str, Any]) -> bool:
         parts = run.get("parts") if isinstance(run.get("parts"), list) else []
         return (has_rows(run) and run.get("visibility") != "restricted" and run.get("n_parts") == 1
@@ -523,7 +561,7 @@ def pick_open_run(runs: Sequence[Mapping[str, Any]], labels: PageLabels) -> dict
                 and bool(_SHA256.fullmatch(_text(parts[0].get("sha256"))))
                 and bool(_ROWS_FILE.fullmatch(_text(run.get("rows_file"))))
                 and len(run["run_dir"].split()) == 1
-                and sum(1 for other in runs if search_matches(other, run["run_dir"], labels)) == 1)
+                and sum(1 for other in runs if search_matches(other, run["run_dir"], labels, models)) == 1)
 
     fallback = None
     for run in runs:

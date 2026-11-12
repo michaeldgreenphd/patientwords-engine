@@ -849,34 +849,37 @@ def test_results_run_keeps_its_identifiers_under_methods_and_source(site) -> Non
             assert identifier in kept["text"], identifier
         labels = view.page.evaluate(_ROWS_TABLE_NAMES)
         assert labels and all(run["stem"] not in label and ".json" not in label for label in labels)
-        # The study rule has a short wording and a full name. The short one ("study analysis") is the badge of
-        # the row and of each part, with no filler word before it; the full name, which holds the short wording,
-        # is in the filter option and in the open run's line.
-        short = "study analysis"
-        included = [badge for badge in row["badges"] if badge.endswith("analysis") or " analysis " in badge
-                    or badge.endswith(" only")]
+        # The study rule is worded as eligibility, never as inclusion: a rule admits parts, and a published
+        # statistic may use fewer. The badge of the row and of each part reads "study-eligible"; the rule's full
+        # name is in the filter option and in the open run's line.
+        short = "study-eligible"
+        included = [badge for badge in row["badges"] if "eligible" in badge]
         assert len(included) == 1 and re.fullmatch(rf"{short}(?: \(\d+ of \d+ parts\))?", included[0]), row["badges"]
-        assert not any(badge.startswith(("in ", "review:")) for badge in row["badges"]), row["badges"]
+        assert not any(badge.startswith(("in ", "review:")) or "analysis" in badge for badge in row["badges"])
         said = view.page.evaluate("""() => {
             const lines = document.querySelectorAll('#cat-body tr.cat-detail .det > dl.kv dd');
             return {filter: [...document.querySelectorAll('#f-membership option')].map((option) => option.textContent),
                     open_run: lines[lines.length - 1].textContent,
                     parts: [...document.querySelectorAll('#cat-body tr.cat-detail section.part .part-state .bdg')].map(
                         (badge) => badge.textContent)}; }""")
-        named = [option for option in said["filter"] if option.startswith("in the ") and f"{short} (" in option]
+        named = [option for option in said["filter"] if option.startswith("eligible for the ")]
         assert len(named) == 1, said["filter"]
-        phrase = named[0][len("in the "):named[0].index(" (")]
-        assert phrase.endswith(short), phrase
-        assert [option for option in said["filter"] if option.startswith(f"not in the {phrase} (")] != []
+        phrase = named[0][len("eligible for the "):named[0].index(" (")]
+        assert [option for option in said["filter"] if option.startswith(f"not eligible for the {phrase} (")] != []
+        assert not any(option.startswith(("in the ", "not in the ")) for option in said["filter"]), said["filter"]
         assert said["open_run"].startswith(f"{phrase}: ") and short in said["parts"], said
         assert view.errors == []
 
 
 def test_results_study_context_states_each_fact_once(site) -> None:
     """(2026-11-12, owner request) The Study context cell of a run's row holds only the words the row needs: no
-    filler word before the analysis wording, no ``review:`` before a review status, and no evidence-class words
+    filler word before the eligibility wording, no ``review:`` before a review status, and no evidence-class words
     that the experiment title of the same row already gives. The stored evidence class and its definition stay in
-    the badge's title."""
+    the badge's title.
+
+    (2026-11-12, review of patientwords#33) The second line states eligibility under an analysis rule, never use
+    in a result: a rule admits parts, and a collector may keep fewer (``scripts/urgency_headline.py`` leaves out
+    every population but the observational one). The rule's id and recorded label are in the badge's title."""
     browser, base = site
     _need("results_catalogue/index.json")
     with _Page(browser, base, RESULTS) as view:
@@ -884,15 +887,19 @@ def test_results_study_context_states_each_fact_once(site) -> None:
         while view.page.is_visible("#cat-more"):
             view.page.click("#cat-more")
         rows = view.page.evaluate("""() => [...document.querySelectorAll('#cat-body tr.cat-run')].map((row) => {
-            const cell = row.querySelector('td.c-ctx'), evidence = cell.querySelector('.bdg');
+            const cell = row.querySelector('td.c-ctx'), badges = cell.querySelectorAll('.bdg'), evidence = badges[0];
             return {title: row.querySelector('td.c-exp .cat-x').innerText,
                     lines: [...cell.querySelectorAll('.ln')].map((n) => n.innerText.trim()),
-                    evidence: evidence.textContent, stored: evidence.getAttribute('title')}; })""")
+                    evidence: evidence.textContent, stored: evidence.getAttribute('title'),
+                    rule: badges[1].getAttribute('title')}; })""")
         assert rows
         for row in rows:
             assert not any(line.startswith(("in ", "review:")) for line in row["lines"]), row
-            analysis = row["lines"][1].split(" (")[0]
-            assert analysis in ("study analysis", "no analysis") or analysis.endswith(" analysis only"), row
+            eligibility = row["lines"][1].split(" (")[0]
+            assert eligibility in ("study-eligible", "not eligible") or eligibility.endswith("-eligible only"), row
+            assert "analysis" not in row["lines"][1], row
+            if eligibility != "not eligible":
+                assert row["rule"].startswith("Eligible under analysis rule ") and "fewer" in row["rule"], row
             assert row["stored"].startswith("evidence_class: "), row
         named = [row for row in rows if row["title"].startswith(("Hand-authored set", "Third-party text set"))]
         assert len({row["title"].split(" ")[0] for row in named}) == 2          # both classes are in the index
@@ -901,6 +908,33 @@ def test_results_study_context_states_each_fact_once(site) -> None:
             assert "exploratory_hand_authored" in row["stored"] or "exploratory_third_party_source" in row["stored"]
         # a row whose title does not name the class keeps the whole evidence label
         assert "exploratory, post-registration" in {row["evidence"] for row in rows}
+        assert view.errors == []
+
+
+def test_results_search_matches_the_second_line_a_row_shows(site) -> None:
+    """Regression (2026-11-12, review of patientwords#33): the second line of a Model cell printed a label, such
+    as ``lens reader pairs``, that the search text did not hold, so searching for the words a row shows listed no
+    run. The search text now holds that line. The stored code in the run id still lists the same runs."""
+    browser, base = site
+    _need("results_catalogue/index.json")
+    with _Page(browser, base, RESULTS) as view:
+        view.page.wait_for_selector("#cat-body tr.cat-run")
+
+        def listed(query: str) -> dict[str, str]:
+            view.page.fill("#f-q", query)
+            while view.page.is_visible("#cat-more"):
+                view.page.click("#cat-more")
+            return dict(view.page.evaluate("""() => [...document.querySelectorAll('#cat-body tr.cat-run')].map((row) => {
+                const lines = row.querySelectorAll('td.c-model .ln');
+                return [row.dataset.run, lines.length > 1 ? lines[1].textContent : '']; })"""))
+
+        everything = listed("")
+        label = "lens reader pairs"
+        shown = {run for run, second in everything.items() if label in second}
+        assert shown and all("lenspairs" in run for run in shown), "no row of the committed index shows the label"
+        by_label, by_code = listed(label), listed("lenspairs")
+        assert shown <= set(by_label) and len(by_label) < len(everything), sorted(by_label)[:5]
+        assert shown <= set(by_code), sorted(by_code)[:5]
         assert view.errors == []
 
 
