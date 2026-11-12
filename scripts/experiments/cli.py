@@ -2,12 +2,14 @@
 
 Everything here is offline. No command loads a model, opens a network connection or fires a trigger.
 
-Commands: ``validate``, ``plan``, ``run-fixture``, ``collect``, ``compare``, ``bundle``, ``capabilities``.
+Commands: ``validate``, ``plan``, ``run-fixture``, ``collect``, ``compare``, ``bundle``, ``capabilities``,
+``intake``.
 Each prints one JSON object. Exit codes: 0 success; 1 the command finished and the run is not clean (an
 attempt ended ``failed`` or ``invalid``; ``run-fixture`` was not stopped by ``--stop-after`` and left a ready
 task without a completed result; or ``collect --require-complete`` found a planned task without an envelope
 or a ready task without a completed result that counts: a completed result whose task was executed again
-under changed inputs without completing does not count); 2 a refusal, printed as
+under changed inputs without completing does not count; or ``intake`` found a structural error in the
+batch, in which case its three files are still written so the errors can be read); 2 a refusal, printed as
 ``{"status": "refused", "code": ..., "detail": ...}``; 3 a configuration error (the holdout seal or the
 results policy could not be evaluated), which is not a refusal.
 
@@ -25,8 +27,11 @@ from typing import Any
 
 from scripts.experiments import capabilities as caps
 from scripts.experiments.bundle import build_bundle
-from scripts.experiments.common import PROTOCOL_SCHEMA, Refusal, digest, read_json, require, write_json
+from scripts.experiments.common import (
+    PROTOCOL_SCHEMA, Refusal, digest, read_json, require, sha256_bytes, write_json,
+)
 from scripts.experiments.compare import compare_run
+from scripts.experiments.intake import ROOT as INTAKE_ROOT, file_record, intake_files, write_outputs
 from scripts.experiments.planner import build_plan, validate_plan
 from scripts.experiments.protocol import validate_protocol
 from scripts.experiments.store import RunStore
@@ -160,6 +165,53 @@ def cmd_capabilities(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def cmd_intake(args: argparse.Namespace) -> int:
+    require(args.no_write or args.out is not None, "invalid_input", "Pass --out DIR, or --no-write")
+    read_batches = {}
+    for path in args.read_batch:
+        read_batches[sha256_bytes(path.read_bytes())] = _load(path, "read batch")
+    prior = {}
+    for item in args.prior_batch:
+        label, _, path = item.partition("=")
+        require(bool(label) and bool(path), "invalid_input", "--prior-batch takes LABEL=PATH")
+        prior[label] = _load(Path(path), "prior batch")
+    lexicon = None
+    if args.lexicon:
+        doc = _load(args.lexicon, "lexicon")
+        lexicon = {e["expression"] for part in ("core", "folk_meaning") for e in doc.get(part) or []}
+    manifest, files = intake_files(
+        args.batch, batch_id=args.batch_id, source_ref=args.source_ref, design_path=args.design, root=args.root,
+        verdicts=[_load(p, "verdicts") for p in args.verdicts], read_batches=read_batches,
+        reviews=[_load(p, "reviews") for p in args.reviews], prior_batches=prior,
+        split_records=[_load(p, "split record") for p in args.split_record], split_seed=args.split_seed,
+        models=args.model, tokenizations=[_load(p, "tokenization") for p in args.tokenization],
+        mechanistic_families=args.mechanistic_families, mechanistic_seed=args.mechanistic_seed,
+        previous_manifest=_load(args.previous_manifest, "previous manifest") if args.previous_manifest else None,
+        stem=args.stem, pairs_file=_load(args.pairs_file, "pairs file") if args.pairs_file else None,
+        pairs_file_ref=args.pairs_file.name if args.pairs_file else None,
+        input_hashes={key: value for key, value in {
+            "verdicts": [file_record(p) for p in args.verdicts],
+            "read_batches": [file_record(p) for p in args.read_batch],
+            "reviews": [file_record(p) for p in args.reviews],
+            "prior_batches": [{"label": item.partition("=")[0], **file_record(Path(item.partition("=")[2]))}
+                              for item in args.prior_batch],
+            "split_records": [file_record(p) for p in args.split_record],
+            "tokenizations": [file_record(p) for p in args.tokenization],
+            "previous_manifest": file_record(args.previous_manifest) if args.previous_manifest else None,
+            "pairs_file": file_record(args.pairs_file) if args.pairs_file else None,
+            "lexicon": file_record(args.lexicon) if args.lexicon else None}.items() if value},
+        forbid=args.forbid, max_words=args.max_words, lexicon=lexicon)
+    outputs = {} if args.no_write else write_outputs(args.out, files, args.allow_root)
+    check = manifest["software_validation"]
+    _emit({"status": "intake", "batch": manifest["batch"], "outputs": outputs,
+           "output_sha256": {name: sha256_bytes(data) for name, data in files.items()},
+           "software_validation": {k: check[k] for k in ("status", "errors", "warnings", "by_check")},
+           "inventory": manifest["inventory"], "splits": manifest["splits"]["counts"],
+           "mechanistic_subset": manifest["mechanistic_subset"]["families"],
+           "measurements": manifest["measurements"]["existing_run_directories"]})
+    return EXIT_NOT_CLEAN if check["status"] == "failed" else EXIT_OK
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m scripts.experiments.cli", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -213,6 +265,36 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_argument("--protocol", type=Path,
                      help="the protocol the plan was built from; needed only to export the prompt text of "
                           "families the protocol marks as approved for publication (default: no text)")
+    allow_root(sub)
+
+    sub = add("intake", cmd_intake, "Authored batch of case families -> review packet, review form and proposed "
+                                    "measurement manifest. Offline; exit 1 when software validation fails.")
+    sub.add_argument("--batch", type=Path, required=True, help="the authored families file (a JSON list)")
+    sub.add_argument("--batch-id", required=True, help="stable name of the batch, for example r9_20261110")
+    sub.add_argument("--source-ref", help="where the batch file came from (path and commit); recorded as given")
+    sub.add_argument("--out", type=Path, help="directory for the three outputs; omit with --no-write")
+    sub.add_argument("--no-write", action="store_true", help="print the summary and write nothing")
+    sub.add_argument("--design", type=Path, help="intake design file (default: the committed one)")
+    sub.add_argument("--verdicts", type=Path, action="append", default=[], help="owner read of a batch version")
+    sub.add_argument("--read-batch", type=Path, action="append", default=[],
+                     help="the batch version a verdicts file was recorded on, when it is not --batch")
+    sub.add_argument("--reviews", type=Path, action="append", default=[], help="returned review form")
+    sub.add_argument("--prior-batch", action="append", default=[], metavar="LABEL=PATH",
+                     help="an earlier families file, for duplicate cases and reused ids")
+    sub.add_argument("--split-record", type=Path, action="append", default=[],
+                     help="a recorded split assignment; its families keep their split")
+    sub.add_argument("--split-seed", type=int, help="seed for families with no recorded split")
+    sub.add_argument("--model", action="append", default=[], help="study id of a model to plan for (repeatable)")
+    sub.add_argument("--tokenization", type=Path, action="append", default=[], help="recorded token ids of the prompts")
+    sub.add_argument("--mechanistic-families", type=int, default=0, help="size of the mechanistic subset")
+    sub.add_argument("--mechanistic-seed", type=int)
+    sub.add_argument("--previous-manifest", type=Path, help="an earlier manifest of this batch")
+    sub.add_argument("--stem", help="lane stem of the batch, to look for existing measurements under trace_out/")
+    sub.add_argument("--pairs-file", type=Path, help="a lane-readable pairs file to reconcile the contrasts with")
+    sub.add_argument("--lexicon", type=Path, help="dialect lexicon; lexicon_entries are checked against it")
+    sub.add_argument("--forbid", default=",;-", help="characters no text may use (default: %(default)r)")
+    sub.add_argument("--max-words", type=int, default=40)
+    sub.add_argument("--root", type=Path, default=INTAKE_ROOT, help=argparse.SUPPRESS)
     allow_root(sub)
 
     sub = add("capabilities", cmd_capabilities, "Print capability matrix rows.")

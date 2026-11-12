@@ -1,0 +1,193 @@
+{
+  "schema": "patientwords.intake-design/1",
+  "status": "draft, 2026-11-12: proposed by the batch-intake change; not agreed. The owner agrees it by a commit that changes this line.",
+  "protocol": {
+    "file": "docs/protocols/instrument_register_experiment_20261111.md",
+    "status": "draft, not signed",
+    "manipulated_dimension": "register only"
+  },
+  "endpoint": {
+    "name": "first_token_probability",
+    "definition": "the full-vocabulary probability of the first token of the family's declared target word at the position after the carrier phrase",
+    "is_not": [
+      "triage accuracy",
+      "the quality of an answer",
+      "evidence that a model understands a wording"
+    ],
+    "partial_when": "the target word is more than one token; the endpoint then reads its first token only and is labelled partial"
+  },
+  "variants": {
+    "required": [
+      "medical",
+      "everyday",
+      "medical_paraphrase",
+      "everyday_paraphrase",
+      "changed_fact"
+    ],
+    "optional": [
+      "quad_b",
+      "quad_c",
+      "everyday_attribution"
+    ]
+  },
+  "contrasts": [
+    {
+      "suffix": "reg",
+      "top": "medical",
+      "bottom": "everyday",
+      "stratum": "register",
+      "role": "contrast",
+      "holds_constant": "the reference facts",
+      "edit": "swap_spans"
+    },
+    {
+      "suffix": "mpar",
+      "top": "medical",
+      "bottom": "medical_paraphrase",
+      "stratum": "register",
+      "role": "paraphrase_control",
+      "holds_constant": "the reference facts and the register",
+      "edit": "computed"
+    },
+    {
+      "suffix": "epar",
+      "top": "everyday",
+      "bottom": "everyday_paraphrase",
+      "stratum": "register",
+      "role": "paraphrase_control",
+      "holds_constant": "the reference facts and the register",
+      "edit": "computed"
+    },
+    {
+      "suffix": "chg",
+      "top": "everyday",
+      "bottom": "changed_fact",
+      "stratum": "register",
+      "role": "changed_fact_control",
+      "holds_constant": "the register and every reference fact but one",
+      "edit": "changed_fact"
+    },
+    {
+      "suffix": "attr",
+      "top": "everyday",
+      "bottom": "everyday_attribution",
+      "stratum": "patient_explanation",
+      "role": "contrast",
+      "holds_constant": "the reference facts and the everyday wording; the bottom side adds the speaker's stated belief",
+      "edit": "attribution"
+    },
+    {
+      "suffix": "qb",
+      "top": "medical",
+      "bottom": "quad_b",
+      "stratum": "syntax_crossing",
+      "role": "contrast",
+      "holds_constant": "the reference facts and the medical terms",
+      "edit": "computed"
+    },
+    {
+      "suffix": "qc",
+      "top": "medical",
+      "bottom": "quad_c",
+      "stratum": "syntax_crossing",
+      "role": "contrast",
+      "holds_constant": "the reference facts and the medical sentence structure",
+      "edit": "computed"
+    }
+  ],
+  "strata": {
+    "register": {
+      "evidence_class": "exploratory until the protocol is signed; the only stratum the first experiment covers",
+      "confirmatory_candidate": true,
+      "analysis": "within family: medical against everyday. Paraphrase and changed-fact controls of the same family are read beside it and are never pooled into it."
+    },
+    "patient_explanation": {
+      "evidence_class": "exploratory",
+      "confirmatory_candidate": false,
+      "analysis": "within family and within everyday wording: everyday against everyday with the explanation clause. The clause adds a belief, so this is an information manipulation. It is never pooled into the register contrast.",
+      "needs": "a protocol extension before any confirmatory statement"
+    },
+    "syntax_crossing": {
+      "evidence_class": "exploratory",
+      "confirmatory_candidate": false,
+      "analysis": "within family: the medical wording against each mixed wording. Reported per family and per crossing.",
+      "needs": "a protocol extension before any confirmatory statement"
+    }
+  },
+  "family_flags": {
+    "dialect": {
+      "rule": "the family names at least one lexicon entry, so its everyday wording uses a dialect or regional form",
+      "effect": "the family's register contrast changes register and dialect together. It is reported in the exploratory stratum register_with_dialect and is not a confirmatory candidate.",
+      "register_stratum": "register_with_dialect"
+    },
+    "new_carrier": {
+      "rule": "the family's carrier phrase is not in established_carriers",
+      "effect": "no earlier measurement used this carrier. The family is reported in the exploratory stratum new_carrier and is not a confirmatory candidate.",
+      "register_stratum": "new_carrier"
+    }
+  },
+  "established_carriers": [
+    "so I need to go to the",
+    "so I should see a",
+    "so I need to see a",
+    "so I need to take him to the",
+    "so I need to get to the",
+    "so I need to call my",
+    "so I should see an",
+    "so I need to take her to the"
+  ],
+  "comparisons_not_made": [
+    "Care tiers are not compared with each other: families at different tiers use different carrier phrases and target words, so their endpoints are probabilities of different tokens in different contexts.",
+    "Strata are not pooled: a register contrast, a patient-explanation contrast and a syntax crossing are different manipulations."
+  ],
+  "split": {
+    "unit": "case family: every wording of a case is in the family's split",
+    "names": [
+      "discovery",
+      "validation",
+      "fresh_test"
+    ],
+    "method": "python random.Random(seed); for each care level from highest to lowest: sort the family ids, rng.shuffle, first half discovery, next quarter validation, rest fresh_test",
+    "assigned": "per batch, once, before any measurement of the batch; a recorded assignment is never redrawn",
+    "open": "families per split is not fixed in the protocol (its section 14)"
+  },
+  "mechanistic_subset": {
+    "selection": "a seeded draw of families, made before any measurement of the batch, from owner-kept discovery families in the register stratum without flags; care levels are visited in turn. Held-out families are not drawn: a mechanism developed on them could not be confirmed on them.",
+    "alignment_classes": {
+      "position_aligned": "the two prompts tokenize to the same leading tokens before the differing stretch and the same trailing tokens after it, and the two stretches have the same number of tokens",
+      "suffix_aligned": "the trailing tokens after the differing stretch are the same; the stretches differ in length",
+      "not_recorded": "no tokenization of the prompts under the model's tokenizer has been supplied"
+    },
+    "rule": "A method states which alignment classes it reads. A family is never rewritten to reach a class: unnatural patient wording is a worse defect than a coarser alignment.",
+    "controls_per_site": [
+      "random_site",
+      "size_matched",
+      "reverse_direction"
+    ],
+    "ica_basis": "one fitted basis per model, fitted on discovery families only, used unchanged for every register and every stratum"
+  },
+  "review": {
+    "rubric": "data/protocols/instrument_validity_rubric.draft.json#pair_equivalence_review",
+    "layers": {
+      "software_validation": "structural checks by this command. It says nothing about clinical content or patient language.",
+      "owner_read": "the owner's keep or exclude decision on a named version of the texts. It is not a clinician's review.",
+      "clinician_review": "six dimensions of the rubric, recorded by a clinician",
+      "patient_language_review": "two items of the rubric, recorded by a patient-language reviewer"
+    },
+    "pending_status": "domain_review_pending",
+    "reviewed_status": "reviewed"
+  },
+  "eligibility": {
+    "publication": "docs/open_results_policy.md: an intact result of a hand-authored family is shared under public-display/1 whatever its effect, with its evidence class and review status shown. Publication does not need the reviews; it needs the labels.",
+    "confirmatory": "a family's register contrast can enter a confirmatory statement only when the protocol is signed, the family has both reviews, it has no family flag, its split was assigned before measurement, and software validation passed"
+  },
+  "work_rates": {
+    "cpu_logits": "scripts/experiments/estimate.py recorded_slowest_rates (scripts/backfill_planner.py SECONDS_PER_PAIR); sample size not recorded",
+    "activation_patching_minutes_per_pair": {
+      "low": 10,
+      "high": 15,
+      "source": "documented estimate in .github/workflows/activation_patching.yml and docs/activation_patching_design.md for gemma-2-2b; no landed part records a duration"
+    }
+  },
+  "established_carriers_source": "carrier_frame values of the committed data/simulated/agscen_*.json files that have landed measurements, read 2026-11-12"
+}

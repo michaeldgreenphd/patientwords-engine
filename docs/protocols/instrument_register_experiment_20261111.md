@@ -86,6 +86,23 @@ Register only: medical terminology against everyday patient language, with the f
 equal. Dialect, grammar and spelling are not manipulated here. A rewrite that adds a diagnosis the base
 wording did not state is an information intervention and is excluded.
 
+**Other manipulations in authored batches (added 2026-11-12).** Draft rounds 9 and 10 hold texts that
+change something other than register. None of them is part of this experiment. The intake command
+(`python -m scripts.experiments.cli intake`, rules in `data/experiments/intake_design.v1.json`) puts each
+in a named exploratory stratum, and no stratum is pooled with another:
+
+| Text or property | Stratum | Why it is not the register contrast |
+|---|---|---|
+| Everyday wording plus the speaker's explanation ("I think it is just ...") | `patient_explanation` | the clause adds a belief, so the information differs; analysed within everyday wording, everyday against everyday plus the clause |
+| Mixed wordings (medical terms in everyday syntax and the reverse) | `syntax_crossing` | a second dimension is crossed with register |
+| A family whose everyday wording uses a dialect or regional form | `register_with_dialect` | register and dialect change together |
+| A family that ends on a carrier phrase with no earlier measurement | `new_carrier` | the endpoint's behaviour on that carrier is unknown |
+
+A confirmatory statement about any of these needs an extension of this protocol, written before the
+families are measured. Comparisons are within family. Care tiers are not compared with each other: families
+at different tiers end on different carrier phrases and target words, so their endpoints are probabilities
+of different tokens in different contexts.
+
 ## 6. Provenance classes
 
 Simulated scenario pairs and newly written families are labelled as such. Real patient language is not
@@ -141,6 +158,13 @@ Families are split by underlying case, never by surface wording, into calibratio
 `validation` and `fresh_test`. All wordings of a case are in one split. The scorer refuses a family or a
 text in two splits (`split_leakage`). The Tier B holdout stays sealed.
 
+For an authored batch the split is drawn by the intake command: per family, per care level, from a recorded
+seed, once, before any measurement of the batch. A recorded split is read and never redrawn, and the
+command refuses to draw a split or a mechanistic subset for a batch whose stem already has a directory
+under `trace_out/`. The mechanistic subset (scaling plan, section 6) is a seeded draw from owner-kept,
+unflagged discovery families; token alignment is recorded from real token ids as `position_aligned` or
+`suffix_aligned`, and a family is never rewritten to reach a class.
+
 **Calibration before evaluation.** Thresholds and margins are fixed on calibration families only:
 
 1. Build a bundle that holds calibration families only and run
@@ -171,7 +195,8 @@ where it was computed.
 
 ## 14. Sample size, thresholds and margins: to be fixed before data
 
-None of these has a value yet, and none is proposed here.
+None of these has a value yet. Section 14.1 holds recommendations for the owner; a recommendation is not
+a value, and the table changes only by the owner's decision.
 
 | Field | Value | Fixed when |
 |---|---|---|
@@ -180,6 +205,25 @@ None of these has a value yet, and none is proposed here.
 | Equivalence margins (fact recovery, held artifact) | not fixed | after calibration, before held-out scoring |
 | Control margins (three) and arm margins (two) | not fixed | the same |
 | Behaviour-change threshold | not fixed | the same |
+
+### 14.1 Recommendations awaiting the owner's decision (2026-11-12)
+
+No outcome-blind family has been measured, so no variance estimate exists for this design. Each
+recommendation states the assumption it rests on. The arithmetic was checked; the assumptions were not
+tested.
+
+| Open item | Recommendation | Basis and assumption |
+|---|---|---|
+| Calibration quantile `Q` | 0.90 | The calibration record takes one value per family and a nearest-rank quantile over families. With `Q` = 0.90 and 30 families the sample maximum exceeds the true 0.90 quantile with probability 1 - 0.9^30 = 0.958, so the estimate has an upper bound inside the sample. `Q` = 0.95 needs 59 families for the same statement (1 - 0.95^59 = 0.952). Assumes families are independent draws |
+| Discovery families | at least 30, unflagged, register stratum | the row above |
+| Validation and fresh-test families | at least 24 each | A 95% interval for a mean within-family difference with 24 families has half-width 2.07 x s / sqrt(24) = 0.42 s, where s is the between-family standard deviation of the difference; with 15 families it is 0.55 s. For a proportion of families near 0.5 the Wilson 95% half-width is about 0.19 at 24 and 0.23 at 15. s is unknown until the pilot of section 19 |
+| Total under the recorded split rule (half, quarter, quarter per care level) | 96 unflagged families: 48, 24, 24 | 24 held-out families per split forces 96 in total; 48 discovery families exceed the 30 that `Q` needs. Stock on 2026-11-12: 10 owner-kept unflagged families in round 9 (4 in discovery). Round 10 is not landed |
+| Whether to fix the total now | fix it after the pilot | The pilot gives the first s on discovery families only. Fixing the total before it rests on a guess; fixing it after uses no held-out value |
+| Equivalence and control margins | per model, not smaller than the calibrated paraphrase quantile of that model; the number is written after calibration | A register difference smaller than what a same-register paraphrase produces cannot be attributed to register (section 7). A margin is still a judgement of practical importance; the quantile is its lower bound, not its value |
+| Behaviour-change threshold | the same quantile, on the absolute probability difference of the paraphrase controls | the same reason; uses only discovery families |
+| Review before the split | for a batch meant for the held-out sets: intake without a split seed, both reviews recorded, then the split | Section 4 removes a family on any "different" before the split. Round 9's split was recorded before any domain review, so its families stay exploratory unless the owner records a deviation in section 20 |
+| Reviewers | one clinician and one patient-language reviewer per family; a second clinician on a seeded quarter of the families, with agreement reported | The rubric's minimum is one of each. A second reading of a sample is the only way to report agreement. Minutes per family are not recorded; time the first 8 families and plan from that |
+| Models in the behavioural pass | the primary model (section 12) plus the six pinned logits models as exploratory rows | $0 provider spend on every one; see the cost rows of section 19 |
 
 ## 15. Judging
 
@@ -237,6 +281,28 @@ the scorer admits synthetic bundles only (`real_bundle_not_admitted`).
 
 It needs the owner's approval as the run packet states (its section 14, decision 1). It is fired only
 through `scripts/fire_trigger.py`.
+
+**The smallest pilot on authored families: proposed, not approved, not fired (2026-11-12).** It follows
+the operation check above and needs the same kind of approval.
+
+| | |
+|---|---|
+| Families | the 8 owner-kept discovery families of round 9 (`r9-01`, `-04`, `-05`, `-06`, `-11`, `-12`, `-13`, `-15`); no validation or fresh-test family is measured |
+| Workload | 38 contrasts, 46 distinct prompts: 16 in the register stratum (4 unflagged families: register, two paraphrase controls, changed fact), 16 in `register_with_dialect`, 6 syntax crossings. Rows of `data/simulated/agscen_r9_20261110.json` selected with the `indices` parameter of `logits-eval`; the intake manifest's `lane_input.index_of` gives the row of each contrast |
+| Model | `google/gemma-2-2b` at `c5ebcd40d208330abc697524c919956e692655cf`, the model of the operation check |
+| Estimate | 38 x 88.5 s = 56 runner minutes, one job, $0 provider spend. 88.5 s per pair is the proxy rate of the operation check, measured on another model, so the estimate is an assumption until the operation check records a rate |
+| Optional second step | the same 38 rows on the six pinned logits models: 24,529 runner seconds (6.8 runner hours) at the slowest recorded rates of `scripts/backfill_planner.py`, $0 |
+| What it gives | the first within-family paraphrase differences and register differences on outcome-blind families, on discovery only: the input the sample-size decision of section 14.1 lacks; and a check that manifest, lane and harvest join on `(batch, batch_index, model)` |
+| What it cannot give | a threshold (4 unflagged families give 4 calibration values, far below the 30 of section 14.1), any held-out result, any statement about care tiers, clinical validity (every family is `domain_review_pending`) |
+| Evidence class | exploratory; shared under `public-display/1` with its labels whatever the result |
+| Prerequisites | the pairs file on `main` (pull request 173, unmerged on 2026-11-12); the owner's approval; the operation check landed first if its measured rate is wanted for the estimate |
+| Mechanistic subset | recorded before any measurement: `r9-04`, `r9-11`, `r9-12`, `r9-13` (seed 20261112; the draw had 4 candidates, so it took all 4). Activation patching on them with three controls per site is estimated at 160 to 240 runner minutes from the documented 10 to 15 minutes per pair; no landed part records a duration. Not proposed for now |
+
+The full round 9 behavioural pass (15 owner-kept families, 70 contrasts) on the six logits models is
+estimated at 45,185 runner seconds (12.6 runner hours), $0. At the same rates a 96-family set with the four
+register-stratum contrasts per family (384 pairs) is 384 x 645.5 s = 68.9 runner hours on the six logits
+models, plus 9.4 runner hours on `gemma-2-2b` at the proxy rate. These are sums of slowest recorded rates,
+not measurements of this workload.
 
 **Measuring a real run.** No real timing exists for this model on this lane. A bounded real run records:
 

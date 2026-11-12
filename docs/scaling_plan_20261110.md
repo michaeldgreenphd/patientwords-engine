@@ -520,6 +520,11 @@ that is two tiers, fixed before any outcome is seen.
 `docs/protocols/protocol_template.md` is where a study states these lists. The protocol
 validator already refuses a basis fitted on a non-discovery split.
 
+For an authored batch of case families, `python -m scripts.experiments.cli intake` (added
+2026-11-12) records item 2 before measurement: a seeded draw from owner-kept, unflagged
+discovery families, refused once the batch has a directory under `trace_out/`. Its work
+estimate counts the three controls of item 5 with each nominated site.
+
 ## 7. What not to add, and the threshold that would justify it
 
 Every threshold below is a proposal for the owner. None is in force.

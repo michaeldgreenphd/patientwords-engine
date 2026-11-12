@@ -66,6 +66,65 @@ every prompt of a family without a join, is checked as a bare phrase with no bat
 index. Any hit refuses `holdout_refusal`; the refusal names the family and variant and
 never repeats prompt text.
 
+## Batch intake: from an authored batch to a review packet and a manifest
+
+Added 2026-11-12. `intake` reads one authored batch of case families (the `families.json`
+of a draft round) and writes three files. It loads no model and reads no measurement.
+
+```bash
+python -m scripts.experiments.cli intake --batch tests/fixtures/experiments/intake_families_synthetic.json --batch-id synthetic --split-seed 7 --no-write
+```
+
+| Output | Holds |
+|---|---|
+| `review_packet.md` | per family, on one screen: reference facts, every wording, the changed fact, the patient's explanation where there is one, each everyday expression with its declared source and evidence sentence, and the software findings. No model output |
+| `review_form.json` | one empty record per family and reviewer role, with the items of `pair_equivalence_review` in the draft rubric set to null. A null is "not reviewed" |
+| `intake_manifest.json` | the proposed measurement manifest: family ids, SHA-256 of each family, of its texts and of each prompt, strata, splits, the mechanistic subset, review status, model and tokenizer pins, and estimated work. It holds no prompt text |
+
+The rules it applies are data, in `data/experiments/intake_design.v1.json`. That file is a
+draft the owner has not agreed; the packet and the manifest repeat its status line.
+
+**Four layers of review, never merged.** Software validation (this command, extending
+`scripts/check_candidate_pairs.py`) covers structure only. The owner's read is a keep or
+exclude decision on a named version of the texts; when the texts change, the read is
+`stale`. Clinician review and patient-language review come only from `--reviews` records
+whose `reviewer_kind` is `human` and whose text hash matches; anything else is refused
+(`not_a_review`) or `stale`. A family without both reviews is `domain_review_pending`.
+
+**Strata.** Each contrast belongs to one stratum and strata are never pooled:
+`register` (medical against everyday), `patient_explanation` (everyday against everyday
+plus the speaker's stated belief; the clause adds information, so it is not a register
+contrast) and `syntax_crossing`. A family that uses a dialect form, or a carrier phrase
+with no earlier measurement, has its register contrast reported in `register_with_dialect`
+or `new_carrier`. Only an unflagged family's `register` contrast is a candidate for a
+confirmatory statement, and only under a signed protocol. Care tiers are not compared:
+families at different tiers end on different carrier phrases and target words.
+
+**Two kinds of eligibility.** `eligibility.publication` follows
+[open_results_policy.md](../open_results_policy.md): an admissible family's intact results
+are shareable under `public-display/1` whatever their effect, with their labels.
+`eligibility.confirmatory` lists what blocks a confirmatory statement
+(`protocol_not_signed`, a missing review, a flag, an unassigned split). The two are
+separate fields because an exploratory or null result is shared, not hidden.
+
+**Splits and the mechanistic subset.** A split is drawn per family (every wording of a
+case together), per care level, from a recorded seed. A recorded split
+(`--split-record`) is read and never redrawn; two records that disagree refuse
+`split_conflict`. When `trace_out/` already holds a directory for `--stem`, a new split
+refuses `split_after_measurement` and a new subset refuses `subset_after_measurement`
+unless `--previous-manifest` shows the same subset was chosen earlier. The mechanistic
+subset is a seeded draw from owner-kept, unflagged discovery families, so it is not
+outcome-selected, and its estimate includes the three controls per site.
+
+**Tokenization.** Alignment classes (`position_aligned`, `suffix_aligned`) are computed
+only from `--tokenization` records of real token ids. Without one the manifest says
+`not_recorded`. No family is rewritten to reach a class.
+
+**Reruns.** The same inputs give byte-identical outputs. An existing output with the same
+bytes is `unchanged`; with other bytes the command refuses `output_differs` and writes
+nothing. Output paths follow *Where output may go* below. Exit 1 means software
+validation found an error; the three files are still written so the errors can be read.
+
 ## Three things kept apart
 
 **Execution state** says what happened to a task: `not_run`, `unsupported`, `unavailable`,
@@ -238,6 +297,7 @@ the platforms the project runs on (Linux).
 | Each named refusal fires | `tests/test_experiments_core.py`, `tests/test_experiments_store.py`, `tests/test_experiments_compare.py` |
 | The ICA adapter agrees with the `icalens` library on toy data | `tests/test_experiments_ica_icalens.py`, run in an isolated environment with torch 2.13.0 and icalens 0.4.0 |
 | The existing exploratory contract is unchanged | `tests/test_exploratory_methods.py` passes; its fixtures are byte-identical |
+| Batch intake keeps review layers, strata, splits and outputs as stated | `tests/test_experiments_intake.py`, on eight placeholder families |
 | Any real model | not verified. No model was loaded. Fixture timings say nothing about a model run |
 | Any measurement validity | not verified. Toy values are chosen by hand so that expected results are computable |
 
