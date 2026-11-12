@@ -16,7 +16,7 @@
       "manipulated_dimension": "register only",
       "status": "draft, not signed"
     },
-    "sha256": "6f033e45e6410d1098c5cdfcb432b39c4adb8b720b8fe8f0e5386f9ba921e727",
+    "sha256": "06ab88fe3ffe7bf98016d06250c738d8cef54d713e10f2b5af65211bf8b48ead",
     "status": "draft, 2026-11-12: proposed by the batch-intake change; not agreed. The owner agrees it by a commit that changes this line."
   },
   "eligibility_rules": {
@@ -178,6 +178,47 @@
     {
       "admissible": true,
       "carrier_frame": "so I need to go to the",
+      "concerns": {
+        "closed": 0,
+        "note": "A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.",
+        "open": 2,
+        "records": [
+          {
+            "applies_to": [
+              "reg"
+            ],
+            "concern_id": "r9-01-c1",
+            "disposition": {
+              "note": "The owner kept this family on 2026-11-11 with the flag recorded. The keep decision is not a disposition of the concern.",
+              "status": "pending_clinical_review"
+            },
+            "family_changed_since_raised": false,
+            "kind": "fact_parity",
+            "raised_by": "Claude review session (a model's reading; not a clinician's or a patient-language reviewer's)",
+            "raised_by_kind": "model",
+            "raised_on": "2026-11-11",
+            "state": "open",
+            "text": "The everyday wording uses 'my heart sinking in my chest' for chest tightness. The cited source (Krause 1989) documents 'sinking heart' as an idiom of distress, so the two wordings may not state the same fact."
+          },
+          {
+            "applies_to": [
+              "chg"
+            ],
+            "concern_id": "r9-01-c2",
+            "disposition": {
+              "note": "The owner kept this family on 2026-11-11 with the flag recorded. The keep decision is not a disposition of the concern.",
+              "status": "pending_clinical_review"
+            },
+            "family_changed_since_raised": false,
+            "kind": "control_level_disputed",
+            "raised_by": "Claude review session (a model's reading; not a clinician's or a patient-language reviewer's)",
+            "raised_by_kind": "model",
+            "raised_on": "2026-11-11",
+            "state": "open",
+            "text": "The control (palpitations and the chest sensation 2 times today, passing quickly, no fainting) is labelled a general doctor; that is arguably still urgent."
+          }
+        ]
+      },
       "contrasts": [
         {
           "alignment": {
@@ -187,6 +228,9 @@
           "bottom_sha256": "65b264f0a632478118b8dfff360b53bb007e5bbacbfdced31ce20ed87dc22a05",
           "holds_constant": "the reference facts",
           "id": "r9-01-reg",
+          "open_concerns": [
+            "r9-01-c1"
+          ],
           "role": "contrast",
           "stratum": "register_with_dialect",
           "top": "medical",
@@ -207,6 +251,7 @@
           "bottom_sha256": "39727926910033b07d5ad685684cc5e0bb5e9f90727add6e4e6825e569598fd7",
           "holds_constant": "the reference facts and the register",
           "id": "r9-01-mpar",
+          "open_concerns": [],
           "role": "paraphrase_control",
           "stratum": "register_with_dialect",
           "top": "medical",
@@ -227,6 +272,7 @@
           "bottom_sha256": "7b485a9d10787def3fcdf63fbd4384f064db471400d59b3cc454243947458eea",
           "holds_constant": "the reference facts and the register",
           "id": "r9-01-epar",
+          "open_concerns": [],
           "role": "paraphrase_control",
           "stratum": "register_with_dialect",
           "top": "everyday",
@@ -247,6 +293,9 @@
           "bottom_sha256": "c1469d382e8feca4520721473eb9060800ffd0c2e7f3864fc94cf589d98e8d78",
           "holds_constant": "the register and every reference fact but one",
           "id": "r9-01-chg",
+          "open_concerns": [
+            "r9-01-c2"
+          ],
           "role": "changed_fact_control",
           "stratum": "register_with_dialect",
           "top": "everyday",
@@ -267,6 +316,7 @@
           "bottom_sha256": "cac9497c645611adeb9cda79a5cfa258497778c5e6b306c1999077f953fb6c29",
           "holds_constant": "the reference facts and the medical terms",
           "id": "r9-01-qb",
+          "open_concerns": [],
           "role": "contrast",
           "stratum": "syntax_crossing",
           "top": "medical",
@@ -287,6 +337,7 @@
           "bottom_sha256": "4ac1e861496cac838022a7cd5d13a8c2066335fc8125c3a5665417e463378efc",
           "holds_constant": "the reference facts and the medical sentence structure",
           "id": "r9-01-qc",
+          "open_concerns": [],
           "role": "contrast",
           "stratum": "syntax_crossing",
           "top": "medical",
@@ -302,13 +353,19 @@
       ],
       "eligibility": {
         "confirmatory": {
-          "applies_to": "the register contrast and its two controls only",
+          "applies_to": "the register pair. A control with an open concern is listed in controls_with_open_concerns and does not block the pair.",
           "blocked_by": [
             "protocol_not_signed",
             "clinician_review_missing",
             "patient_language_review_missing",
-            "exploratory_stratum:register_with_dialect"
+            "exploratory_stratum:register_with_dialect",
+            "open_concern_on_register_pair:r9-01-c1"
           ],
+          "controls_with_open_concerns": {
+            "r9-01-chg": [
+              "r9-01-c2"
+            ]
+          },
           "eligible": false
         },
         "publication": {
@@ -355,6 +412,7 @@
         },
         "status": "domain_review_pending"
       },
+      "review_basis_sha256": "905d46fdd91d635c879f9ddb971ff920782bdf3781bd877761d1a192f9116150",
       "right_care": 4,
       "sources": {
         "by_quote_type": {
@@ -364,6 +422,18 @@
         },
         "expressions": 6,
         "note": "Counts of what the author declared. This command does not open any source.",
+        "verification": {
+          "counts": {
+            "not_checked": 4
+          },
+          "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
+          "per_expression": {
+            "a brief blackout": "not_checked",
+            "a sinking heart in my chest": "not_checked",
+            "briefly blacking out": "not_checked",
+            "my heart sinking in my chest": "not_checked"
+          }
+        },
         "with_evidence_sentence": 0
       },
       "split": "discovery",
@@ -413,6 +483,12 @@
     {
       "admissible": true,
       "carrier_frame": "so I need to go to the",
+      "concerns": {
+        "closed": 0,
+        "note": "A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.",
+        "open": 0,
+        "records": []
+      },
       "contrasts": [
         {
           "alignment": {
@@ -422,6 +498,7 @@
           "bottom_sha256": "255ce05233084a4e4ef6fb46deef2d9b7d2706ca5e032afc61815caeb7880d59",
           "holds_constant": "the reference facts",
           "id": "r9-02-reg",
+          "open_concerns": [],
           "role": "contrast",
           "stratum": "register_with_dialect",
           "top": "medical",
@@ -442,6 +519,7 @@
           "bottom_sha256": "bcc5a5f383b39e5c903e40c3ffe5be4c84742cce127da5a1030849e7765eebd7",
           "holds_constant": "the reference facts and the register",
           "id": "r9-02-mpar",
+          "open_concerns": [],
           "role": "paraphrase_control",
           "stratum": "register_with_dialect",
           "top": "medical",
@@ -462,6 +540,7 @@
           "bottom_sha256": "021cf242c99d83bb3b8115dde2cd74a8535a64315f88315dae0f9243b3a6d452",
           "holds_constant": "the reference facts and the register",
           "id": "r9-02-epar",
+          "open_concerns": [],
           "role": "paraphrase_control",
           "stratum": "register_with_dialect",
           "top": "everyday",
@@ -482,6 +561,7 @@
           "bottom_sha256": "d17ad51db7a0a92432651d410aa2027fd95396ab73476bbf3e9c4c08ca0d309d",
           "holds_constant": "the register and every reference fact but one",
           "id": "r9-02-chg",
+          "open_concerns": [],
           "role": "changed_fact_control",
           "stratum": "register_with_dialect",
           "top": "everyday",
@@ -497,13 +577,14 @@
       ],
       "eligibility": {
         "confirmatory": {
-          "applies_to": "the register contrast and its two controls only",
+          "applies_to": "the register pair. A control with an open concern is listed in controls_with_open_concerns and does not block the pair.",
           "blocked_by": [
             "protocol_not_signed",
             "clinician_review_missing",
             "patient_language_review_missing",
             "exploratory_stratum:register_with_dialect"
           ],
+          "controls_with_open_concerns": {},
           "eligible": false
         },
         "publication": {
@@ -550,6 +631,7 @@
         },
         "status": "domain_review_pending"
       },
+      "review_basis_sha256": "3b24491ef953dc28d2edee0b6ef24f559484ec1d345a32250fdadf09bb5500bf",
       "right_care": 4,
       "sources": {
         "by_quote_type": {
@@ -557,6 +639,16 @@
         },
         "expressions": 2,
         "note": "Counts of what the author declared. This command does not open any source.",
+        "verification": {
+          "counts": {
+            "not_checked": 2
+          },
+          "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
+          "per_expression": {
+            "a funny turn": "not_checked",
+            "the left side of her face drooped and speech slurred": "not_checked"
+          }
+        },
         "with_evidence_sentence": 0
       },
       "split": "validation",
@@ -598,6 +690,30 @@
     {
       "admissible": true,
       "carrier_frame": "so I need to go to the",
+      "concerns": {
+        "closed": 0,
+        "note": "A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.",
+        "open": 1,
+        "records": [
+          {
+            "applies_to": [
+              "chg"
+            ],
+            "concern_id": "r9-03-c1",
+            "disposition": {
+              "note": "The owner kept this family on 2026-11-11 with the flag recorded. The keep decision is not a disposition of the concern.",
+              "status": "pending_clinical_review"
+            },
+            "family_changed_since_raised": false,
+            "kind": "control_adds_fact",
+            "raised_by": "Claude review session (a model's reading; not a clinician's or a patient-language reviewer's)",
+            "raised_by_kind": "model",
+            "raised_on": "2026-11-11",
+            "state": "open",
+            "text": "The control replaces fact f4 and also adds 'after standing with mild back ache', which is in no reference fact."
+          }
+        ]
+      },
       "contrasts": [
         {
           "alignment": {
@@ -607,6 +723,7 @@
           "bottom_sha256": "001dbca335884f409b2023a1acade4c9ce4fd0fcb0532244de4ae9aa8b20d51d",
           "holds_constant": "the reference facts",
           "id": "r9-03-reg",
+          "open_concerns": [],
           "role": "contrast",
           "stratum": "register",
           "top": "medical",
@@ -627,6 +744,7 @@
           "bottom_sha256": "bbc88b55734ef9dce37ab34b75f43ca9cf10b05b152f34751ced9d5ee3c9c2b2",
           "holds_constant": "the reference facts and the register",
           "id": "r9-03-mpar",
+          "open_concerns": [],
           "role": "paraphrase_control",
           "stratum": "register",
           "top": "medical",
@@ -647,6 +765,7 @@
           "bottom_sha256": "b085b65cf23a9f7d8df1b07fe994e0a0ba87a923325748d78c1208db025a337d",
           "holds_constant": "the reference facts and the register",
           "id": "r9-03-epar",
+          "open_concerns": [],
           "role": "paraphrase_control",
           "stratum": "register",
           "top": "everyday",
@@ -667,6 +786,9 @@
           "bottom_sha256": "b16d6addc9b02b12db1550a9dcd5dbd4eb8fe98c7f3cbf3efb1f9f676b4a343b",
           "holds_constant": "the register and every reference fact but one",
           "id": "r9-03-chg",
+          "open_concerns": [
+            "r9-03-c1"
+          ],
           "role": "changed_fact_control",
           "stratum": "register",
           "top": "everyday",
@@ -682,12 +804,17 @@
       ],
       "eligibility": {
         "confirmatory": {
-          "applies_to": "the register contrast and its two controls only",
+          "applies_to": "the register pair. A control with an open concern is listed in controls_with_open_concerns and does not block the pair.",
           "blocked_by": [
             "protocol_not_signed",
             "clinician_review_missing",
             "patient_language_review_missing"
           ],
+          "controls_with_open_concerns": {
+            "r9-03-chg": [
+              "r9-03-c1"
+            ]
+          },
           "eligible": false
         },
         "publication": {
@@ -732,6 +859,7 @@
         },
         "status": "domain_review_pending"
       },
+      "review_basis_sha256": "79dcc7e5a3ba1d2c332cedcf6995343d19a44978a7484ec25868a9ba4b0d45e5",
       "right_care": 4,
       "sources": {
         "by_quote_type": {
@@ -740,6 +868,17 @@
         },
         "expressions": 4,
         "note": "Counts of what the author declared. This command does not open any source.",
+        "verification": {
+          "counts": {
+            "not_checked": 3
+          },
+          "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
+          "per_expression": {
+            "a bad constant headache": "not_checked",
+            "dark spots in my vision": "not_checked",
+            "swelling in both ankles": "not_checked"
+          }
+        },
         "with_evidence_sentence": 0
       },
       "split": "fresh_test",
@@ -781,6 +920,30 @@
     {
       "admissible": true,
       "carrier_frame": "so I need to go to the",
+      "concerns": {
+        "closed": 0,
+        "note": "A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.",
+        "open": 1,
+        "records": [
+          {
+            "applies_to": [
+              "chg"
+            ],
+            "concern_id": "r9-04-c1",
+            "disposition": {
+              "note": "The owner kept this family on 2026-11-11 with the flag recorded. The keep decision is not a disposition of the concern.",
+              "status": "pending_clinical_review"
+            },
+            "family_changed_since_raised": false,
+            "kind": "control_adds_fact",
+            "raised_by": "Claude review session (a model's reading; not a clinician's or a patient-language reviewer's)",
+            "raised_by_kind": "model",
+            "raised_on": "2026-11-11",
+            "state": "open",
+            "text": "The control replaces fact f4 and also adds 'with wet diapers and low fever', which is in no reference fact."
+          }
+        ]
+      },
       "contrasts": [
         {
           "alignment": {
@@ -790,6 +953,7 @@
           "bottom_sha256": "a3b285eefa455dfc1a11ce4071351dd3ca3907d41671081e41129ad469fc2145",
           "holds_constant": "the reference facts",
           "id": "r9-04-reg",
+          "open_concerns": [],
           "role": "contrast",
           "stratum": "register",
           "top": "medical",
@@ -810,6 +974,7 @@
           "bottom_sha256": "0b44fc115b569ddfd59470d078b30ccea2772580158a35bb85c61c6f7b98b49a",
           "holds_constant": "the reference facts and the register",
           "id": "r9-04-mpar",
+          "open_concerns": [],
           "role": "paraphrase_control",
           "stratum": "register",
           "top": "medical",
@@ -830,6 +995,7 @@
           "bottom_sha256": "a6efba08cac45506e4909460a5bebeb928d9746bba2c14cbb790c6e335b4174a",
           "holds_constant": "the reference facts and the register",
           "id": "r9-04-epar",
+          "open_concerns": [],
           "role": "paraphrase_control",
           "stratum": "register",
           "top": "everyday",
@@ -850,6 +1016,9 @@
           "bottom_sha256": "96f523b03ae73ca2eb43032df4922997aab5a5c78c5d61d3f12448057a033e53",
           "holds_constant": "the register and every reference fact but one",
           "id": "r9-04-chg",
+          "open_concerns": [
+            "r9-04-c1"
+          ],
           "role": "changed_fact_control",
           "stratum": "register",
           "top": "everyday",
@@ -865,12 +1034,17 @@
       ],
       "eligibility": {
         "confirmatory": {
-          "applies_to": "the register contrast and its two controls only",
+          "applies_to": "the register pair. A control with an open concern is listed in controls_with_open_concerns and does not block the pair.",
           "blocked_by": [
             "protocol_not_signed",
             "clinician_review_missing",
             "patient_language_review_missing"
           ],
+          "controls_with_open_concerns": {
+            "r9-04-chg": [
+              "r9-04-c1"
+            ]
+          },
           "eligible": false
         },
         "publication": {
@@ -915,6 +1089,7 @@
         },
         "status": "domain_review_pending"
       },
+      "review_basis_sha256": "097e073904862a5c0b439f1d342bba14535f001b2f42069fc694cbffe49af939",
       "right_care": 4,
       "sources": {
         "by_quote_type": {
@@ -923,6 +1098,16 @@
         },
         "expressions": 8,
         "note": "Counts of what the author declared. This command does not open any source.",
+        "verification": {
+          "counts": {
+            "not_checked": 2
+          },
+          "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
+          "per_expression": {
+            "hard breathing": "not_checked",
+            "trouble breathing": "not_checked"
+          }
+        },
         "with_evidence_sentence": 0
       },
       "split": "discovery",
@@ -964,6 +1149,12 @@
     {
       "admissible": true,
       "carrier_frame": "so I need to go to the",
+      "concerns": {
+        "closed": 0,
+        "note": "A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.",
+        "open": 0,
+        "records": []
+      },
       "contrasts": [
         {
           "alignment": {
@@ -973,6 +1164,7 @@
           "bottom_sha256": "d287aa2bf972683c036f5e66eebe7c5d526d07fe8852136574af94573a871e98",
           "holds_constant": "the reference facts",
           "id": "r9-05-reg",
+          "open_concerns": [],
           "role": "contrast",
           "stratum": "register_with_dialect",
           "top": "medical",
@@ -993,6 +1185,7 @@
           "bottom_sha256": "e8aa7fd734e7ed55c5f036821d099aabc33bf06ee86ae703c91589f15fb0b9c6",
           "holds_constant": "the reference facts and the register",
           "id": "r9-05-mpar",
+          "open_concerns": [],
           "role": "paraphrase_control",
           "stratum": "register_with_dialect",
           "top": "medical",
@@ -1013,6 +1206,7 @@
           "bottom_sha256": "0032e5e4416dca1e5eebb3b4dd94a2033dd3f760edd78c9056cb5f547f820cb5",
           "holds_constant": "the reference facts and the register",
           "id": "r9-05-epar",
+          "open_concerns": [],
           "role": "paraphrase_control",
           "stratum": "register_with_dialect",
           "top": "everyday",
@@ -1033,6 +1227,7 @@
           "bottom_sha256": "8830b6dc208d624a05c154dba371d779d5c77b13239ffb1d1e370d33e2f7ddaf",
           "holds_constant": "the register and every reference fact but one",
           "id": "r9-05-chg",
+          "open_concerns": [],
           "role": "changed_fact_control",
           "stratum": "register_with_dialect",
           "top": "everyday",
@@ -1053,6 +1248,7 @@
           "bottom_sha256": "7c891afd7534bc9f7c61de0442ff43385c33a8b6a31b9a0a2435ee331c905c6c",
           "holds_constant": "the reference facts and the medical terms",
           "id": "r9-05-qb",
+          "open_concerns": [],
           "role": "contrast",
           "stratum": "syntax_crossing",
           "top": "medical",
@@ -1073,6 +1269,7 @@
           "bottom_sha256": "24e707f4df4e518b7963462585d55812712a5fa4eb0a2bfb3f09edd526a620cf",
           "holds_constant": "the reference facts and the medical sentence structure",
           "id": "r9-05-qc",
+          "open_concerns": [],
           "role": "contrast",
           "stratum": "syntax_crossing",
           "top": "medical",
@@ -1088,13 +1285,14 @@
       ],
       "eligibility": {
         "confirmatory": {
-          "applies_to": "the register contrast and its two controls only",
+          "applies_to": "the register pair. A control with an open concern is listed in controls_with_open_concerns and does not block the pair.",
           "blocked_by": [
             "protocol_not_signed",
             "clinician_review_missing",
             "patient_language_review_missing",
             "exploratory_stratum:register_with_dialect"
           ],
+          "controls_with_open_concerns": {},
           "eligible": false
         },
         "publication": {
@@ -1141,6 +1339,7 @@
         },
         "status": "domain_review_pending"
       },
+      "review_basis_sha256": "8d5613be7bc32445b699a32a62996bfea634a926c8e4afd82f6e05c32247f989",
       "right_care": 4,
       "sources": {
         "by_quote_type": {
@@ -1150,6 +1349,16 @@
         },
         "expressions": 6,
         "note": "Counts of what the author declared. This command does not open any source.",
+        "verification": {
+          "counts": {
+            "not_checked": 2
+          },
+          "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
+          "per_expression": {
+            "can't catch my breath": "not_checked",
+            "short winded": "not_checked"
+          }
+        },
         "with_evidence_sentence": 0
       },
       "split": "discovery",
@@ -1199,6 +1408,30 @@
     {
       "admissible": true,
       "carrier_frame": "so I need to go to the",
+      "concerns": {
+        "closed": 0,
+        "note": "A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.",
+        "open": 1,
+        "records": [
+          {
+            "applies_to": [
+              "label"
+            ],
+            "concern_id": "r9-06-c1",
+            "disposition": {
+              "note": "The owner kept this family on 2026-11-11 with the flag recorded. The keep decision is not a disposition of the concern.",
+              "status": "pending_clinical_review"
+            },
+            "family_changed_since_raised": false,
+            "kind": "label",
+            "raised_by": "Claude review session (a model's reading; not a clinician's or a patient-language reviewer's)",
+            "raised_by_kind": "model",
+            "raised_on": "2026-11-11",
+            "state": "open",
+            "text": "The reviewer-only condition label says seizure; the reference facts read as fainting with jerks. The label is in no prompt."
+          }
+        ]
+      },
       "contrasts": [
         {
           "alignment": {
@@ -1208,6 +1441,7 @@
           "bottom_sha256": "e0bf74999b2982279351c2bc95ca29e306a8118b43ca98006b321710638a339e",
           "holds_constant": "the reference facts",
           "id": "r9-06-reg",
+          "open_concerns": [],
           "role": "contrast",
           "stratum": "register_with_dialect",
           "top": "medical",
@@ -1228,6 +1462,7 @@
           "bottom_sha256": "bb6b06c7ecaadf770ac74dfa4fd2337fa1cde0da4f20bb3e6185455ea786a3d8",
           "holds_constant": "the reference facts and the register",
           "id": "r9-06-mpar",
+          "open_concerns": [],
           "role": "paraphrase_control",
           "stratum": "register_with_dialect",
           "top": "medical",
@@ -1248,6 +1483,7 @@
           "bottom_sha256": "381e414dcfb533cd43ae71822eef9db2a053248d052e16c52e2ff33ea8274fc2",
           "holds_constant": "the reference facts and the register",
           "id": "r9-06-epar",
+          "open_concerns": [],
           "role": "paraphrase_control",
           "stratum": "register_with_dialect",
           "top": "everyday",
@@ -1268,6 +1504,7 @@
           "bottom_sha256": "a29de2062939e639281880e876c925995d3df8b912bab5c76c0d412011d85fdc",
           "holds_constant": "the register and every reference fact but one",
           "id": "r9-06-chg",
+          "open_concerns": [],
           "role": "changed_fact_control",
           "stratum": "register_with_dialect",
           "top": "everyday",
@@ -1283,13 +1520,14 @@
       ],
       "eligibility": {
         "confirmatory": {
-          "applies_to": "the register contrast and its two controls only",
+          "applies_to": "the register pair. A control with an open concern is listed in controls_with_open_concerns and does not block the pair.",
           "blocked_by": [
             "protocol_not_signed",
             "clinician_review_missing",
             "patient_language_review_missing",
             "exploratory_stratum:register_with_dialect"
           ],
+          "controls_with_open_concerns": {},
           "eligible": false
         },
         "publication": {
@@ -1336,6 +1574,7 @@
         },
         "status": "domain_review_pending"
       },
+      "review_basis_sha256": "5138fe76791c1193b31a1be713afc3516ff0e4cb9cef86a34c155393fcf6939f",
       "right_care": 4,
       "sources": {
         "by_quote_type": {
@@ -1345,6 +1584,19 @@
         },
         "expressions": 5,
         "note": "Counts of what the author declared. This command does not open any source.",
+        "verification": {
+          "counts": {
+            "not_checked": 5
+          },
+          "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
+          "per_expression": {
+            "a dizzy spell": "not_checked",
+            "a sudden dizzy spell": "not_checked",
+            "falling out": "not_checked",
+            "fell out": "not_checked",
+            "having fits": "not_checked"
+          }
+        },
         "with_evidence_sentence": 0
       },
       "split": "discovery",
@@ -1389,6 +1641,30 @@
     {
       "admissible": true,
       "carrier_frame": "so I need to go to the",
+      "concerns": {
+        "closed": 0,
+        "note": "A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.",
+        "open": 1,
+        "records": [
+          {
+            "applies_to": [
+              "chg"
+            ],
+            "concern_id": "r9-07-c1",
+            "disposition": {
+              "note": "The owner kept this family on 2026-11-11 with the flag recorded. The keep decision is not a disposition of the concern.",
+              "status": "pending_clinical_review"
+            },
+            "family_changed_since_raised": false,
+            "kind": "control_level_disputed",
+            "raised_by": "Claude review session (a model's reading; not a clinician's or a patient-language reviewer's)",
+            "raised_by_kind": "model",
+            "raised_on": "2026-11-11",
+            "state": "open",
+            "text": "The control (a 9 year old with 1 week of extreme thirst and constant urination, alert, no vomiting) is labelled a general doctor; same-day assessment is often advised."
+          }
+        ]
+      },
       "contrasts": [
         {
           "alignment": {
@@ -1398,6 +1674,7 @@
           "bottom_sha256": "c464f9434ea13dd3fdaeaebcedebf1530c5ff2cdea36b4f7fd781b5ac3a843c3",
           "holds_constant": "the reference facts",
           "id": "r9-07-reg",
+          "open_concerns": [],
           "role": "contrast",
           "stratum": "register",
           "top": "medical",
@@ -1418,6 +1695,7 @@
           "bottom_sha256": "377eda4c260e155a4cd11155a599a855d8faf40533add59b4dbf5737447b0b0f",
           "holds_constant": "the reference facts and the register",
           "id": "r9-07-mpar",
+          "open_concerns": [],
           "role": "paraphrase_control",
           "stratum": "register",
           "top": "medical",
@@ -1438,6 +1716,7 @@
           "bottom_sha256": "09bdf80c52107bf090728a5af51f810316e9a6bb75df06ddf0f338858beeb8b8",
           "holds_constant": "the reference facts and the register",
           "id": "r9-07-epar",
+          "open_concerns": [],
           "role": "paraphrase_control",
           "stratum": "register",
           "top": "everyday",
@@ -1458,6 +1737,9 @@
           "bottom_sha256": "88439e73f9bd3cf992c20926df1294db92b90de61ae85a76174fd205e1a07bf9",
           "holds_constant": "the register and every reference fact but one",
           "id": "r9-07-chg",
+          "open_concerns": [
+            "r9-07-c1"
+          ],
           "role": "changed_fact_control",
           "stratum": "register",
           "top": "everyday",
@@ -1473,12 +1755,17 @@
       ],
       "eligibility": {
         "confirmatory": {
-          "applies_to": "the register contrast and its two controls only",
+          "applies_to": "the register pair. A control with an open concern is listed in controls_with_open_concerns and does not block the pair.",
           "blocked_by": [
             "protocol_not_signed",
             "clinician_review_missing",
             "patient_language_review_missing"
           ],
+          "controls_with_open_concerns": {
+            "r9-07-chg": [
+              "r9-07-c1"
+            ]
+          },
           "eligible": false
         },
         "publication": {
@@ -1523,6 +1810,7 @@
         },
         "status": "domain_review_pending"
       },
+      "review_basis_sha256": "7103bb62bf8ac145fffc20e6c4b08e5a2931e6b650128cf775d80d2a7badbb43",
       "right_care": 4,
       "sources": {
         "by_quote_type": {
@@ -1531,6 +1819,17 @@
         },
         "expressions": 5,
         "note": "Counts of what the author declared. This command does not open any source.",
+        "verification": {
+          "counts": {
+            "not_checked": 3
+          },
+          "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
+          "per_expression": {
+            "constant toilet trips": "not_checked",
+            "extreme thirst": "not_checked",
+            "frequent trips to the toilet": "not_checked"
+          }
+        },
         "with_evidence_sentence": 0
       },
       "split": "validation",
@@ -1572,6 +1871,12 @@
     {
       "admissible": true,
       "carrier_frame": "so I need to go to the",
+      "concerns": {
+        "closed": 0,
+        "note": "A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.",
+        "open": 0,
+        "records": []
+      },
       "contrasts": [
         {
           "alignment": {
@@ -1581,6 +1886,7 @@
           "bottom_sha256": "a9306985784298e30a59b9298f479133af482e07ebe3867e9743384b528989b8",
           "holds_constant": "the reference facts",
           "id": "r9-08-reg",
+          "open_concerns": [],
           "role": "contrast",
           "stratum": "register",
           "top": "medical",
@@ -1601,6 +1907,7 @@
           "bottom_sha256": "ad82f6ae2d8968c89919bbc3468031a647705564a3c6c075ec0957fcefc25db2",
           "holds_constant": "the reference facts and the register",
           "id": "r9-08-mpar",
+          "open_concerns": [],
           "role": "paraphrase_control",
           "stratum": "register",
           "top": "medical",
@@ -1621,6 +1928,7 @@
           "bottom_sha256": "e60a470d390d6b997106278c4f59ced1648cb07e76c3f3250f4d0168c2d185eb",
           "holds_constant": "the reference facts and the register",
           "id": "r9-08-epar",
+          "open_concerns": [],
           "role": "paraphrase_control",
           "stratum": "register",
           "top": "everyday",
@@ -1641,6 +1949,7 @@
           "bottom_sha256": "9abf8bb054b8fe56e7963b25afc8fa7b7031a361f3828d273eda418114c21e7f",
           "holds_constant": "the register and every reference fact but one",
           "id": "r9-08-chg",
+          "open_concerns": [],
           "role": "changed_fact_control",
           "stratum": "register",
           "top": "everyday",
@@ -1656,12 +1965,13 @@
       ],
       "eligibility": {
         "confirmatory": {
-          "applies_to": "the register contrast and its two controls only",
+          "applies_to": "the register pair. A control with an open concern is listed in controls_with_open_concerns and does not block the pair.",
           "blocked_by": [
             "protocol_not_signed",
             "clinician_review_missing",
             "patient_language_review_missing"
           ],
+          "controls_with_open_concerns": {},
           "eligible": false
         },
         "publication": {
@@ -1706,6 +2016,7 @@
         },
         "status": "domain_review_pending"
       },
+      "review_basis_sha256": "42c48abd5ccf80d39198e9e20b088705a28c39c0a419738c0e22c9c97fe5dcf9",
       "right_care": 4,
       "sources": {
         "by_quote_type": {
@@ -1714,6 +2025,17 @@
         },
         "expressions": 3,
         "note": "Counts of what the author declared. This command does not open any source.",
+        "verification": {
+          "counts": {
+            "not_checked": 3
+          },
+          "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
+          "per_expression": {
+            "itching and breaking out in hives": "not_checked",
+            "my throat swelled up": "not_checked",
+            "trouble breathing": "not_checked"
+          }
+        },
         "with_evidence_sentence": 0
       },
       "split": "fresh_test",
@@ -1755,6 +2077,12 @@
     {
       "admissible": true,
       "carrier_frame": "so I should see a",
+      "concerns": {
+        "closed": 0,
+        "note": "A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.",
+        "open": 0,
+        "records": []
+      },
       "contrasts": [
         {
           "alignment": {
@@ -1764,6 +2092,7 @@
           "bottom_sha256": "a85dd5684acf0b5301d915c3685f8c149471329a327a2763d4b9190fe0c3f337",
           "holds_constant": "the reference facts",
           "id": "r9-09-reg",
+          "open_concerns": [],
           "role": "contrast",
           "stratum": "register",
           "top": "medical",
@@ -1784,6 +2113,7 @@
           "bottom_sha256": "2e822be62ce63bb054ce5dec401dbfe7e7c95dd0a9be5bfe9332fbd89a19e8b8",
           "holds_constant": "the reference facts and the register",
           "id": "r9-09-mpar",
+          "open_concerns": [],
           "role": "paraphrase_control",
           "stratum": "register",
           "top": "medical",
@@ -1804,6 +2134,7 @@
           "bottom_sha256": "f6e0732a63248fdea600244a8aa592cc581548e71b84aa8b52ccba145330f9de",
           "holds_constant": "the reference facts and the register",
           "id": "r9-09-epar",
+          "open_concerns": [],
           "role": "paraphrase_control",
           "stratum": "register",
           "top": "everyday",
@@ -1824,6 +2155,7 @@
           "bottom_sha256": "2cdda734bcbc1f1b7f1ddc978cd60726b2415b06463dd8933347a8516c26a39c",
           "holds_constant": "the register and every reference fact but one",
           "id": "r9-09-chg",
+          "open_concerns": [],
           "role": "changed_fact_control",
           "stratum": "register",
           "top": "everyday",
@@ -1844,6 +2176,7 @@
           "bottom_sha256": "4e0d6f44027c52228611f159a5e82160c83e12e76d51beae920c51345e67d9ab",
           "holds_constant": "the reference facts and the medical terms",
           "id": "r9-09-qb",
+          "open_concerns": [],
           "role": "contrast",
           "stratum": "syntax_crossing",
           "top": "medical",
@@ -1864,6 +2197,7 @@
           "bottom_sha256": "b0b09e6fdd8353fbe40d858981dca70fc727bf6d685e653d25942e35a1050ad9",
           "holds_constant": "the reference facts and the medical sentence structure",
           "id": "r9-09-qc",
+          "open_concerns": [],
           "role": "contrast",
           "stratum": "syntax_crossing",
           "top": "medical",
@@ -1879,12 +2213,13 @@
       ],
       "eligibility": {
         "confirmatory": {
-          "applies_to": "the register contrast and its two controls only",
+          "applies_to": "the register pair. A control with an open concern is listed in controls_with_open_concerns and does not block the pair.",
           "blocked_by": [
             "protocol_not_signed",
             "clinician_review_missing",
             "patient_language_review_missing"
           ],
+          "controls_with_open_concerns": {},
           "eligible": false
         },
         "publication": {
@@ -1929,6 +2264,7 @@
         },
         "status": "domain_review_pending"
       },
+      "review_basis_sha256": "95ccb3b11db9dbf6e9a3a5ec2f03313702467277e52dc98acf504b00c7224832",
       "right_care": 3,
       "sources": {
         "by_quote_type": {
@@ -1937,6 +2273,16 @@
         },
         "expressions": 7,
         "note": "Counts of what the author declared. This command does not open any source.",
+        "verification": {
+          "counts": {
+            "not_checked": 2
+          },
+          "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
+          "per_expression": {
+            "an intense throbbing ache": "not_checked",
+            "throbbing pain": "not_checked"
+          }
+        },
         "with_evidence_sentence": 0
       },
       "split": "validation",
@@ -1986,6 +2332,30 @@
     {
       "admissible": true,
       "carrier_frame": "so I should see a",
+      "concerns": {
+        "closed": 0,
+        "note": "A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.",
+        "open": 1,
+        "records": [
+          {
+            "applies_to": [
+              "chg"
+            ],
+            "concern_id": "r9-10-c1",
+            "disposition": {
+              "note": "The owner kept this family on 2026-11-11 with the flag recorded. The keep decision is not a disposition of the concern.",
+              "status": "pending_clinical_review"
+            },
+            "family_changed_since_raised": false,
+            "kind": "control_adds_fact",
+            "raised_by": "Claude review session (a model's reading; not a clinician's or a patient-language reviewer's)",
+            "raised_by_kind": "model",
+            "raised_on": "2026-11-11",
+            "state": "open",
+            "text": "The control replaces fact f3 and also adds irritation ('rubbed sore by my shirt for 2 weeks'), which is in no reference fact."
+          }
+        ]
+      },
       "contrasts": [
         {
           "alignment": {
@@ -1995,6 +2365,7 @@
           "bottom_sha256": "bb194b82c2541f50c44e4cca7619a64b7b17e1bf4c779cddb4d6ecdd42d06d9c",
           "holds_constant": "the reference facts",
           "id": "r9-10-reg",
+          "open_concerns": [],
           "role": "contrast",
           "stratum": "register",
           "top": "medical",
@@ -2015,6 +2386,7 @@
           "bottom_sha256": "423668e52b11339bf28a51622610ba69335c19bcf5788ce12e8712c6e33f233a",
           "holds_constant": "the reference facts and the register",
           "id": "r9-10-mpar",
+          "open_concerns": [],
           "role": "paraphrase_control",
           "stratum": "register",
           "top": "medical",
@@ -2035,6 +2407,7 @@
           "bottom_sha256": "58bdddef37cd7d960cb9bf6f38b593a3b1760531b0b1dd7d9d6eb84863989254",
           "holds_constant": "the reference facts and the register",
           "id": "r9-10-epar",
+          "open_concerns": [],
           "role": "paraphrase_control",
           "stratum": "register",
           "top": "everyday",
@@ -2055,6 +2428,9 @@
           "bottom_sha256": "29e26f963512998e8184cd7ee26aafb700a63e19d4df337d623a266124d4036f",
           "holds_constant": "the register and every reference fact but one",
           "id": "r9-10-chg",
+          "open_concerns": [
+            "r9-10-c1"
+          ],
           "role": "changed_fact_control",
           "stratum": "register",
           "top": "everyday",
@@ -2075,6 +2451,7 @@
           "bottom_sha256": "dba185c914ca4cd3910f3cb8615efc10428814684b6857b47cb1a5b8f84c4b57",
           "holds_constant": "the reference facts and the medical terms",
           "id": "r9-10-qb",
+          "open_concerns": [],
           "role": "contrast",
           "stratum": "syntax_crossing",
           "top": "medical",
@@ -2095,6 +2472,7 @@
           "bottom_sha256": "04c0abb899531726252318681b35d0ca4fa73ae7c76d7709665af0864997f2e4",
           "holds_constant": "the reference facts and the medical sentence structure",
           "id": "r9-10-qc",
+          "open_concerns": [],
           "role": "contrast",
           "stratum": "syntax_crossing",
           "top": "medical",
@@ -2110,12 +2488,17 @@
       ],
       "eligibility": {
         "confirmatory": {
-          "applies_to": "the register contrast and its two controls only",
+          "applies_to": "the register pair. A control with an open concern is listed in controls_with_open_concerns and does not block the pair.",
           "blocked_by": [
             "protocol_not_signed",
             "clinician_review_missing",
             "patient_language_review_missing"
           ],
+          "controls_with_open_concerns": {
+            "r9-10-chg": [
+              "r9-10-c1"
+            ]
+          },
           "eligible": false
         },
         "publication": {
@@ -2160,6 +2543,7 @@
         },
         "status": "domain_review_pending"
       },
+      "review_basis_sha256": "69a083c8ca9a2ff18f5e39cac516064b5565855bb79b4344eb3ac918dc8883bd",
       "right_care": 3,
       "sources": {
         "by_quote_type": {
@@ -2168,6 +2552,16 @@
         },
         "expressions": 3,
         "note": "Counts of what the author declared. This command does not open any source.",
+        "verification": {
+          "counts": {
+            "not_checked": 2
+          },
+          "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
+          "per_expression": {
+            "a dark flat mole": "not_checked",
+            "jagged edges": "not_checked"
+          }
+        },
         "with_evidence_sentence": 0
       },
       "split": "fresh_test",
@@ -2220,6 +2614,12 @@
     {
       "admissible": true,
       "carrier_frame": "so I should see a",
+      "concerns": {
+        "closed": 0,
+        "note": "A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.",
+        "open": 0,
+        "records": []
+      },
       "contrasts": [
         {
           "alignment": {
@@ -2229,6 +2629,7 @@
           "bottom_sha256": "7bf4ba1fdaa69aa22dbbcc9c35564fc67250a3e8e743bbc72ef3271e43b10ad2",
           "holds_constant": "the reference facts",
           "id": "r9-11-reg",
+          "open_concerns": [],
           "role": "contrast",
           "stratum": "register",
           "top": "medical",
@@ -2249,6 +2650,7 @@
           "bottom_sha256": "9bae5928846c0d39f915f5f1c41207a41ac16862de40dd32e7c242b420e2e375",
           "holds_constant": "the reference facts and the register",
           "id": "r9-11-mpar",
+          "open_concerns": [],
           "role": "paraphrase_control",
           "stratum": "register",
           "top": "medical",
@@ -2269,6 +2671,7 @@
           "bottom_sha256": "94e3887cec5b3cee4fc7bfeb61b1e9fb4cdb3e72c6a5491db9006a69013b5a08",
           "holds_constant": "the reference facts and the register",
           "id": "r9-11-epar",
+          "open_concerns": [],
           "role": "paraphrase_control",
           "stratum": "register",
           "top": "everyday",
@@ -2289,6 +2692,7 @@
           "bottom_sha256": "2cf2f80b5887e3da98dfcc24e27dc36677ad42d1274a613a2618054a05960c0f",
           "holds_constant": "the register and every reference fact but one",
           "id": "r9-11-chg",
+          "open_concerns": [],
           "role": "changed_fact_control",
           "stratum": "register",
           "top": "everyday",
@@ -2304,12 +2708,13 @@
       ],
       "eligibility": {
         "confirmatory": {
-          "applies_to": "the register contrast and its two controls only",
+          "applies_to": "the register pair. A control with an open concern is listed in controls_with_open_concerns and does not block the pair.",
           "blocked_by": [
             "protocol_not_signed",
             "clinician_review_missing",
             "patient_language_review_missing"
           ],
+          "controls_with_open_concerns": {},
           "eligible": false
         },
         "publication": {
@@ -2354,6 +2759,7 @@
         },
         "status": "domain_review_pending"
       },
+      "review_basis_sha256": "a36aef48e6a09ed6bad653565d3d6b534e1830c9c2a20fabf0d18aa06aa169c0",
       "right_care": 3,
       "sources": {
         "by_quote_type": {
@@ -2362,6 +2768,16 @@
         },
         "expressions": 7,
         "note": "Counts of what the author declared. This command does not open any source.",
+        "verification": {
+          "counts": {
+            "not_checked": 2
+          },
+          "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
+          "per_expression": {
+            "fear of losing control": "not_checked",
+            "racing heart": "not_checked"
+          }
+        },
         "with_evidence_sentence": 0
       },
       "split": "discovery",
@@ -2403,6 +2819,12 @@
     {
       "admissible": true,
       "carrier_frame": "so I should see a",
+      "concerns": {
+        "closed": 0,
+        "note": "A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.",
+        "open": 0,
+        "records": []
+      },
       "contrasts": [
         {
           "alignment": {
@@ -2412,6 +2834,7 @@
           "bottom_sha256": "31071ce6af489db07ba95905b4f76b1ff74f6d7b53a3728f22ee40f64a10b4b3",
           "holds_constant": "the reference facts",
           "id": "r9-12-reg",
+          "open_concerns": [],
           "role": "contrast",
           "stratum": "register",
           "top": "medical",
@@ -2432,6 +2855,7 @@
           "bottom_sha256": "289b1633376848dcc1319e5076491b79c802d564e3058f7487d4615c00dc3995",
           "holds_constant": "the reference facts and the register",
           "id": "r9-12-mpar",
+          "open_concerns": [],
           "role": "paraphrase_control",
           "stratum": "register",
           "top": "medical",
@@ -2452,6 +2876,7 @@
           "bottom_sha256": "1722e1e7e6e497df6525541e050a3959bb2457eca53f17d64929007a40f6f78e",
           "holds_constant": "the reference facts and the register",
           "id": "r9-12-epar",
+          "open_concerns": [],
           "role": "paraphrase_control",
           "stratum": "register",
           "top": "everyday",
@@ -2472,6 +2897,7 @@
           "bottom_sha256": "532f4ef3e9ba695bbb5a6ddac30af78d78c07335d293823baa52240551ee2e59",
           "holds_constant": "the register and every reference fact but one",
           "id": "r9-12-chg",
+          "open_concerns": [],
           "role": "changed_fact_control",
           "stratum": "register",
           "top": "everyday",
@@ -2487,12 +2913,13 @@
       ],
       "eligibility": {
         "confirmatory": {
-          "applies_to": "the register contrast and its two controls only",
+          "applies_to": "the register pair. A control with an open concern is listed in controls_with_open_concerns and does not block the pair.",
           "blocked_by": [
             "protocol_not_signed",
             "clinician_review_missing",
             "patient_language_review_missing"
           ],
+          "controls_with_open_concerns": {},
           "eligible": false
         },
         "publication": {
@@ -2537,6 +2964,7 @@
         },
         "status": "domain_review_pending"
       },
+      "review_basis_sha256": "de5a252bea33216e963a24b004bd5850a409262c330def23d03cd34cf4141fa8",
       "right_care": 3,
       "sources": {
         "by_quote_type": {
@@ -2545,6 +2973,17 @@
         },
         "expressions": 4,
         "note": "Counts of what the author declared. This command does not open any source.",
+        "verification": {
+          "counts": {
+            "not_checked": 3
+          },
+          "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
+          "per_expression": {
+            "loosen up": "not_checked",
+            "stiff": "not_checked",
+            "swollen painful knuckles on both hands": "not_checked"
+          }
+        },
         "with_evidence_sentence": 0
       },
       "split": "discovery",
@@ -2586,6 +3025,12 @@
     {
       "admissible": true,
       "carrier_frame": "so I need to go to the",
+      "concerns": {
+        "closed": 0,
+        "note": "A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.",
+        "open": 0,
+        "records": []
+      },
       "contrasts": [
         {
           "alignment": {
@@ -2595,6 +3040,7 @@
           "bottom_sha256": "a816099dfc9025e9011a196ab43102a2897c535a08acaffe80209a265c17bb64",
           "holds_constant": "the reference facts",
           "id": "r9-13-reg",
+          "open_concerns": [],
           "role": "contrast",
           "stratum": "register",
           "top": "medical",
@@ -2615,6 +3061,7 @@
           "bottom_sha256": "ee2bb6c1002ae3bb551499ad29254b142bf3c7f6b475bc39439e05633db2ce3a",
           "holds_constant": "the reference facts and the register",
           "id": "r9-13-mpar",
+          "open_concerns": [],
           "role": "paraphrase_control",
           "stratum": "register",
           "top": "medical",
@@ -2635,6 +3082,7 @@
           "bottom_sha256": "f2896fa7b54b6b3483e08f22e2d6064c86bb1eb8c15efadd9e54584821c90a38",
           "holds_constant": "the reference facts and the register",
           "id": "r9-13-epar",
+          "open_concerns": [],
           "role": "paraphrase_control",
           "stratum": "register",
           "top": "everyday",
@@ -2655,6 +3103,7 @@
           "bottom_sha256": "b6b09c6d4effa4c0f43618ae19c034b30c35ecb0dc4a02afa6bdb412a7db8128",
           "holds_constant": "the register and every reference fact but one",
           "id": "r9-13-chg",
+          "open_concerns": [],
           "role": "changed_fact_control",
           "stratum": "register",
           "top": "everyday",
@@ -2675,6 +3124,7 @@
           "bottom_sha256": "90949363a7f97318d5205e42642753277e3ab6aa4aa6de1819d82bb6c77b0dbd",
           "holds_constant": "the reference facts and the medical terms",
           "id": "r9-13-qb",
+          "open_concerns": [],
           "role": "contrast",
           "stratum": "syntax_crossing",
           "top": "medical",
@@ -2695,6 +3145,7 @@
           "bottom_sha256": "6e7ed1bb099a2aedc356481076e4f72a30d866a6c738f320488d14a5573e489e",
           "holds_constant": "the reference facts and the medical sentence structure",
           "id": "r9-13-qc",
+          "open_concerns": [],
           "role": "contrast",
           "stratum": "syntax_crossing",
           "top": "medical",
@@ -2710,12 +3161,13 @@
       ],
       "eligibility": {
         "confirmatory": {
-          "applies_to": "the register contrast and its two controls only",
+          "applies_to": "the register pair. A control with an open concern is listed in controls_with_open_concerns and does not block the pair.",
           "blocked_by": [
             "protocol_not_signed",
             "clinician_review_missing",
             "patient_language_review_missing"
           ],
+          "controls_with_open_concerns": {},
           "eligible": false
         },
         "publication": {
@@ -2760,6 +3212,7 @@
         },
         "status": "domain_review_pending"
       },
+      "review_basis_sha256": "3f21af31c64d070e7f1e5621468ade216d038f28676fdbd803c4e78e42e556c7",
       "right_care": 2,
       "sources": {
         "by_quote_type": {
@@ -2768,6 +3221,16 @@
         },
         "expressions": 4,
         "note": "Counts of what the author declared. This command does not open any source.",
+        "verification": {
+          "counts": {
+            "not_checked": 2
+          },
+          "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
+          "per_expression": {
+            "burning when I pee": "not_checked",
+            "stinging and burning when I pee": "not_checked"
+          }
+        },
         "with_evidence_sentence": 0
       },
       "split": "discovery",
@@ -2817,6 +3280,12 @@
     {
       "admissible": true,
       "carrier_frame": "so I should see a",
+      "concerns": {
+        "closed": 0,
+        "note": "A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.",
+        "open": 0,
+        "records": []
+      },
       "contrasts": [
         {
           "alignment": {
@@ -2826,6 +3295,7 @@
           "bottom_sha256": "10b491d97dfd8ac59e9c1428a6454d08a299df054054121fb1996029c1eb9048",
           "holds_constant": "the reference facts",
           "id": "r9-14-reg",
+          "open_concerns": [],
           "role": "contrast",
           "stratum": "register",
           "top": "medical",
@@ -2846,6 +3316,7 @@
           "bottom_sha256": "54af603d42f20205e9ee4aebb961de23a3ef4667b7b651de27d61ae9c6c672fb",
           "holds_constant": "the reference facts and the register",
           "id": "r9-14-mpar",
+          "open_concerns": [],
           "role": "paraphrase_control",
           "stratum": "register",
           "top": "medical",
@@ -2866,6 +3337,7 @@
           "bottom_sha256": "2b2b23e905377322c3c222c3fae5b928e59dd60ecee9885aeceab15d34dc4485",
           "holds_constant": "the reference facts and the register",
           "id": "r9-14-epar",
+          "open_concerns": [],
           "role": "paraphrase_control",
           "stratum": "register",
           "top": "everyday",
@@ -2886,6 +3358,7 @@
           "bottom_sha256": "ee487f494e4a5e2b7d74cfbab6cf05f960e8b7534958d0091179daf3b5237b11",
           "holds_constant": "the register and every reference fact but one",
           "id": "r9-14-chg",
+          "open_concerns": [],
           "role": "changed_fact_control",
           "stratum": "register",
           "top": "everyday",
@@ -2906,6 +3379,7 @@
           "bottom_sha256": "f84c682cb98b98151abad98e22c3b64d1ff6f94fcf9ceb2a04e263cc4b9fef94",
           "holds_constant": "the reference facts and the medical terms",
           "id": "r9-14-qb",
+          "open_concerns": [],
           "role": "contrast",
           "stratum": "syntax_crossing",
           "top": "medical",
@@ -2926,6 +3400,7 @@
           "bottom_sha256": "5c71495b82518268641d8fb983967bb0aa3f7f7d8eec70fecfdbca97581abecd",
           "holds_constant": "the reference facts and the medical sentence structure",
           "id": "r9-14-qc",
+          "open_concerns": [],
           "role": "contrast",
           "stratum": "syntax_crossing",
           "top": "medical",
@@ -2941,13 +3416,14 @@
       ],
       "eligibility": {
         "confirmatory": {
-          "applies_to": "the register contrast and its two controls only",
+          "applies_to": "the register pair. A control with an open concern is listed in controls_with_open_concerns and does not block the pair.",
           "blocked_by": [
             "protocol_not_signed",
             "clinician_review_missing",
             "patient_language_review_missing",
             "owner_read_stale"
           ],
+          "controls_with_open_concerns": {},
           "eligible": false
         },
         "publication": {
@@ -2976,7 +3452,10 @@
           "status": "not_reviewed"
         },
         "owner_read": {
-          "detail": "the texts or the care level changed after this read; the decision is not carried over",
+          "changed_since_read": [
+            "texts"
+          ],
+          "detail": "texts changed after this read; the decision is not carried over",
           "previous": {
             "decision": "excluded",
             "note": "My 4 year old daughter. would be better. patients speak in active voice from 1st person",
@@ -2997,6 +3476,7 @@
         },
         "status": "domain_review_pending"
       },
+      "review_basis_sha256": "5fb973a000e802c16e23177f93c0ee84ac3db86448e4cac237fa97aedacfa8aa",
       "right_care": 2,
       "sources": {
         "by_quote_type": {
@@ -3005,6 +3485,16 @@
         },
         "expressions": 6,
         "note": "Counts of what the author declared. This command does not open any source.",
+        "verification": {
+          "counts": {
+            "not_checked": 2
+          },
+          "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
+          "per_expression": {
+            "ear pulling": "not_checked",
+            "pulling her right ear": "not_checked"
+          }
+        },
         "with_evidence_sentence": 0
       },
       "split": "validation",
@@ -3054,6 +3544,12 @@
     {
       "admissible": true,
       "carrier_frame": "so I should see a",
+      "concerns": {
+        "closed": 0,
+        "note": "A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.",
+        "open": 0,
+        "records": []
+      },
       "contrasts": [
         {
           "alignment": {
@@ -3063,6 +3559,7 @@
           "bottom_sha256": "e077d155abce95a9dd7223d45f16b8ba33d4d334034a46bb23e93df5d4678f6e",
           "holds_constant": "the reference facts",
           "id": "r9-15-reg",
+          "open_concerns": [],
           "role": "contrast",
           "stratum": "register_with_dialect",
           "top": "medical",
@@ -3083,6 +3580,7 @@
           "bottom_sha256": "37e0f56b9e3e4c7c6c38b2cbd048eb3107db102f98ed85ac5942c3adaa6d4dbe",
           "holds_constant": "the reference facts and the register",
           "id": "r9-15-mpar",
+          "open_concerns": [],
           "role": "paraphrase_control",
           "stratum": "register_with_dialect",
           "top": "medical",
@@ -3103,6 +3601,7 @@
           "bottom_sha256": "54b698612025ced15183b2368d1afa640448175b4372e0ed196ad5b9d0082628",
           "holds_constant": "the reference facts and the register",
           "id": "r9-15-epar",
+          "open_concerns": [],
           "role": "paraphrase_control",
           "stratum": "register_with_dialect",
           "top": "everyday",
@@ -3123,6 +3622,7 @@
           "bottom_sha256": "d34d628481045e35bac6acbf9830885be375b7b9f2cd57ba41fc0381c8a15daa",
           "holds_constant": "the register and every reference fact but one",
           "id": "r9-15-chg",
+          "open_concerns": [],
           "role": "changed_fact_control",
           "stratum": "register_with_dialect",
           "top": "everyday",
@@ -3138,13 +3638,14 @@
       ],
       "eligibility": {
         "confirmatory": {
-          "applies_to": "the register contrast and its two controls only",
+          "applies_to": "the register pair. A control with an open concern is listed in controls_with_open_concerns and does not block the pair.",
           "blocked_by": [
             "protocol_not_signed",
             "clinician_review_missing",
             "patient_language_review_missing",
             "exploratory_stratum:register_with_dialect"
           ],
+          "controls_with_open_concerns": {},
           "eligible": false
         },
         "publication": {
@@ -3191,6 +3692,7 @@
         },
         "status": "domain_review_pending"
       },
+      "review_basis_sha256": "e10d733275ac365dd6cb54e57442fc74ab9e841435443498b6abd36cb0a84a4d",
       "right_care": 2,
       "sources": {
         "by_quote_type": {
@@ -3199,6 +3701,15 @@
         },
         "expressions": 5,
         "note": "Counts of what the author declared. This command does not open any source.",
+        "verification": {
+          "counts": {
+            "not_checked": 1
+          },
+          "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
+          "per_expression": {
+            "loose motions": "not_checked"
+          }
+        },
         "with_evidence_sentence": 0
       },
       "split": "discovery",
@@ -3240,6 +3751,30 @@
     {
       "admissible": true,
       "carrier_frame": "so I need to go to the",
+      "concerns": {
+        "closed": 0,
+        "note": "A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.",
+        "open": 1,
+        "records": [
+          {
+            "applies_to": [
+              "family"
+            ],
+            "concern_id": "r9-16-c1",
+            "disposition": {
+              "note": "The owner kept this family on 2026-11-11 with the flag recorded. The keep decision is not a disposition of the concern.",
+              "status": "pending_clinical_review"
+            },
+            "family_changed_since_raised": false,
+            "kind": "level_disputed",
+            "raised_by": "Claude review session (a model's reading; not a clinician's or a patient-language reviewer's)",
+            "raised_by_kind": "model",
+            "raised_on": "2026-11-11",
+            "state": "open",
+            "text": "Uncomplicated reflux at 24 weeks of pregnancy is labelled a general doctor; it is often managed with self-care, so the family's own level is borderline."
+          }
+        ]
+      },
       "contrasts": [
         {
           "alignment": {
@@ -3249,6 +3784,7 @@
           "bottom_sha256": "9a509b84f3f879b47c7bfffed2410b52fcf1f4ed5db85c91ae4198f9c27d5c8b",
           "holds_constant": "the reference facts",
           "id": "r9-16-reg",
+          "open_concerns": [],
           "role": "contrast",
           "stratum": "register",
           "top": "medical",
@@ -3269,6 +3805,7 @@
           "bottom_sha256": "2c8afca244c6855bb2af327f7421034eeab6a6fa7a9de24224714212d4d79c85",
           "holds_constant": "the reference facts and the register",
           "id": "r9-16-mpar",
+          "open_concerns": [],
           "role": "paraphrase_control",
           "stratum": "register",
           "top": "medical",
@@ -3289,6 +3826,7 @@
           "bottom_sha256": "1d6dc1f119cb321d9ed472f751f152eeaf01f8db80f9ae2e8627192c4ecc233f",
           "holds_constant": "the reference facts and the register",
           "id": "r9-16-epar",
+          "open_concerns": [],
           "role": "paraphrase_control",
           "stratum": "register",
           "top": "everyday",
@@ -3309,6 +3847,7 @@
           "bottom_sha256": "b8d6cb680672963ca1076c372520beb9618d459bf6a32304f4f172b5505dabb6",
           "holds_constant": "the register and every reference fact but one",
           "id": "r9-16-chg",
+          "open_concerns": [],
           "role": "changed_fact_control",
           "stratum": "register",
           "top": "everyday",
@@ -3324,12 +3863,14 @@
       ],
       "eligibility": {
         "confirmatory": {
-          "applies_to": "the register contrast and its two controls only",
+          "applies_to": "the register pair. A control with an open concern is listed in controls_with_open_concerns and does not block the pair.",
           "blocked_by": [
             "protocol_not_signed",
             "clinician_review_missing",
-            "patient_language_review_missing"
+            "patient_language_review_missing",
+            "open_concern_on_register_pair:r9-16-c1"
           ],
+          "controls_with_open_concerns": {},
           "eligible": false
         },
         "publication": {
@@ -3374,6 +3915,7 @@
         },
         "status": "domain_review_pending"
       },
+      "review_basis_sha256": "6f02c1d62b2178824a5c674fff34839c31a4e17e78b3964ae58da1ea8931eb3c",
       "right_care": 2,
       "sources": {
         "by_quote_type": {
@@ -3382,6 +3924,18 @@
         },
         "expressions": 8,
         "note": "Counts of what the author declared. This command does not open any source.",
+        "verification": {
+          "counts": {
+            "not_checked": 4
+          },
+          "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
+          "per_expression": {
+            "burning in my chest after meals": "not_checked",
+            "burning rises in my chest after eating": "not_checked",
+            "sour throat acid": "not_checked",
+            "throat acid": "not_checked"
+          }
+        },
         "with_evidence_sentence": 0
       },
       "split": "fresh_test",
@@ -3424,6 +3978,12 @@
     }
   ],
   "inputs": {
+    "concerns": [
+      {
+        "name": "concerns_r9_20261112.json",
+        "sha256": "4d9da46d7d2e77564b46a9928d25604755067294c9c07c4e90f06cf77ac42287"
+      }
+    ],
     "lexicon": {
       "name": "dialect_lexicon_20261109.json",
       "sha256": "e39ce3ca5f2d2f88e8141f1d91213cfa52c44beb087a6449b59b26dfcdf9abc1"
@@ -3484,6 +4044,30 @@
         "validation": 4
       },
       "prompts": 92
+    },
+    "concerns": {
+      "closed": 0,
+      "open": 8,
+      "open_by_disposition": {
+        "pending_clinical_review": 8
+      },
+      "open_by_kind": {
+        "control_adds_fact": 3,
+        "control_level_disputed": 2,
+        "fact_parity": 1,
+        "label": 1,
+        "level_disputed": 1
+      },
+      "owner_kept_families_with_open_concerns": [
+        "r9-01",
+        "r9-03",
+        "r9-04",
+        "r9-06",
+        "r9-07",
+        "r9-10",
+        "r9-16"
+      ],
+      "rule": "A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it."
     },
     "confirmatory_eligible": 0,
     "owner_kept": {
@@ -3554,6 +4138,9 @@
     },
     "review_status": {
       "domain_review_pending": 16
+    },
+    "source_verification": {
+      "not_checked": 42
     }
   },
   "lane_input": {

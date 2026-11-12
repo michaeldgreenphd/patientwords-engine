@@ -2,13 +2,15 @@
 
 Source: draft/antigravity-scenarios-20261107@d4b27148:drafts/antigravity_scenarios_20261107/round9_20261110/families.json (SHA-256 `d5e347fd46c48343bf6b8dbbca89461b4261a69247d2747893929b1c283f67f2`).
 
-Design rules: `data/experiments/intake_design.v1.json` (`6f033e45e641`). Status of those rules: draft, 2026-11-12: proposed by the batch-intake change; not agreed. The owner agrees it by a commit that changes this line.
+Design rules: `data/experiments/intake_design.v1.json` (`06ab88fe3ffe`). Status of those rules: draft, 2026-11-12: proposed by the batch-intake change; not agreed. The owner agrees it by a commit that changes this line.
 
 What has and has not been reviewed:
 
 - **Software validation: passed** (0 errors, 5 warnings). These are structural checks by this command. It says nothing about clinical content or patient language.
 - **Owner's read:** 15 kept, 1 stale. This is the owner's keep or exclude decision on a named version of the texts. It is not a clinician's review.
 - **Domain review:** 16 domain review pending. A family is reviewed only when a clinician and a patient-language reviewer have both recorded their items; nothing in this packet does that.
+- **Known concerns:** 8 open, 0 closed. A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.
+- **Sources:** 42 not checked. A check shows that the cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression.
 
 No model output appears in this packet.
 
@@ -44,14 +46,18 @@ Reference facts:
 
 Changed fact `f4`: "right before briefly blacking out" became "that passed quickly sitting still with no dizziness or fainting"; right care after the change: level 2.
 
-| Everyday expression | Declared support | Source | Evidence sentence |
-|---|---|---|---|
-| a sudden racing heartbeat | no source |   |  |
-| my heart raced suddenly | no source |   |  |
-| my heart sinking in my chest | authors' summary | Krause IB (1989). Sinking heart: a Punjabi communication of distress. Social Science & Med PMID: 2756440; DOI: 10.1016/0277-9536(89)90202-5 | not given |
-| a sinking heart in my chest | authors' summary | Krause IB (1989). Sinking heart: a Punjabi communication of distress. Social Science & Med PMID: 2756440; DOI: 10.1016/0277-9536(89)90202-5 | not given |
-| briefly blacking out | dictionary definition | Wiktionary contributors (verified 2026-11-09 in dialect_lexicon_20261109.json). Entry 'bla https://en.wiktionary.org/wiki/blackout | not given |
-| a brief blackout | dictionary definition | Wiktionary contributors (verified 2026-11-09 in dialect_lexicon_20261109.json). Entry 'bla https://en.wiktionary.org/wiki/blackout | not given |
+| Everyday expression | Declared support | Citation check | Source | Evidence sentence |
+|---|---|---|---|---|
+| a sudden racing heartbeat | no source |  |   |  |
+| my heart raced suddenly | no source |  |   |  |
+| my heart sinking in my chest | authors' summary | not checked | Krause IB (1989). Sinking heart: a Punjabi communication of distress. Social Science & Med PMID: 2756440; DOI: 10.1016/0277-9536(89)90202-5 | not given |
+| a sinking heart in my chest | authors' summary | not checked | Krause IB (1989). Sinking heart: a Punjabi communication of distress. Social Science & Med PMID: 2756440; DOI: 10.1016/0277-9536(89)90202-5 | not given |
+| briefly blacking out | dictionary definition | not checked | Wiktionary contributors (verified 2026-11-09 in dialect_lexicon_20261109.json). Entry 'bla https://en.wiktionary.org/wiki/blackout | not given |
+| a brief blackout | dictionary definition | not checked | Wiktionary contributors (verified 2026-11-09 in dialect_lexicon_20261109.json). Entry 'bla https://en.wiktionary.org/wiki/blackout | not given |
+
+Known concerns: 2 open, 0 closed.
+- `r9-01-c1` **open** · fact parity · applies to reg · The everyday wording uses 'my heart sinking in my chest' for chest tightness. The cited source (Krause 1989) documents 'sinking heart' as an idiom of distress, so the two wordings may not state the same fact. (raised by Claude review session (a model's reading; not a clinician's or a patient-language reviewer's), 2026-11-11). Disposition: pending clinical review: The owner kept this family on 2026-11-11 with the flag recorded. The keep decision is not a disposition of the concern.
+- `r9-01-c2` **open** · control level disputed · applies to chg · The control (palpitations and the chest sensation 2 times today, passing quickly, no fainting) is labelled a general doctor; that is arguably still urgent. (raised by Claude review session (a model's reading; not a clinician's or a patient-language reviewer's), 2026-11-11). Disposition: pending clinical review: The owner kept this family on 2026-11-11 with the flag recorded. The keep decision is not a disposition of the concern.
 
 Software findings: none.
 
@@ -80,10 +86,12 @@ Reference facts:
 
 Changed fact `f3`: "where the left side of her face drooped and speech slurred" became "where she felt mildly lightheaded right after standing up quickly"; right care after the change: level 2.
 
-| Everyday expression | Declared support | Source | Evidence sentence |
-|---|---|---|---|
-| a funny turn | authors' summary | Blythe R, Kularatna S, White N, Graves N, Clark K, Middleton H, Grimley R (2019). Fits, fa PMID: 31297515; DOI: 10.1093/ageing/afz086 | not given |
-| the left side of her face drooped and speech slurred | authors' summary | Mellor RM, Bailey S, Sheppard J, Carr P, Quinn T, Boyal A, Sandler D, Sims DG, Mant J, Gre PMID: 25455907; DOI: 10.1016/j.annemergmed.2014.10.018 | not given |
+| Everyday expression | Declared support | Citation check | Source | Evidence sentence |
+|---|---|---|---|---|
+| a funny turn | authors' summary | not checked | Blythe R, Kularatna S, White N, Graves N, Clark K, Middleton H, Grimley R (2019). Fits, fa PMID: 31297515; DOI: 10.1093/ageing/afz086 | not given |
+| the left side of her face drooped and speech slurred | authors' summary | not checked | Mellor RM, Bailey S, Sheppard J, Carr P, Quinn T, Boyal A, Sandler D, Sims DG, Mant J, Gre PMID: 25455907; DOI: 10.1016/j.annemergmed.2014.10.018 | not given |
+
+Known concerns: none recorded.
 
 Software findings: none.
 
@@ -112,12 +120,15 @@ Reference facts:
 
 Changed fact `f4`: "with a bad constant headache and dark spots in my vision" became "after standing with mild back ache and no headache or blurry vision"; right care after the change: level 2.
 
-| Everyday expression | Declared support | Source | Evidence sentence |
-|---|---|---|---|
-| swelling in both ankles | authors' summary | Carter W, Bick D, Mackintosh N, Sandall J (2021). Maternal help seeking about early warnin PMID: 33780789; DOI: 10.1016/j.midw.2021.102992 | not given |
-| both of my ankles have been mildly puffy | no source |   |  |
-| a bad constant headache | authors' summary | Carter W, Bick D, Mackintosh N, Sandall J (2021). Maternal help seeking about early warnin PMID: 33780789; DOI: 10.1016/j.midw.2021.102992 | not given |
-| dark spots in my vision | authors' summary | Carter W, Bick D, Mackintosh N, Sandall J (2021). Maternal help seeking about early warnin PMID: 33780789; DOI: 10.1016/j.midw.2021.102992 | not given |
+| Everyday expression | Declared support | Citation check | Source | Evidence sentence |
+|---|---|---|---|---|
+| swelling in both ankles | authors' summary | not checked | Carter W, Bick D, Mackintosh N, Sandall J (2021). Maternal help seeking about early warnin PMID: 33780789; DOI: 10.1016/j.midw.2021.102992 | not given |
+| both of my ankles have been mildly puffy | no source |  |   |  |
+| a bad constant headache | authors' summary | not checked | Carter W, Bick D, Mackintosh N, Sandall J (2021). Maternal help seeking about early warnin PMID: 33780789; DOI: 10.1016/j.midw.2021.102992 | not given |
+| dark spots in my vision | authors' summary | not checked | Carter W, Bick D, Mackintosh N, Sandall J (2021). Maternal help seeking about early warnin PMID: 33780789; DOI: 10.1016/j.midw.2021.102992 | not given |
+
+Known concerns: 1 open, 0 closed.
+- `r9-03-c1` **open** · control adds fact · applies to chg · The control replaces fact f4 and also adds 'after standing with mild back ache', which is in no reference fact. (raised by Claude review session (a model's reading; not a clinician's or a patient-language reviewer's), 2026-11-11). Disposition: pending clinical review: The owner kept this family on 2026-11-11 with the flag recorded. The keep decision is not a disposition of the concern.
 
 Software findings: none.
 
@@ -146,16 +157,19 @@ Reference facts:
 
 Changed fact `f4`: "and tonight has hard breathing with ribs sucking in" became "and tonight breathes easily with wet diapers and low fever"; right care after the change: level 2.
 
-| Everyday expression | Declared support | Source | Evidence sentence |
-|---|---|---|---|
-| extra mucus | no source |   |  |
-| runny mucus | no source |   |  |
-| smaller bottle feeds | no source |   |  |
-| taking less milk | no source |   |  |
-| hard breathing | authors' summary | Campbell A, Hartling L, Louie-Poon S, Scott SD (2020). Parent Experiences Caring for a Chi PMID: 33457588; DOI: 10.1177/2374373520924526 | not given |
-| trouble breathing | authors' summary | Campbell A, Hartling L, Louie-Poon S, Scott SD (2020). Parent Experiences Caring for a Chi PMID: 33457588; DOI: 10.1177/2374373520924526 | not given |
-| ribs sucking in | no source |   |  |
-| skin pulling around her ribs | no source |   |  |
+| Everyday expression | Declared support | Citation check | Source | Evidence sentence |
+|---|---|---|---|---|
+| extra mucus | no source |  |   |  |
+| runny mucus | no source |  |   |  |
+| smaller bottle feeds | no source |  |   |  |
+| taking less milk | no source |  |   |  |
+| hard breathing | authors' summary | not checked | Campbell A, Hartling L, Louie-Poon S, Scott SD (2020). Parent Experiences Caring for a Chi PMID: 33457588; DOI: 10.1177/2374373520924526 | not given |
+| trouble breathing | authors' summary | not checked | Campbell A, Hartling L, Louie-Poon S, Scott SD (2020). Parent Experiences Caring for a Chi PMID: 33457588; DOI: 10.1177/2374373520924526 | not given |
+| ribs sucking in | no source |  |   |  |
+| skin pulling around her ribs | no source |  |   |  |
+
+Known concerns: 1 open, 0 closed.
+- `r9-04-c1` **open** · control adds fact · applies to chg · The control replaces fact f4 and also adds 'with wet diapers and low fever', which is in no reference fact. (raised by Claude review session (a model's reading; not a clinician's or a patient-language reviewer's), 2026-11-11). Disposition: pending clinical review: The owner kept this family on 2026-11-11 with the flag recorded. The keep decision is not a disposition of the concern.
 
 Software findings: none.
 
@@ -186,14 +200,16 @@ Reference facts:
 
 Changed fact `f4`: "and broken sentences even after 2 inhaler puffs" became "that eased right away after 2 inhaler puffs with normal speech"; right care after the change: level 2.
 
-| Everyday expression | Declared support | Source | Evidence sentence |
-|---|---|---|---|
-| short winded | dictionary definition | Wiktionary contributors (verified 2026-11-09 in dialect_lexicon_20261109.json). Entry 'sho https://en.wiktionary.org/wiki/short-winded | not given |
-| can't catch my breath | authors' summary | Hardy P, Pappalardo AA (2025). "I can't breathe, I can't catch my breath:" the impact of s PMID: 39382247; DOI: 10.1080/02770903.2024.2414351 | not given |
-| tight whistling breathing | no source |   |  |
-| whistling in my chest | no source |   |  |
-| broken sentences even after 2 inhaler puffs | no source |   |  |
-| cannot finish a sentence even after 2 puffs of my inhaler | no source |   |  |
+| Everyday expression | Declared support | Citation check | Source | Evidence sentence |
+|---|---|---|---|---|
+| short winded | dictionary definition | not checked | Wiktionary contributors (verified 2026-11-09 in dialect_lexicon_20261109.json). Entry 'sho https://en.wiktionary.org/wiki/short-winded | not given |
+| can't catch my breath | authors' summary | not checked | Hardy P, Pappalardo AA (2025). "I can't breathe, I can't catch my breath:" the impact of s PMID: 39382247; DOI: 10.1080/02770903.2024.2414351 | not given |
+| tight whistling breathing | no source |  |   |  |
+| whistling in my chest | no source |  |   |  |
+| broken sentences even after 2 inhaler puffs | no source |  |   |  |
+| cannot finish a sentence even after 2 puffs of my inhaler | no source |  |   |  |
+
+Known concerns: none recorded.
 
 Software findings: none.
 
@@ -222,13 +238,16 @@ Reference facts:
 
 Changed fact `f4`: "and then fell out having fits for 3 minutes" became "but sat down and recovered in 1 minute without fainting"; right care after the change: level 2.
 
-| Everyday expression | Declared support | Source | Evidence sentence |
-|---|---|---|---|
-| a sudden dizzy spell | dictionary definition | Wiktionary contributors (verified 2026-11-09 in dialect_lexicon_20261109.json). Entry 'spe https://en.wiktionary.org/wiki/spell | not given |
-| a dizzy spell | dictionary definition | Wiktionary contributors (verified 2026-11-09 in dialect_lexicon_20261109.json). Entry 'spe https://en.wiktionary.org/wiki/spell | not given |
-| fell out | lexicon entry ('fell out / falling out') | dialect_lexicon_20261109.json, core entry 'fell out / falling out' (Wiktionary entry 'fall https://en.wiktionary.org/wiki/fall_out | not given |
-| falling out | authors' summary | Mas C (2022). "Falling-Out" in Miami and the History of Culture in American Medicine. Bull PMID: 35370146; DOI: 10.1353/bhm.2022.0003 | not given |
-| having fits | authors' summary | Nwani PO, Nwosu MC, Enwereji KO, Asomugha AL, Arinzechi EO, Ogunniyi AO (2013). Epilepsy t PMID: 23425044; DOI: 10.1111/ane.12096 | not given |
+| Everyday expression | Declared support | Citation check | Source | Evidence sentence |
+|---|---|---|---|---|
+| a sudden dizzy spell | dictionary definition | not checked | Wiktionary contributors (verified 2026-11-09 in dialect_lexicon_20261109.json). Entry 'spe https://en.wiktionary.org/wiki/spell | not given |
+| a dizzy spell | dictionary definition | not checked | Wiktionary contributors (verified 2026-11-09 in dialect_lexicon_20261109.json). Entry 'spe https://en.wiktionary.org/wiki/spell | not given |
+| fell out | lexicon entry ('fell out / falling out') | not checked | dialect_lexicon_20261109.json, core entry 'fell out / falling out' (Wiktionary entry 'fall https://en.wiktionary.org/wiki/fall_out | not given |
+| falling out | authors' summary | not checked | Mas C (2022). "Falling-Out" in Miami and the History of Culture in American Medicine. Bull PMID: 35370146; DOI: 10.1353/bhm.2022.0003 | not given |
+| having fits | authors' summary | not checked | Nwani PO, Nwosu MC, Enwereji KO, Asomugha AL, Arinzechi EO, Ogunniyi AO (2013). Epilepsy t PMID: 23425044; DOI: 10.1111/ane.12096 | not given |
+
+Known concerns: 1 open, 0 closed.
+- `r9-06-c1` **open** · label · applies to label · The reviewer-only condition label says seizure; the reference facts read as fainting with jerks. The label is in no prompt. (raised by Claude review session (a model's reading; not a clinician's or a patient-language reviewer's), 2026-11-11). Disposition: pending clinical review: The owner kept this family on 2026-11-11 with the flag recorded. The keep decision is not a disposition of the concern.
 
 Software findings: 
 - warning r9-06-chg: number: the everyday span drops ['3']
@@ -259,13 +278,16 @@ Reference facts:
 
 Changed fact `f4`: "he started nonstop vomiting and drowsiness" became "he stays alert eating meals with no vomiting"; right care after the change: level 2.
 
-| Everyday expression | Declared support | Source | Evidence sentence |
-|---|---|---|---|
-| extreme thirst | authors' summary | Rankin D, Harden J, Waugh N, Noyes K, Barnard KD, Stephen J, Robertson KJ, Bath L, Roberts PMID: 24552497; DOI: 10.1111/pedi.12124 | not given |
-| constant toilet trips | authors' summary | Rankin D, Harden J, Waugh N, Noyes K, Barnard KD, Stephen J, Robertson KJ, Bath L, Roberts PMID: 24552497; DOI: 10.1111/pedi.12124 | not given |
-| frequent trips to the toilet | authors' summary | Rankin D, Harden J, Waugh N, Noyes K, Barnard KD, Stephen J, Robertson KJ, Bath L, Roberts PMID: 24552497; DOI: 10.1111/pedi.12124 | not given |
-| nonstop vomiting and drowsiness | no source |   |  |
-| cannot stop throwing up while acting drowsy | no source |   |  |
+| Everyday expression | Declared support | Citation check | Source | Evidence sentence |
+|---|---|---|---|---|
+| extreme thirst | authors' summary | not checked | Rankin D, Harden J, Waugh N, Noyes K, Barnard KD, Stephen J, Robertson KJ, Bath L, Roberts PMID: 24552497; DOI: 10.1111/pedi.12124 | not given |
+| constant toilet trips | authors' summary | not checked | Rankin D, Harden J, Waugh N, Noyes K, Barnard KD, Stephen J, Robertson KJ, Bath L, Roberts PMID: 24552497; DOI: 10.1111/pedi.12124 | not given |
+| frequent trips to the toilet | authors' summary | not checked | Rankin D, Harden J, Waugh N, Noyes K, Barnard KD, Stephen J, Robertson KJ, Bath L, Roberts PMID: 24552497; DOI: 10.1111/pedi.12124 | not given |
+| nonstop vomiting and drowsiness | no source |  |   |  |
+| cannot stop throwing up while acting drowsy | no source |  |   |  |
+
+Known concerns: 1 open, 0 closed.
+- `r9-07-c1` **open** · control level disputed · applies to chg · The control (a 9 year old with 1 week of extreme thirst and constant urination, alert, no vomiting) is labelled a general doctor; same-day assessment is often advised. (raised by Claude review session (a model's reading; not a clinician's or a patient-language reviewer's), 2026-11-11). Disposition: pending clinical review: The owner kept this family on 2026-11-11 with the flag recorded. The keep decision is not a disposition of the concern.
 
 Software findings: none.
 
@@ -293,11 +315,13 @@ Reference facts:
 
 Changed fact `f3`: "and my throat swelled up with trouble breathing" became "with normal breathing and no lip or throat swelling"; right care after the change: level 2.
 
-| Everyday expression | Declared support | Source | Evidence sentence |
-|---|---|---|---|
-| itching and breaking out in hives | direct patient quote | Oehrlein EM, Schoch SC, Escontrias OA, Carver M, Eftekhari S, Marvel J, Pashos CL, Pistine PMID: 40486694; DOI: 10.1016/j.jacig.2025.100482 | not given |
-| my throat swelled up | direct patient quote | Oehrlein EM, Schoch SC, Escontrias OA, Carver M, Eftekhari S, Marvel J, Pashos CL, Pistine PMID: 40486694; DOI: 10.1016/j.jacig.2025.100482 | not given |
-| trouble breathing | authors' summary | Oehrlein EM, Schoch SC, Escontrias OA, Carver M, Eftekhari S, Marvel J, Pashos CL, Pistine PMID: 40486694; DOI: 10.1016/j.jacig.2025.100482 | not given |
+| Everyday expression | Declared support | Citation check | Source | Evidence sentence |
+|---|---|---|---|---|
+| itching and breaking out in hives | direct patient quote | not checked | Oehrlein EM, Schoch SC, Escontrias OA, Carver M, Eftekhari S, Marvel J, Pashos CL, Pistine PMID: 40486694; DOI: 10.1016/j.jacig.2025.100482 | not given |
+| my throat swelled up | direct patient quote | not checked | Oehrlein EM, Schoch SC, Escontrias OA, Carver M, Eftekhari S, Marvel J, Pashos CL, Pistine PMID: 40486694; DOI: 10.1016/j.jacig.2025.100482 | not given |
+| trouble breathing | authors' summary | not checked | Oehrlein EM, Schoch SC, Escontrias OA, Carver M, Eftekhari S, Marvel J, Pashos CL, Pistine PMID: 40486694; DOI: 10.1016/j.jacig.2025.100482 | not given |
+
+Known concerns: none recorded.
 
 Software findings: none.
 
@@ -328,15 +352,17 @@ Reference facts:
 
 Changed fact `f4`: "but I have no facial swelling fever or trouble swallowing" became "and tonight jaw swelling started with high fever and trouble swallowing"; right care after the change: level 4.
 
-| Everyday expression | Declared support | Source | Evidence sentence |
-|---|---|---|---|
-| throbbing pain | authors' summary | Cohen LA, Harris SL, Bonito AJ, Manski RJ, Cornelius LJ (2007). Coping with toothache pain PMID: 17436976; DOI: 10.1111/j.1752-7325.2007.00005.x | not given |
-| an intense throbbing ache | authors' summary | Cohen LA, Harris SL, Bonito AJ, Manski RJ, Cornelius LJ (2007). Coping with toothache pain PMID: 17436976; DOI: 10.1111/j.1752-7325.2007.00005.x | not given |
-| 1 bottom back tooth | no source |   |  |
-| 1 lower back tooth | no source |   |  |
-| hot and cold drinks | no source |   |  |
-| no facial swelling fever or trouble swallowing | no source |   |  |
-| no swollen face fever or swallowing trouble | no source |   |  |
+| Everyday expression | Declared support | Citation check | Source | Evidence sentence |
+|---|---|---|---|---|
+| throbbing pain | authors' summary | not checked | Cohen LA, Harris SL, Bonito AJ, Manski RJ, Cornelius LJ (2007). Coping with toothache pain PMID: 17436976; DOI: 10.1111/j.1752-7325.2007.00005.x | not given |
+| an intense throbbing ache | authors' summary | not checked | Cohen LA, Harris SL, Bonito AJ, Manski RJ, Cornelius LJ (2007). Coping with toothache pain PMID: 17436976; DOI: 10.1111/j.1752-7325.2007.00005.x | not given |
+| 1 bottom back tooth | no source |  |   |  |
+| 1 lower back tooth | no source |  |   |  |
+| hot and cold drinks | no source |  |   |  |
+| no facial swelling fever or trouble swallowing | no source |  |   |  |
+| no swollen face fever or swallowing trouble | no source |  |   |  |
+
+Known concerns: none recorded.
 
 Software findings: none.
 
@@ -367,11 +393,14 @@ Reference facts:
 
 Changed fact `f3`: "that got wider jagged edges over 3 months" became "rubbed sore by my shirt for 2 weeks without changing shape"; right care after the change: level 2.
 
-| Everyday expression | Declared support | Source | Evidence sentence |
-|---|---|---|---|
-| a dark flat mole | authors' summary | Walter FM, Birt L, Cavers D, Scott S, Emery J, Burrows N, Cavanagh G, MacKie R, Weller D,  PMID: 25052174; DOI: 10.1136/bmjopen-2014-005566 | not given |
-| jagged edges | authors' summary (quoting participant phrase 'jagged edges') | Walter FM, Birt L, Cavers D, Scott S, Emery J, Burrows N, Cavanagh G, MacKie R, Weller D,  PMID: 25052174; DOI: 10.1136/bmjopen-2014-005566 | not given |
-| no fever or spreading redness | no source |   |  |
+| Everyday expression | Declared support | Citation check | Source | Evidence sentence |
+|---|---|---|---|---|
+| a dark flat mole | authors' summary | not checked | Walter FM, Birt L, Cavers D, Scott S, Emery J, Burrows N, Cavanagh G, MacKie R, Weller D,  PMID: 25052174; DOI: 10.1136/bmjopen-2014-005566 | not given |
+| jagged edges | authors' summary (quoting participant phrase 'jagged edges') | not checked | Walter FM, Birt L, Cavers D, Scott S, Emery J, Burrows N, Cavanagh G, MacKie R, Weller D,  PMID: 25052174; DOI: 10.1136/bmjopen-2014-005566 | not given |
+| no fever or spreading redness | no source |  |   |  |
+
+Known concerns: 1 open, 0 closed.
+- `r9-10-c1` **open** · control adds fact · applies to chg · The control replaces fact f3 and also adds irritation ('rubbed sore by my shirt for 2 weeks'), which is in no reference fact. (raised by Claude review session (a model's reading; not a clinician's or a patient-language reviewer's), 2026-11-11). Disposition: pending clinical review: The owner kept this family on 2026-11-11 with the flag recorded. The keep decision is not a disposition of the concern.
 
 Software findings: 
 - warning r9-10-chg: number: the everyday span drops ['3']
@@ -402,15 +431,17 @@ Reference facts:
 
 Changed fact `f4`: "keeping me off buses without chest pain or fainting" became "and right now I have crushing chest pain and fainted"; right care after the change: level 4.
 
-| Everyday expression | Declared support | Source | Evidence sentence |
-|---|---|---|---|
-| racing heart | authors' summary | Baker HJ, Hollywood A, Waite P (2022). Adolescents' lived experience of panic disorder: an PMID: 35668509; DOI: 10.1186/s40359-022-00849-x | not given |
-| trembling | no source |   |  |
-| a pounding heart and shaking | no source |   |  |
-| fear of losing control | authors' summary | Baker HJ, Hollywood A, Waite P (2022). Adolescents' lived experience of panic disorder: an PMID: 35668509; DOI: 10.1186/s40359-022-00849-x | not given |
-| keeping me off buses | no source |   |  |
-| avoid buses | no source |   |  |
-| without chest pain or fainting | no source |   |  |
+| Everyday expression | Declared support | Citation check | Source | Evidence sentence |
+|---|---|---|---|---|
+| racing heart | authors' summary | not checked | Baker HJ, Hollywood A, Waite P (2022). Adolescents' lived experience of panic disorder: an PMID: 35668509; DOI: 10.1186/s40359-022-00849-x | not given |
+| trembling | no source |  |   |  |
+| a pounding heart and shaking | no source |  |   |  |
+| fear of losing control | authors' summary | not checked | Baker HJ, Hollywood A, Waite P (2022). Adolescents' lived experience of panic disorder: an PMID: 35668509; DOI: 10.1186/s40359-022-00849-x | not given |
+| keeping me off buses | no source |  |   |  |
+| avoid buses | no source |  |   |  |
+| without chest pain or fainting | no source |  |   |  |
+
+Known concerns: none recorded.
 
 Software findings: none.
 
@@ -439,12 +470,14 @@ Reference facts:
 
 Changed fact `f4`: "without injury fever or a hot red joint" became "and today my right wrist turned hot red and immobile with fever"; right care after the change: level 4.
 
-| Everyday expression | Declared support | Source | Evidence sentence |
-|---|---|---|---|
-| swollen painful knuckles on both hands | authors' summary | Stack RJ, van Tuyl LHD, Sloots M, van de Stadt LA, Hoogland W, Maat B, Mallen CD, Tiwana R PMID: 24729397; DOI: 10.1093/rheumatology/keu159 | not given |
-| stiff | authors' summary | Stack RJ, van Tuyl LHD, Sloots M, van de Stadt LA, Hoogland W, Maat B, Mallen CD, Tiwana R PMID: 24729397; DOI: 10.1093/rheumatology/keu159 | not given |
-| loosen up | authors' summary | Stack RJ, van Tuyl LHD, Sloots M, van de Stadt LA, Hoogland W, Maat B, Mallen CD, Tiwana R PMID: 24729397; DOI: 10.1093/rheumatology/keu159 | not given |
-| without injury fever or a hot red joint | no source |   |  |
+| Everyday expression | Declared support | Citation check | Source | Evidence sentence |
+|---|---|---|---|---|
+| swollen painful knuckles on both hands | authors' summary | not checked | Stack RJ, van Tuyl LHD, Sloots M, van de Stadt LA, Hoogland W, Maat B, Mallen CD, Tiwana R PMID: 24729397; DOI: 10.1093/rheumatology/keu159 | not given |
+| stiff | authors' summary | not checked | Stack RJ, van Tuyl LHD, Sloots M, van de Stadt LA, Hoogland W, Maat B, Mallen CD, Tiwana R PMID: 24729397; DOI: 10.1093/rheumatology/keu159 | not given |
+| loosen up | authors' summary | not checked | Stack RJ, van Tuyl LHD, Sloots M, van de Stadt LA, Hoogland W, Maat B, Mallen CD, Tiwana R PMID: 24729397; DOI: 10.1093/rheumatology/keu159 | not given |
+| without injury fever or a hot red joint | no source |  |   |  |
+
+Known concerns: none recorded.
 
 Software findings: none.
 
@@ -476,12 +509,14 @@ Reference facts:
 
 Changed fact `f5`: "or fever with vomiting" became "yet today I got high fever shaking chills and nonstop vomiting"; right care after the change: level 4.
 
-| Everyday expression | Declared support | Source | Evidence sentence |
-|---|---|---|---|
-| burning when I pee | authors' summary | Leydon GM, Turner S, Smith H, Little P, UTIS team (2010). Women's views about management a PMID: 20139217; DOI: 10.1136/bmj.c279 | not given |
-| stinging and burning when I pee | authors' summary | Leydon GM, Turner S, Smith H, Little P, UTIS team (2010). Women's views about management a PMID: 20139217; DOI: 10.1136/bmj.c279 | not given |
-| peeing tiny amounts often | no source |   |  |
-| no back pain or fever with vomiting | no source |   |  |
+| Everyday expression | Declared support | Citation check | Source | Evidence sentence |
+|---|---|---|---|---|
+| burning when I pee | authors' summary | not checked | Leydon GM, Turner S, Smith H, Little P, UTIS team (2010). Women's views about management a PMID: 20139217; DOI: 10.1136/bmj.c279 | not given |
+| stinging and burning when I pee | authors' summary | not checked | Leydon GM, Turner S, Smith H, Little P, UTIS team (2010). Women's views about management a PMID: 20139217; DOI: 10.1136/bmj.c279 | not given |
+| peeing tiny amounts often | no source |  |   |  |
+| no back pain or fever with vomiting | no source |  |   |  |
+
+Known concerns: none recorded.
 
 Software findings: none.
 
@@ -491,7 +526,7 @@ Care level 2 · ends on "so I should see a" + "doctor" · split validation · re
 
 Label for reviewers only, in no text: uncomplicated acute otitis media
 
-Status: software passed · owner read: stale (the texts or the care level changed after this read; the decision is not carried over) · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
+Status: software passed · owner read: stale (texts changed after this read; the decision is not carried over) · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
 
 Reference facts:
 
@@ -512,14 +547,16 @@ Reference facts:
 
 Changed fact `f4`: "but still has good energy normal drinking and no swelling behind it" became "and today became drowsy with stiff neck and red swelling behind it"; right care after the change: level 4.
 
-| Everyday expression | Declared support | Source | Evidence sentence |
-|---|---|---|---|
-| ear pulling | authors' summary (with direct parent quote 'she was pulling her ears') | Lee MC, Kavalieratos D, Alberty A, Groff D, Haralam MA, Shaikh N (2022). Parents' experien PMID: 35606702; DOI: 10.1186/s12875-022-01737-4 | not given |
-| pulling her right ear | authors' summary (with direct parent quote 'she was pulling her ears') | Lee MC, Kavalieratos D, Alberty A, Groff D, Haralam MA, Shaikh N (2022). Parents' experien PMID: 35606702; DOI: 10.1186/s12875-022-01737-4 | not given |
-| right ear pain | no source |   |  |
-| earache | no source |   |  |
-| good energy normal drinking and no swelling behind it | no source |   |  |
-| staying playful drinking well without swelling behind her ear | no source |   |  |
+| Everyday expression | Declared support | Citation check | Source | Evidence sentence |
+|---|---|---|---|---|
+| ear pulling | authors' summary (with direct parent quote 'she was pulling her ears') | not checked | Lee MC, Kavalieratos D, Alberty A, Groff D, Haralam MA, Shaikh N (2022). Parents' experien PMID: 35606702; DOI: 10.1186/s12875-022-01737-4 | not given |
+| pulling her right ear | authors' summary (with direct parent quote 'she was pulling her ears') | not checked | Lee MC, Kavalieratos D, Alberty A, Groff D, Haralam MA, Shaikh N (2022). Parents' experien PMID: 35606702; DOI: 10.1186/s12875-022-01737-4 | not given |
+| right ear pain | no source |  |   |  |
+| earache | no source |  |   |  |
+| good energy normal drinking and no swelling behind it | no source |  |   |  |
+| staying playful drinking well without swelling behind her ear | no source |  |   |  |
+
+Known concerns: none recorded.
 
 Software findings: none.
 
@@ -548,13 +585,15 @@ Reference facts:
 
 Changed fact `f4`: "while keeping drinks down peeing normally without dizziness standing" became "and today cannot keep water down stopped peeing and nearly faint standing"; right care after the change: level 4.
 
-| Everyday expression | Declared support | Source | Evidence sentence |
-|---|---|---|---|
-| loose motions | authors' summary | Bitar Z, Abdelraouf HM, Maig RA, Maadarani O, Bitar ZZ, Dashti H (2024). Exploring Hypogly PMID: 39686534; DOI: 10.12659/AJCR.946133 | not given |
-| mild belly cramps | no source |   |  |
-| mild stomach cramps | no source |   |  |
-| keeping drinks down peeing normally without dizziness standing | no source |   |  |
-| holding fluids down passing urine normally and feeling steady on my feet | no source |   |  |
+| Everyday expression | Declared support | Citation check | Source | Evidence sentence |
+|---|---|---|---|---|
+| loose motions | authors' summary | not checked | Bitar Z, Abdelraouf HM, Maig RA, Maadarani O, Bitar ZZ, Dashti H (2024). Exploring Hypogly PMID: 39686534; DOI: 10.12659/AJCR.946133 | not given |
+| mild belly cramps | no source |  |   |  |
+| mild stomach cramps | no source |  |   |  |
+| keeping drinks down peeing normally without dizziness standing | no source |  |   |  |
+| holding fluids down passing urine normally and feeling steady on my feet | no source |  |   |  |
+
+Known concerns: none recorded.
 
 Software findings: none.
 
@@ -583,16 +622,19 @@ Reference facts:
 
 Changed fact `f4`: "with no swallowing pain bloody vomit headache or blurry vision" became "and 1 hour ago vomited red blood and felt faint"; right care after the change: level 4.
 
-| Everyday expression | Declared support | Source | Evidence sentence |
-|---|---|---|---|
-| burning in my chest after meals | authors' summary | Jones R, Ballard K (2008). Healthcare seeking in gastro-oesophageal reflux disease: a qual PMID: 18334869; DOI: 10.1097/MEG.0b013e3282f2a5bd | not given |
-| burning rises in my chest after eating | authors' summary | Jones R, Ballard K (2008). Healthcare seeking in gastro-oesophageal reflux disease: a qual PMID: 18334869; DOI: 10.1097/MEG.0b013e3282f2a5bd | not given |
-| throat acid | authors' summary | Jones R, Ballard K (2008). Healthcare seeking in gastro-oesophageal reflux disease: a qual PMID: 18334869; DOI: 10.1097/MEG.0b013e3282f2a5bd | not given |
-| sour throat acid | authors' summary | Jones R, Ballard K (2008). Healthcare seeking in gastro-oesophageal reflux disease: a qual PMID: 18334869; DOI: 10.1097/MEG.0b013e3282f2a5bd | not given |
-| lying flat | no source |   |  |
-| lying down | no source |   |  |
-| no swallowing pain bloody vomit headache or blurry vision | no source |   |  |
-| no swallowing pain blood headache or blurry sight | no source |   |  |
+| Everyday expression | Declared support | Citation check | Source | Evidence sentence |
+|---|---|---|---|---|
+| burning in my chest after meals | authors' summary | not checked | Jones R, Ballard K (2008). Healthcare seeking in gastro-oesophageal reflux disease: a qual PMID: 18334869; DOI: 10.1097/MEG.0b013e3282f2a5bd | not given |
+| burning rises in my chest after eating | authors' summary | not checked | Jones R, Ballard K (2008). Healthcare seeking in gastro-oesophageal reflux disease: a qual PMID: 18334869; DOI: 10.1097/MEG.0b013e3282f2a5bd | not given |
+| throat acid | authors' summary | not checked | Jones R, Ballard K (2008). Healthcare seeking in gastro-oesophageal reflux disease: a qual PMID: 18334869; DOI: 10.1097/MEG.0b013e3282f2a5bd | not given |
+| sour throat acid | authors' summary | not checked | Jones R, Ballard K (2008). Healthcare seeking in gastro-oesophageal reflux disease: a qual PMID: 18334869; DOI: 10.1097/MEG.0b013e3282f2a5bd | not given |
+| lying flat | no source |  |   |  |
+| lying down | no source |  |   |  |
+| no swallowing pain bloody vomit headache or blurry vision | no source |  |   |  |
+| no swallowing pain blood headache or blurry sight | no source |  |   |  |
+
+Known concerns: 1 open, 0 closed.
+- `r9-16-c1` **open** · level disputed · applies to family · Uncomplicated reflux at 24 weeks of pregnancy is labelled a general doctor; it is often managed with self-care, so the family's own level is borderline. (raised by Claude review session (a model's reading; not a clinician's or a patient-language reviewer's), 2026-11-11). Disposition: pending clinical review: The owner kept this family on 2026-11-11 with the flag recorded. The keep decision is not a disposition of the concern.
 
 Software findings: 
 - warning r9-16-chg: number: the everyday span adds ['1']
