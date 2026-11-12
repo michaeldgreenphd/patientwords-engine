@@ -489,6 +489,11 @@ def _mechanistic(candidates: Mapping[str, int], n: int, seed: int | None, measur
         require(not moved, "subset_family_changed",
                 f"{moved}: the earlier manifest chose these families in another version than the batch now holds, or "
                 "does not record their version; its subset cannot be restored for this batch")
+        dropped = sorted(f for f in earlier["families"] if f not in candidates)
+        require(not dropped, "subset_family_not_candidate",
+                f"{dropped}: the earlier manifest chose these families, and they are no longer owner-kept, unflagged "
+                "discovery families of this batch. The subset is not restored with a family the batch's current state "
+                "removes or holds out; record the change and report the remaining work as exploratory")
         return {**base, "families": sorted(earlier["families"]), "seed": seed, "requested": n,
                 "candidates": earlier.get("candidates"), "status": "restored_from_earlier_manifest",
                 "outcome_selected": NOT_VERIFIED, "restored_from_previous_manifest": True,
@@ -708,6 +713,7 @@ def run_intake(batch: Any, *, batch_id: str, batch_sha256: str, source_ref: str,
             (f"owner_read_{owner[fid]['status']}", owner[fid]["status"] != "kept"),
             (f"exploratory_stratum:{register_stratum}", bool(flags)),
             ("split_unassigned", splits["per_family"][fid] is None),
+            ("split_timing_not_verified", measured and splits["per_family"][fid] is not None),
             ("open_concern_on_register_pair:" + ",".join(on_pair), bool(on_pair))) if on]
         family_rows.append({
             "family_id": fid, "family_sha256": digest(family), "texts_sha256": texts_sha[fid],
@@ -729,7 +735,10 @@ def run_intake(batch: Any, *, batch_id: str, batch_sha256: str, source_ref: str,
                                 "labels_required": ["exploratory, hand-authored", f"review status: {review_status[fid]}"]},
                 "confirmatory": {"eligible": not blocked, "blocked_by": blocked,
                                  "applies_to": "the register pair. A control with an open concern is listed in "
-                                               "controls_with_open_concerns and does not block the pair.",
+                                               "controls_with_open_concerns and does not block the pair. Once the "
+                                               "batch has measurements this command cannot verify that a split was "
+                                               "recorded first, so it reports no family as eligible: eligibility is "
+                                               "read from a manifest written before measurement.",
                                  "controls_with_open_concerns": {
                                      c["id"]: c["open_concerns"] for c in contrasts
                                      if c["role"] != "contrast" and c["open_concerns"]}}}})

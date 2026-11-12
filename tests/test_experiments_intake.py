@@ -219,6 +219,37 @@ def test_after_measurement_a_subset_is_restored_only_from_a_manifest_of_this_bat
     with pytest.raises(Refusal) as refusal:                                             # the chosen family is another version now
         _run(changed, **{**options, "verdicts": []}, stem=LATER_STEM, root=measured_root, previous_manifest=before)
     assert refusal.value.code == "subset_family_changed"
+    excluded = {**options, "verdicts": [_verdicts(**{chosen[0].replace("-", "_"): "excluded"})]}
+    with pytest.raises(Refusal) as refusal:                                             # the owner has since excluded it
+        _run(**excluded, stem=LATER_STEM, root=measured_root, previous_manifest=before)
+    assert refusal.value.code == "subset_family_not_candidate"
+    with pytest.raises(Refusal) as refusal:                                             # no read at all: not a candidate either
+        _run(**{**options, "verdicts": []}, stem=LATER_STEM, root=measured_root, previous_manifest=before)
+    assert refusal.value.code == "subset_family_not_candidate"
+
+
+def test_after_measurement_no_family_is_reported_as_eligible_for_a_confirmatory_statement(measured_root: Path) -> None:
+    """Every other blocker is cleared here, so the split's unverified timing is the only thing left to block."""
+    signed = intake.load_design()
+    signed["protocol"] = {**signed["protocol"], "status": "signed (placeholder for this test)"}
+    strata = {f["family_id"]: f["right_care"] for f in _batch()}
+    record = {"seed": 7, "strata": strata, "splits": intake.assign_splits(strata, 7)}
+    basis = {r["family_id"]: r["review_basis_sha256"] for r in _run()["families"]}
+    reviews = {"schema": intake.REVIEWS_SCHEMA, "reviews": [
+        _review(fid, role, sha) for fid, sha in basis.items() for role in ("clinician", "patient_language_reviewer")]}
+
+    def run(**extra):
+        return intake.run_intake(_batch(), batch_id="synthetic", batch_sha256=BATCH_SHA, source_ref="fixture", design=signed,
+                                 design_sha256="0" * 64, sealed=lambda text: False, verdicts=[_verdicts()], reviews=[reviews],
+                                 split_records=[record], stem=LATER_STEM, **extra)
+    before, after = run(), run(root=measured_root)
+    plain = [r["family_id"] for r in before["families"] if not r["flags"]]
+    assert before["inventory"]["confirmatory_eligible"] == len(plain) > 0             # eligible while nothing is measured
+    assert after["inventory"]["confirmatory_eligible"] == 0
+    for fid in plain:
+        assert _family(before, fid)["eligibility"]["confirmatory"]["blocked_by"] == []
+        assert _family(after, fid)["eligibility"]["confirmatory"]["blocked_by"] == ["split_timing_not_verified"]
+    assert "read from a manifest written before measurement" in _family(after, plain[0])["eligibility"]["confirmatory"]["applies_to"]
 
 
 def test_the_mechanistic_subset_is_a_seeded_draw_from_kept_unflagged_discovery_families() -> None:

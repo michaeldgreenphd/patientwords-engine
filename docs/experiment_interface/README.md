@@ -148,7 +148,11 @@ is a file the caller supplies, so these are consistency checks and not proof of 
 was written. A restored subset therefore has the status `restored_from_earlier_manifest`
 and `outcome_selected: not_verified_by_this_command`, never `selected_before_outcomes`;
 its `timing` field says that the commit which added the earlier manifest is the evidence.
-A concern is withdrawn only by whoever raised it. The mechanistic
+A subset is not restored when one of its families is no longer an owner-kept, unflagged
+discovery family (`subset_family_not_candidate`). For the same reason no family of a
+measured batch is reported as eligible for a confirmatory statement
+(`split_timing_not_verified`): eligibility is read from a manifest written before
+measurement. A concern is withdrawn only by whoever raised it. The mechanistic
 subset is a seeded draw from owner-kept, unflagged discovery families, so it is not
 outcome-selected, and its estimate includes the three controls per site.
 
