@@ -86,10 +86,33 @@ draft the owner has not agreed; the packet and the manifest repeat its status li
 
 **Four layers of review, never merged.** Software validation (this command, extending
 `scripts/check_candidate_pairs.py`) covers structure only. The owner's read is a keep or
-exclude decision on a named version of the texts; when the texts change, the read is
-`stale`. Clinician review and patient-language review come only from `--reviews` records
-whose `reviewer_kind` is `human` and whose text hash matches; anything else is refused
-(`not_a_review`) or `stale`. A family without both reviews is `domain_review_pending`.
+exclude decision on a named version of the family. Clinician review and patient-language
+review come only from `--reviews` records whose `reviewer_kind` is `human`; anything else
+is refused (`not_a_review`). A family without both reviews is `domain_review_pending`.
+
+**What a read or review is bound to.** The family's review basis
+(`review_basis_sha256`): its texts, reference facts, care levels (`right_care` and
+`right_care_after`), carrier, target and changed-fact declaration. When any of them
+changes, with or without a change of prompt text, the owner's read and both reviews are
+`stale` and the manifest names the part that changed. They are not carried over.
+
+**Known concerns** (`--concerns`, schema `patientwords.intake-concerns/1`). A concern
+about a family's content (a control that adds a fact, a disputed level, a stated negative,
+source fit) is a record of its own, with a kind, the contrasts it applies to, who raised it
+and a disposition. The owner keeping a family does not close a concern, and neither does a
+review: only its recorded disposition does. `accepted_as_is` is a person's decision and a
+model cannot record it (`not_a_disposition`). `resolved_by_revision` names the review
+basis of the version that resolved it; for any other version the concern is open again.
+An open concern on the family or its register contrast blocks a confirmatory statement on
+the register pair. An open concern on a control is listed on that control
+(`controls_with_open_concerns`) and does not block the pair. The packet prints every
+concern with its disposition; the review form lists the open ones.
+
+**Source verification and source fit.** `--source-check` (schema
+`patientwords.source-check/1`) records, per citation, that the cited record exists and
+contains the evidence sentence. That is verification. Whether patients in the family's
+population use the expression is source fit, a judgement that verification never implies;
+it is recorded as a concern of kind `source_fit`.
 
 **Strata.** Each contrast belongs to one stratum and strata are never pooled:
 `register` (medical against everyday), `patient_explanation` (everyday against everyday

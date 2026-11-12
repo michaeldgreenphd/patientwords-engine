@@ -183,6 +183,8 @@ def cmd_intake(args: argparse.Namespace) -> int:
         args.batch, batch_id=args.batch_id, source_ref=args.source_ref, design_path=args.design, root=args.root,
         verdicts=[_load(p, "verdicts") for p in args.verdicts], read_batches=read_batches,
         reviews=[_load(p, "reviews") for p in args.reviews], prior_batches=prior,
+        concerns=[_load(p, "concerns") for p in args.concerns],
+        source_checks=[_load(p, "source check") for p in args.source_check],
         split_records=[_load(p, "split record") for p in args.split_record], split_seed=args.split_seed,
         models=args.model, tokenizations=[_load(p, "tokenization") for p in args.tokenization],
         mechanistic_families=args.mechanistic_families, mechanistic_seed=args.mechanistic_seed,
@@ -193,6 +195,8 @@ def cmd_intake(args: argparse.Namespace) -> int:
             "verdicts": [file_record(p) for p in args.verdicts],
             "read_batches": [file_record(p) for p in args.read_batch],
             "reviews": [file_record(p) for p in args.reviews],
+            "concerns": [file_record(p) for p in args.concerns],
+            "source_checks": [file_record(p) for p in args.source_check],
             "prior_batches": [{"label": item.partition("=")[0], **file_record(Path(item.partition("=")[2]))}
                               for item in args.prior_batch],
             "split_records": [file_record(p) for p in args.split_record],
@@ -279,6 +283,10 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_argument("--read-batch", type=Path, action="append", default=[],
                      help="the batch version a verdicts file was recorded on, when it is not --batch")
     sub.add_argument("--reviews", type=Path, action="append", default=[], help="returned review form")
+    sub.add_argument("--concerns", type=Path, action="append", default=[],
+                     help="known content concerns with their dispositions; kept apart from the owner's read")
+    sub.add_argument("--source-check", type=Path, action="append", default=[],
+                     help="a recorded check of the citations: record found, evidence sentence found")
     sub.add_argument("--prior-batch", action="append", default=[], metavar="LABEL=PATH",
                      help="an earlier families file, for duplicate cases and reused ids")
     sub.add_argument("--split-record", type=Path, action="append", default=[],

@@ -208,6 +208,9 @@ a value, and the table changes only by the owner's decision.
 
 ### 14.1 Recommendations awaiting the owner's decision (2026-11-12)
 
+Provisional. On 2026-11-12 the owner stated that the pilot, a final sample size and the equivalence margins
+are not yet approved; nothing in this section is a decision.
+
 No outcome-blind family has been measured, so no variance estimate exists for this design. Each
 recommendation states the assumption it rests on. The arithmetic was checked; the assumptions were not
 tested.
@@ -219,8 +222,9 @@ tested.
 | Validation and fresh-test families | at least 24 each | A 95% interval for a mean within-family difference with 24 families has half-width 2.07 x s / sqrt(24) = 0.42 s, where s is the between-family standard deviation of the difference; with 15 families it is 0.55 s. For a proportion of families near 0.5 the Wilson 95% half-width is about 0.19 at 24 and 0.23 at 15. s is unknown until the pilot of section 19 |
 | Total under the recorded split rule (half, quarter, quarter per care level) | 96 unflagged families: 48, 24, 24 | 24 held-out families per split forces 96 in total; 48 discovery families exceed the 30 that `Q` needs. Stock on 2026-11-12: 10 owner-kept unflagged families in round 9 (4 in discovery). Round 10 is not landed |
 | Whether to fix the total now | fix it after the pilot | The pilot gives the first s on discovery families only. Fixing the total before it rests on a guess; fixing it after uses no held-out value |
-| Equivalence and control margins | per model, not smaller than the calibrated paraphrase quantile of that model; the number is written after calibration | A register difference smaller than what a same-register paraphrase produces cannot be attributed to register (section 7). A margin is still a judgement of practical importance; the quantile is its lower bound, not its value |
-| Behaviour-change threshold | the same quantile, on the absolute probability difference of the paraphrase controls | the same reason; uses only discovery families |
+| Equivalence and control margins | no number is recommended. Each margin needs a substantive justification, written by the owner with clinical input before held-out scoring: the size of difference in the endpoint that would matter for the use the claim is about | A practical-equivalence margin states what difference is too small to matter. Paraphrase variability does not answer that: it describes the instrument's variation, not practical importance, and a margin is not set from it (corrected 2026-11-12; an earlier draft of this row tied the margin to the paraphrase quantile) |
+| What paraphrase variability is used for | the representation-change threshold of section 11 (step 2), and the precision estimates of this table | It shows how much the endpoint and the representations move when register does not change, on discovery families only |
+| Behaviour-change threshold | not recommended yet. The paraphrase differences of discovery families give a reference for the endpoint's variation; whether a difference of that size matters is a separate, substantive judgement | the row above |
 | Review before the split | for a batch meant for the held-out sets: intake without a split seed, both reviews recorded, then the split | Section 4 removes a family on any "different" before the split. Round 9's split was recorded before any domain review, so its families stay exploratory unless the owner records a deviation in section 20 |
 | Reviewers | one clinician and one patient-language reviewer per family; a second clinician on a seeded quarter of the families, with agreement reported | The rubric's minimum is one of each. A second reading of a sample is the only way to report agreement. Minutes per family are not recorded; time the first 8 families and plan from that |
 | Models in the behavioural pass | the primary model (section 12) plus the six pinned logits models as exploratory rows | $0 provider spend on every one; see the cost rows of section 19 |
@@ -283,7 +287,7 @@ It needs the owner's approval as the run packet states (its section 14, decision
 through `scripts/fire_trigger.py`.
 
 **The smallest pilot on authored families: proposed, not approved, not fired (2026-11-12).** It follows
-the operation check above and needs the same kind of approval.
+the operation check above and needs the same kind of approval. The owner has not approved it.
 
 | | |
 |---|---|

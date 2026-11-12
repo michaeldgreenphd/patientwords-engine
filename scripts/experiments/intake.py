@@ -17,6 +17,19 @@ Three things are kept apart in every output:
   rubric (``data/protocols/instrument_validity_rubric.draft.json``). Nothing here fills them in; a family
   without both stays ``domain_review_pending``.
 
+A read or a review is bound to the family's *review basis*: its texts, reference facts, care levels, carrier,
+target and changed-fact declaration. When any of these changes, with or without a change of prompt text, the
+read or review is reported as stale with the part that changed, and is not carried over.
+
+**Known concerns** about a family's content (``--concerns``) are a fourth record, independent of all three. A
+concern keeps its own disposition. The owner keeping a family does not close it: only a recorded disposition
+does, and a disposition that names another version of the family no longer applies. A concern about a control
+is reported on that control and does not block the family's register pair.
+
+**Source verification and source fit** are separate. ``--source-check`` records that a cited record exists and
+contains the evidence sentence. Whether patients in the family's population use the expression is source fit:
+a judgement, recorded as a concern of kind ``source_fit``.
+
 And three manipulations are kept apart: the register contrast (medical against everyday, facts held equal), the
 patient-explanation contrast (everyday against everyday with a stated belief added) and the syntax crossings.
 A family whose everyday wording uses a dialect form, or whose carrier phrase has no earlier measurement, keeps
@@ -51,6 +64,9 @@ DESIGN_SCHEMA = "patientwords.intake-design/1"
 TOKENIZATION_SCHEMA = "patientwords.prompt-tokenization/1"
 REVIEWS_SCHEMA = "patientwords.pair-equivalence-reviews/1"
 REVIEW_FORM_SCHEMA = "patientwords.pair-equivalence-review-form/1"
+CONCERNS_SCHEMA = "patientwords.intake-concerns/1"
+SOURCE_CHECK_SCHEMA = "patientwords.source-check/1"
+BASIS_PARTS = ("texts", "reference_facts", "care_levels", "carrier_and_target", "changed_fact")
 DESIGN_PATH = ROOT / "data" / "experiments" / "intake_design.v1.json"
 RUBRIC_PATH = ROOT / "data" / "protocols" / "instrument_validity_rubric.draft.json"
 QUOTE_TYPES = ("direct patient quote", "authors' summary", "dictionary definition", "lexicon entry", "none")
@@ -188,9 +204,19 @@ def _norm(value: str) -> str:
     return re.sub(r"\s+", " ", value.strip().casefold())
 
 
+def review_basis(family: Mapping[str, Any]) -> dict[str, Any]:
+    """What a reader or reviewer judges: the texts and the labels they are judged against. Sources, notes and the
+    level rationale are not part of it."""
+    changed = family.get("changed_fact") if isinstance(family.get("changed_fact"), dict) else {}
+    return {"texts": family.get("texts"), "reference_facts": family.get("reference_facts"),
+            "care_levels": {"right_care": family.get("right_care"), "right_care_after": changed.get("right_care_after")},
+            "carrier_and_target": {"carrier_frame": family.get("carrier_frame"), "target_token": family.get("target_token")},
+            "changed_fact": {k: changed.get(k) for k in ("fact_id", "from", "to")}}
+
+
 def _owner_reads(batch: Sequence[Mapping[str, Any]], verdict_docs: Sequence[Mapping[str, Any]],
                  read_batches: Mapping[str, Sequence[Mapping[str, Any]]], batch_sha256: str) -> dict[str, dict[str, Any]]:
-    """family_id -> the owner's decision on the family's current texts, or why none applies."""
+    """family_id -> the owner's decision on the family's current review basis, or why none applies."""
     current = {f["family_id"]: f for f in batch if isinstance(f, dict) and text(f.get("family_id"))}
     reads: dict[str, dict[str, Any]] = {fid: {"status": "not_read"} for fid in current}
     for doc in verdict_docs:
@@ -213,11 +239,11 @@ def _owner_reads(batch: Sequence[Mapping[str, Any]], verdict_docs: Sequence[Mapp
             entry = {"decision": OWNER_VERDICTS[verdict], "reasons": list(row.get("owner_reasons") or []),
                      "note": row.get("owner_note") or "", "read_utc": doc.get("owner_read_utc"),
                      "read_batch_sha256": source_sha}
-            same = read_families[fid].get("texts") == current[fid].get("texts") and \
-                read_families[fid].get("right_care") == current[fid].get("right_care")
-            reads[fid] = {"status": entry["decision"], **entry} if same else {
-                "status": "stale", "previous": entry,
-                "detail": "the texts or the care level changed after this read; the decision is not carried over"}
+            then, now = review_basis(read_families[fid]), review_basis(current[fid])
+            changed = [part for part in BASIS_PARTS if then[part] != now[part]]
+            reads[fid] = {"status": entry["decision"], **entry} if not changed else {
+                "status": "stale", "previous": entry, "changed_since_read": changed,
+                "detail": f"{', '.join(changed).replace('_', ' ')} changed after this read; the decision is not carried over"}
     return reads
 
 
@@ -244,9 +270,10 @@ def _domain_reviews(batch_ids: Mapping[str, str], docs: Sequence[Mapping[str, An
                     f"{fid}: items must be among {roles[role]} with values from {sorted(values)} or null")
             if fid not in batch_ids:
                 continue
-            if row.get("texts_sha256") != batch_ids[fid]:
+            if row.get("review_basis_sha256") != batch_ids[fid]:
                 state[fid][role] = {**state[fid][role], "status": "stale",
-                                    "detail": "the review names other texts than the family now holds"}
+                                    "detail": "the review names another version of the family's texts, reference facts "
+                                              "or care labels than the family now holds"}
                 continue
             merged = {item: items.get(item) for item in roles[role]}
             done = all(v is not None for v in merged.values())
@@ -264,6 +291,89 @@ def _review_status(review: Mapping[str, Any], design: Mapping[str, Any]) -> str:
     if clinician_same and language["status"] == "recorded":
         return design["review"]["reviewed_status"]
     return design["review"]["pending_status"]
+
+
+def _concerns(families: Mapping[str, Mapping[str, Any]], basis: Mapping[str, str], docs: Sequence[Mapping[str, Any]],
+              design: Mapping[str, Any]) -> dict[str, list[dict[str, Any]]]:
+    """family_id -> its known concerns, each with the state its recorded disposition gives it for this version.
+
+    Nothing but a recorded disposition closes a concern. ``accepted_as_is`` is a person's decision, so a model
+    cannot record it. ``resolved_by_revision`` names the version that resolved it; for any other version the
+    concern is open again."""
+    rules = design["concerns"]
+    suffixes = {c["suffix"]: c for c in design["contrasts"]}
+    out: dict[str, list[dict[str, Any]]] = {fid: [] for fid in families}
+    seen: set[str] = set()
+    for doc in docs:
+        require(isinstance(doc, dict) and doc.get("schema") == CONCERNS_SCHEMA and isinstance(doc.get("concerns"), list),
+                "invalid_concerns", f"Expected a {CONCERNS_SCHEMA} document with a concerns list")
+        for row in doc["concerns"]:
+            cid, fid = row.get("concern_id"), row.get("family_id")
+            require(text(cid) and bool(SAFE_NAME.fullmatch(cid)) and cid not in seen, "invalid_concerns",
+                    f"concern_id {cid!r} must be a short safe name used once")
+            seen.add(cid)
+            require(fid in families, "invalid_concerns", f"{cid}: {fid!r} is not a usable family of this batch")
+            applies = row.get("applies_to")
+            present = {s for s, c in suffixes.items() if {c["top"], c["bottom"]} <= set(families[fid]["texts"])}
+            require(isinstance(applies, list) and bool(applies) and set(applies) <= present | {"family"},
+                    "invalid_concerns", f"{cid}: applies_to must name 'family' or contrasts of {fid}: {sorted(present)}")
+            require(row.get("kind") in rules["kinds"] and text(row.get("text")) and text(row.get("raised_by"))
+                    and row.get("raised_by_kind") in ("human", "model") and text(row.get("raised_on")), "invalid_concerns",
+                    f"{cid}: needs a kind from {sorted(rules['kinds'])}, text, raised_by, raised_by_kind and raised_on")
+            disposition = row.get("disposition") or {"status": "open"}
+            status = disposition.get("status")
+            require(status in rules["open_statuses"] + rules["closed_statuses"], "invalid_concerns",
+                    f"{cid}: disposition.status must be one of {rules['open_statuses'] + rules['closed_statuses']}")
+            state, why = ("open" if status in rules["open_statuses"] else "closed"), None
+            if state == "closed":
+                require(text(disposition.get("by")) and text(disposition.get("date")) and text(disposition.get("note")),
+                        "invalid_concerns", f"{cid}: a closing disposition needs by, date and note")
+                require(status != "accepted_as_is" or disposition.get("by_kind") == "human", "not_a_disposition",
+                        f"{cid}: accepted_as_is is a person's decision; a model's statement does not close a concern")
+                if status == "resolved_by_revision" and disposition.get("resolved_in_review_basis_sha256") != basis[fid]:
+                    state, why = "open", "the disposition names another version of the family than the one in this batch"
+            raised_on_basis = row.get("raised_on_review_basis_sha256")
+            out[fid].append({
+                "concern_id": cid, "kind": row["kind"], "applies_to": sorted(applies), "text": row["text"],
+                "raised_by": row["raised_by"], "raised_by_kind": row["raised_by_kind"], "raised_on": row["raised_on"],
+                "family_changed_since_raised": NOT_RECORDED if raised_on_basis is None else raised_on_basis != basis[fid],
+                "disposition": dict(disposition), "state": state, **({"state_reason": why} if why else {})})
+    return out
+
+
+def _source_checks(docs: Sequence[Mapping[str, Any]]) -> dict[tuple[str, str], dict[str, Any]]:
+    """(family_id, expression or clause) -> what a recorded check of the citation found."""
+    out: dict[tuple[str, str], dict[str, Any]] = {}
+    for doc in docs:
+        require(isinstance(doc, dict) and doc.get("schema") == SOURCE_CHECK_SCHEMA and isinstance(doc.get("entries"), list)
+                and text(doc.get("method")) and text(doc.get("checked_utc")), "invalid_source_check",
+                f"Expected a {SOURCE_CHECK_SCHEMA} document with method, checked_utc and entries")
+        for row in doc["entries"]:
+            require(text(row.get("family_id")) and text(row.get("expression")) and text(row.get("identifier"))
+                    and isinstance(row.get("record_matches_citation"), bool) and isinstance(row.get("evidence_found"), bool),
+                    "invalid_source_check", "An entry needs family_id, expression, identifier and two booleans")
+            out[(row["family_id"], row["expression"])] = {
+                "identifier": row["identifier"], "record_matches_citation": row["record_matches_citation"],
+                "evidence_found": row["evidence_found"], "checked_utc": doc["checked_utc"]}
+    return out
+
+
+def _verification(family: Mapping[str, Any], checks: Mapping[tuple[str, str], Mapping[str, Any]]) -> dict[str, Any]:
+    """Per cited expression: verified, not found, or not checked. Unsourced expressions are not counted."""
+    entries = [s for s in family.get("everyday_sources") or [] if isinstance(s, dict)]
+    if isinstance(family.get("attribution"), dict):
+        entries = entries + [family["attribution"]]
+    state: dict[str, str] = {}
+    for entry in entries:
+        label = entry.get("expression") or entry.get("clause")
+        if entry.get("quote_type") == "none" or not text(label):
+            continue
+        hit = checks.get((family["family_id"], label))
+        state[label] = "not_checked" if hit is None or hit["identifier"] != entry.get("pmid_or_doi") else (
+            "record_and_sentence_found" if hit["record_matches_citation"] and hit["evidence_found"] else "not_found")
+    return {"per_expression": state, "counts": dict(sorted(collections.Counter(state.values()).items())),
+            "means": "The cited record exists and contains the evidence sentence. It does not show that patients in "
+                     "the family's population use the expression; that is source fit, recorded as a concern."}
 
 
 def assign_splits(strata: Mapping[str, int], seed: int) -> dict[str, str]:
@@ -411,6 +521,7 @@ def run_intake(batch: Any, *, batch_id: str, batch_sha256: str, source_ref: str,
                design_sha256: str, root: Path = ROOT, verdicts: Sequence[Mapping[str, Any]] = (),
                read_batches: Mapping[str, Sequence[Mapping[str, Any]]] | None = None,
                reviews: Sequence[Mapping[str, Any]] = (), prior_batches: Mapping[str, Sequence[Mapping[str, Any]]] | None = None,
+               concerns: Sequence[Mapping[str, Any]] = (), source_checks: Sequence[Mapping[str, Any]] = (),
                split_records: Sequence[Mapping[str, Any]] = (), split_seed: int | None = None,
                models: Sequence[str] = (), tokenizations: Sequence[Mapping[str, Any]] = (),
                mechanistic_families: int = 0, mechanistic_seed: int | None = None,
@@ -485,8 +596,11 @@ def run_intake(batch: Any, *, batch_id: str, batch_sha256: str, source_ref: str,
         findings[fid]["warnings"] += [f"{cid}: {m}" for m in result["warnings"]]
 
     texts_sha = {f["family_id"]: digest(f["texts"]) for f in usable}
+    basis_sha = {f["family_id"]: digest(review_basis(f)) for f in usable}
     owner = _owner_reads(usable, verdicts, read_batches or {}, batch_sha256)
-    domain = _domain_reviews(texts_sha, reviews, rubric)
+    domain = _domain_reviews(basis_sha, reviews, rubric)
+    known = _concerns({f["family_id"]: f for f in usable}, basis_sha, concerns, design)
+    checks = _source_checks(source_checks)
     review_status = {fid: _review_status(domain[fid], design) for fid in texts_sha}
     removed = {fid for fid, status in review_status.items() if status == "removed_by_review"}
     splits = _splits(usable, split_records, split_seed, removed, measured)
@@ -516,12 +630,16 @@ def run_intake(batch: Any, *, batch_id: str, batch_sha256: str, source_ref: str,
                 "id": cid, "stratum": stratum, "role": contrast["role"], "top": contrast["top"], "bottom": contrast["bottom"],
                 "top_sha256": prompt_digest(top), "bottom_sha256": prompt_digest(bottom),
                 "holds_constant": contrast["holds_constant"],
+                "open_concerns": [c["concern_id"] for c in known[fid]
+                                  if c["state"] == "open" and contrast["suffix"] in c["applies_to"]],
                 "words": {k: stretch[k] for k in ("prefix_words", "suffix_words", "top_stretch_words",
                                                   "bottom_stretch_words", "word_edit_regions")},
                 "alignment": {f"{tid}@{rev[:12]}": _alignment(doc["prompts"].get(prompt_digest(top)),
                                                              doc["prompts"].get(prompt_digest(bottom)))
                               for (tid, rev), doc in sorted(tokenizers.items())} or {"status": NOT_RECORDED}})
         admissible = not errors
+        open_here = [c for c in known[fid] if c["state"] == "open"]
+        on_pair = sorted(c["concern_id"] for c in open_here if {"family", "reg"} & set(c["applies_to"]))
         blocked = [reason for reason, on in (
             ("software_validation_failed", bool(errors)), ("protocol_not_signed", not signed),
             ("clinician_review_missing", domain[fid]["clinician"]["status"] != "recorded"),
@@ -529,9 +647,11 @@ def run_intake(batch: Any, *, batch_id: str, batch_sha256: str, source_ref: str,
             ("removed_by_review", fid in removed),
             (f"owner_read_{owner[fid]['status']}", owner[fid]["status"] != "kept"),
             (f"exploratory_stratum:{register_stratum}", bool(flags)),
-            ("split_unassigned", splits["per_family"][fid] is None)) if on]
+            ("split_unassigned", splits["per_family"][fid] is None),
+            ("open_concern_on_register_pair:" + ",".join(on_pair), bool(on_pair))) if on]
         family_rows.append({
             "family_id": fid, "family_sha256": digest(family), "texts_sha256": texts_sha[fid],
+            "review_basis_sha256": basis_sha[fid],
             "right_care": family["right_care"], "carrier_frame": family["carrier_frame"],
             "target": {"text": family["target_token"], "words": target_words, "tokens": target_tokens or NOT_RECORDED,
                        "endpoint_partial": _partial(target_words, target_tokens)},
@@ -539,14 +659,20 @@ def run_intake(batch: Any, *, batch_id: str, batch_sha256: str, source_ref: str,
             "split": splits["per_family"][fid], "split_source": splits["source"][fid],
             "variants": {name: {"sha256": prompt_digest(value), "words": len(_words(value))}
                          for name, value in sorted(family["texts"].items())},
-            "contrasts": contrasts, "sources": _source_summary(family),
+            "contrasts": contrasts, "sources": {**_source_summary(family), "verification": _verification(family, checks)},
             "review": {"status": review_status[fid], "owner_read": owner[fid], **domain[fid]},
+            "concerns": {"records": known[fid], "open": len(open_here), "closed": len(known[fid]) - len(open_here),
+                         "note": design["concerns"]["rule"]},
             "validation": {"errors": errors, "warnings": warnings}, "admissible": admissible,
             "eligibility": {
                 "publication": {"membership": "public-display/1", "shareable": admissible,
                                 "labels_required": ["exploratory, hand-authored", f"review status: {review_status[fid]}"]},
                 "confirmatory": {"eligible": not blocked, "blocked_by": blocked,
-                                 "applies_to": "the register contrast and its two controls only"}}})
+                                 "applies_to": "the register pair. A control with an open concern is listed in "
+                                               "controls_with_open_concerns and does not block the pair.",
+                                 "controls_with_open_concerns": {
+                                     c["id"]: c["open_concerns"] for c in contrasts
+                                     if c["role"] != "contrast" and c["open_concerns"]}}}})
 
     unusable = [{"position": i + 1, "family_id": ids[i], "errors": shape[i]} for i in range(len(batch))
                 if batch[i] not in usable]
@@ -605,7 +731,21 @@ def run_intake(batch: Any, *, batch_id: str, batch_sha256: str, source_ref: str,
                       "owner_kept_discovery": inventory_of(discovery),
                       "review_status": dict(sorted(collections.Counter(r["review"]["status"] for r in family_rows).items())),
                       "owner_read": dict(sorted(collections.Counter(r["review"]["owner_read"]["status"] for r in family_rows).items())),
-                      "confirmatory_eligible": sum(r["eligibility"]["confirmatory"]["eligible"] for r in family_rows)},
+                      "confirmatory_eligible": sum(r["eligibility"]["confirmatory"]["eligible"] for r in family_rows),
+                      "concerns": {
+                          "open": sum(r["concerns"]["open"] for r in family_rows),
+                          "closed": sum(r["concerns"]["closed"] for r in family_rows),
+                          "open_by_kind": dict(sorted(collections.Counter(
+                              c["kind"] for r in family_rows for c in r["concerns"]["records"] if c["state"] == "open").items())),
+                          "open_by_disposition": dict(sorted(collections.Counter(
+                              c["disposition"]["status"] for r in family_rows for c in r["concerns"]["records"]
+                              if c["state"] == "open").items())),
+                          "owner_kept_families_with_open_concerns": sorted(
+                              r["family_id"] for r in family_rows
+                              if r["review"]["owner_read"]["status"] == "kept" and r["concerns"]["open"]),
+                          "rule": design["concerns"]["rule"]},
+                      "source_verification": dict(sorted(collections.Counter(
+                          v for r in family_rows for v in r["sources"]["verification"]["per_expression"].values()).items()))},
         "estimated_work": {
             "note": "Arithmetic on recorded rates and documented estimates. Nothing here is a measurement.",
             "behavioural_pass_owner_kept": _cpu_estimate(len(pairs_of(kept_rows)), identities),
@@ -661,6 +801,11 @@ def render_packet(manifest: Mapping[str, Any], batch: Sequence[Mapping[str, Any]
            f"{manifest['review_layers']['owner_read']}",
            f"- **Domain review:** {counts(manifest['inventory']['review_status'])}. A family is reviewed only when a "
            "clinician and a patient-language reviewer have both recorded their items; nothing in this packet does that.",
+           f"- **Known concerns:** {manifest['inventory']['concerns']['open']} open, "
+           f"{manifest['inventory']['concerns']['closed']} closed. {manifest['inventory']['concerns']['rule']}",
+           "- **Sources:** " + (counts(manifest["inventory"]["source_verification"]) or "none") + ". A check shows that "
+           "the cited record exists and contains the evidence sentence. It does not show that patients in the family's "
+           "population use the expression.",
            "", "No model output appears in this packet.", "",
            f"Measured endpoint, when measured: {manifest['endpoint']['definition']}. It is not "
            + ", ".join(manifest["endpoint"]["is_not"]) + ".", ""]
@@ -693,12 +838,28 @@ def render_packet(manifest: Mapping[str, Any], batch: Sequence[Mapping[str, Any]
             a = family["attribution"]
             out += ["", f"Patient explanation (adds a belief, analysed apart from register): \"{a.get('clause')}\"; "
                         f"source: {a.get('source') or 'none'} ({a.get('quote_type')})."]
-        out += ["", "| Everyday expression | Declared support | Source | Evidence sentence |", "|---|---|---|---|"]
-        for entry in family.get("everyday_sources") or []:
+        verified = row["sources"]["verification"]["per_expression"]
+        out += ["", "| Everyday expression | Declared support | Citation check | Source | Evidence sentence |",
+                "|---|---|---|---|---|"]
+        cited = list(family.get("everyday_sources") or [])
+        if isinstance(family.get("attribution"), dict) and family["attribution"].get("quote_type") != "none":
+            cited.append({**family["attribution"], "expression": family["attribution"].get("clause")})
+        for entry in cited:
             unsourced = entry.get("quote_type") == "none"
             out.append(f"| {entry.get('expression')} | {'no source' if unsourced else entry.get('quote_type')} | "
+                       f"{'' if unsourced else verified.get(entry.get('expression'), 'not_checked').replace('_', ' ')} | "
                        f"{'' if unsourced else str(entry.get('source'))[:90]} {'' if unsourced else entry.get('pmid_or_doi') or ''} | "
                        f"{entry.get('evidence') or ('' if unsourced else 'not given')} |")
+        records = row["concerns"]["records"]
+        out += ["", "Known concerns: " + ("none recorded." if not records else
+                                          f"{row['concerns']['open']} open, {row['concerns']['closed']} closed.")]
+        for c in records:
+            d = c["disposition"]
+            out.append(f"- `{c['concern_id']}` **{c['state']}** · {c['kind'].replace('_', ' ')} · applies to "
+                       f"{', '.join(c['applies_to'])} · {c['text']} (raised by {c['raised_by']}, {c['raised_on']}). "
+                       f"Disposition: {d['status'].replace('_', ' ')}"
+                       + (f", {d['by']}, {d['date']}: {d['note']}" if d.get("by") else (f": {d['note']}" if d.get("note") else ""))
+                       + (f" Not applied: {c['state_reason']}." if c.get("state_reason") else ""))
         problems = row["validation"]["errors"] + row["validation"]["warnings"]
         out += ["", "Software findings: " + ("none." if not problems else "")]
         out += [f"- ERROR {m}" for m in row["validation"]["errors"]] + [f"- warning {m}" for m in row["validation"]["warnings"]]
@@ -710,13 +871,17 @@ def review_form(manifest: Mapping[str, Any]) -> dict[str, Any]:
     """Blank review rows for the two reviewers, bound to each family's current texts."""
     rubric = read_json(RUBRIC_PATH)["pair_equivalence_review"]
     rows = [{"family_id": row["family_id"], "role": reviewer["role"], "reviewer": None, "reviewer_kind": None,
-             "date": None, "texts_sha256": row["texts_sha256"], "items": {item: None for item in reviewer["reviews"]}}
+             "date": None, "texts_sha256": row["texts_sha256"], "review_basis_sha256": row["review_basis_sha256"],
+             "open_concerns": [c["concern_id"] for c in row["concerns"]["records"] if c["state"] == "open"],
+             "items": {item: None for item in reviewer["reviews"]}}
             for row in manifest["families"] if row["admissible"] for reviewer in rubric["reviewers"]]
     return {"schema": REVIEW_FORM_SCHEMA, "batch_id": manifest["batch"]["batch_id"],
             "returns_as": REVIEWS_SCHEMA, "values": rubric["values"], "missing_value": rubric["missing_value"],
             "status_rule": rubric["status_rule"], "not_a_review": rubric["not_a_review"],
             "instructions": "Fill reviewer, reviewer_kind ('human'), date and every item. Leave an item null when it was "
-                            "not reviewed; null is never read as 'same'. Return the rows under the key 'reviews' in a "
+                            "not reviewed; null is never read as 'same'. Keep review_basis_sha256 as given: it binds the "
+                            "review to this version of the texts, reference facts and care labels. A review does not close "
+                            "a listed concern; a disposition does. Return the rows under the key 'reviews' in a "
                             f"{REVIEWS_SCHEMA} document.",
             "reviews": rows}
 

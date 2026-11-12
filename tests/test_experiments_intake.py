@@ -33,7 +33,8 @@ def _verdicts(batch_sha: str = BATCH_SHA, **decisions: str) -> dict:
 def _run(batch: list[dict] | None = None, **options) -> dict:
     design = intake.load_design()
     options.setdefault("sealed", lambda text: False)
-    return intake.run_intake(_batch() if batch is None else batch, batch_id="synthetic", batch_sha256=BATCH_SHA,
+    return intake.run_intake(_batch() if batch is None else batch, batch_id="synthetic",
+                             batch_sha256=options.pop("batch_sha256", BATCH_SHA),
                              source_ref="fixture", design=design,
                              design_sha256=sha256_bytes(intake.DESIGN_PATH.read_bytes()), **options)
 
@@ -42,11 +43,23 @@ def _family(manifest: dict, fid: str) -> dict:
     return next(r for r in manifest["families"] if r["family_id"] == fid)
 
 
-def _review(fid: str, role: str, texts_sha: str, value: str | None = "same", **over) -> dict:
+def _review(fid: str, role: str, basis_sha: str, value: str | None = "same", **over) -> dict:
     rubric = json.loads(intake.RUBRIC_PATH.read_text(encoding="utf-8"))["pair_equivalence_review"]
     items = next(r["reviews"] for r in rubric["reviewers"] if r["role"] == role)
     return {"family_id": fid, "role": role, "reviewer": "placeholder reviewer", "reviewer_kind": "human",
-            "date": "2000-01-01", "texts_sha256": texts_sha, "items": {i: value for i in items}, **over}
+            "date": "2000-01-01", "review_basis_sha256": basis_sha, "items": {i: value for i in items}, **over}
+
+
+def _concern(cid: str, fid: str, applies: list[str], kind: str = "control_adds_fact", **disposition) -> dict:
+    row = {"concern_id": cid, "family_id": fid, "kind": kind, "applies_to": applies, "text": "a placeholder concern",
+           "raised_by": "placeholder reviewer", "raised_by_kind": "model", "raised_on": "2000-01-01"}
+    if disposition:
+        row["disposition"] = disposition
+    return row
+
+
+def _concerns(*rows: dict) -> dict:
+    return {"schema": intake.CONCERNS_SCHEMA, "concerns": list(rows)}
 
 
 def test_the_design_file_is_a_draft_and_names_only_known_variants_and_strata() -> None:
@@ -216,7 +229,7 @@ def test_an_owner_read_applies_only_to_the_texts_it_was_made_on() -> None:
 
 
 def test_domain_review_follows_the_rubric_and_is_never_inferred() -> None:
-    sha = {r["family_id"]: r["texts_sha256"] for r in _run()["families"]}
+    sha = {r["family_id"]: r["review_basis_sha256"] for r in _run()["families"]}
     doc = {"schema": intake.REVIEWS_SCHEMA, "reviews": [
         _review("s-01", "clinician", sha["s-01"]), _review("s-01", "patient_language_reviewer", sha["s-01"]),
         _review("s-03", "clinician", sha["s-03"]),                                           # one reviewer only
@@ -328,3 +341,102 @@ def test_the_command_line_writes_three_files_and_exits_1_on_a_structural_error(t
     assert json.loads(capsys.readouterr().out)["software_validation"]["status"] == "failed"
     assert cli.main(["intake", "--batch", str(FIXTURE), "--batch-id", "synthetic"]) == 2      # neither --out nor --no-write
     assert json.loads(capsys.readouterr().out)["code"] == "invalid_input"
+
+
+def test_a_concern_survives_the_owners_keep_and_is_closed_only_by_its_own_disposition() -> None:
+    doc = _concerns(_concern("c-1", "s-01", ["chg"]), _concern("c-2", "s-02", ["reg"], kind="fact_parity"),
+                    _concern("c-3", "s-03", ["family"], kind="level_disputed", status="pending_clinical_review",
+                             note="left for the clinician"),
+                    _concern("c-4", "s-04", ["chg"], status="accepted_as_is", by="placeholder owner", by_kind="human",
+                             date="2000-01-02", note="accepted for exploratory use"))
+    manifest = _run(verdicts=[_verdicts(s_06="excluded")], concerns=[doc])
+    first = _family(manifest, "s-01")
+    assert first["review"]["owner_read"]["status"] == "kept"                       # kept, and the concern is still open
+    assert first["concerns"]["open"] == 1 and first["concerns"]["records"][0]["state"] == "open"
+    assert next(c for c in first["contrasts"] if c["id"] == "s-01-chg")["open_concerns"] == ["c-1"]
+    assert next(c for c in first["contrasts"] if c["id"] == "s-01-reg")["open_concerns"] == []
+    confirmatory = first["eligibility"]["confirmatory"]
+    assert confirmatory["controls_with_open_concerns"] == {"s-01-chg": ["c-1"]}    # reported on the control ...
+    assert not any(b.startswith("open_concern") for b in confirmatory["blocked_by"])   # ... the register pair is not blocked
+    assert "open_concern_on_register_pair:c-2" in _family(manifest, "s-02")["eligibility"]["confirmatory"]["blocked_by"]
+    assert "open_concern_on_register_pair:c-3" in _family(manifest, "s-03")["eligibility"]["confirmatory"]["blocked_by"]
+    assert _family(manifest, "s-04")["concerns"] | {"records": []} == {
+        "records": [], "open": 0, "closed": 1, "note": manifest["inventory"]["concerns"]["rule"]}
+    summary = manifest["inventory"]["concerns"]
+    assert (summary["open"], summary["closed"]) == (3, 1)
+    assert summary["owner_kept_families_with_open_concerns"] == ["s-01", "s-02", "s-03"]
+    assert summary["open_by_disposition"] == {"open": 2, "pending_clinical_review": 1}
+    assert _family(_run(verdicts=[_verdicts()]), "s-01")["concerns"]["records"] == []   # no concern is invented
+    packet = intake.render_packet(manifest, _batch())
+    assert "`c-1` **open**" in packet and "`c-4` **closed**" in packet and "pending clinical review: left for the clinician" in packet
+    assert "The owner keeping a family does not close it" in packet
+    form = intake.review_form(manifest)
+    assert next(r for r in form["reviews"] if r["family_id"] == "s-01")["open_concerns"] == ["c-1"]
+
+
+def test_a_concern_resolved_by_a_revision_reopens_for_any_other_version() -> None:
+    basis = _family(_run(), "s-01")["review_basis_sha256"]
+    resolved = _concern("c-1", "s-01", ["reg"], kind="wording", status="resolved_by_revision", by="placeholder reviewer",
+                        by_kind="model", date="2000-01-02", note="reworded", resolved_in_review_basis_sha256=basis)
+    assert _family(_run(concerns=[_concerns(resolved)]), "s-01")["concerns"]["records"][0]["state"] == "closed"
+    revised = _batch()
+    revised[0]["reference_facts"][0]["text"] = "another abstract fact"
+    record = _family(_run(revised, concerns=[_concerns(resolved)]), "s-01")["concerns"]["records"][0]
+    assert record["state"] == "open" and "another version" in record["state_reason"]
+    with pytest.raises(Refusal) as refusal:                                         # a model cannot accept a concern
+        _run(concerns=[_concerns(_concern("c-9", "s-01", ["reg"], status="accepted_as_is", by="a model", by_kind="model",
+                                          date="2000-01-02", note="looks fine"))])
+    assert refusal.value.code == "not_a_disposition"
+    for bad in (_concern("c-9", "s-99", ["reg"]), _concern("c-9", "s-02", ["qb"]), _concern("c-9", "s-01", ["reg"], kind="nope"),
+                _concern("c-9", "s-01", ["reg"], status="withdrawn")):
+        with pytest.raises(Refusal) as refusal:
+            _run(concerns=[_concerns(bad)])
+        assert refusal.value.code == "invalid_concerns"
+
+
+@pytest.mark.parametrize("mutate, part", [
+    (lambda f: f["reference_facts"][0].update(text="another abstract fact"), "reference_facts"),
+    (lambda f: f["changed_fact"].update(right_care_after=3), "care_levels"),
+    (lambda f: f["reference_facts"].append({"fact_id": "f9", "text": "an added fact"}), "reference_facts"),
+])
+def test_a_read_and_a_review_go_stale_when_facts_or_care_labels_change_under_unchanged_prompts(mutate, part) -> None:
+    before = _run()
+    basis = {r["family_id"]: r["review_basis_sha256"] for r in before["families"]}
+    reviews = {"schema": intake.REVIEWS_SCHEMA, "reviews": [
+        _review(fid, role, basis[fid]) for fid in ("s-01", "s-02") for role in ("clinician", "patient_language_reviewer")]}
+    assert _family(_run(reviews=[reviews]), "s-01")["review"]["status"] == "reviewed"
+    changed = _batch()
+    mutate(changed[0])
+    assert changed[0]["texts"] == _batch()[0]["texts"]                              # no prompt text changed
+    after = _run(changed, batch_sha256=sha256_bytes(json.dumps(changed).encode()), verdicts=[_verdicts()],
+                 read_batches={BATCH_SHA: _batch()}, reviews=[reviews])
+    row = _family(after, "s-01")
+    assert row["texts_sha256"] == _family(before, "s-01")["texts_sha256"] and row["review_basis_sha256"] != basis["s-01"]
+    read = row["review"]["owner_read"]
+    assert read["status"] == "stale" and read["changed_since_read"] == [part] and read["previous"]["decision"] == "kept"
+    assert row["review"]["clinician"]["status"] == row["review"]["patient_language_reviewer"]["status"] == "stale"
+    assert row["review"]["status"] == "domain_review_pending"
+    assert {"owner_read_stale", "clinician_review_missing"} <= set(row["eligibility"]["confirmatory"]["blocked_by"])
+    untouched = _family(after, "s-02")                                             # the other family keeps both
+    assert untouched["review"]["owner_read"]["status"] == "kept" and untouched["review"]["status"] == "reviewed"
+
+
+def test_source_verification_is_recorded_per_citation_and_says_nothing_about_fit() -> None:
+    batch = _batch()
+    cited = next(e for e in batch[0]["everyday_sources"] if e["quote_type"] != "none")
+    check = {"schema": intake.SOURCE_CHECK_SCHEMA, "checked_utc": "2000-01-01", "method": "placeholder lookup", "entries": [
+        {"family_id": "s-01", "expression": cited["expression"], "identifier": cited["pmid_or_doi"],
+         "record_matches_citation": True, "evidence_found": True}]}
+    fit = _concerns(_concern("c-fit", "s-01", ["reg"], kind="source_fit", status="pending_patient_language_review",
+                             note="the source describes another population"))
+    manifest = _run(source_checks=[check], concerns=[fit])
+    verification = _family(manifest, "s-01")["sources"]["verification"]
+    assert verification["per_expression"][cited["expression"]] == "record_and_sentence_found"
+    assert "does not show that patients" in verification["means"]
+    assert _family(manifest, "s-01")["concerns"]["open"] == 1                      # verified, and the fit concern stays open
+    assert manifest["inventory"]["source_verification"]["record_and_sentence_found"] == 1
+    assert "not_checked" in manifest["inventory"]["source_verification"]
+    wrong_id = {**check, "entries": [{**check["entries"][0], "identifier": "PMID: 1"}]}   # a check of another citation
+    assert _family(_run(source_checks=[wrong_id]), "s-01")["sources"]["verification"]["per_expression"][
+        cited["expression"]] == "not_checked"
+    assert "| Citation check |" in intake.render_packet(manifest, batch)

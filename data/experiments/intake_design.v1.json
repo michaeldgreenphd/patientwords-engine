@@ -175,7 +175,8 @@
       "patient_language_review": "two items of the rubric, recorded by a patient-language reviewer"
     },
     "pending_status": "domain_review_pending",
-    "reviewed_status": "reviewed"
+    "reviewed_status": "reviewed",
+    "basis": "A read or review is bound to the family's texts, reference facts, care levels (right_care and right_care_after), carrier, target and changed-fact declaration. A change to any of them, with or without a change of prompt text, makes the read or review stale."
   },
   "eligibility": {
     "publication": "docs/open_results_policy.md: an intact result of a hand-authored family is shared under public-display/1 whatever its effect, with its evidence class and review status shown. Publication does not need the reviews; it needs the labels.",
@@ -189,5 +190,35 @@
       "source": "documented estimate in .github/workflows/activation_patching.yml and docs/activation_patching_design.md for gemma-2-2b; no landed part records a duration"
     }
   },
-  "established_carriers_source": "carrier_frame values of the committed data/simulated/agscen_*.json files that have landed measurements, read 2026-11-12"
+  "established_carriers_source": "carrier_frame values of the committed data/simulated/agscen_*.json files that have landed measurements, read 2026-11-12",
+  "concerns": {
+    "rule": "A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.",
+    "kinds": {
+      "control_adds_fact": "a changed-fact control changes more than its one declared fact",
+      "control_level_disputed": "the care level after the change is arguable",
+      "level_disputed": "the family's own care level is arguable",
+      "fact_parity": "a wording adds, drops or changes a reference fact, or its severity",
+      "stated_negative": "a text states a negative that a patient would rarely volunteer; the negative carries information the control changes",
+      "wording": "a wording is ambiguous or is unlikely patient language",
+      "label": "the reviewer-only condition label does not fit the reference facts",
+      "source_fit": "a cited source is verified, and its population or speaker differs from the family's",
+      "other": "anything else, stated in the text"
+    },
+    "open_statuses": [
+      "open",
+      "pending_clinical_review",
+      "pending_patient_language_review"
+    ],
+    "closed_statuses": [
+      "accepted_as_is",
+      "resolved_by_revision",
+      "withdrawn"
+    ],
+    "closing": "accepted_as_is is a person's decision and names that person. resolved_by_revision names the review basis of the version that resolved it and applies to that version only. withdrawn is recorded by whoever raised the concern, with the reason.",
+    "effect": "An open concern that applies to the family or to its register contrast blocks a confirmatory statement on the register pair. An open concern on a control is reported on that control and does not block the pair."
+  },
+  "sources": {
+    "verification": "a recorded check that the cited record exists and contains the evidence sentence",
+    "fit": "whether patients in the family's population use the expression; a judgement, recorded as a concern of kind source_fit and never implied by verification"
+  }
 }
