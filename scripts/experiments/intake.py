@@ -735,6 +735,8 @@ def run_intake(batch: Any, *, batch_id: str, batch_sha256: str, source_ref: str,
             ("software_validation_failed", bool(errors)), ("protocol_not_signed", not signed),
             ("clinician_review_missing", domain[fid]["clinician"]["status"] != "recorded"),
             ("patient_language_review_missing", domain[fid]["patient_language_reviewer"]["status"] != "recorded"),
+            # The rubric's own rule decides: a recorded clinician review with a 'cannot_judge' is not a passed review.
+            ("domain_review_not_passed", review_status[fid] != design["review"]["reviewed_status"]),
             ("removed_by_review", fid in removed),
             (f"owner_read_{owner[fid]['status']}", owner[fid]["status"] != "kept"),
             (f"exploratory_stratum:{register_stratum}", bool(flags)),

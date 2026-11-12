@@ -135,7 +135,11 @@ are shareable under `public-display/1` whatever their effect, with their labels.
 `eligibility.confirmatory` lists what blocks a confirmatory statement
 (`protocol_not_signed`, a missing review, a flag, an unassigned split, and
 `calibration_split` for a discovery family: the protocol makes its primary contrast on
-held-out families and uses discovery families for calibration only). The two are
+held-out families and uses discovery families for calibration only). Every blocker the
+command can give is defined in the design file (`eligibility.confirmatory_blockers`),
+which also says which criteria the protocol draft names and which this design adds: the
+owner's keep, the open-concern rule and the named stem. A recorded clinician review with a
+`cannot_judge` does not pass (`domain_review_not_passed`). The two are
 separate fields because an exploratory or null result is shared, not hidden.
 
 **Splits and the mechanistic subset.** A split is drawn per family (every wording of a

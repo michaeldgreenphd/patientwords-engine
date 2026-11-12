@@ -652,3 +652,41 @@ def test_several_reviews_of_one_role_are_combined_by_item_and_a_removal_is_never
     old = _review("s-03", "clinician", "f" * 64)                                                 # a stale row beside a current one
     row = _family(_run(reviews=[{"schema": intake.REVIEWS_SCHEMA, "reviews": [old, _review("s-03", "clinician", basis["s-03"])]}]), "s-03")
     assert row["review"]["clinician"]["status"] == "recorded"
+
+
+def test_a_clinicians_cannot_judge_does_not_pass_the_review_and_every_blocker_is_named_in_the_design(measured_root: Path) -> None:
+    signed = intake.load_design()
+    named = set(signed["eligibility"]["confirmatory_blockers"])
+    signed["protocol"] = {**signed["protocol"], "status": "signed (placeholder for this test)"}
+    strata = {f["family_id"]: f["right_care"] for f in _batch()}
+    record = {"seed": 7, "strata": strata, "splits": intake.assign_splits(strata, 7)}
+    basis = {r["family_id"]: r["review_basis_sha256"] for r in _run()["families"]}
+    held_out = next(fid for fid, split in record["splits"].items() if split != "discovery"
+                    and not _family(_run(), fid)["flags"])
+
+    def run(clinician_items=None, **extra):
+        rows = [_review(fid, role, sha) for fid, sha in basis.items() for role in ("clinician", "patient_language_reviewer")
+                if not (fid == held_out and role == "clinician")]
+        rows.append(_review(held_out, "clinician", basis[held_out], **({"items": clinician_items} if clinician_items else {})))
+        options = dict(verdicts=[_verdicts()], reviews=[{"schema": intake.REVIEWS_SCHEMA, "reviews": rows}],
+                       split_records=[record], stem=LATER_STEM)
+        options.update(extra)
+        return intake.run_intake(_batch(), batch_id="synthetic", batch_sha256=BATCH_SHA, source_ref="fixture", design=signed,
+                                 design_sha256="0" * 64, sealed=lambda text: False, **options)
+    assert _family(run(), held_out)["eligibility"]["confirmatory"]["eligible"] is True
+    rubric = json.loads(intake.RUBRIC_PATH.read_text(encoding="utf-8"))["pair_equivalence_review"]
+    unsure = {item: "same" for item in rubric["reviewers"][0]["reviews"]} | {"timing": "cannot_judge"}
+    row = _family(run(unsure), held_out)
+    assert row["review"]["clinician"]["status"] == "recorded" and row["review"]["status"] == "domain_review_pending"
+    assert row["eligibility"]["confirmatory"]["blocked_by"] == ["domain_review_not_passed"]
+    # Every blocker the command can give is a key of the design file, so no gate is enforced without being written down.
+    seen: set[str] = set()
+    for manifest in (run(), run(unsure), run(root=measured_root), run(verdicts=[]), run(verdicts=[_verdicts(s_01="excluded")]),
+                     run(stem=None), run(split_records=[]), _run(), _run([dict(_batch()[0], target_token=" doctor")] + _batch()[1:]),
+                     run(concerns=[_concerns(_concern("c-1", held_out, ["reg"]))]),
+                     run({"severity": "different"})):
+        for family in manifest["families"]:
+            for blocker in family["eligibility"]["confirmatory"]["blocked_by"]:
+                seen.add("owner_read" if blocker.startswith("owner_read_") else blocker.split(":")[0])
+    assert seen <= named, seen - named
+    assert seen == named, named - seen                                      # and the design names no blocker the command never gives

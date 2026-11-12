@@ -181,7 +181,22 @@
   },
   "eligibility": {
     "publication": "docs/open_results_policy.md: an intact result of a hand-authored family is shared under public-display/1 whatever its effect, with its evidence class and review status shown. Publication does not need the reviews; it needs the labels.",
-    "confirmatory": "a held-out family's register contrast (validation or fresh_test; discovery families calibrate and are never confirmatory) can enter a confirmatory statement only when the protocol is signed, the family has both reviews, it has no family flag, its split was assigned before measurement, and software validation passed. The intake command reports eligibility only for a batch without measurements: once the stem has a run directory it cannot verify that a split was recorded first and blocks every family with split_timing_not_verified"
+    "confirmatory": "A held-out family's register contrast can enter a confirmatory statement only when none of the blockers in confirmatory_blockers applies. The protocol draft names the signed protocol, the two reviews, the single manipulated dimension and the split made before measurement. The owner's keep, the open-concern rule and the named stem are criteria this design adds; the owner agrees or removes them with the rest of this file.",
+    "confirmatory_blockers": {
+      "software_validation_failed": "the family has a structural error",
+      "protocol_not_signed": "the protocol's status does not begin with the word 'signed'",
+      "clinician_review_missing": "no clinician has recorded all six dimensions on this version of the family",
+      "patient_language_review_missing": "no patient-language reviewer has recorded both items on this version of the family",
+      "domain_review_not_passed": "the rubric's status rule does not give 'reviewed': the clinician did not record 'same' on all six dimensions (a 'cannot_judge' is not 'same'), or a review is missing",
+      "removed_by_review": "a reviewer recorded 'different' on an item",
+      "owner_read": "the owner has not kept this version of the family (not_read, excluded or stale). Added by this design; the owner's read is not a domain review and does not replace one",
+      "exploratory_stratum": "the family has a flag (a dialect form, or a carrier with no earlier measurement), so its register contrast changes more than register",
+      "split_unassigned": "the family has no split",
+      "calibration_split": "the family is in discovery, which calibrates thresholds and is never part of a confirmatory statement",
+      "split_timing_not_verified": "the stem has a run directory, so the command cannot verify that the split was recorded first",
+      "stem_not_named": "no stem was named, so the command has not looked for measurements. Added by this design",
+      "open_concern_on_register_pair": "an open concern applies to the family or to its register contrast. Added by this design"
+    }
   },
   "work_rates": {
     "cpu_logits": "scripts/experiments/estimate.py recorded_slowest_rates (scripts/backfill_planner.py SECONDS_PER_PAIR); sample size not recorded",
