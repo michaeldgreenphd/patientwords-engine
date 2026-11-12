@@ -18,6 +18,16 @@ ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "tests" / "fixtures" / "experiments" / "intake_families_synthetic.json"
 BATCH_SHA = sha256_bytes(FIXTURE.read_bytes())
 MEASURED_STEM = "agscen_r7b_20261109"       # a stem with landed measurements under trace_out/
+LATER_STEM = "placeholder_stem"             # no directory under the real trace_out/; one under measured_root
+
+
+@pytest.fixture()
+def measured_root(tmp_path: Path) -> Path:
+    """A root where LATER_STEM has a run directory: the same batch 'after measurement', beside the real root 'before'."""
+    (tmp_path / "data" / "simulated").mkdir(parents=True)
+    (tmp_path / "data" / "urgency_tiers.draft.json").write_bytes((ROOT / "data" / "urgency_tiers.draft.json").read_bytes())
+    (tmp_path / "trace_out" / f"{LATER_STEM}__placeholder-model").mkdir(parents=True)
+    return tmp_path
 
 
 def _batch() -> list[dict]:
@@ -135,7 +145,7 @@ def test_splits_keep_a_family_whole_are_seeded_and_are_never_redrawn() -> None:
     assert refusal.value.code == "split_conflict"
 
 
-def test_no_split_and_no_subset_is_chosen_after_measurement() -> None:
+def test_no_split_and_no_subset_is_chosen_after_measurement(measured_root: Path) -> None:
     with pytest.raises(Refusal) as refusal:
         _run(split_seed=7, stem=MEASURED_STEM)
     assert refusal.value.code == "split_after_measurement"
@@ -145,13 +155,14 @@ def test_no_split_and_no_subset_is_chosen_after_measurement() -> None:
     assert read_back["measurements"]["existing_run_directories"] and read_back["splits"]["newly_assigned"] == []
     assert read_back["splits"]["records_timing"].startswith("Not verified by this command")
     assert _run(split_records=[record])["splits"]["records_timing"] == "The batch has no measurements under its stem."
-    options = dict(split_records=[record], verdicts=[_verdicts()], mechanistic_families=1, mechanistic_seed=3)
-    before = _run(**options)
+    options = dict(split_records=[record], verdicts=[_verdicts()], mechanistic_families=1, mechanistic_seed=3, stem=LATER_STEM)
+    before = _run(**options)                                                        # the stem has no run directory yet
+    assert before["measurements"] | {"note": ""} == {"stem": LATER_STEM, "existing_run_directories": [], "note": ""}
     assert before["mechanistic_subset"]["restored_from_previous_manifest"] is False
     with pytest.raises(Refusal) as refusal:
-        _run(**options, stem=MEASURED_STEM)
+        _run(**options, root=measured_root)
     assert refusal.value.code == "subset_after_measurement"
-    restored = _run(**options, stem=MEASURED_STEM, previous_manifest=before)["mechanistic_subset"]
+    restored = _run(**options, root=measured_root, previous_manifest=before)["mechanistic_subset"]
     assert restored["families"] == before["mechanistic_subset"]["families"] and restored["restored_from_previous_manifest"] is True
     assert restored["status"] == "selected_before_outcomes" and restored["outcome_selected"] is False
 
@@ -176,14 +187,19 @@ def test_after_measurement_a_split_record_must_be_this_batchs_seeded_draw() -> N
     assert _run(split_records=[{"seed": 7, "strata": strata, "splits": drawn}], stem=MEASURED_STEM)["splits"]["newly_assigned"] == []
 
 
-def test_after_measurement_a_subset_is_restored_only_from_a_manifest_of_this_batch_written_before() -> None:
+def test_after_measurement_a_subset_is_restored_only_from_a_manifest_of_this_batch_and_stem_written_before(
+        measured_root: Path) -> None:
     strata = {f["family_id"]: f["right_care"] for f in _batch()}
     record = {"seed": 7, "strata": strata, "splits": intake.assign_splits(strata, 7)}
     options = dict(split_records=[record], verdicts=[_verdicts()], mechanistic_families=1, mechanistic_seed=3)
-    before = _run(**options)
+    before = _run(**options, stem=LATER_STEM)
     chosen = before["mechanistic_subset"]["families"]
+    no_stem, other_stem = _run(**options), _run(**options, stem="another_placeholder_stem")
+    assert no_stem["measurements"]["existing_run_directories"] == other_stem["measurements"]["existing_run_directories"] == []
     forged = [
         {"mechanistic_subset": {"families": chosen}},                                    # a bare family list
+        no_stem,                                                                         # lists no run directory whatever exists
+        other_stem,                                                                      # about another stem
         {**before, "schema": "something-else/1"},
         {**before, "batch": {**before["batch"], "batch_id": "another"}},
         {**before, "measurements": {**before["measurements"], "existing_run_directories": ["x__model"]}},   # written after
@@ -192,12 +208,13 @@ def test_after_measurement_a_subset_is_restored_only_from_a_manifest_of_this_bat
         None]
     for previous in forged:
         with pytest.raises(Refusal) as refusal:
-            _run(**options, stem=MEASURED_STEM, previous_manifest=previous)
+            _run(**options, stem=LATER_STEM, root=measured_root, previous_manifest=previous)
         assert refusal.value.code == "subset_after_measurement"
+    assert _run(**options, stem=LATER_STEM, root=measured_root, previous_manifest=before)["mechanistic_subset"]["families"] == chosen
     changed = _batch()
     next(f for f in changed if f["family_id"] == chosen[0])["reference_facts"][0]["text"] = "another abstract fact"
     with pytest.raises(Refusal) as refusal:                                             # the chosen family is another version now
-        _run(changed, **{**options, "verdicts": []}, stem=MEASURED_STEM, previous_manifest=before)
+        _run(changed, **{**options, "verdicts": []}, stem=LATER_STEM, root=measured_root, previous_manifest=before)
     assert refusal.value.code == "subset_family_changed"
 
 

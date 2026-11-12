@@ -141,8 +141,8 @@ only when its strata are exactly this batch's families and care levels and its s
 the draw its own seed gives; anything else refuses `split_record_unbound`. The command
 cannot see when a record was written: the commit that added it is the evidence, and the
 manifest says so (`records_timing`). A subset is restored only from `--previous-manifest`
-when that file is an intake manifest of this batch, written while no run directory existed,
-with the same seed and count, and every chosen family still has the review basis it had
+when that file is an intake manifest of this batch and this stem, written while no run
+directory of the stem existed, with the same seed and count, and every chosen family still has the review basis it had
 then; otherwise `subset_after_measurement` or `subset_family_changed`. A concern is
 withdrawn only by whoever raised it. The mechanistic
 subset is a seeded draw from owner-kept, unflagged discovery families, so it is not

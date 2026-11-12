@@ -452,10 +452,11 @@ def _splits(families: Sequence[Mapping[str, Any]], records: Sequence[Mapping[str
 
 def _mechanistic(candidates: Mapping[str, int], n: int, seed: int | None, measured: bool,
                  previous: Mapping[str, Any] | None, design: Mapping[str, Any], batch_id: str,
-                 basis: Mapping[str, str]) -> dict[str, Any]:
+                 basis: Mapping[str, str], stem: str | None) -> dict[str, Any]:
     """A seeded draw before measurement. After measurement nothing is drawn: the subset is restored from a
-    manifest of this batch that was itself written before any run directory existed, and only while every
-    family of that subset still has the review basis it had then."""
+    manifest of this batch and this stem that was itself written before any run directory of the stem existed,
+    and only while every family of that subset still has the review basis it had then. A manifest written
+    without a stem, or for another stem, lists no run directory whatever exists, so it proves nothing here."""
     base = {"selection": design["mechanistic_subset"]["selection"], "rule": design["mechanistic_subset"]["rule"],
             "controls_per_site": design["mechanistic_subset"]["controls_per_site"],
             "ica_basis": design["mechanistic_subset"]["ica_basis"]}
@@ -464,11 +465,13 @@ def _mechanistic(candidates: Mapping[str, int], n: int, seed: int | None, measur
     require(seed is not None, "missing_seed", "--mechanistic-seed is required with --mechanistic-families")
     if measured:
         refusal = ("The batch already has measurements. A mechanistic subset is selected before outcomes: pass "
-                   "--previous-manifest, an intake manifest of this batch written before any run directory existed, "
+                   "--previous-manifest, an intake manifest of this batch and this stem written before any run "
+                   "directory of the stem existed, "
                    "or report the families as outcome-selected and exploratory")
         earlier = (previous or {}).get("mechanistic_subset") if isinstance(previous, dict) else None
         require(isinstance(previous, dict) and previous.get("schema") == SCHEMA
                 and (previous.get("batch") or {}).get("batch_id") == batch_id
+                and stem is not None and (previous.get("measurements") or {}).get("stem") == stem
                 and (previous.get("measurements") or {}).get("existing_run_directories") == []
                 and isinstance(earlier, dict) and earlier.get("status") == "selected_before_outcomes"
                 and isinstance(earlier.get("families"), list) and bool(earlier["families"])
@@ -727,7 +730,7 @@ def run_intake(batch: Any, *, batch_id: str, batch_sha256: str, source_ref: str,
     subset_candidates = {r["family_id"]: r["right_care"] for r in kept_rows
                          if not r["flags"] and r["split"] == SPLITS[0]}
     subset = _mechanistic(subset_candidates, mechanistic_families, mechanistic_seed, measured, previous_manifest, design,
-                          batch_id, basis_sha)
+                          batch_id, basis_sha, stem)
 
     def pairs_of(rows: Iterable[Mapping[str, Any]]) -> list[Mapping[str, Any]]:
         return [c for r in rows for c in r["contrasts"]]
