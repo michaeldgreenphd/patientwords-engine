@@ -236,11 +236,12 @@ def _owner_reads(batch: Sequence[Mapping[str, Any]], verdict_docs: Sequence[Mapp
     When several verdict files cover one family, the read made at the later instant applies, whatever the order
     of the arguments. ``owner_read_utc`` is parsed as a time (an offset is honoured; a value without one is read
     as UTC), never compared as text. Two reads that cannot be ordered (the same instant, or a time missing from
-    either) are the same read only if they give the same decision on the same batch version; otherwise they are
-    refused: the command does not choose between them."""
+    either) are the same read only if every recorded field agrees: decision, reasons, note, batch version and
+    whether a time was recorded. Otherwise they are refused: the command does not choose between them, so the
+    packet never depends on which file came first."""
     current = {f["family_id"]: f for f in batch if isinstance(f, dict) and text(f.get("family_id"))}
     reads: dict[str, dict[str, Any]] = {fid: {"status": "not_read"} for fid in current}
-    latest: dict[str, tuple[Any, str, str]] = {}
+    latest: dict[str, tuple[Any, dict[str, Any]]] = {}
     for doc in verdict_docs:
         source_sha = (doc.get("source") or {}).get("families_sha256")
         require(isinstance(doc.get("families"), list) and bool(HEX64.fullmatch(str(source_sha))), "invalid_verdicts",
@@ -263,15 +264,19 @@ def _owner_reads(batch: Sequence[Mapping[str, Any]], verdict_docs: Sequence[Mapp
                      "read_batch_sha256": source_sha}
             when = _instant(entry["read_utc"], fid)
             if fid in latest:
-                then_when, then_decision, then_sha = latest[fid]
+                then_when, then_entry = latest[fid]
                 if when is None or then_when is None or when == then_when:
-                    require((entry["decision"], source_sha) == (then_decision, then_sha), "conflicting_verdicts",
+                    same = (when == then_when and all(entry[key] == then_entry[key] for key in entry if key != "read_utc"))
+                    require(same, "conflicting_verdicts",
                             f"{fid}: two owner reads cannot be ordered (the same time, or no time recorded) and differ "
-                            "in their decision or in the batch version they were made on; record which one stands")
-                    continue                                   # the same read again
-                if when < then_when:
+                            "in their decision, reasons, note, recorded time or the batch version they were made on; "
+                            "record which one stands")
+                    if str(entry["read_utc"]) >= str(then_entry["read_utc"]):
+                        continue                               # the same read again
+                    # the same read with its time spelled another way: keep one spelling, whatever the file order
+                elif when < then_when:
                     continue                                   # an earlier read
-            latest[fid] = (when, entry["decision"], source_sha)
+            latest[fid] = (when, entry)
             then, now = review_basis(read_families[fid]), review_basis(current[fid])
             changed = [part for part in BASIS_PARTS if then[part] != now[part]]
             reads[fid] = {"status": entry["decision"], **entry} if not changed else {
@@ -324,7 +329,9 @@ def _domain_reviews(batch_ids: Mapping[str, str], docs: Sequence[Mapping[str, An
                 "same" if set(given) == {"same"} else "cannot_judge"
         done = all(v is not None for v in merged.values())
         state[fid][role] = {"status": "different" if "different" in merged.values() else "recorded" if done else "incomplete",
-                            "items": merged, "reviewers": [{"reviewer": row["reviewer"], "date": row["date"]} for row in rows],
+                            "items": merged,
+                            "reviewers": sorted(({"reviewer": row["reviewer"], "date": row["date"]} for row in rows),
+                                                key=lambda r: (r["reviewer"], r["date"])),
                             "disagreement": sorted(item for item in roles[role]
                                                    if len({row["items"].get(item) for row in rows} - {None}) > 1)}
     return state
@@ -394,6 +401,8 @@ def _concerns(families: Mapping[str, Mapping[str, Any]], basis: Mapping[str, str
                 "raised_by": row["raised_by"], "raised_by_kind": row["raised_by_kind"], "raised_on": row["raised_on"],
                 "family_changed_since_raised": NOT_RECORDED if raised_on_basis is None else raised_on_basis != basis[fid],
                 "disposition": dict(disposition), "state": state, **({"state_reason": why} if why else {})})
+    for records in out.values():
+        records.sort(key=lambda record: record["concern_id"])     # by id, never by the order of the concern files
     return out
 
 
@@ -633,11 +642,12 @@ def _partial(target_words: int, target_tokens: Mapping[str, Any]) -> bool | str:
 
 
 def model_identities(study_ids: Sequence[str]) -> list[dict[str, Any]]:
-    """Pinned identities from ``scripts/logits_eval.py``. An id without a pin is refused, never guessed."""
+    """Pinned identities from ``scripts/logits_eval.py``, one per model, ordered by study id whatever order the
+    ids were given in. An id without a pin is refused, never guessed."""
     from scripts import logits_eval
 
     out = []
-    for study_id in study_ids:
+    for study_id in sorted(set(study_ids)):
         require(study_id in logits_eval.HF_IDS, "unknown_model", f"{study_id} is not in logits_eval.HF_IDS")
         revision = logits_eval.HF_REVISIONS.get(study_id)
         require(revision is not None, "missing_revision", f"{study_id} has no pinned revision in logits_eval.HF_REVISIONS")

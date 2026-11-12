@@ -179,6 +179,8 @@ def cmd_intake(args: argparse.Namespace) -> int:
     for item in args.prior_batch:
         label, _, path = item.partition("=")
         require(bool(label) and bool(path), "invalid_input", "--prior-batch takes LABEL=PATH")
+        require(label not in prior, "invalid_input",
+                f"--prior-batch {label} is given twice; one label names one earlier batch, so give each file its own label")
         prior[label] = _load(Path(path), "prior batch")
     lexicon = None
     if args.lexicon:

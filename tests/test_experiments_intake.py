@@ -761,6 +761,21 @@ def test_repeated_inputs_are_merged_when_they_agree_and_refused_when_they_do_not
     with pytest.raises(Refusal) as refusal:
         _run(verdicts=[early, untimed])
     assert refusal.value.code == "conflicting_verdicts"
+    # Every recorded field counts: two reads at one time with the same decision and another note or reason are two
+    # reads, and so are a timed read and an untimed one. Neither order picks one.
+    noted, reasoned, no_time = _verdicts(), _verdicts(), dict(_verdicts(), owner_read_utc=None)
+    noted["families"][1]["owner_note"] = "a placeholder note"
+    reasoned["families"][1]["owner_reasons"] = ["a placeholder reason"]
+    for other in (noted, reasoned, no_time):
+        for order in ([_verdicts(), other], [other, _verdicts()]):
+            with pytest.raises(Refusal) as refusal:
+                _run(verdicts=order)
+            assert refusal.value.code == "conflicting_verdicts"
+    # One read whose time is spelled two ways is one read, recorded with the same spelling in either order.
+    spelled = dict(_verdicts(), owner_read_utc="2000-01-01T00:00:00+00:00")
+    recorded = {_family(_run(verdicts=order), "s-02")["review"]["owner_read"]["read_utc"]
+                for order in ([_verdicts(), spelled], [spelled, _verdicts()])}
+    assert recorded == {"2000-01-01T00:00:00+00:00"}
     # Source checks: a citation checked twice must agree.
     cited = next(e for e in _batch()[0]["everyday_sources"] if e["quote_type"] != "none")
     entry = {"family_id": "s-01", "expression": cited["expression"], "identifier": cited["pmid_or_doi"],
@@ -810,10 +825,44 @@ def test_the_command_line_gives_the_same_bytes_whatever_the_order_of_repeatable_
         path = tmp_path / f"check_{n}.json"
         path.write_text(json.dumps(check), encoding="utf-8")
         checks.append(str(path))
+    # Two concern files on one family, two reviewers of one role and two models: each list in the outputs is in its
+    # own fixed order (concern id, reviewer and date, study id), not the order of the arguments.
+    same_family, reviews = [], []
+    basis = _family(_run(), "s-03")["review_basis_sha256"]
+    for n in range(2):
+        path = tmp_path / f"concerns_same_{n}.json"
+        path.write_text(json.dumps(_concerns(_concern(f"d-{n}", "s-03", ["reg"]))), encoding="utf-8")
+        same_family.append(str(path))
+        path = tmp_path / f"reviews_{n}.json"
+        path.write_text(json.dumps({"schema": intake.REVIEWS_SCHEMA, "reviews": [
+            _review("s-03", "clinician", basis, reviewer=f"placeholder reviewer {n}")]}), encoding="utf-8")
+        reviews.append(str(path))
+    models = ["gemma-2-2b", "qwen3-4b"]
     base = ["intake", "--batch", str(FIXTURE), "--batch-id", "synthetic", "--no-write"]
-    hashes = []
+    hashes, outputs = [], []
     for a, b in ((0, 1), (1, 0)):
         assert cli.main(base + ["--concerns", paths[a], "--concerns", paths[b],
+                                "--concerns", same_family[a], "--concerns", same_family[b],
+                                "--reviews", reviews[a], "--reviews", reviews[b],
+                                "--model", models[a], "--model", models[b],
                                 "--source-check", checks[a], "--source-check", checks[b]]) == 0
         hashes.append(json.loads(capsys.readouterr().out)["output_sha256"])
+        manifest = _run(concerns=[json.loads(Path(same_family[i]).read_text(encoding="utf-8")) for i in (a, b)],
+                        reviews=[json.loads(Path(reviews[i]).read_text(encoding="utf-8")) for i in (a, b)],
+                        models=[models[a], models[b], models[a]])
+        row = _family(manifest, "s-03")
+        outputs.append(([m["study_id"] for m in manifest["models"]],
+                        [c["concern_id"] for c in row["concerns"]["records"]],
+                        [r["reviewer"] for r in row["review"]["clinician"]["reviewers"]]))
     assert hashes[0] == hashes[1]
+    assert outputs[0] == outputs[1] == (models, ["d-0", "d-1"], ["placeholder reviewer 0", "placeholder reviewer 1"])
+
+
+def test_one_prior_batch_label_names_one_file(tmp_path: Path, capsys) -> None:
+    """Two --prior-batch arguments with one label would compare against only the second file while the manifest
+    recorded both as inputs."""
+    other = tmp_path / "other.json"
+    other.write_text(json.dumps(_batch()[:1]), encoding="utf-8")
+    assert cli.main(["intake", "--batch", str(FIXTURE), "--batch-id", "synthetic", "--no-write",
+                     "--prior-batch", f"earlier={FIXTURE}", "--prior-batch", f"earlier={other}"]) == 2
+    assert json.loads(capsys.readouterr().out)["code"] == "invalid_input"

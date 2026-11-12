@@ -186,12 +186,16 @@ manifest says `not_recorded`. No family is rewritten to reach a class.
 **Repeated inputs.** Several inputs can be passed more than once, and the order of the
 arguments never decides a result or a byte of the output. Owner reads: the read made at
 the later instant applies (`owner_read_utc` is parsed as a time, offsets included); two
-reads that cannot be ordered and differ in decision or batch version refuse
-`conflicting_verdicts`.
-Reviews of one role are combined item by item. Source checks of one citation must agree
-(`conflicting_source_checks`). Tokenization files of one tokenizer are merged, and one
-prompt with two different id lists refuses `conflicting_tokenization`. Split records
-that disagree refuse `split_conflict`; a repeated concern id refuses `invalid_concerns`.
+reads that cannot be ordered (the same instant, or a time missing from either) and differ
+in any recorded field (decision, reasons, note, batch version, or whether a time was
+recorded) refuse `conflicting_verdicts`.
+Reviews of one role are combined item by item, and their reviewers are listed by name and
+date. Source checks of one citation must agree (`conflicting_source_checks`). Tokenization
+files of one tokenizer are merged, and one prompt with two different id lists refuses
+`conflicting_tokenization`. Split records that disagree refuse `split_conflict`; a
+repeated concern id refuses `invalid_concerns`, and a family's concerns are listed by
+concern id. Models are listed once each, by study id. A `--prior-batch` label names one
+file; the same label twice refuses `invalid_input`.
 
 **Reruns.** The same inputs give byte-identical outputs. An existing output with the same
 bytes is `unchanged`; with other bytes the command refuses `output_differs` and writes
