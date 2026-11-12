@@ -10,6 +10,9 @@ Reading paths by role, and the offline quickstart, are in
 [docs/start_here.md](../docs/start_here.md). This page answers one question:
 what a script is and who runs it.
 
+The order in which a case passes through these scripts is in the
+[case lifecycle](../docs/start_here.md#case-lifecycle).
+
 The packages under `scripts/` are not indexed here:
 
 - `scripts/petri_audit/`: the `petri-audit` lane runs it

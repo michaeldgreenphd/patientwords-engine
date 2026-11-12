@@ -49,6 +49,7 @@ the policy is in [AGENTS.md](AGENTS.md#execution-model-nothing-paid-or-networked
 | Frontend contributor | [Frontend contributor](docs/start_here.md#frontend-contributor) | [paired gates](verify.md#paired-gates-on-existing-artifacts), [frontend boundary](docs/exploratory/frontend_boundary.md) |
 | Method developer | [Method developer](docs/start_here.md#method-developer) | [contributing a method](docs/contributing_a_method.md), [ecosystem map](docs/ecosystem.md) |
 | Operator | [Operator](docs/start_here.md#operator) | [lane reference](docs/triggers.md), [operators handbook](docs/operators_handbook.md) |
+| Case author or reviewer | [Case lifecycle](docs/start_here.md#case-lifecycle) | [open-results policy](docs/open_results_policy.md), [review material](docs/review/README.md) |
 | Every role | [AGENTS.md](AGENTS.md) (rules), [verify.md](verify.md) (setup and checks) | [documentation index](docs/README.md), [script index](scripts/README.md), [ecosystem map](docs/ecosystem.md) |
 
 ## The `medlang-circuits` package
