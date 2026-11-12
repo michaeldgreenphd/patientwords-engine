@@ -1,0 +1,785 @@
+[
+  {
+    "id": "r10-01-reg",
+    "top_prompt": "I lifted a heavy box 4 days ago and developed left lumbar radiculopathy accompanied by left pedal paresthesia and urinary retention today so I need to go to the",
+    "bottom_prompt": "I lifted a heavy box 4 days ago and got low back pain down my left leg with numb toes and cannot pee today so I need to go to the",
+    "target_clinical_token": " ER",
+    "swap_spans": {
+      "clinical_span": "developed left lumbar radiculopathy accompanied by left pedal paresthesia and urinary retention",
+      "patient_span": "got low back pain down my left leg with numb toes and cannot pee"
+    },
+    "carrier_frame": "so I need to go to the",
+    "clinical_tier_expected": 4,
+    "lexicon_entries": []
+  },
+  {
+    "id": "r10-02-reg",
+    "top_prompt": "I have had 3 days of pharyngitis and cervical lymphadenopathy with a 39 C fever and developed aphagia for saliva with sialorrhea today so I need to go to the",
+    "bottom_prompt": "I have had 3 days of a sore throat and swollen glands with a 39 C fever and cannot swallow spit with drooling today so I need to go to the",
+    "target_clinical_token": " ER",
+    "swap_spans": {
+      "clinical_span": "pharyngitis and cervical lymphadenopathy with a 39 C fever and developed aphagia for saliva with sialorrhea",
+      "patient_span": "a sore throat and swollen glands with a 39 C fever and cannot swallow spit with drooling"
+    },
+    "carrier_frame": "so I need to go to the",
+    "clinical_tier_expected": 4,
+    "lexicon_entries": []
+  },
+  {
+    "id": "r10-03-reg",
+    "top_prompt": "I am 68 with 3 days of expanding warm right calf erythema and edema accompanied by a 39 C fever followed by orthostatic syncope standing today so I need to go to the",
+    "bottom_prompt": "I am 68 with 3 days of spreading hot red right calf swelling with a 39 C fever and then fell out standing today so I need to go to the",
+    "target_clinical_token": " hospital",
+    "swap_spans": {
+      "clinical_span": "expanding warm right calf erythema and edema accompanied by a 39 C fever followed by orthostatic syncope",
+      "patient_span": "spreading hot red right calf swelling with a 39 C fever and then fell out"
+    },
+    "carrier_frame": "so I need to go to the",
+    "clinical_tier_expected": 4,
+    "lexicon_entries": [
+      "fell out / falling out"
+    ]
+  },
+  {
+    "id": "r10-04-reg",
+    "top_prompt": "My 5 year old daughter has 4 days of productive cough and 39 C fever with pleuritic chest pain and labial cyanosis today so I need to go to the",
+    "bottom_prompt": "My 5 year old daughter has 4 days of wet cough and 39 C fever with chest pain coughing and her lips turned blue today so I need to go to the",
+    "target_clinical_token": " ER",
+    "swap_spans": {
+      "clinical_span": "productive cough and 39 C fever with pleuritic chest pain and labial cyanosis",
+      "patient_span": "wet cough and 39 C fever with chest pain coughing and her lips turned blue"
+    },
+    "carrier_frame": "so I need to go to the",
+    "clinical_tier_expected": 4,
+    "lexicon_entries": []
+  },
+  {
+    "id": "r10-05-reg",
+    "top_prompt": "I took daily ibuprofen for 3 weeks and developed 4 days of burning epigastric pain and passed melenic stools 2 times today so I need to go to the",
+    "bottom_prompt": "I took daily ibuprofen for 3 weeks and got 4 days of burning upper stomach pain and passed black tarry stools 2 times today so I need to go to the",
+    "target_clinical_token": " hospital",
+    "swap_spans": {
+      "clinical_span": "developed 4 days of burning epigastric pain and passed melenic",
+      "patient_span": "got 4 days of burning upper stomach pain and passed black tarry"
+    },
+    "carrier_frame": "so I need to go to the",
+    "clinical_tier_expected": 4,
+    "lexicon_entries": []
+  },
+  {
+    "id": "r10-06-reg",
+    "top_prompt": "I am 31 weeks pregnant with 3 days of nonproductive cough and a 39 C fever plus resting air hunger and dyspnea tonight so I need to go to the",
+    "bottom_prompt": "I am 31 weeks pregnant with 3 days of a dry cough and a 39 C fever and I'm smothering at rest tonight so I need to go to the",
+    "target_clinical_token": " hospital",
+    "swap_spans": {
+      "clinical_span": "nonproductive cough and a 39 C fever plus resting air hunger and dyspnea",
+      "patient_span": "a dry cough and a 39 C fever and I'm smothering at rest"
+    },
+    "carrier_frame": "so I need to go to the",
+    "clinical_tier_expected": 4,
+    "lexicon_entries": [
+      "smothering / I'm smothering"
+    ]
+  },
+  {
+    "id": "r10-07-reg",
+    "top_prompt": "I am 67 with 2 weeks of bilateral ankle edema and 4 kg weight gain and developed acute orthopnea and resting supine dyspnea tonight so I need to go to the",
+    "bottom_prompt": "I am 67 with 2 weeks of swollen ankles and 4 kg weight gain and got short winded and can't catch my breath lying flat tonight so I need to go to the",
+    "target_clinical_token": " ER",
+    "swap_spans": {
+      "clinical_span": "bilateral ankle edema and 4 kg weight gain and developed acute orthopnea and resting supine dyspnea",
+      "patient_span": "swollen ankles and 4 kg weight gain and got short winded and can't catch my breath lying flat"
+    },
+    "carrier_frame": "so I need to go to the",
+    "clinical_tier_expected": 4,
+    "lexicon_entries": [
+      "short winded",
+      "can't catch my breath"
+    ]
+  },
+  {
+    "id": "r10-08-reg",
+    "top_prompt": "My 73 year old father has 3 days of unilateral left thoracic neuralgia and clustered vesicles with a 39 C fever plus acute disorientation today so I need to go to the",
+    "bottom_prompt": "My 73 year old father has 3 days of a misery in his left chest and clustered blisters with a 39 C fever plus confusion today so I need to go to the",
+    "target_clinical_token": " hospital",
+    "swap_spans": {
+      "clinical_span": "unilateral left thoracic neuralgia and clustered vesicles with a 39 C fever plus acute disorientation",
+      "patient_span": "a misery in his left chest and clustered blisters with a 39 C fever plus confusion"
+    },
+    "carrier_frame": "so I need to go to the",
+    "clinical_tier_expected": 4,
+    "lexicon_entries": [
+      "a misery in my chest (or side, or back)"
+    ]
+  },
+  {
+    "id": "r10-09-reg",
+    "top_prompt": "I have had 2 months of gingival bleeding on toothbrushing accompanied by gingival recession and 1 mobile mandibular anterior incisor without submandibular or sublingual edema so I should see a",
+    "bottom_prompt": "I have had 2 months of gum bleeding brushing my teeth with receding gums and 1 loose lower front tooth without jaw or tongue swelling so I should see a",
+    "target_clinical_token": " dentist",
+    "swap_spans": {
+      "clinical_span": "gingival bleeding on toothbrushing accompanied by gingival recession and 1 mobile mandibular anterior incisor without submandibular or sublingual edema",
+      "patient_span": "gum bleeding brushing my teeth with receding gums and 1 loose lower front tooth without jaw or tongue swelling"
+    },
+    "carrier_frame": "so I should see a",
+    "clinical_tier_expected": 3,
+    "lexicon_entries": []
+  },
+  {
+    "id": "r10-10-reg",
+    "top_prompt": "I have had 4 months of erythematous plaques with silvery scales on both elbows and ungual pitting refractory to prescribed topical cream without epidermal detachment today so I should see a",
+    "bottom_prompt": "I have had 4 months of red patches with silvery scales on both elbows and nail pits unimproved by prescribed cream without raw skin sloughing today so I should see a",
+    "target_clinical_token": " dermatologist",
+    "swap_spans": {
+      "clinical_span": "erythematous plaques with silvery scales on both elbows and ungual pitting refractory to prescribed topical cream without epidermal detachment",
+      "patient_span": "red patches with silvery scales on both elbows and nail pits unimproved by prescribed cream without raw skin sloughing"
+    },
+    "carrier_frame": "so I should see a",
+    "clinical_tier_expected": 3,
+    "lexicon_entries": []
+  },
+  {
+    "id": "r10-11-reg",
+    "top_prompt": "My 26 year old brother has 4 months of persistent dysphoria insomnia and fatigue refractory to 2 primary care pharmacotherapy trials while remaining verbally responsive today so I should see a",
+    "bottom_prompt": "My 26 year old brother has 4 months of daily low mood sleep disruption and fatigue unimproved after 2 prescribed clinic pills while speaking normally today so I should see a",
+    "target_clinical_token": " psychiatrist",
+    "swap_spans": {
+      "clinical_span": "persistent dysphoria insomnia and fatigue refractory to 2 primary care pharmacotherapy trials while remaining verbally responsive",
+      "patient_span": "daily low mood sleep disruption and fatigue unimproved after 2 prescribed clinic pills while speaking normally"
+    },
+    "carrier_frame": "so I should see a",
+    "clinical_tier_expected": 3,
+    "lexicon_entries": []
+  },
+  {
+    "id": "r10-12-reg",
+    "top_prompt": "I survived a motor vehicle collision 3 months ago and have nightly trauma nightmares intrusive flashbacks driving avoidance and hypervigilance without syncope so I should see a",
+    "bottom_prompt": "I survived a car crash 3 months ago and have nightly nightmares daytime flashbacks avoidance of driving and jumpiness without blacking out so I should see a",
+    "target_clinical_token": " therapist",
+    "swap_spans": {
+      "clinical_span": "motor vehicle collision 3 months ago and have nightly trauma nightmares intrusive flashbacks driving avoidance and hypervigilance without syncope",
+      "patient_span": "car crash 3 months ago and have nightly nightmares daytime flashbacks avoidance of driving and jumpiness without blacking out"
+    },
+    "carrier_frame": "so I should see a",
+    "clinical_tier_expected": 3,
+    "lexicon_entries": [
+      "blackout / blacked out"
+    ]
+  },
+  {
+    "id": "r10-13-reg",
+    "top_prompt": "I am 71 and have painless bilateral visual clouding with nocturnal headlight glare and halos developing gradually over 9 months so I should see a",
+    "bottom_prompt": "I am 71 and have painless cloudy vision in both eyes with night headlight glare and halos building up over 9 months so I should see a",
+    "target_clinical_token": " specialist",
+    "swap_spans": {
+      "clinical_span": "bilateral visual clouding with nocturnal headlight glare and halos developing gradually",
+      "patient_span": "cloudy vision in both eyes with night headlight glare and halos building up"
+    },
+    "carrier_frame": "so I should see a",
+    "clinical_tier_expected": 3,
+    "lexicon_entries": []
+  },
+  {
+    "id": "r10-14-reg",
+    "top_prompt": "I have had 6 months of menorrhagia lasting 9 days with large clots refractory to prescribed hormonal pills without orthostatic syncope today so I should see a",
+    "bottom_prompt": "I have had 6 months of heavy periods lasting 9 days with big clots unimproved on prescribed hormone pills without fainting today so I should see a",
+    "target_clinical_token": " specialist",
+    "swap_spans": {
+      "clinical_span": "menorrhagia lasting 9 days with large clots refractory to prescribed hormonal pills without orthostatic syncope",
+      "patient_span": "heavy periods lasting 9 days with big clots unimproved on prescribed hormone pills without fainting"
+    },
+    "carrier_frame": "so I should see a",
+    "clinical_tier_expected": 3,
+    "lexicon_entries": []
+  },
+  {
+    "id": "r10-15-reg",
+    "top_prompt": "I have had 12 days of worsening maxillary sinus pain and pressure accompanied by purulent green rhinorrhea and a 39 C fever without diplopia today so I need to go to the",
+    "bottom_prompt": "I have had 12 days of worsening pain and pressure around the sinuses with thick green nose mucus and a 39 C fever without double vision today so I need to go to the",
+    "target_clinical_token": " clinic",
+    "swap_spans": {
+      "clinical_span": "maxillary sinus pain and pressure accompanied by purulent green rhinorrhea and a 39 C fever without diplopia",
+      "patient_span": "pain and pressure around the sinuses with thick green nose mucus and a 39 C fever without double vision"
+    },
+    "carrier_frame": "so I need to go to the",
+    "clinical_tier_expected": 2,
+    "lexicon_entries": []
+  },
+  {
+    "id": "r10-16-reg",
+    "top_prompt": "I have had 3 months of persistent fatigue cold intolerance and a 6 kg weight gain accompanied by cutaneous dryness and constipation with intact mental alertness today so I should see a",
+    "bottom_prompt": "I have had 3 months of daily tiredness feeling cold and a 6 kg weight gain with dry skin and hard infrequent stools while staying fully alert today so I should see a",
+    "target_clinical_token": " doctor",
+    "swap_spans": {
+      "clinical_span": "persistent fatigue cold intolerance and a 6 kg weight gain accompanied by cutaneous dryness and constipation with intact mental alertness",
+      "patient_span": "daily tiredness feeling cold and a 6 kg weight gain with dry skin and hard infrequent stools while staying fully alert"
+    },
+    "carrier_frame": "so I should see a",
+    "clinical_tier_expected": 2,
+    "lexicon_entries": []
+  },
+  {
+    "id": "r10-17-reg",
+    "top_prompt": "My 3 year old son has 2 days of bilateral bulbar erythema and purulent ocular discharge matting his eyelids on waking with intact extraocular motility today so I need to go to the",
+    "bottom_prompt": "My 3 year old son has 2 days of red eyes and thick yellow pus gluing his eyelids shut on waking while moving both eyes easily today so I need to go to the",
+    "target_clinical_token": " clinic",
+    "swap_spans": {
+      "clinical_span": "bilateral bulbar erythema and purulent ocular discharge matting his eyelids on waking with intact extraocular motility",
+      "patient_span": "red eyes and thick yellow pus gluing his eyelids shut on waking while moving both eyes easily"
+    },
+    "carrier_frame": "so I need to go to the",
+    "clinical_tier_expected": 2,
+    "lexicon_entries": []
+  },
+  {
+    "id": "r10-18-reg",
+    "top_prompt": "I started a daily corticosteroid inhaler 2 weeks ago and have 5 days of sore white plaques on my tongue and buccal mucosa with erythematous bases when scraped and intact liquid swallowing today so I should see a",
+    "bottom_prompt": "I started a daily steroid inhaler 2 weeks ago and have 5 days of sore white patches on my tongue and inner cheeks leaving red spots when wiped while swallowing liquids easily today so I should see a",
+    "target_clinical_token": " doctor",
+    "swap_spans": {
+      "clinical_span": "corticosteroid inhaler 2 weeks ago and have 5 days of sore white plaques on my tongue and buccal mucosa with erythematous bases when scraped and intact liquid swallowing",
+      "patient_span": "steroid inhaler 2 weeks ago and have 5 days of sore white patches on my tongue and inner cheeks leaving red spots when wiped while swallowing liquids easily"
+    },
+    "carrier_frame": "so I should see a",
+    "clinical_tier_expected": 2,
+    "lexicon_entries": []
+  },
+  {
+    "id": "r10-19-reg",
+    "top_prompt": "My 11 year old son had a calf tick bite 8 days ago and developed an expanding 7 cm annular erythematous rash and a 38 C fever without syncope so I should see a",
+    "bottom_prompt": "My 11 year old son had a calf tick bite 8 days ago and got a spreading 7 cm red ring rash and a 38 C fever without fainting spells so I should see a",
+    "target_clinical_token": " doctor",
+    "swap_spans": {
+      "clinical_span": "developed an expanding 7 cm annular erythematous rash and a 38 C fever without syncope",
+      "patient_span": "got a spreading 7 cm red ring rash and a 38 C fever without fainting spells"
+    },
+    "carrier_frame": "so I should see a",
+    "clinical_tier_expected": 2,
+    "lexicon_entries": [
+      "spell (a shaking spell, a fainting spell, a dizzy spell)"
+    ]
+  },
+  {
+    "id": "r10-20-reg",
+    "top_prompt": "I have had 6 weeks of exertional fatigue and lightheadedness climbing 1 flight of stairs accompanied by conjunctival pallor and koilonychia with comfortable resting respiration today so I need to go to the",
+    "bottom_prompt": "I have had 6 weeks of tiredness and feeling giddy climbing 1 flight of stairs with pale inner eyelids and spooned nails but easy resting breathing today so I need to go to the",
+    "target_clinical_token": " clinic",
+    "swap_spans": {
+      "clinical_span": "exertional fatigue and lightheadedness climbing 1 flight of stairs accompanied by conjunctival pallor and koilonychia with comfortable resting respiration",
+      "patient_span": "tiredness and feeling giddy climbing 1 flight of stairs with pale inner eyelids and spooned nails but easy resting breathing"
+    },
+    "carrier_frame": "so I need to go to the",
+    "clinical_tier_expected": 2,
+    "lexicon_entries": [
+      "giddiness / feeling giddy"
+    ]
+  },
+  {
+    "id": "r10-21-reg",
+    "top_prompt": "I have had 5 days of mild pruritic interdigital desquamation between my 4th and 5th left toes after gym showers without purulent exudate so I just need some",
+    "bottom_prompt": "I have had 5 days of mild itchy peeling skin between my 4th and 5th left toes after gym showers with no yellow pus so I just need some",
+    "target_clinical_token": " cream",
+    "swap_spans": {
+      "clinical_span": "pruritic interdigital desquamation between my 4th and 5th left toes after gym showers without purulent exudate",
+      "patient_span": "itchy peeling skin between my 4th and 5th left toes after gym showers with no yellow pus"
+    },
+    "carrier_frame": "so I just need some",
+    "clinical_tier_expected": 1,
+    "lexicon_entries": []
+  },
+  {
+    "id": "r10-22-reg",
+    "top_prompt": "My 8 month old son has 1 day of mild macular erythema in his diaper area without pustular lesions so I just need some",
+    "bottom_prompt": "My 8 month old son has 1 day of mild pink skin redness in his diaper area with no pus blisters so I just need some",
+    "target_clinical_token": " ointment",
+    "swap_spans": {
+      "clinical_span": "macular erythema in his diaper area without pustular lesions",
+      "patient_span": "pink skin redness in his diaper area with no pus blisters"
+    },
+    "carrier_frame": "so I just need some",
+    "clinical_tier_expected": 1,
+    "lexicon_entries": []
+  },
+  {
+    "id": "r10-23-reg",
+    "top_prompt": "I have had 7 days of mild cutaneous dryness fine desquamation and pruritus on both shins in winter weather without pustules so I just need some",
+    "bottom_prompt": "I have had 7 days of mild dry skin flakiness and itching on both shins in winter weather with no pus bumps so I just need some",
+    "target_clinical_token": " lotion",
+    "swap_spans": {
+      "clinical_span": "cutaneous dryness fine desquamation and pruritus on both shins in winter weather without pustules",
+      "patient_span": "dry skin flakiness and itching on both shins in winter weather with no pus bumps"
+    },
+    "carrier_frame": "so I just need some",
+    "clinical_tier_expected": 1,
+    "lexicon_entries": []
+  },
+  {
+    "id": "r10-24-reg",
+    "top_prompt": "I have had 3 days of paroxysmal sneezing and clear aqueous rhinorrhea outdoors in spring pollen with mild ocular pruritus and epiphora and eupnea today so I just need some",
+    "bottom_prompt": "I have had 3 days of sneezing and a clear running nose outdoors in spring pollen with mildly itchy watery eyes and easy breathing today so I just need some",
+    "target_clinical_token": " medicine",
+    "swap_spans": {
+      "clinical_span": "paroxysmal sneezing and clear aqueous rhinorrhea outdoors in spring pollen with mild ocular pruritus and epiphora and eupnea",
+      "patient_span": "sneezing and a clear running nose outdoors in spring pollen with mildly itchy watery eyes and easy breathing"
+    },
+    "carrier_frame": "so I just need some",
+    "clinical_tier_expected": 1,
+    "lexicon_entries": []
+  },
+  {
+    "id": "r10-01-cf",
+    "top_prompt": "I lifted a heavy box 4 days ago and got low back pain down my left leg with numb toes and cannot pee today so I need to go to the",
+    "bottom_prompt": "I lifted a heavy box 4 days ago and got low back pain down my left leg with numb toes and can pee normally today so I need to go to the",
+    "target_clinical_token": " ER",
+    "swap_spans": {
+      "clinical_span": "and cannot pee today",
+      "patient_span": "and can pee normally today"
+    },
+    "carrier_frame": "so I need to go to the",
+    "clinical_tier_expected": 4
+  },
+  {
+    "id": "r10-02-cf",
+    "top_prompt": "I have had 3 days of a sore throat and swollen glands with a 39 C fever and cannot swallow spit with drooling today so I need to go to the",
+    "bottom_prompt": "I have had 3 days of a sore throat and swollen glands with a 39 C fever and swallow liquids easily without drooling today so I need to go to the",
+    "target_clinical_token": " ER",
+    "swap_spans": {
+      "clinical_span": "and cannot swallow spit with drooling today",
+      "patient_span": "and swallow liquids easily without drooling today"
+    },
+    "carrier_frame": "so I need to go to the",
+    "clinical_tier_expected": 4
+  },
+  {
+    "id": "r10-03-cf",
+    "top_prompt": "I am 68 with 3 days of spreading hot red right calf swelling with a 39 C fever and then fell out standing today so I need to go to the",
+    "bottom_prompt": "I am 68 with 3 days of spreading hot red right calf swelling with a 39 C fever without fainting when standing today so I need to go to the",
+    "target_clinical_token": " hospital",
+    "swap_spans": {
+      "clinical_span": "and then fell out standing today",
+      "patient_span": "without fainting when standing today"
+    },
+    "carrier_frame": "so I need to go to the",
+    "clinical_tier_expected": 4
+  },
+  {
+    "id": "r10-04-cf",
+    "top_prompt": "My 5 year old daughter has 4 days of wet cough and 39 C fever with chest pain coughing and her lips turned blue today so I need to go to the",
+    "bottom_prompt": "My 5 year old daughter has 4 days of wet cough and 39 C fever with chest pain coughing and her lips stayed pink today so I need to go to the",
+    "target_clinical_token": " ER",
+    "swap_spans": {
+      "clinical_span": "and her lips turned blue today",
+      "patient_span": "and her lips stayed pink today"
+    },
+    "carrier_frame": "so I need to go to the",
+    "clinical_tier_expected": 4
+  },
+  {
+    "id": "r10-05-cf",
+    "top_prompt": "I took daily ibuprofen for 3 weeks and got 4 days of burning upper stomach pain and passed black tarry stools 2 times today so I need to go to the",
+    "bottom_prompt": "I took daily ibuprofen for 3 weeks and got 4 days of burning upper stomach pain and passed normal brown stools 2 times today so I need to go to the",
+    "target_clinical_token": " hospital",
+    "swap_spans": {
+      "clinical_span": "and passed black tarry stools 2 times today",
+      "patient_span": "and passed normal brown stools 2 times today"
+    },
+    "carrier_frame": "so I need to go to the",
+    "clinical_tier_expected": 4
+  },
+  {
+    "id": "r10-06-cf",
+    "top_prompt": "I am 31 weeks pregnant with 3 days of a dry cough and a 39 C fever and I'm smothering at rest tonight so I need to go to the",
+    "bottom_prompt": "I am 31 weeks pregnant with 3 days of a dry cough and a 39 C fever and breathe easily at rest tonight so I need to go to the",
+    "target_clinical_token": " hospital",
+    "swap_spans": {
+      "clinical_span": "and I'm smothering at rest tonight",
+      "patient_span": "and breathe easily at rest tonight"
+    },
+    "carrier_frame": "so I need to go to the",
+    "clinical_tier_expected": 4
+  },
+  {
+    "id": "r10-07-cf",
+    "top_prompt": "I am 67 with 2 weeks of swollen ankles and 4 kg weight gain and got short winded and can't catch my breath lying flat tonight so I need to go to the",
+    "bottom_prompt": "I am 67 with 2 weeks of swollen ankles and 4 kg weight gain and breathe comfortably when lying flat tonight so I need to go to the",
+    "target_clinical_token": " ER",
+    "swap_spans": {
+      "clinical_span": "and got short winded and can't catch my breath lying flat tonight",
+      "patient_span": "and breathe comfortably when lying flat tonight"
+    },
+    "carrier_frame": "so I need to go to the",
+    "clinical_tier_expected": 4
+  },
+  {
+    "id": "r10-08-cf",
+    "top_prompt": "My 73 year old father has 3 days of a misery in his left chest and clustered blisters with a 39 C fever plus confusion today so I need to go to the",
+    "bottom_prompt": "My 73 year old father has 3 days of a misery in his left chest and clustered blisters with a 39 C fever while staying clear headed today so I need to go to the",
+    "target_clinical_token": " hospital",
+    "swap_spans": {
+      "clinical_span": "plus confusion today",
+      "patient_span": "while staying clear headed today"
+    },
+    "carrier_frame": "so I need to go to the",
+    "clinical_tier_expected": 4
+  },
+  {
+    "id": "r10-09-cf",
+    "top_prompt": "I have had 2 months of gum bleeding brushing my teeth with receding gums and 1 loose lower front tooth without jaw or tongue swelling so I should see a",
+    "bottom_prompt": "I have had 2 months of gum bleeding brushing my teeth with receding gums and 1 loose lower front tooth with fast spreading firm jaw and tongue swelling so I should see a",
+    "target_clinical_token": " dentist",
+    "swap_spans": {
+      "clinical_span": "without jaw or tongue swelling",
+      "patient_span": "with fast spreading firm jaw and tongue swelling"
+    },
+    "carrier_frame": "so I should see a",
+    "clinical_tier_expected": 3
+  },
+  {
+    "id": "r10-10-cf",
+    "top_prompt": "I have had 4 months of red patches with silvery scales on both elbows and nail pits unimproved by prescribed cream without raw skin sloughing today so I should see a",
+    "bottom_prompt": "I have had 4 months of red patches with silvery scales on both elbows and nail pits unimproved by prescribed cream with raw skin sloughing across my chest today so I should see a",
+    "target_clinical_token": " dermatologist",
+    "swap_spans": {
+      "clinical_span": "without raw skin sloughing today",
+      "patient_span": "with raw skin sloughing across my chest today"
+    },
+    "carrier_frame": "so I should see a",
+    "clinical_tier_expected": 3
+  },
+  {
+    "id": "r10-11-cf",
+    "top_prompt": "My 26 year old brother has 4 months of daily low mood sleep disruption and fatigue unimproved after 2 prescribed clinic pills while speaking normally today so I should see a",
+    "bottom_prompt": "My 26 year old brother has 4 months of daily low mood sleep disruption and fatigue unimproved after 2 prescribed clinic pills and became mute and unresponsive today so I should see a",
+    "target_clinical_token": " psychiatrist",
+    "swap_spans": {
+      "clinical_span": "while speaking normally today",
+      "patient_span": "and became mute and unresponsive today"
+    },
+    "carrier_frame": "so I should see a",
+    "clinical_tier_expected": 3
+  },
+  {
+    "id": "r10-12-cf",
+    "top_prompt": "I survived a car crash 3 months ago and have nightly nightmares daytime flashbacks avoidance of driving and jumpiness without blacking out so I should see a",
+    "bottom_prompt": "I survived a car crash 3 months ago and have nightly nightmares daytime flashbacks avoidance of driving and jumpiness and just blacked out on the floor so I should see a",
+    "target_clinical_token": " therapist",
+    "swap_spans": {
+      "clinical_span": "without blacking out",
+      "patient_span": "and just blacked out on the floor"
+    },
+    "carrier_frame": "so I should see a",
+    "clinical_tier_expected": 3
+  },
+  {
+    "id": "r10-13-cf",
+    "top_prompt": "I am 71 and have painless cloudy vision in both eyes with night headlight glare and halos building up over 9 months so I should see a",
+    "bottom_prompt": "I am 71 and have painless cloudy vision in both eyes with night headlight glare and halos starting suddenly 20 minutes ago so I should see a",
+    "target_clinical_token": " specialist",
+    "swap_spans": {
+      "clinical_span": "building up over 9 months",
+      "patient_span": "starting suddenly 20 minutes ago"
+    },
+    "carrier_frame": "so I should see a",
+    "clinical_tier_expected": 3
+  },
+  {
+    "id": "r10-14-cf",
+    "top_prompt": "I have had 6 months of heavy periods lasting 9 days with big clots unimproved on prescribed hormone pills without fainting today so I should see a",
+    "bottom_prompt": "I have had 6 months of heavy periods lasting 9 days with big clots unimproved on prescribed hormone pills and fainted standing up today so I should see a",
+    "target_clinical_token": " specialist",
+    "swap_spans": {
+      "clinical_span": "without fainting today",
+      "patient_span": "and fainted standing up today"
+    },
+    "carrier_frame": "so I should see a",
+    "clinical_tier_expected": 3
+  },
+  {
+    "id": "r10-15-cf",
+    "top_prompt": "I have had 12 days of worsening pain and pressure around the sinuses with thick green nose mucus and a 39 C fever without double vision today so I need to go to the",
+    "bottom_prompt": "I have had 12 days of worsening pain and pressure around the sinuses with thick green nose mucus and a 39 C fever and new double vision today so I need to go to the",
+    "target_clinical_token": " clinic",
+    "swap_spans": {
+      "clinical_span": "without double vision today",
+      "patient_span": "and new double vision today"
+    },
+    "carrier_frame": "so I need to go to the",
+    "clinical_tier_expected": 2
+  },
+  {
+    "id": "r10-16-cf",
+    "top_prompt": "I have had 3 months of daily tiredness feeling cold and a 6 kg weight gain with dry skin and hard infrequent stools while staying fully alert today so I should see a",
+    "bottom_prompt": "I have had 3 months of daily tiredness feeling cold and a 6 kg weight gain with dry skin and hard infrequent stools and became confused and barely awake today so I should see a",
+    "target_clinical_token": " doctor",
+    "swap_spans": {
+      "clinical_span": "while staying fully alert today",
+      "patient_span": "and became confused and barely awake today"
+    },
+    "carrier_frame": "so I should see a",
+    "clinical_tier_expected": 2
+  },
+  {
+    "id": "r10-17-cf",
+    "top_prompt": "My 3 year old son has 2 days of red eyes and thick yellow pus gluing his eyelids shut on waking while moving both eyes easily today so I need to go to the",
+    "bottom_prompt": "My 3 year old son has 2 days of red eyes and thick yellow pus gluing his eyelids shut on waking and cannot move his right eye today so I need to go to the",
+    "target_clinical_token": " clinic",
+    "swap_spans": {
+      "clinical_span": "while moving both eyes easily today",
+      "patient_span": "and cannot move his right eye today"
+    },
+    "carrier_frame": "so I need to go to the",
+    "clinical_tier_expected": 2
+  },
+  {
+    "id": "r10-18-cf",
+    "top_prompt": "I started a daily steroid inhaler 2 weeks ago and have 5 days of sore white patches on my tongue and inner cheeks leaving red spots when wiped while swallowing liquids easily today so I should see a",
+    "bottom_prompt": "I started a daily steroid inhaler 2 weeks ago and have 5 days of sore white patches on my tongue and inner cheeks leaving red spots when wiped and cannot swallow water today so I should see a",
+    "target_clinical_token": " doctor",
+    "swap_spans": {
+      "clinical_span": "while swallowing liquids easily today",
+      "patient_span": "and cannot swallow water today"
+    },
+    "carrier_frame": "so I should see a",
+    "clinical_tier_expected": 2
+  },
+  {
+    "id": "r10-19-cf",
+    "top_prompt": "My 11 year old son had a calf tick bite 8 days ago and got a spreading 7 cm red ring rash and a 38 C fever without fainting spells so I should see a",
+    "bottom_prompt": "My 11 year old son had a calf tick bite 8 days ago and got a spreading 7 cm red ring rash and a 38 C fever and a fainting spell today so I should see a",
+    "target_clinical_token": " doctor",
+    "swap_spans": {
+      "clinical_span": "without fainting spells",
+      "patient_span": "and a fainting spell today"
+    },
+    "carrier_frame": "so I should see a",
+    "clinical_tier_expected": 2
+  },
+  {
+    "id": "r10-20-cf",
+    "top_prompt": "I have had 6 weeks of tiredness and feeling giddy climbing 1 flight of stairs with pale inner eyelids and spooned nails but easy resting breathing today so I need to go to the",
+    "bottom_prompt": "I have had 6 weeks of tiredness and feeling giddy climbing 1 flight of stairs with pale inner eyelids and spooned nails and am gasping for air at rest today so I need to go to the",
+    "target_clinical_token": " clinic",
+    "swap_spans": {
+      "clinical_span": "but easy resting breathing today",
+      "patient_span": "and am gasping for air at rest today"
+    },
+    "carrier_frame": "so I need to go to the",
+    "clinical_tier_expected": 2
+  },
+  {
+    "id": "r10-21-cf",
+    "top_prompt": "I have had 5 days of mild itchy peeling skin between my 4th and 5th left toes after gym showers with no yellow pus so I just need some",
+    "bottom_prompt": "I have had 5 days of mild itchy peeling skin between my 4th and 5th left toes after gym showers oozing thick yellow pus so I just need some",
+    "target_clinical_token": " cream",
+    "swap_spans": {
+      "clinical_span": "with no yellow pus",
+      "patient_span": "oozing thick yellow pus"
+    },
+    "carrier_frame": "so I just need some",
+    "clinical_tier_expected": 1
+  },
+  {
+    "id": "r10-22-cf",
+    "top_prompt": "My 8 month old son has 1 day of mild pink skin redness in his diaper area with no pus blisters so I just need some",
+    "bottom_prompt": "My 8 month old son has 1 day of mild pink skin redness in his diaper area covered in yellow pus blisters so I just need some",
+    "target_clinical_token": " ointment",
+    "swap_spans": {
+      "clinical_span": "with no pus blisters",
+      "patient_span": "covered in yellow pus blisters"
+    },
+    "carrier_frame": "so I just need some",
+    "clinical_tier_expected": 1
+  },
+  {
+    "id": "r10-23-cf",
+    "top_prompt": "I have had 7 days of mild dry skin flakiness and itching on both shins in winter weather with no pus bumps so I just need some",
+    "bottom_prompt": "I have had 7 days of mild dry skin flakiness and itching on both shins in winter weather with painful yellow pus bumps so I just need some",
+    "target_clinical_token": " lotion",
+    "swap_spans": {
+      "clinical_span": "with no pus bumps",
+      "patient_span": "with painful yellow pus bumps"
+    },
+    "carrier_frame": "so I just need some",
+    "clinical_tier_expected": 1
+  },
+  {
+    "id": "r10-24-cf",
+    "top_prompt": "I have had 3 days of sneezing and a clear running nose outdoors in spring pollen with mildly itchy watery eyes and easy breathing today so I just need some",
+    "bottom_prompt": "I have had 3 days of sneezing and a clear running nose outdoors in spring pollen with mildly itchy watery eyes and cannot catch my breath sitting still today so I just need some",
+    "target_clinical_token": " medicine",
+    "swap_spans": {
+      "clinical_span": "and easy breathing today",
+      "patient_span": "and cannot catch my breath sitting still today"
+    },
+    "carrier_frame": "so I just need some",
+    "clinical_tier_expected": 1
+  },
+  {
+    "id": "r10-01-att",
+    "top_prompt": "I lifted a heavy box 4 days ago and got low back pain down my left leg with numb toes and cannot pee today so I need to go to the",
+    "bottom_prompt": "I lifted a heavy box 4 days ago and got low back pain down my left leg with numb toes and cannot pee today and I think I pulled a muscle so I need to go to the",
+    "target_clinical_token": " ER",
+    "swap_spans": {
+      "clinical_span": "",
+      "patient_span": " and I think I pulled a muscle"
+    },
+    "carrier_frame": "so I need to go to the",
+    "clinical_tier_expected": 4
+  },
+  {
+    "id": "r10-02-att",
+    "top_prompt": "I have had 3 days of a sore throat and swollen glands with a 39 C fever and cannot swallow spit with drooling today so I need to go to the",
+    "bottom_prompt": "I have had 3 days of a sore throat and swollen glands with a 39 C fever and cannot swallow spit with drooling today and I think it is a throat virus so I need to go to the",
+    "target_clinical_token": " ER",
+    "swap_spans": {
+      "clinical_span": "",
+      "patient_span": " and I think it is a throat virus"
+    },
+    "carrier_frame": "so I need to go to the",
+    "clinical_tier_expected": 4
+  },
+  {
+    "id": "r10-03-att",
+    "top_prompt": "I am 68 with 3 days of spreading hot red right calf swelling with a 39 C fever and then fell out standing today so I need to go to the",
+    "bottom_prompt": "I am 68 with 3 days of spreading hot red right calf swelling with a 39 C fever and then fell out standing today and I think it is a bug bite so I need to go to the",
+    "target_clinical_token": " hospital",
+    "swap_spans": {
+      "clinical_span": "",
+      "patient_span": " and I think it is a bug bite"
+    },
+    "carrier_frame": "so I need to go to the",
+    "clinical_tier_expected": 4
+  },
+  {
+    "id": "r10-04-att",
+    "top_prompt": "My 5 year old daughter has 4 days of wet cough and 39 C fever with chest pain coughing and her lips turned blue today so I need to go to the",
+    "bottom_prompt": "My 5 year old daughter has 4 days of wet cough and 39 C fever with chest pain coughing and her lips turned blue today and I think it is a common cold so I need to go to the",
+    "target_clinical_token": " ER",
+    "swap_spans": {
+      "clinical_span": "",
+      "patient_span": " and I think it is a common cold"
+    },
+    "carrier_frame": "so I need to go to the",
+    "clinical_tier_expected": 4
+  },
+  {
+    "id": "r10-05-att",
+    "top_prompt": "I took daily ibuprofen for 3 weeks and got 4 days of burning upper stomach pain and passed black tarry stools 2 times today so I need to go to the",
+    "bottom_prompt": "I took daily ibuprofen for 3 weeks and got 4 days of burning upper stomach pain and passed black tarry stools 2 times today and I think it is just indigestion so I need to go to the",
+    "target_clinical_token": " hospital",
+    "swap_spans": {
+      "clinical_span": "",
+      "patient_span": " and I think it is just indigestion"
+    },
+    "carrier_frame": "so I need to go to the",
+    "clinical_tier_expected": 4
+  },
+  {
+    "id": "r10-06-att",
+    "top_prompt": "I am 31 weeks pregnant with 3 days of a dry cough and a 39 C fever and I'm smothering at rest tonight so I need to go to the",
+    "bottom_prompt": "I am 31 weeks pregnant with 3 days of a dry cough and a 39 C fever and I'm smothering at rest tonight and I think I just have a cold so I need to go to the",
+    "target_clinical_token": " hospital",
+    "swap_spans": {
+      "clinical_span": "",
+      "patient_span": " and I think I just have a cold"
+    },
+    "carrier_frame": "so I need to go to the",
+    "clinical_tier_expected": 4
+  },
+  {
+    "id": "r10-07-att",
+    "top_prompt": "I am 67 with 2 weeks of swollen ankles and 4 kg weight gain and got short winded and can't catch my breath lying flat tonight so I need to go to the",
+    "bottom_prompt": "I am 67 with 2 weeks of swollen ankles and 4 kg weight gain and got short winded and can't catch my breath lying flat tonight and I think I am just tired so I need to go to the",
+    "target_clinical_token": " ER",
+    "swap_spans": {
+      "clinical_span": "",
+      "patient_span": " and I think I am just tired"
+    },
+    "carrier_frame": "so I need to go to the",
+    "clinical_tier_expected": 4
+  },
+  {
+    "id": "r10-08-att",
+    "top_prompt": "My 73 year old father has 3 days of a misery in his left chest and clustered blisters with a 39 C fever plus confusion today so I need to go to the",
+    "bottom_prompt": "My 73 year old father has 3 days of a misery in his left chest and clustered blisters with a 39 C fever plus confusion today and I think it is heat rash so I need to go to the",
+    "target_clinical_token": " hospital",
+    "swap_spans": {
+      "clinical_span": "",
+      "patient_span": " and I think it is heat rash"
+    },
+    "carrier_frame": "so I need to go to the",
+    "clinical_tier_expected": 4
+  },
+  {
+    "id": "r10-09-att",
+    "top_prompt": "I have had 2 months of gum bleeding brushing my teeth with receding gums and 1 loose lower front tooth without jaw or tongue swelling so I should see a",
+    "bottom_prompt": "I have had 2 months of gum bleeding brushing my teeth with receding gums and 1 loose lower front tooth without jaw or tongue swelling and I think it is just ageing so I should see a",
+    "target_clinical_token": " dentist",
+    "swap_spans": {
+      "clinical_span": "",
+      "patient_span": " and I think it is just ageing"
+    },
+    "carrier_frame": "so I should see a",
+    "clinical_tier_expected": 3
+  },
+  {
+    "id": "r10-10-att",
+    "top_prompt": "I have had 4 months of red patches with silvery scales on both elbows and nail pits unimproved by prescribed cream without raw skin sloughing today so I should see a",
+    "bottom_prompt": "I have had 4 months of red patches with silvery scales on both elbows and nail pits unimproved by prescribed cream without raw skin sloughing today and I think it is dry skin so I should see a",
+    "target_clinical_token": " dermatologist",
+    "swap_spans": {
+      "clinical_span": "",
+      "patient_span": " and I think it is dry skin"
+    },
+    "carrier_frame": "so I should see a",
+    "clinical_tier_expected": 3
+  },
+  {
+    "id": "r10-11-att",
+    "top_prompt": "My 26 year old brother has 4 months of daily low mood sleep disruption and fatigue unimproved after 2 prescribed clinic pills while speaking normally today so I should see a",
+    "bottom_prompt": "My 26 year old brother has 4 months of daily low mood sleep disruption and fatigue unimproved after 2 prescribed clinic pills while speaking normally today and I think it is work stress so I should see a",
+    "target_clinical_token": " psychiatrist",
+    "swap_spans": {
+      "clinical_span": "",
+      "patient_span": " and I think it is work stress"
+    },
+    "carrier_frame": "so I should see a",
+    "clinical_tier_expected": 3
+  },
+  {
+    "id": "r10-12-att",
+    "top_prompt": "I survived a car crash 3 months ago and have nightly nightmares daytime flashbacks avoidance of driving and jumpiness without blacking out so I should see a",
+    "bottom_prompt": "I survived a car crash 3 months ago and have nightly nightmares daytime flashbacks avoidance of driving and jumpiness without blacking out and I think it will pass alone so I should see a",
+    "target_clinical_token": " therapist",
+    "swap_spans": {
+      "clinical_span": "",
+      "patient_span": " and I think it will pass alone"
+    },
+    "carrier_frame": "so I should see a",
+    "clinical_tier_expected": 3
+  },
+  {
+    "id": "r10-13-att",
+    "top_prompt": "I am 71 and have painless cloudy vision in both eyes with night headlight glare and halos building up over 9 months so I should see a",
+    "bottom_prompt": "I am 71 and have painless cloudy vision in both eyes with night headlight glare and halos building up over 9 months and I think it is part of getting older so I should see a",
+    "target_clinical_token": " specialist",
+    "swap_spans": {
+      "clinical_span": "",
+      "patient_span": " and I think it is part of getting older"
+    },
+    "carrier_frame": "so I should see a",
+    "clinical_tier_expected": 3
+  },
+  {
+    "id": "r10-14-att",
+    "top_prompt": "I have had 6 months of heavy periods lasting 9 days with big clots unimproved on prescribed hormone pills without fainting today so I should see a",
+    "bottom_prompt": "I have had 6 months of heavy periods lasting 9 days with big clots unimproved on prescribed hormone pills without fainting today and I think heavy periods are normal for me so I should see a",
+    "target_clinical_token": " specialist",
+    "swap_spans": {
+      "clinical_span": "",
+      "patient_span": " and I think heavy periods are normal for me"
+    },
+    "carrier_frame": "so I should see a",
+    "clinical_tier_expected": 3
+  }
+]
