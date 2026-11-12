@@ -192,10 +192,12 @@ recorded) refuse `conflicting_verdicts`.
 Reviews of one role are combined item by item, and their reviewers are listed by name and
 date. Source checks of one citation must agree (`conflicting_source_checks`). Tokenization
 files of one tokenizer are merged, and one prompt with two different id lists refuses
-`conflicting_tokenization`. Split records that disagree refuse `split_conflict`; a
+`conflicting_tokenization`. Split records that disagree refuse `split_conflict`; the
+manifest numbers the accepted records by seed, not by argument position. A
 repeated concern id refuses `invalid_concerns`, and a family's concerns are listed by
 concern id. Models are listed once each, by study id. A `--prior-batch` label names one
-file; the same label twice refuses `invalid_input`.
+file; the same label twice refuses `invalid_input`. Earlier batches are compared in label
+order, so a text held by two of them is reported against the same one each time.
 
 **Reruns.** The same inputs give byte-identical outputs. An existing output with the same
 bytes is `unchanged`; with other bytes the command refuses `output_differs` and writes

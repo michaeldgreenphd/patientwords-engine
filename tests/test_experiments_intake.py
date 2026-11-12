@@ -858,6 +858,75 @@ def test_the_command_line_gives_the_same_bytes_whatever_the_order_of_repeatable_
     assert outputs[0] == outputs[1] == (models, ["d-0", "d-1"], ["placeholder reviewer 0", "placeholder reviewer 1"])
 
 
+def test_split_records_and_prior_batches_give_the_same_manifest_in_either_order() -> None:
+    strata = {f["family_id"]: f["right_care"] for f in _batch()}
+    one = _seeded_record()
+    two = next({"seed": seed, "strata": strata, "splits": one["splits"]} for seed in range(one["seed"] + 1, 5000)
+               if intake.assign_splits(strata, seed) == one["splits"])              # another seed, the same draw
+    forward, backward = _run(split_records=[one, two]), _run(split_records=[two, one])
+    assert forward["splits"] == backward["splits"]
+    assert [r["seed"] for r in forward["splits"]["records_checked"]] == [one["seed"], two["seed"]]
+    # A text that two earlier batches hold is reported against the same one, whichever was named first.
+    earlier = [{**_batch()[0], "family_id": "p-01"}]
+    also = [{**_batch()[0], "family_id": "q-01"}]
+    runs = [_run(prior_batches=prior) for prior in ({"b_later": also, "a_earlier": earlier},
+                                                    {"a_earlier": earlier, "b_later": also})]
+    errors = [_family(run, "s-01")["validation"]["errors"] for run in runs]
+    assert errors[0] == errors[1] and any("p-01 of a_earlier" in e for e in errors[0])
+    assert not any("q-01" in e for e in errors[0])
+
+
+def test_every_list_input_reversed_gives_the_same_manifest() -> None:
+    """One check for the whole class: each input that can be given more than once is given two different valid
+    documents, and reversing any one of them, or all of them, leaves the manifest equal."""
+    basis = {r["family_id"]: r["review_basis_sha256"] for r in _run()["families"]}
+    strata = {f["family_id"]: f["right_care"] for f in _batch()}
+    early, late = _verdicts(), _verdicts(s_02="excluded")
+    late["owner_read_utc"] = "2000-01-02T00:00:00Z"
+    one = _seeded_record()
+    two = next({"seed": seed, "strata": strata, "splits": one["splits"]} for seed in range(one["seed"] + 1, 5000)
+               if intake.assign_splits(strata, seed) == one["splits"])
+    cited = [(f["family_id"], e) for f in _batch() for e in f["everyday_sources"] if e["quote_type"] != "none"][:2]
+    checks = [{"schema": intake.SOURCE_CHECK_SCHEMA, "checked_utc": f"2000-01-0{n + 1}", "method": "placeholder lookup",
+               "entries": [{"family_id": fid, "expression": e["expression"], "identifier": e["pmid_or_doi"],
+                            "record_matches_citation": True, "evidence_found": True} for fid, e in rows]}
+              for n, rows in enumerate((cited, cited[:1]))]                          # one citation is in both files
+    texts = [t for f in _batch() for t in f["texts"].values()]
+    token = {"schema": intake.TOKENIZATION_SCHEMA, "tokenizer_id": "fixture/toy-tokenizer", "tokenizer_revision": "1" * 40,
+             "source": "ids made by this test; not a tokenizer", "prompts": {prompt_digest(t): [1, 2] for t in texts}}
+    inputs = {
+        "verdicts": [early, late],
+        "reviews": [{"schema": intake.REVIEWS_SCHEMA, "reviews": [
+            _review("s-03", "clinician", basis["s-03"], reviewer=f"placeholder reviewer {n}",
+                    value="same" if n else "cannot_judge")]} for n in range(2)],
+        "concerns": [_concerns(_concern(f"e-{n}", "s-03", ["reg"])) for n in range(2)],
+        "source_checks": checks,
+        "split_records": [one, two],
+        "models": ["qwen3-4b", "gemma-2-2b"],
+        "tokenizations": [{**token, "source": "a second placeholder file"}, token,
+                          {**token, "tokenizer_id": "fixture/other-tokenizer"}],
+    }
+    priors = [("b_later", [{**_batch()[0], "family_id": "q-01"}]), ("a_earlier", [{**_batch()[0], "family_id": "p-01"}])]
+    reference = _run(prior_batches=dict(priors), **inputs)
+    assert reference["splits"]["records_checked"] and len(reference["tokenization"]) == 2      # the inputs were all read
+    for name in inputs:
+        assert _run(prior_batches=dict(priors), **{**inputs, name: inputs[name][::-1]}) == reference, name
+    assert _run(prior_batches=dict(priors[::-1]), **{name: docs[::-1] for name, docs in inputs.items()}) == reference
+
+
+def test_an_unreadable_batch_or_design_is_a_refusal_not_a_traceback(tmp_path: Path, capsys) -> None:
+    malformed = tmp_path / "malformed.json"
+    malformed.write_text("{not json", encoding="utf-8")
+    base = ["intake", "--batch-id", "synthetic", "--no-write"]
+    for arguments, code in ((["--batch", str(tmp_path / "absent.json")], "unreadable_input"),
+                            (["--batch", str(tmp_path)], "unreadable_input"),
+                            (["--batch", str(malformed)], "invalid_input"),
+                            (["--batch", str(FIXTURE), "--design", str(tmp_path / "absent.json")], "unreadable_input"),
+                            (["--batch", str(FIXTURE), "--design", str(malformed)], "invalid_input")):
+        assert cli.main(base + arguments) == 2
+        assert json.loads(capsys.readouterr().out)["code"] == code
+
+
 def test_one_prior_batch_label_names_one_file(tmp_path: Path, capsys) -> None:
     """Two --prior-batch arguments with one label would compare against only the second file while the manifest
     recorded both as inputs."""

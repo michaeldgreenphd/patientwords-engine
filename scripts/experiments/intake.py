@@ -47,6 +47,7 @@ from __future__ import annotations
 import collections
 import datetime
 import difflib
+import json
 import random
 import re
 from pathlib import Path
@@ -54,7 +55,7 @@ from typing import Any, Callable, Iterable, Mapping, Sequence
 
 from scripts import check_candidate_pairs as pair_checks
 from scripts.experiments.common import (
-    HEX40, HEX64, SAFE_NAME, SPLITS, check_output_path, digest, exclusive_write_bytes, integer,
+    HEX40, HEX64, SAFE_NAME, SPLITS, Refusal, check_output_path, digest, exclusive_write_bytes, integer,
     json_bytes, prompt_digest, read_json, require, sha256_bytes, text,
 )
 from scripts.experiments.estimate import estimate_cpu_logits_seconds, recorded_slowest_rates
@@ -471,11 +472,15 @@ def _splits(families: Sequence[Mapping[str, Any]], records: Sequence[Mapping[str
     the batch has measurements: a bare mapping, a record of another batch or a hand-chosen assignment is refused,
     because the design's split is a recorded seeded draw and nothing else. This command cannot see when a record
     was written. That a record predates the measurements is shown by the commit that added it, not by this
-    command, and the manifest says so."""
+    command, and the manifest says so.
+
+    A refusal names a record by its position among the arguments. The manifest numbers the accepted records by
+    seed (then by content), so the same records give the same manifest in any argument order."""
     recorded: dict[str, str] = {}
     sources: dict[str, str] = {}
     reproduced: list[dict[str, Any]] = []
     batch_strata = {f["family_id"]: f["right_care"] for f in families}
+    accepted: list[Mapping[str, Any]] = []
     for n, record in enumerate(records, 1):
         body = record.get("split_assignment", record)
         require(isinstance(body.get("splits"), dict) and set(body["splits"].values()) <= set(SPLITS), "invalid_split_record",
@@ -488,6 +493,9 @@ def _splits(families: Sequence[Mapping[str, Any]], records: Sequence[Mapping[str
                 "draw that seed gives over this batch's families and care levels (and its strata, if it lists them, "
                 "are the batch's). This one is not; a hand-chosen assignment or a record of another batch is not a "
                 "recorded split of this batch")
+        accepted.append(body)
+    accepted.sort(key=lambda body: (body["seed"], json_bytes(body)))
+    for n, body in enumerate(accepted, 1):
         for fid, split in body["splits"].items():
             require(recorded.setdefault(fid, split) == split, "split_conflict",
                     f"{fid} is in {recorded[fid]} in one split record and in {split} in another")
@@ -710,7 +718,7 @@ def run_intake(batch: Any, *, batch_id: str, batch_sha256: str, source_ref: str,
     # Duplicate cases, inside the batch and against earlier batches: the same text, the same condition, a reused id.
     seen_text: dict[str, str] = {}
     seen_condition: dict[str, str] = {}
-    for label, families in (prior_batches or {}).items():
+    for label, families in sorted((prior_batches or {}).items()):     # by label, never by the order of the arguments
         for family in families:
             for value in (family.get("texts") or {}).values():
                 seen_text.setdefault(_norm(value), f"{family['family_id']} of {label}")
@@ -1095,15 +1103,28 @@ def file_record(path: Path) -> dict[str, str]:
     return {"name": path.name, "sha256": sha256_bytes(path.read_bytes())}
 
 
+def _read_input(path: Path, what: str) -> tuple[bytes, Any]:
+    """The bytes of an input file and the JSON they hold."""
+    try:
+        data = Path(path).read_bytes()
+    except OSError as exc:
+        raise Refusal("unreadable_input", f"{what} {path}: {exc.strerror or exc}") from exc
+    try:
+        return data, json.loads(data.decode("utf-8"))
+    except ValueError as exc:
+        raise Refusal("invalid_input", f"{what} {path} is not JSON: {exc}") from exc
+
+
 def intake_files(batch_path: Path, *, batch_id: str, source_ref: str | None = None, design_path: Path | None = None,
                  **options: Any) -> tuple[dict[str, Any], dict[str, bytes]]:
-    """Read a batch file, run the intake and render the three outputs as bytes."""
-    data = batch_path.read_bytes()
-    batch = read_json(batch_path)
+    """Read a batch file, run the intake and render the three outputs as bytes. A batch or design file that
+    cannot be read, or is not JSON, is a refusal like any other input, never a traceback."""
+    data, batch = _read_input(batch_path, "batch")
+    design_bytes, _ = _read_input(design_path or DESIGN_PATH, "design")
     design = load_design(design_path)
     manifest = run_intake(batch, batch_id=batch_id, batch_sha256=sha256_bytes(data),
                           source_ref=source_ref or batch_path.name, design=design,
-                          design_sha256=sha256_bytes((design_path or DESIGN_PATH).read_bytes()), **options)
+                          design_sha256=sha256_bytes(design_bytes), **options)
     files = {"intake_manifest.json": json_bytes(manifest),
              "review_packet.md": render_packet(manifest, batch).encode("utf-8"),
              "review_form.json": json_bytes(review_form(manifest))}
