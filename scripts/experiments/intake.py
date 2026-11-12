@@ -351,9 +351,9 @@ def _concerns(families: Mapping[str, Mapping[str, Any]], basis: Mapping[str, str
     return out
 
 
-def _source_checks(docs: Sequence[Mapping[str, Any]]) -> dict[tuple[str, str], dict[str, Any]]:
-    """(family_id, expression or clause) -> what a recorded check of the citation found."""
-    out: dict[tuple[str, str], dict[str, Any]] = {}
+def _source_checks(docs: Sequence[Mapping[str, Any]]) -> dict[tuple[str, str, str], dict[str, Any]]:
+    """(family_id, expression or clause, identifier) -> what a recorded check of that citation found."""
+    out: dict[tuple[str, str, str], dict[str, Any]] = {}
     for doc in docs:
         require(isinstance(doc, dict) and doc.get("schema") == SOURCE_CHECK_SCHEMA and isinstance(doc.get("entries"), list)
                 and text(doc.get("method")) and text(doc.get("checked_utc")), "invalid_source_check",
@@ -362,26 +362,33 @@ def _source_checks(docs: Sequence[Mapping[str, Any]]) -> dict[tuple[str, str], d
             require(text(row.get("family_id")) and text(row.get("expression")) and text(row.get("identifier"))
                     and isinstance(row.get("record_matches_citation"), bool) and isinstance(row.get("evidence_found"), bool),
                     "invalid_source_check", "An entry needs family_id, expression, identifier and two booleans")
-            out[(row["family_id"], row["expression"])] = {
-                "identifier": row["identifier"], "record_matches_citation": row["record_matches_citation"],
+            out[(row["family_id"], row["expression"], row["identifier"])] = {
+                "record_matches_citation": row["record_matches_citation"],
                 "evidence_found": row["evidence_found"], "checked_utc": doc["checked_utc"]}
     return out
 
 
-def _verification(family: Mapping[str, Any], checks: Mapping[tuple[str, str], Mapping[str, Any]]) -> dict[str, Any]:
-    """Per cited expression: verified, not found, or not checked. Unsourced expressions are not counted."""
+def _citation_status(family_id: str, entry: Mapping[str, Any],
+                     checks: Mapping[tuple[str, str, str], Mapping[str, Any]]) -> str:
+    """One citation row: an expression with one identifier. A check of another citation of the same wording does
+    not count for this one."""
+    label = entry.get("expression") or entry.get("clause")
+    hit = checks.get((family_id, label, entry.get("pmid_or_doi")))
+    if hit is None:
+        return "not_checked"
+    return "record_and_sentence_found" if hit["record_matches_citation"] and hit["evidence_found"] else "not_found"
+
+
+def _verification(family: Mapping[str, Any], checks: Mapping[tuple[str, str, str], Mapping[str, Any]]) -> dict[str, Any]:
+    """Per citation row: verified, not found, or not checked. Unsourced expressions are not counted."""
     entries = [s for s in family.get("everyday_sources") or [] if isinstance(s, dict)]
     if isinstance(family.get("attribution"), dict):
         entries = entries + [family["attribution"]]
-    state: dict[str, str] = {}
-    for entry in entries:
-        label = entry.get("expression") or entry.get("clause")
-        if entry.get("quote_type") == "none" or not text(label):
-            continue
-        hit = checks.get((family["family_id"], label))
-        state[label] = "not_checked" if hit is None or hit["identifier"] != entry.get("pmid_or_doi") else (
-            "record_and_sentence_found" if hit["record_matches_citation"] and hit["evidence_found"] else "not_found")
-    return {"per_expression": state, "counts": dict(sorted(collections.Counter(state.values()).items())),
+    rows = [{"expression": entry.get("expression") or entry.get("clause"), "identifier": entry.get("pmid_or_doi"),
+             "status": _citation_status(family["family_id"], entry, checks)}
+            for entry in entries
+            if entry.get("quote_type") != "none" and text(entry.get("expression") or entry.get("clause"))]
+    return {"per_citation": rows, "counts": dict(sorted(collections.Counter(r["status"] for r in rows).items())),
             "means": "The cited record exists and contains the evidence sentence. It does not show that patients in "
                      "the family's population use the expression; that is source fit, recorded as a concern."}
 
@@ -400,7 +407,7 @@ def assign_splits(strata: Mapping[str, int], seed: int) -> dict[str, str]:
 
 
 def _splits(families: Sequence[Mapping[str, Any]], records: Sequence[Mapping[str, Any]], seed: int | None,
-            removed: set[str], measured: bool) -> dict[str, Any]:
+            removed: set[str], measured: bool, stem: str | None) -> dict[str, Any]:
     """Recorded splits are read, never redrawn. This command cannot see when a record was written. Once the batch
     has measurements it therefore accepts a record only if the record is bound to this batch (its strata are
     exactly this batch's families and care levels) and is the seeded draw its own seed gives; a bare mapping, a
@@ -447,6 +454,8 @@ def _splits(families: Sequence[Mapping[str, Any]], records: Sequence[Mapping[str
                                "batch's families and care levels and reproduces from its seed. That it was written "
                                "before the measurements is shown by the commit that added it."
                                if measured and records else
+                               "No stem was named, so this command did not look for measurements. The records are "
+                               "read as given and support no claim about timing." if records and stem is None else
                                "The batch has no measurements under its stem." if records else None),
             "counts": dict(sorted(collections.Counter(str(v) for v in per_family.values()).items()))}
 
@@ -600,6 +609,9 @@ def run_intake(batch: Any, *, batch_id: str, batch_sha256: str, source_ref: str,
     require(text(batch_id) and bool(SAFE_NAME.fullmatch(batch_id)), "invalid_input", "batch_id must be a short safe name")
     require(isinstance(batch, list) and bool(batch), "invalid_input", "A batch is a non-empty JSON list of families")
     require(stem is None or bool(SAFE_NAME.fullmatch(stem)), "invalid_input", "stem must be a short safe name")
+    require(stem is not None or (split_seed is None and not mechanistic_families), "stem_required",
+            "A split or a mechanistic subset is assigned for a named stem, so that this command can see whether "
+            "trace_out/ already holds measurements under it. Pass --stem")
     rubric = read_json(RUBRIC_PATH)
     run_dirs = sorted(p.name for p in (root / "trace_out").glob(f"{stem}*")) if stem else []
     measured = bool(run_dirs)
@@ -668,10 +680,10 @@ def run_intake(batch: Any, *, batch_id: str, batch_sha256: str, source_ref: str,
     checks = _source_checks(source_checks)
     review_status = {fid: _review_status(domain[fid], design) for fid in texts_sha}
     removed = {fid for fid, status in review_status.items() if status == "removed_by_review"}
-    splits = _splits(usable, split_records, split_seed, removed, measured)
+    splits = _splits(usable, split_records, split_seed, removed, measured, stem)
     tokenizers = _tokenizers(tokenizations)
     identities = model_identities(models)
-    signed = not str(design["protocol"]["status"]).startswith("draft")
+    signed = bool(re.match(r"signed\b", str(design["protocol"].get("status", ""))))    # "not signed" is not signed
 
     family_rows: list[dict[str, Any]] = []
     for family in usable:
@@ -714,6 +726,7 @@ def run_intake(batch: Any, *, batch_id: str, batch_sha256: str, source_ref: str,
             (f"exploratory_stratum:{register_stratum}", bool(flags)),
             ("split_unassigned", splits["per_family"][fid] is None),
             ("split_timing_not_verified", measured and splits["per_family"][fid] is not None),
+            ("stem_not_named", stem is None),
             ("open_concern_on_register_pair:" + ",".join(on_pair), bool(on_pair))) if on]
         family_rows.append({
             "family_id": fid, "family_sha256": digest(family), "texts_sha256": texts_sha[fid],
@@ -735,7 +748,9 @@ def run_intake(batch: Any, *, batch_id: str, batch_sha256: str, source_ref: str,
                                 "labels_required": ["exploratory, hand-authored", f"review status: {review_status[fid]}"]},
                 "confirmatory": {"eligible": not blocked, "blocked_by": blocked,
                                  "applies_to": "the register pair. A control with an open concern is listed in "
-                                               "controls_with_open_concerns and does not block the pair. Once the "
+                                               "controls_with_open_concerns and does not block the pair. Without "
+                                               "a named stem the command has not looked for measurements and "
+                                               "reports no family as eligible. Once the "
                                                "batch has measurements this command cannot verify that a split was "
                                                "recorded first, so it reports no family as eligible: eligibility is "
                                                "read from a manifest written before measurement.",
@@ -785,6 +800,8 @@ def run_intake(batch: Any, *, batch_id: str, batch_sha256: str, source_ref: str,
             "by_check": dict(sorted(collections.Counter(re.sub(r"^\S+-\w+: ", "", m).split(":", 1)[0]
                                                         for m in all_errors + all_warnings).items())),
             "is": design["review"]["layers"]["software_validation"],
+            "parameters": {"forbid": forbid, "max_words": max_words, "lexicon_supplied": lexicon is not None,
+                           "note": "Caller-set. Another value changes which texts pass; compare runs on these."},
             "unusable_families": unusable},
         "review_layers": design["review"]["layers"],
         "eligibility_rules": design["eligibility"],
@@ -815,7 +832,7 @@ def run_intake(batch: Any, *, batch_id: str, batch_sha256: str, source_ref: str,
                               if r["review"]["owner_read"]["status"] == "kept" and r["concerns"]["open"]),
                           "rule": design["concerns"]["rule"]},
                       "source_verification": dict(sorted(collections.Counter(
-                          v for r in family_rows for v in r["sources"]["verification"]["per_expression"].values()).items()))},
+                          c["status"] for r in family_rows for c in r["sources"]["verification"]["per_citation"]).items()))},
         "estimated_work": {
             "note": "Arithmetic on recorded rates and documented estimates. Nothing here is a measurement.",
             "behavioural_pass_owner_kept": _cpu_estimate(len(pairs_of(kept_rows)), identities),
@@ -908,7 +925,7 @@ def render_packet(manifest: Mapping[str, Any], batch: Sequence[Mapping[str, Any]
             a = family["attribution"]
             out += ["", f"Patient explanation (adds a belief, analysed apart from register): \"{a.get('clause')}\"; "
                         f"source: {a.get('source') or 'none'} ({a.get('quote_type')})."]
-        verified = row["sources"]["verification"]["per_expression"]
+        verified = {(c["expression"], c["identifier"]): c["status"] for c in row["sources"]["verification"]["per_citation"]}
         out += ["", "| Everyday expression | Declared support | Citation check | Source | Evidence sentence |",
                 "|---|---|---|---|---|"]
         cited = list(family.get("everyday_sources") or [])
@@ -917,7 +934,7 @@ def render_packet(manifest: Mapping[str, Any], batch: Sequence[Mapping[str, Any]
         for entry in cited:
             unsourced = entry.get("quote_type") == "none"
             out.append(f"| {entry.get('expression')} | {'no source' if unsourced else entry.get('quote_type')} | "
-                       f"{'' if unsourced else verified.get(entry.get('expression'), 'not_checked').replace('_', ' ')} | "
+                       f"{'' if unsourced else verified.get((entry.get('expression'), entry.get('pmid_or_doi')), 'not_checked').replace('_', ' ')} | "
                        f"{'' if unsourced else str(entry.get('source'))[:90]} {'' if unsourced else entry.get('pmid_or_doi') or ''} | "
                        f"{entry.get('evidence') or ('' if unsourced else 'not given')} |")
         records = row["concerns"]["records"]

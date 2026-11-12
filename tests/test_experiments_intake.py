@@ -43,6 +43,8 @@ def _verdicts(batch_sha: str = BATCH_SHA, **decisions: str) -> dict:
 def _run(batch: list[dict] | None = None, **options) -> dict:
     design = intake.load_design()
     options.setdefault("sealed", lambda text: False)
+    if "split_seed" in options or options.get("mechanistic_families"):
+        options.setdefault("stem", LATER_STEM)                 # a split or subset is assigned for a named stem
     return intake.run_intake(_batch() if batch is None else batch, batch_id="synthetic",
                              batch_sha256=options.pop("batch_sha256", BATCH_SHA),
                              source_ref="fixture", design=design,
@@ -154,7 +156,8 @@ def test_no_split_and_no_subset_is_chosen_after_measurement(measured_root: Path)
     read_back = _run(split_records=[record], stem=MEASURED_STEM)                    # a bound, seeded record is only read
     assert read_back["measurements"]["existing_run_directories"] and read_back["splits"]["newly_assigned"] == []
     assert read_back["splits"]["records_timing"].startswith("Not verified by this command")
-    assert _run(split_records=[record])["splits"]["records_timing"] == "The batch has no measurements under its stem."
+    assert _run(split_records=[record], stem=LATER_STEM)["splits"]["records_timing"] == "The batch has no measurements under its stem."
+    assert _run(split_records=[record])["splits"]["records_timing"].startswith("No stem was named")
     options = dict(split_records=[record], verdicts=[_verdicts()], mechanistic_families=1, mechanistic_seed=3, stem=LATER_STEM)
     before = _run(**options)                                                        # the stem has no run directory yet
     assert before["measurements"] | {"note": ""} == {"stem": LATER_STEM, "existing_run_directories": [], "note": ""}
@@ -197,8 +200,9 @@ def test_after_measurement_a_subset_is_restored_only_from_a_manifest_of_this_bat
     options = dict(split_records=[record], verdicts=[_verdicts()], mechanistic_families=1, mechanistic_seed=3)
     before = _run(**options, stem=LATER_STEM)
     chosen = before["mechanistic_subset"]["families"]
-    no_stem, other_stem = _run(**options), _run(**options, stem="another_placeholder_stem")
-    assert no_stem["measurements"]["existing_run_directories"] == other_stem["measurements"]["existing_run_directories"] == []
+    other_stem = _run(**options, stem="another_placeholder_stem")
+    no_stem = {**before, "measurements": {**before["measurements"], "stem": None}}      # the command no longer writes one
+    assert other_stem["measurements"]["existing_run_directories"] == []
     forged = [
         {"mechanistic_subset": {"families": chosen}},                                    # a bare family list
         no_stem,                                                                         # lists no run directory whatever exists
@@ -404,13 +408,13 @@ def test_a_pairs_file_is_reconciled_contrast_by_contrast() -> None:
 
 
 def test_outputs_are_reproducible_and_never_overwritten(tmp_path: Path) -> None:
-    _, files = intake.intake_files(FIXTURE, batch_id="synthetic", split_seed=7, sealed=lambda text: False)
-    _, again = intake.intake_files(FIXTURE, batch_id="synthetic", split_seed=7, sealed=lambda text: False)
+    _, files = intake.intake_files(FIXTURE, batch_id="synthetic", split_seed=7, stem=LATER_STEM, sealed=lambda text: False)
+    _, again = intake.intake_files(FIXTURE, batch_id="synthetic", split_seed=7, stem=LATER_STEM, sealed=lambda text: False)
     assert files == again and set(files) == set(intake.OUTPUT_NAMES)
     out = tmp_path / "packet"
     assert set(intake.write_outputs(out, files).values()) == {"written"}
     assert set(intake.write_outputs(out, files).values()) == {"unchanged"}
-    _, other = intake.intake_files(FIXTURE, batch_id="synthetic", split_seed=8, sealed=lambda text: False)
+    _, other = intake.intake_files(FIXTURE, batch_id="synthetic", split_seed=8, stem=LATER_STEM, sealed=lambda text: False)
     before = (out / "intake_manifest.json").read_bytes()
     with pytest.raises(Refusal) as refusal:
         intake.write_outputs(out, other)
@@ -428,12 +432,12 @@ def test_outputs_are_reproducible_and_never_overwritten(tmp_path: Path) -> None:
 
 def test_the_command_line_writes_three_files_and_exits_1_on_a_structural_error(tmp_path: Path, capsys) -> None:
     out = tmp_path / "out"
-    code = cli.main(["intake", "--batch", str(FIXTURE), "--batch-id", "synthetic", "--split-seed", "7", "--out", str(out)])
+    code = cli.main(["intake", "--batch", str(FIXTURE), "--batch-id", "synthetic", "--split-seed", "7", "--stem", LATER_STEM, "--out", str(out)])
     summary = json.loads(capsys.readouterr().out)
     assert code == 0 and summary["status"] == "intake" and set(summary["outputs"].values()) == {"written"}
     assert sorted(p.name for p in out.iterdir()) == sorted(intake.OUTPUT_NAMES)
     assert summary["output_sha256"]["intake_manifest.json"] == sha256_bytes((out / "intake_manifest.json").read_bytes())
-    assert cli.main(["intake", "--batch", str(FIXTURE), "--batch-id", "synthetic", "--split-seed", "7", "--out", str(out)]) == 0
+    assert cli.main(["intake", "--batch", str(FIXTURE), "--batch-id", "synthetic", "--split-seed", "7", "--stem", LATER_STEM, "--out", str(out)]) == 0
     assert set(json.loads(capsys.readouterr().out)["outputs"].values()) == {"unchanged"}
     broken = _batch()
     broken[0]["carrier_frame"] = "so I need to see the"
@@ -548,12 +552,52 @@ def test_source_verification_is_recorded_per_citation_and_says_nothing_about_fit
                              note="the source describes another population"))
     manifest = _run(source_checks=[check], concerns=[fit])
     verification = _family(manifest, "s-01")["sources"]["verification"]
-    assert verification["per_expression"][cited["expression"]] == "record_and_sentence_found"
+    assert {"expression": cited["expression"], "identifier": cited["pmid_or_doi"],
+            "status": "record_and_sentence_found"} in verification["per_citation"]
     assert "does not show that patients" in verification["means"]
     assert _family(manifest, "s-01")["concerns"]["open"] == 1                      # verified, and the fit concern stays open
     assert manifest["inventory"]["source_verification"]["record_and_sentence_found"] == 1
     assert "not_checked" in manifest["inventory"]["source_verification"]
     wrong_id = {**check, "entries": [{**check["entries"][0], "identifier": "PMID: 1"}]}   # a check of another citation
-    assert _family(_run(source_checks=[wrong_id]), "s-01")["sources"]["verification"]["per_expression"][
-        cited["expression"]] == "not_checked"
+    statuses = {c["expression"]: c["status"] for c in _family(_run(source_checks=[wrong_id]), "s-01")["sources"]["verification"]["per_citation"]}
+    assert statuses[cited["expression"]] == "not_checked"
+    twice = _batch()                                                                # one wording, two citations, one checked
+    second = {**cited, "pmid_or_doi": "PMID: 2", "source": "another placeholder source"}
+    twice[0]["everyday_sources"].append(second)
+    rows = [c for c in _family(_run(twice, source_checks=[check]), "s-01")["sources"]["verification"]["per_citation"]
+            if c["expression"] == cited["expression"]]
+    assert {(c["identifier"], c["status"]) for c in rows} == {
+        ("PMID: 2", "not_checked"), (cited["pmid_or_doi"], "record_and_sentence_found")} and len(rows) == 2
+    section = intake.render_packet(_run(twice, source_checks=[check]), twice).split("## s-02")[0]   # family s-01 only
+    packet_rows = [line for line in section.splitlines() if line.startswith(f"| {cited['expression']} |")]
+    assert len(packet_rows) == 2 and sum("not checked" in line for line in packet_rows) == 1
     assert "| Citation check |" in intake.render_packet(manifest, batch)
+
+
+def test_no_timing_claim_is_made_without_a_named_stem_or_under_an_unsigned_protocol() -> None:
+    for options in ({"split_seed": 7, "stem": None}, {"mechanistic_families": 1, "mechanistic_seed": 3, "stem": None}):
+        with pytest.raises(Refusal) as refusal:                                     # nothing is drawn for an unnamed stem
+            _run(**options)
+        assert refusal.value.code == "stem_required"
+    row = _run()["families"][0]
+    assert "stem_not_named" in row["eligibility"]["confirmatory"]["blocked_by"]
+    assert "stem_not_named" not in _run(stem=LATER_STEM)["families"][0]["eligibility"]["confirmatory"]["blocked_by"]
+    design = intake.load_design()
+    for status in ("draft, not signed", "not signed", "unsigned", "superseded", "Draft", "signedish"):
+        doc = {**design, "protocol": {**design["protocol"], "status": status}}
+        manifest = intake.run_intake(_batch(), batch_id="synthetic", batch_sha256=BATCH_SHA, source_ref="fixture", design=doc,
+                                     design_sha256="0" * 64, sealed=lambda text: False)
+        assert "protocol_not_signed" in manifest["families"][0]["eligibility"]["confirmatory"]["blocked_by"], status
+    for status in ("signed", "signed 2000-01-01 by a placeholder owner"):
+        doc = {**design, "protocol": {**design["protocol"], "status": status}}
+        manifest = intake.run_intake(_batch(), batch_id="synthetic", batch_sha256=BATCH_SHA, source_ref="fixture", design=doc,
+                                     design_sha256="0" * 64, sealed=lambda text: False)
+        assert "protocol_not_signed" not in manifest["families"][0]["eligibility"]["confirmatory"]["blocked_by"], status
+
+
+def test_the_manifest_records_the_validation_parameters_the_caller_set() -> None:
+    default, relaxed = _run(), _run(forbid="", max_words=60)
+    assert default["software_validation"]["parameters"] | {"note": ""} == {
+        "forbid": ",;-", "max_words": 40, "lexicon_supplied": False, "note": ""}
+    assert relaxed["software_validation"]["parameters"]["forbid"] == "" and relaxed["software_validation"]["parameters"]["max_words"] == 60
+    assert _run(lexicon={"a placeholder form"})["software_validation"]["parameters"]["lexicon_supplied"] is True

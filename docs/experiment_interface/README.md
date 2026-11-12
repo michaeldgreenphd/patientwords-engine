@@ -72,7 +72,7 @@ Added 2026-11-12. `intake` reads one authored batch of case families (the `famil
 of a draft round) and writes three files. It loads no model and reads no measurement.
 
 ```bash
-python -m scripts.experiments.cli intake --batch tests/fixtures/experiments/intake_families_synthetic.json --batch-id synthetic --split-seed 7 --no-write
+python -m scripts.experiments.cli intake --batch tests/fixtures/experiments/intake_families_synthetic.json --batch-id synthetic --stem placeholder_stem --split-seed 7 --no-write
 ```
 
 | Output | Holds |
@@ -111,8 +111,9 @@ pair; neither does one on the reviewer-only label. The packet prints every
 concern with its disposition; the review form lists the open ones.
 
 **Source verification and source fit.** `--source-check` (schema
-`patientwords.source-check/1`) records, per citation, that the cited record exists and
-contains the evidence sentence. That is verification. Whether patients in the family's
+`patientwords.source-check/1`) records, per citation (an expression with one identifier),
+that the cited record exists and contains the evidence sentence. A check of one citation
+does not count for another citation of the same wording. That is verification. Whether patients in the family's
 population use the expression is source fit, a judgement that verification never implies;
 it is recorded as a concern of kind `source_fit`.
 
@@ -152,7 +153,13 @@ A subset is not restored when one of its families is no longer an owner-kept, un
 discovery family (`subset_family_not_candidate`). For the same reason no family of a
 measured batch is reported as eligible for a confirmatory statement
 (`split_timing_not_verified`): eligibility is read from a manifest written before
-measurement. A concern is withdrawn only by whoever raised it. The mechanistic
+measurement. A split or a subset is assigned only for a named `--stem` (`stem_required`),
+and without a stem no family is reported as eligible (`stem_not_named`): the command has
+not looked for measurements. The stem is the caller's statement of where the batch's
+measurements land; the command does not check that statement. A protocol counts as signed
+only when its status begins with the word `signed`. The manifest records the validation
+parameters the caller set (`software_validation.parameters`). A concern is withdrawn only
+by whoever raised it. The mechanistic
 subset is a seeded draw from owner-kept, unflagged discovery families, so it is not
 outcome-selected, and its estimate includes the three controls per site.
 
