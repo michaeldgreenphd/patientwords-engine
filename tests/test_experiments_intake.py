@@ -247,12 +247,16 @@ def test_after_measurement_no_family_is_reported_as_eligible_for_a_confirmatory_
                                  design_sha256="0" * 64, sealed=lambda text: False, verdicts=[_verdicts()], reviews=[reviews],
                                  split_records=[record], stem=LATER_STEM, **extra)
     before, after = run(), run(root=measured_root)
-    plain = [r["family_id"] for r in before["families"] if not r["flags"]]
-    assert before["inventory"]["confirmatory_eligible"] == len(plain) > 0             # eligible while nothing is measured
+    plain = [r["family_id"] for r in before["families"] if not r["flags"] and r["split"] != "discovery"]
+    calibration = [r["family_id"] for r in before["families"] if not r["flags"] and r["split"] == "discovery"]
+    assert plain and calibration
+    assert before["inventory"]["confirmatory_eligible"] == len(plain)                 # held-out families, while nothing is measured
     assert after["inventory"]["confirmatory_eligible"] == 0
     for fid in plain:
         assert _family(before, fid)["eligibility"]["confirmatory"]["blocked_by"] == []
         assert _family(after, fid)["eligibility"]["confirmatory"]["blocked_by"] == ["split_timing_not_verified"]
+    for fid in calibration:                                                          # discovery families calibrate; never confirmatory
+        assert _family(before, fid)["eligibility"]["confirmatory"]["blocked_by"] == ["calibration_split"]
     assert "read from a manifest written before measurement" in _family(after, plain[0])["eligibility"]["confirmatory"]["applies_to"]
 
 
@@ -624,3 +628,27 @@ def test_the_manifest_records_the_validation_parameters_the_caller_set() -> None
         "forbid": ",;-", "max_words": 40, "lexicon_supplied": False, "note": ""}
     assert relaxed["software_validation"]["parameters"]["forbid"] == "" and relaxed["software_validation"]["parameters"]["max_words"] == 60
     assert _run(lexicon={"a placeholder form"})["software_validation"]["parameters"]["lexicon_supplied"] is True
+
+
+def test_several_reviews_of_one_role_are_combined_by_item_and_a_removal_is_never_overwritten() -> None:
+    basis = {r["family_id"]: r["review_basis_sha256"] for r in _run()["families"]}
+    first = _review("s-01", "clinician", basis["s-01"], items={"severity": "different"}, reviewer="reviewer one")
+    second = _review("s-01", "clinician", basis["s-01"], reviewer="reviewer two")              # every item 'same'
+    language = _review("s-01", "patient_language_reviewer", basis["s-01"])
+    for order in ([first, second, language], [second, first, language]):                         # input order does not matter
+        row = _family(_run(reviews=[{"schema": intake.REVIEWS_SCHEMA, "reviews": order}]), "s-01")["review"]
+        assert row["status"] == "removed_by_review" and row["clinician"]["status"] == "different"
+        assert row["clinician"]["items"]["severity"] == "different" and row["clinician"]["disagreement"] == ["severity"]
+        assert sorted(r["reviewer"] for r in row["clinician"]["reviewers"]) == ["reviewer one", "reviewer two"]
+    unsure = _review("s-02", "clinician", basis["s-02"], items={"timing": "cannot_judge"}, reviewer="reviewer one")
+    agree = _review("s-02", "clinician", basis["s-02"], reviewer="reviewer two")
+    row = _family(_run(reviews=[{"schema": intake.REVIEWS_SCHEMA, "reviews": [
+        agree, unsure, _review("s-02", "patient_language_reviewer", basis["s-02"])]}]), "s-02")["review"]
+    assert row["clinician"]["items"]["timing"] == "cannot_judge" and row["status"] == "domain_review_pending"
+    both = _family(_run(reviews=[{"schema": intake.REVIEWS_SCHEMA, "reviews": [
+        agree, _review("s-02", "clinician", basis["s-02"], reviewer="reviewer three"),
+        _review("s-02", "patient_language_reviewer", basis["s-02"])]}]), "s-02")["review"]
+    assert both["status"] == "reviewed" and both["clinician"]["disagreement"] == []
+    old = _review("s-03", "clinician", "f" * 64)                                                 # a stale row beside a current one
+    row = _family(_run(reviews=[{"schema": intake.REVIEWS_SCHEMA, "reviews": [old, _review("s-03", "clinician", basis["s-03"])]}]), "s-03")
+    assert row["review"]["clinician"]["status"] == "recorded"

@@ -256,6 +256,8 @@ def _domain_reviews(batch_ids: Mapping[str, str], docs: Sequence[Mapping[str, An
     values = set(form["values"])
     state = {fid: {role: {"status": "not_reviewed", "items": {item: None for item in items}}
                    for role, items in roles.items()} for fid in batch_ids}
+    current: dict[tuple[str, str], list[Mapping[str, Any]]] = collections.defaultdict(list)
+    stale: set[tuple[str, str]] = set()
     for doc in docs:
         require(isinstance(doc, dict) and doc.get("schema") == REVIEWS_SCHEMA and isinstance(doc.get("reviews"), list),
                 "invalid_reviews", f"Expected a {REVIEWS_SCHEMA} document with a reviews list")
@@ -272,15 +274,27 @@ def _domain_reviews(batch_ids: Mapping[str, str], docs: Sequence[Mapping[str, An
             if fid not in batch_ids:
                 continue
             if row.get("review_basis_sha256") != batch_ids[fid]:
-                state[fid][role] = {**state[fid][role], "status": "stale",
-                                    "detail": "the review names another version of the family's texts, reference facts "
-                                              "or care labels than the family now holds"}
+                stale.add((fid, role))
                 continue
-            merged = {item: items.get(item) for item in roles[role]}
-            done = all(v is not None for v in merged.values())
-            state[fid][role] = {"status": "different" if "different" in merged.values() else
-                                "recorded" if done else "incomplete",
-                                "items": merged, "reviewer": row["reviewer"], "date": row["date"]}
+            current[(fid, role)].append(row)
+    for fid, role in stale - set(current):
+        state[fid][role] = {**state[fid][role], "status": "stale",
+                            "detail": "the review names another version of the family's texts, reference facts "
+                                      "or care labels than the family now holds"}
+    for (fid, role), rows in current.items():
+        # Several reviewers of one role are combined item by item, never by input order: any 'different' stands,
+        # 'same' needs every reviewer who recorded the item to say 'same', and a disagreement that involves no
+        # 'different' is 'cannot_judge'.
+        merged: dict[str, Any] = {}
+        for item in roles[role]:
+            given = [row["items"].get(item) for row in rows if row["items"].get(item) is not None]
+            merged[item] = None if not given else "different" if "different" in given else \
+                "same" if set(given) == {"same"} else "cannot_judge"
+        done = all(v is not None for v in merged.values())
+        state[fid][role] = {"status": "different" if "different" in merged.values() else "recorded" if done else "incomplete",
+                            "items": merged, "reviewers": [{"reviewer": row["reviewer"], "date": row["date"]} for row in rows],
+                            "disagreement": sorted(item for item in roles[role]
+                                                   if len({row["items"].get(item) for row in rows} - {None}) > 1)}
     return state
 
 
@@ -725,6 +739,7 @@ def run_intake(batch: Any, *, batch_id: str, batch_sha256: str, source_ref: str,
             (f"owner_read_{owner[fid]['status']}", owner[fid]["status"] != "kept"),
             (f"exploratory_stratum:{register_stratum}", bool(flags)),
             ("split_unassigned", splits["per_family"][fid] is None),
+            ("calibration_split", splits["per_family"][fid] == SPLITS[0]),
             ("split_timing_not_verified", measured and splits["per_family"][fid] is not None),
             ("stem_not_named", stem is None),
             ("open_concern_on_register_pair:" + ",".join(on_pair), bool(on_pair))) if on]
@@ -747,7 +762,9 @@ def run_intake(batch: Any, *, batch_id: str, batch_sha256: str, source_ref: str,
                 "publication": {"membership": "public-display/1", "shareable": admissible,
                                 "labels_required": ["exploratory, hand-authored", f"review status: {review_status[fid]}"]},
                 "confirmatory": {"eligible": not blocked, "blocked_by": blocked,
-                                 "applies_to": "the register pair. A control with an open concern is listed in "
+                                 "applies_to": "the register pair of a held-out family. Discovery families calibrate "
+                                               "thresholds and are not part of a confirmatory statement "
+                                               "(calibration_split). A control with an open concern is listed in "
                                                "controls_with_open_concerns and does not block the pair. Without "
                                                "a named stem the command has not looked for measurements and "
                                                "reports no family as eligible. Once the "

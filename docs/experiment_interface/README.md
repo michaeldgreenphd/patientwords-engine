@@ -89,6 +89,9 @@ draft the owner has not agreed; the packet and the manifest repeat its status li
 exclude decision on a named version of the family. Clinician review and patient-language
 review come only from `--reviews` records whose `reviewer_kind` is `human`; anything else
 is refused (`not_a_review`). A family without both reviews is `domain_review_pending`.
+Several reviews of one role are combined item by item and never by input order: any
+`different` stands and removes the family, `same` needs every reviewer who recorded the
+item to say `same`, and the manifest lists the items they disagree on.
 
 **What a read or review is bound to.** The family's review basis
 (`review_basis_sha256`): its texts, reference facts, care levels (`right_care` and
@@ -130,7 +133,9 @@ families at different tiers end on different carrier phrases and target words.
 [open_results_policy.md](../open_results_policy.md): an admissible family's intact results
 are shareable under `public-display/1` whatever their effect, with their labels.
 `eligibility.confirmatory` lists what blocks a confirmatory statement
-(`protocol_not_signed`, a missing review, a flag, an unassigned split). The two are
+(`protocol_not_signed`, a missing review, a flag, an unassigned split, and
+`calibration_split` for a discovery family: the protocol makes its primary contrast on
+held-out families and uses discovery families for calibration only). The two are
 separate fields because an exploratory or null result is shared, not hidden.
 
 **Splits and the mechanistic subset.** A split is drawn per family (every wording of a
