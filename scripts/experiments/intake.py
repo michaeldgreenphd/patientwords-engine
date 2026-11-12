@@ -207,6 +207,14 @@ def _norm(value: str) -> str:
     return re.sub(r"\s+", " ", value.strip().casefold())
 
 
+def _family_list(value: Any) -> bool:
+    """The outer shape of a batch file read for comparison: a list of families with ids and, where present, texts."""
+    return isinstance(value, list) and all(
+        isinstance(f, dict) and text(f.get("family_id")) and isinstance(f.get("texts") or {}, dict)
+        and all(isinstance(t, str) for t in (f.get("texts") or {}).values())
+        and (f.get("condition") is None or isinstance(f["condition"], str)) for f in value)
+
+
 def review_basis(family: Mapping[str, Any]) -> dict[str, Any]:
     """What a reader or reviewer judges: the texts and the labels they are judged against. Sources, notes and the
     level rationale are not part of it."""
@@ -255,6 +263,7 @@ def _owner_reads(batch: Sequence[Mapping[str, Any]], verdict_docs: Sequence[Mapp
                     "pass that version with --read-batch so each family's texts can be compared")
             read_families = {f["family_id"]: f for f in read_batches[source_sha]}
         for row in doc["families"]:
+            require(isinstance(row, dict), "invalid_verdicts", "Each entry of a verdicts file's families list is an object")
             fid, verdict = row.get("family_id"), row.get("owner_verdict")
             if fid not in current:
                 continue
@@ -697,6 +706,19 @@ def run_intake(batch: Any, *, batch_id: str, batch_sha256: str, source_ref: str,
     content are returned in the manifest, never raised."""
     require(text(batch_id) and bool(SAFE_NAME.fullmatch(batch_id)), "invalid_input", "batch_id must be a short safe name")
     require(isinstance(batch, list) and bool(batch), "invalid_input", "A batch is a non-empty JSON list of families")
+    # Every other input is checked for its outer shape here, so a wrongly shaped file is a refusal and never an
+    # uncaught error further down.
+    for what, group in (("prior batch", prior_batches or {}), ("read batch", read_batches or {})):
+        for name, families in group.items():
+            require(_family_list(families), "invalid_input",
+                    f"{what} {str(name)[:12]}: expected a JSON list of families, each an object with a family_id "
+                    "and, if it has texts, an object of strings")
+    require(all(isinstance(doc, dict) for doc in verdicts), "invalid_verdicts", "A verdicts file is a JSON object")
+    require(all(isinstance(record, dict) and isinstance(record.get("split_assignment", record), dict)
+                for record in split_records), "invalid_split_record", "A split record is a JSON object")
+    require(pairs_file is None or isinstance(pairs_file, list), "invalid_input", "A pairs file is a JSON list of pairs")
+    require(previous_manifest is None or isinstance(previous_manifest, dict), "invalid_input",
+            "A previous manifest is a JSON object")
     require(stem is None or bool(SAFE_NAME.fullmatch(stem)), "invalid_input", "stem must be a short safe name")
     require(stem is not None or (split_seed is None and not mechanistic_families), "stem_required",
             "A split or a mechanistic subset is assigned for a named stem, so that this command can see whether "

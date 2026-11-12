@@ -927,6 +927,34 @@ def test_an_unreadable_batch_or_design_is_a_refusal_not_a_traceback(tmp_path: Pa
         assert json.loads(capsys.readouterr().out)["code"] == code
 
 
+def test_a_wrongly_shaped_or_missing_input_file_is_refused_for_every_input(tmp_path: Path, capsys) -> None:
+    """Each file argument is given a missing path, a directory, a list of numbers, a bare object and a number. None
+    may end in an uncaught error. A shape the command can account for (a pairs file whose rows carry no id, a
+    previous manifest that is not consulted, a lexicon with no entries) is read; every other one is refused."""
+    shapes = {"list": [1, 2], "object": {"a": 1}, "number": 7}
+    for name, value in shapes.items():
+        (tmp_path / f"{name}.json").write_text(json.dumps(value), encoding="utf-8")
+    accounted_for = {("--pairs-file", "list"), ("--previous-manifest", "object"), ("--lexicon", "object")}
+    base = ["intake", "--batch", str(FIXTURE), "--batch-id", "synthetic", "--no-write"]
+    flags = ("--verdicts", "--read-batch", "--reviews", "--concerns", "--source-check", "--split-record",
+             "--tokenization", "--previous-manifest", "--pairs-file", "--lexicon", "--prior-batch")
+    for flag in flags:
+        for shape in ("absent", "directory", *shapes):
+            path = tmp_path if shape == "directory" else tmp_path / f"{shape}.json"
+            code = cli.main(base + [flag, f"earlier={path}" if flag == "--prior-batch" else str(path)])
+            out = json.loads(capsys.readouterr().out)
+            if (flag, shape) in accounted_for:
+                assert code == 0 and out["status"] == "intake", (flag, shape)
+            else:
+                assert code == 2 and out["status"] == "refused", (flag, shape, out)
+                assert out["code"] == ("unreadable_input" if shape in ("absent", "directory") else out["code"])
+                assert out["code"].startswith(("invalid_", "unreadable_")), (flag, shape, out["code"])
+    row_not_object = dict(_verdicts(), families=[7])
+    with pytest.raises(Refusal) as refusal:
+        _run(verdicts=[row_not_object])
+    assert refusal.value.code == "invalid_verdicts"
+
+
 def test_one_prior_batch_label_names_one_file(tmp_path: Path, capsys) -> None:
     """Two --prior-batch arguments with one label would compare against only the second file while the manifest
     recorded both as inputs."""

@@ -174,7 +174,8 @@ def cmd_intake(args: argparse.Namespace) -> int:
     require(args.no_write or args.out is not None, "invalid_input", "Pass --out DIR, or --no-write")
     read_batches = {}
     for path in args.read_batch:
-        read_batches[sha256_bytes(path.read_bytes())] = _load(path, "read batch")
+        families = _load(path, "read batch")                   # refuses an unreadable path before its bytes are hashed
+        read_batches[file_record(path)["sha256"]] = families
     prior = {}
     for item in args.prior_batch:
         label, _, path = item.partition("=")
@@ -185,6 +186,11 @@ def cmd_intake(args: argparse.Namespace) -> int:
     lexicon = None
     if args.lexicon:
         doc = _load(args.lexicon, "lexicon")
+        require(isinstance(doc, dict) and all(
+            isinstance(doc.get(part) or [], list) and all(isinstance(e, dict) and isinstance(e.get("expression"), str)
+                                                          for e in doc.get(part) or [])
+            for part in ("core", "folk_meaning")), "invalid_input",
+            "A lexicon is a JSON object whose core and folk_meaning lists hold objects with an expression")
         lexicon = {e["expression"] for part in ("core", "folk_meaning") for e in doc.get(part) or []}
     manifest, files = intake_files(
         args.batch, batch_id=args.batch_id, source_ref=args.source_ref, design_path=args.design, root=args.root,

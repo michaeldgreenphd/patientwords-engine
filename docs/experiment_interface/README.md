@@ -199,6 +199,12 @@ concern id. Models are listed once each, by study id. A `--prior-batch` label na
 file; the same label twice refuses `invalid_input`. Earlier batches are compared in label
 order, so a text held by two of them is reported against the same one each time.
 
+**Unusable input files.** A file that cannot be read, is not JSON, or does not have the
+outer shape its argument expects is a refusal with exit 2 (`unreadable_input`,
+`invalid_input` or the input's own `invalid_…` code), for every file argument including
+`--batch` and `--design`. The command does not end in an uncaught error on a file it was
+given.
+
 **Reruns.** The same inputs give byte-identical outputs. An existing output with the same
 bytes is `unchanged`; with other bytes the command refuses `output_differs` and writes
 nothing. Output paths follow *Where output may go* below. Exit 1 means software
