@@ -1028,7 +1028,9 @@ def test_the_jspace_figure_stays_illustrative_and_matched_without_a_measured_fil
         for word in ("dyspepsia", "stomach’s on fire", "antacid", "ice cream"):
             assert word in static and word in shown
         assert static in _ax_names(view.page, "image")
-        # the fold for the exporter's note is the Technical page's alone, and is shown only under a measured figure
+        # the exporter's note (a fold of its own on the Technical page, a paragraph in the fold under the figure on
+        # the Methods page) is shown only under a measured figure: here it keeps its hidden attribute
+        assert view.page.evaluate("() => (note => note && note.hidden)(document.getElementById('jspace-note'))") is True
         assert view.page.is_hidden("#jspace-note") and view.errors == []
 
 
@@ -1058,9 +1060,17 @@ def _row(batch: str, index: int, model: str, clinical: int | None, patient: int 
             "tier_top_patient": patient, "flip_class": flip}
 
 
-def _tier_line(browser, base: str, scenarios: dict | None, urgency: dict | None, last: str | None) -> tuple[str, str]:
-    """The tier line and the vignette's label after both files have answered, with ``last`` held until the other
-    file has been drawn. A payload of ``None`` serves the committed file."""
+def _vignette_label(model: str, batch: str, pair: int, number: int) -> dict:
+    """The vignette's label for a pair: it names the pair by its number in the scenario series and links the
+    pair's record; the batch and the pair's index in it, which is how the page finds the pair, are its title."""
+    return {"text": f"live trace · {model} · scenario {number}", "title": f"batch {batch}, pair {pair}",
+            "record": f"../simulated-scenarios/scenario.html?sim={number}"}
+
+
+def _tier_line(browser, base: str, scenarios: dict | None, urgency: dict | None, last: str | None) -> tuple[str, dict]:
+    """The tier line and the vignette's label (its text, its title and the target of its link) after both files
+    have answered, with ``last`` held until the other file has been drawn. A payload of ``None`` serves the
+    committed file."""
     payloads = {"urgency": urgency, "scenarios": scenarios}
     patterns = {"urgency": URGENCY, "scenarios": SCENARIOS}
     answers = {patterns[name]: _json(body) for name, body in payloads.items() if body is not None}
@@ -1079,8 +1089,11 @@ def _tier_line(browser, base: str, scenarios: dict | None, urgency: dict | None,
             view.page.wait_for_function(check)
         assert view.errors == []
         # textContent, not the rendered text: the label is set in capitals by the stylesheet
-        return tuple(view.page.evaluate(
-            "() => ['vig-tier', 'vig-lab'].map(id => document.getElementById(id).textContent.trim())"))
+        return tuple(view.page.evaluate("""() => { const label = document.getElementById('vig-lab');
+            const link = label.querySelector('a');
+            return [document.getElementById('vig-tier').textContent.trim(),
+                    {text: label.textContent.trim(), title: label.getAttribute('title'),
+                     record: link ? link.getAttribute('href') : null}]; }"""))
 
 
 @pytest.mark.parametrize("last", [None, "urgency", "scenarios"])
@@ -1094,7 +1107,7 @@ def test_the_clinical_tier_line_does_not_depend_on_which_file_arrives_first(site
         _row(batch, index, model, 3, 2, "downgrade"),
         _row("another_batch", 2, model, 4, 1, "downgrade")]}
     line, label = _tier_line(browser, base, scenarios, urgency, last)
-    assert label.endswith(f"batch {batch} #{index}")
+    assert label == _vignette_label(model, batch, index, 280)
     assert line == "care-urgency tier of the top word: Tier three → Tier two (a downgrade)"
 
 
@@ -1111,7 +1124,7 @@ def test_a_clinical_fallback_pair_gets_its_own_tier_row_or_no_line(site, last) -
     shown = _row("fallback_batch", 7, model, 4, 1, "downgrade")
     urgency = {"vocabulary_status": "placeholder status", "tiers": TIERS, "rows": [*rows, shown]}
     line, label = _tier_line(browser, base, scenarios, urgency, last)
-    assert label.endswith("batch fallback_batch #7")
+    assert label == _vignette_label(model, "fallback_batch", 7, 3)
     assert line == "care-urgency tier of the top word: Tier four → Tier one (a downgrade)"
     # the pair shown has no downgrade of its own, or no row at all: no line, whatever the preferred pair's row says
     for own in ([_row("fallback_batch", 7, model, 2, 2, None)], []):
@@ -1130,7 +1143,7 @@ def test_the_clinical_tier_line_is_the_same_in_either_order_with_the_committed_f
     batch, index, model = _clinical_constants()
     rows = _fixture("urgency_shift.json")["rows"]
     row = next((r for r in rows if (r["batch"], r["index"], r["model"]) == (batch, index, model)), None)
-    if label.endswith(f"batch {batch} #{index}") and row and row.get("flip_class") == "downgrade":
+    if label["title"] == f"batch {batch}, pair {index}" and row and row.get("flip_class") == "downgrade":
         assert line.startswith("care-urgency tier of the top word: ") and line.endswith("(a downgrade)")
 
 
