@@ -2,7 +2,7 @@
 
 Source: draft/antigravity-scenarios-20261107@d4b27148:drafts/antigravity_scenarios_20261107/round9_20261110/families.json (SHA-256 `d5e347fd46c48343bf6b8dbbca89461b4261a69247d2747893929b1c283f67f2`).
 
-Design rules: `data/experiments/intake_design.v1.json` (`06ab88fe3ffe`). Status of those rules: draft, 2026-11-12: proposed by the batch-intake change; not agreed. The owner agrees it by a commit that changes this line.
+Design rules: `data/experiments/intake_design.v1.json` (`52fae93517fb`). Status of those rules: draft, 2026-11-12: proposed by the batch-intake change; not agreed. The owner agrees it by a commit that changes this line.
 
 What has and has not been reviewed:
 

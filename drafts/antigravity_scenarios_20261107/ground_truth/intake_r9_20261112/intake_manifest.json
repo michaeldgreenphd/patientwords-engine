@@ -16,11 +16,26 @@
       "manipulated_dimension": "register only",
       "status": "draft, not signed"
     },
-    "sha256": "06ab88fe3ffe7bf98016d06250c738d8cef54d713e10f2b5af65211bf8b48ead",
+    "sha256": "52fae93517fb8cb6228307bb79574506c73f42e4e6856d1f52e9e057fe065566",
     "status": "draft, 2026-11-12: proposed by the batch-intake change; not agreed. The owner agrees it by a commit that changes this line."
   },
   "eligibility_rules": {
-    "confirmatory": "a family's register contrast can enter a confirmatory statement only when the protocol is signed, the family has both reviews, it has no family flag, its split was assigned before measurement, and software validation passed",
+    "confirmatory": "A held-out family's register contrast can enter a confirmatory statement only when none of the blockers in confirmatory_blockers applies. The protocol draft names the signed protocol, the two reviews, the single manipulated dimension and the split made before measurement. The owner's keep, the open-concern rule and the named stem are criteria this design adds; the owner agrees or removes them with the rest of this file.",
+    "confirmatory_blockers": {
+      "calibration_split": "the family is in discovery, which calibrates thresholds and is never part of a confirmatory statement",
+      "clinician_review_missing": "no clinician has recorded all six dimensions on this version of the family",
+      "domain_review_not_passed": "the rubric's status rule does not give 'reviewed': the clinician did not record 'same' on all six dimensions (a 'cannot_judge' is not 'same'), or a review is missing",
+      "exploratory_stratum": "the family has a flag (a dialect form, or a carrier with no earlier measurement), so its register contrast changes more than register",
+      "open_concern_on_register_pair": "an open concern applies to the family or to its register contrast. Added by this design",
+      "owner_read": "the owner has not kept this version of the family (not_read, excluded or stale). Added by this design; the owner's read is not a domain review and does not replace one",
+      "patient_language_review_missing": "no patient-language reviewer has recorded both items on this version of the family",
+      "protocol_not_signed": "the protocol's status does not begin with the word 'signed'",
+      "removed_by_review": "a reviewer recorded 'different' on an item",
+      "software_validation_failed": "the family has a structural error",
+      "split_timing_not_verified": "the stem has a run directory, so the command cannot verify that the split was recorded first",
+      "split_unassigned": "the family has no split",
+      "stem_not_named": "no stem was named, so the command has not looked for measurements. Added by this design"
+    },
     "publication": "docs/open_results_policy.md: an intact result of a hand-authored family is shared under public-display/1 whatever its effect, with its evidence class and review status shown. Publication does not need the reviews; it needs the labels."
   },
   "endpoint": {
@@ -353,12 +368,14 @@
       ],
       "eligibility": {
         "confirmatory": {
-          "applies_to": "the register pair. A control with an open concern is listed in controls_with_open_concerns and does not block the pair.",
+          "applies_to": "the register pair of a held-out family. Discovery families calibrate thresholds and are not part of a confirmatory statement (calibration_split). A control with an open concern is listed in controls_with_open_concerns and does not block the pair. Without a named stem the command has not looked for measurements and reports no family as eligible. Once the batch has measurements this command cannot verify that a split was recorded first, so it reports no family as eligible: eligibility is read from a manifest written before measurement.",
           "blocked_by": [
             "protocol_not_signed",
             "clinician_review_missing",
             "patient_language_review_missing",
+            "domain_review_not_passed",
             "exploratory_stratum:register_with_dialect",
+            "calibration_split",
             "open_concern_on_register_pair:r9-01-c1"
           ],
           "controls_with_open_concerns": {
@@ -427,12 +444,28 @@
             "not_checked": 4
           },
           "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
-          "per_expression": {
-            "a brief blackout": "not_checked",
-            "a sinking heart in my chest": "not_checked",
-            "briefly blacking out": "not_checked",
-            "my heart sinking in my chest": "not_checked"
-          }
+          "per_citation": [
+            {
+              "expression": "my heart sinking in my chest",
+              "identifier": "PMID: 2756440; DOI: 10.1016/0277-9536(89)90202-5",
+              "status": "not_checked"
+            },
+            {
+              "expression": "a sinking heart in my chest",
+              "identifier": "PMID: 2756440; DOI: 10.1016/0277-9536(89)90202-5",
+              "status": "not_checked"
+            },
+            {
+              "expression": "briefly blacking out",
+              "identifier": "https://en.wiktionary.org/wiki/blackout",
+              "status": "not_checked"
+            },
+            {
+              "expression": "a brief blackout",
+              "identifier": "https://en.wiktionary.org/wiki/blackout",
+              "status": "not_checked"
+            }
+          ]
         },
         "with_evidence_sentence": 0
       },
@@ -577,11 +610,12 @@
       ],
       "eligibility": {
         "confirmatory": {
-          "applies_to": "the register pair. A control with an open concern is listed in controls_with_open_concerns and does not block the pair.",
+          "applies_to": "the register pair of a held-out family. Discovery families calibrate thresholds and are not part of a confirmatory statement (calibration_split). A control with an open concern is listed in controls_with_open_concerns and does not block the pair. Without a named stem the command has not looked for measurements and reports no family as eligible. Once the batch has measurements this command cannot verify that a split was recorded first, so it reports no family as eligible: eligibility is read from a manifest written before measurement.",
           "blocked_by": [
             "protocol_not_signed",
             "clinician_review_missing",
             "patient_language_review_missing",
+            "domain_review_not_passed",
             "exploratory_stratum:register_with_dialect"
           ],
           "controls_with_open_concerns": {},
@@ -644,10 +678,18 @@
             "not_checked": 2
           },
           "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
-          "per_expression": {
-            "a funny turn": "not_checked",
-            "the left side of her face drooped and speech slurred": "not_checked"
-          }
+          "per_citation": [
+            {
+              "expression": "a funny turn",
+              "identifier": "PMID: 31297515; DOI: 10.1093/ageing/afz086",
+              "status": "not_checked"
+            },
+            {
+              "expression": "the left side of her face drooped and speech slurred",
+              "identifier": "PMID: 25455907; DOI: 10.1016/j.annemergmed.2014.10.018",
+              "status": "not_checked"
+            }
+          ]
         },
         "with_evidence_sentence": 0
       },
@@ -804,11 +846,12 @@
       ],
       "eligibility": {
         "confirmatory": {
-          "applies_to": "the register pair. A control with an open concern is listed in controls_with_open_concerns and does not block the pair.",
+          "applies_to": "the register pair of a held-out family. Discovery families calibrate thresholds and are not part of a confirmatory statement (calibration_split). A control with an open concern is listed in controls_with_open_concerns and does not block the pair. Without a named stem the command has not looked for measurements and reports no family as eligible. Once the batch has measurements this command cannot verify that a split was recorded first, so it reports no family as eligible: eligibility is read from a manifest written before measurement.",
           "blocked_by": [
             "protocol_not_signed",
             "clinician_review_missing",
-            "patient_language_review_missing"
+            "patient_language_review_missing",
+            "domain_review_not_passed"
           ],
           "controls_with_open_concerns": {
             "r9-03-chg": [
@@ -873,11 +916,23 @@
             "not_checked": 3
           },
           "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
-          "per_expression": {
-            "a bad constant headache": "not_checked",
-            "dark spots in my vision": "not_checked",
-            "swelling in both ankles": "not_checked"
-          }
+          "per_citation": [
+            {
+              "expression": "swelling in both ankles",
+              "identifier": "PMID: 33780789; DOI: 10.1016/j.midw.2021.102992",
+              "status": "not_checked"
+            },
+            {
+              "expression": "a bad constant headache",
+              "identifier": "PMID: 33780789; DOI: 10.1016/j.midw.2021.102992",
+              "status": "not_checked"
+            },
+            {
+              "expression": "dark spots in my vision",
+              "identifier": "PMID: 33780789; DOI: 10.1016/j.midw.2021.102992",
+              "status": "not_checked"
+            }
+          ]
         },
         "with_evidence_sentence": 0
       },
@@ -1034,11 +1089,13 @@
       ],
       "eligibility": {
         "confirmatory": {
-          "applies_to": "the register pair. A control with an open concern is listed in controls_with_open_concerns and does not block the pair.",
+          "applies_to": "the register pair of a held-out family. Discovery families calibrate thresholds and are not part of a confirmatory statement (calibration_split). A control with an open concern is listed in controls_with_open_concerns and does not block the pair. Without a named stem the command has not looked for measurements and reports no family as eligible. Once the batch has measurements this command cannot verify that a split was recorded first, so it reports no family as eligible: eligibility is read from a manifest written before measurement.",
           "blocked_by": [
             "protocol_not_signed",
             "clinician_review_missing",
-            "patient_language_review_missing"
+            "patient_language_review_missing",
+            "domain_review_not_passed",
+            "calibration_split"
           ],
           "controls_with_open_concerns": {
             "r9-04-chg": [
@@ -1103,10 +1160,18 @@
             "not_checked": 2
           },
           "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
-          "per_expression": {
-            "hard breathing": "not_checked",
-            "trouble breathing": "not_checked"
-          }
+          "per_citation": [
+            {
+              "expression": "hard breathing",
+              "identifier": "PMID: 33457588; DOI: 10.1177/2374373520924526",
+              "status": "not_checked"
+            },
+            {
+              "expression": "trouble breathing",
+              "identifier": "PMID: 33457588; DOI: 10.1177/2374373520924526",
+              "status": "not_checked"
+            }
+          ]
         },
         "with_evidence_sentence": 0
       },
@@ -1285,12 +1350,14 @@
       ],
       "eligibility": {
         "confirmatory": {
-          "applies_to": "the register pair. A control with an open concern is listed in controls_with_open_concerns and does not block the pair.",
+          "applies_to": "the register pair of a held-out family. Discovery families calibrate thresholds and are not part of a confirmatory statement (calibration_split). A control with an open concern is listed in controls_with_open_concerns and does not block the pair. Without a named stem the command has not looked for measurements and reports no family as eligible. Once the batch has measurements this command cannot verify that a split was recorded first, so it reports no family as eligible: eligibility is read from a manifest written before measurement.",
           "blocked_by": [
             "protocol_not_signed",
             "clinician_review_missing",
             "patient_language_review_missing",
-            "exploratory_stratum:register_with_dialect"
+            "domain_review_not_passed",
+            "exploratory_stratum:register_with_dialect",
+            "calibration_split"
           ],
           "controls_with_open_concerns": {},
           "eligible": false
@@ -1354,10 +1421,18 @@
             "not_checked": 2
           },
           "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
-          "per_expression": {
-            "can't catch my breath": "not_checked",
-            "short winded": "not_checked"
-          }
+          "per_citation": [
+            {
+              "expression": "short winded",
+              "identifier": "https://en.wiktionary.org/wiki/short-winded",
+              "status": "not_checked"
+            },
+            {
+              "expression": "can't catch my breath",
+              "identifier": "PMID: 39382247; DOI: 10.1080/02770903.2024.2414351",
+              "status": "not_checked"
+            }
+          ]
         },
         "with_evidence_sentence": 0
       },
@@ -1520,12 +1595,14 @@
       ],
       "eligibility": {
         "confirmatory": {
-          "applies_to": "the register pair. A control with an open concern is listed in controls_with_open_concerns and does not block the pair.",
+          "applies_to": "the register pair of a held-out family. Discovery families calibrate thresholds and are not part of a confirmatory statement (calibration_split). A control with an open concern is listed in controls_with_open_concerns and does not block the pair. Without a named stem the command has not looked for measurements and reports no family as eligible. Once the batch has measurements this command cannot verify that a split was recorded first, so it reports no family as eligible: eligibility is read from a manifest written before measurement.",
           "blocked_by": [
             "protocol_not_signed",
             "clinician_review_missing",
             "patient_language_review_missing",
-            "exploratory_stratum:register_with_dialect"
+            "domain_review_not_passed",
+            "exploratory_stratum:register_with_dialect",
+            "calibration_split"
           ],
           "controls_with_open_concerns": {},
           "eligible": false
@@ -1589,13 +1666,33 @@
             "not_checked": 5
           },
           "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
-          "per_expression": {
-            "a dizzy spell": "not_checked",
-            "a sudden dizzy spell": "not_checked",
-            "falling out": "not_checked",
-            "fell out": "not_checked",
-            "having fits": "not_checked"
-          }
+          "per_citation": [
+            {
+              "expression": "a sudden dizzy spell",
+              "identifier": "https://en.wiktionary.org/wiki/spell",
+              "status": "not_checked"
+            },
+            {
+              "expression": "a dizzy spell",
+              "identifier": "https://en.wiktionary.org/wiki/spell",
+              "status": "not_checked"
+            },
+            {
+              "expression": "fell out",
+              "identifier": "https://en.wiktionary.org/wiki/fall_out",
+              "status": "not_checked"
+            },
+            {
+              "expression": "falling out",
+              "identifier": "PMID: 35370146; DOI: 10.1353/bhm.2022.0003",
+              "status": "not_checked"
+            },
+            {
+              "expression": "having fits",
+              "identifier": "PMID: 23425044; DOI: 10.1111/ane.12096",
+              "status": "not_checked"
+            }
+          ]
         },
         "with_evidence_sentence": 0
       },
@@ -1755,11 +1852,12 @@
       ],
       "eligibility": {
         "confirmatory": {
-          "applies_to": "the register pair. A control with an open concern is listed in controls_with_open_concerns and does not block the pair.",
+          "applies_to": "the register pair of a held-out family. Discovery families calibrate thresholds and are not part of a confirmatory statement (calibration_split). A control with an open concern is listed in controls_with_open_concerns and does not block the pair. Without a named stem the command has not looked for measurements and reports no family as eligible. Once the batch has measurements this command cannot verify that a split was recorded first, so it reports no family as eligible: eligibility is read from a manifest written before measurement.",
           "blocked_by": [
             "protocol_not_signed",
             "clinician_review_missing",
-            "patient_language_review_missing"
+            "patient_language_review_missing",
+            "domain_review_not_passed"
           ],
           "controls_with_open_concerns": {
             "r9-07-chg": [
@@ -1824,11 +1922,23 @@
             "not_checked": 3
           },
           "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
-          "per_expression": {
-            "constant toilet trips": "not_checked",
-            "extreme thirst": "not_checked",
-            "frequent trips to the toilet": "not_checked"
-          }
+          "per_citation": [
+            {
+              "expression": "extreme thirst",
+              "identifier": "PMID: 24552497; DOI: 10.1111/pedi.12124",
+              "status": "not_checked"
+            },
+            {
+              "expression": "constant toilet trips",
+              "identifier": "PMID: 24552497; DOI: 10.1111/pedi.12124",
+              "status": "not_checked"
+            },
+            {
+              "expression": "frequent trips to the toilet",
+              "identifier": "PMID: 24552497; DOI: 10.1111/pedi.12124",
+              "status": "not_checked"
+            }
+          ]
         },
         "with_evidence_sentence": 0
       },
@@ -1965,11 +2075,12 @@
       ],
       "eligibility": {
         "confirmatory": {
-          "applies_to": "the register pair. A control with an open concern is listed in controls_with_open_concerns and does not block the pair.",
+          "applies_to": "the register pair of a held-out family. Discovery families calibrate thresholds and are not part of a confirmatory statement (calibration_split). A control with an open concern is listed in controls_with_open_concerns and does not block the pair. Without a named stem the command has not looked for measurements and reports no family as eligible. Once the batch has measurements this command cannot verify that a split was recorded first, so it reports no family as eligible: eligibility is read from a manifest written before measurement.",
           "blocked_by": [
             "protocol_not_signed",
             "clinician_review_missing",
-            "patient_language_review_missing"
+            "patient_language_review_missing",
+            "domain_review_not_passed"
           ],
           "controls_with_open_concerns": {},
           "eligible": false
@@ -2030,11 +2141,23 @@
             "not_checked": 3
           },
           "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
-          "per_expression": {
-            "itching and breaking out in hives": "not_checked",
-            "my throat swelled up": "not_checked",
-            "trouble breathing": "not_checked"
-          }
+          "per_citation": [
+            {
+              "expression": "itching and breaking out in hives",
+              "identifier": "PMID: 40486694; DOI: 10.1016/j.jacig.2025.100482",
+              "status": "not_checked"
+            },
+            {
+              "expression": "my throat swelled up",
+              "identifier": "PMID: 40486694; DOI: 10.1016/j.jacig.2025.100482",
+              "status": "not_checked"
+            },
+            {
+              "expression": "trouble breathing",
+              "identifier": "PMID: 40486694; DOI: 10.1016/j.jacig.2025.100482",
+              "status": "not_checked"
+            }
+          ]
         },
         "with_evidence_sentence": 0
       },
@@ -2213,11 +2336,12 @@
       ],
       "eligibility": {
         "confirmatory": {
-          "applies_to": "the register pair. A control with an open concern is listed in controls_with_open_concerns and does not block the pair.",
+          "applies_to": "the register pair of a held-out family. Discovery families calibrate thresholds and are not part of a confirmatory statement (calibration_split). A control with an open concern is listed in controls_with_open_concerns and does not block the pair. Without a named stem the command has not looked for measurements and reports no family as eligible. Once the batch has measurements this command cannot verify that a split was recorded first, so it reports no family as eligible: eligibility is read from a manifest written before measurement.",
           "blocked_by": [
             "protocol_not_signed",
             "clinician_review_missing",
-            "patient_language_review_missing"
+            "patient_language_review_missing",
+            "domain_review_not_passed"
           ],
           "controls_with_open_concerns": {},
           "eligible": false
@@ -2278,10 +2402,18 @@
             "not_checked": 2
           },
           "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
-          "per_expression": {
-            "an intense throbbing ache": "not_checked",
-            "throbbing pain": "not_checked"
-          }
+          "per_citation": [
+            {
+              "expression": "throbbing pain",
+              "identifier": "PMID: 17436976; DOI: 10.1111/j.1752-7325.2007.00005.x",
+              "status": "not_checked"
+            },
+            {
+              "expression": "an intense throbbing ache",
+              "identifier": "PMID: 17436976; DOI: 10.1111/j.1752-7325.2007.00005.x",
+              "status": "not_checked"
+            }
+          ]
         },
         "with_evidence_sentence": 0
       },
@@ -2488,11 +2620,12 @@
       ],
       "eligibility": {
         "confirmatory": {
-          "applies_to": "the register pair. A control with an open concern is listed in controls_with_open_concerns and does not block the pair.",
+          "applies_to": "the register pair of a held-out family. Discovery families calibrate thresholds and are not part of a confirmatory statement (calibration_split). A control with an open concern is listed in controls_with_open_concerns and does not block the pair. Without a named stem the command has not looked for measurements and reports no family as eligible. Once the batch has measurements this command cannot verify that a split was recorded first, so it reports no family as eligible: eligibility is read from a manifest written before measurement.",
           "blocked_by": [
             "protocol_not_signed",
             "clinician_review_missing",
-            "patient_language_review_missing"
+            "patient_language_review_missing",
+            "domain_review_not_passed"
           ],
           "controls_with_open_concerns": {
             "r9-10-chg": [
@@ -2557,10 +2690,18 @@
             "not_checked": 2
           },
           "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
-          "per_expression": {
-            "a dark flat mole": "not_checked",
-            "jagged edges": "not_checked"
-          }
+          "per_citation": [
+            {
+              "expression": "a dark flat mole",
+              "identifier": "PMID: 25052174; DOI: 10.1136/bmjopen-2014-005566",
+              "status": "not_checked"
+            },
+            {
+              "expression": "jagged edges",
+              "identifier": "PMID: 25052174; DOI: 10.1136/bmjopen-2014-005566",
+              "status": "not_checked"
+            }
+          ]
         },
         "with_evidence_sentence": 0
       },
@@ -2708,11 +2849,13 @@
       ],
       "eligibility": {
         "confirmatory": {
-          "applies_to": "the register pair. A control with an open concern is listed in controls_with_open_concerns and does not block the pair.",
+          "applies_to": "the register pair of a held-out family. Discovery families calibrate thresholds and are not part of a confirmatory statement (calibration_split). A control with an open concern is listed in controls_with_open_concerns and does not block the pair. Without a named stem the command has not looked for measurements and reports no family as eligible. Once the batch has measurements this command cannot verify that a split was recorded first, so it reports no family as eligible: eligibility is read from a manifest written before measurement.",
           "blocked_by": [
             "protocol_not_signed",
             "clinician_review_missing",
-            "patient_language_review_missing"
+            "patient_language_review_missing",
+            "domain_review_not_passed",
+            "calibration_split"
           ],
           "controls_with_open_concerns": {},
           "eligible": false
@@ -2773,10 +2916,18 @@
             "not_checked": 2
           },
           "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
-          "per_expression": {
-            "fear of losing control": "not_checked",
-            "racing heart": "not_checked"
-          }
+          "per_citation": [
+            {
+              "expression": "racing heart",
+              "identifier": "PMID: 35668509; DOI: 10.1186/s40359-022-00849-x",
+              "status": "not_checked"
+            },
+            {
+              "expression": "fear of losing control",
+              "identifier": "PMID: 35668509; DOI: 10.1186/s40359-022-00849-x",
+              "status": "not_checked"
+            }
+          ]
         },
         "with_evidence_sentence": 0
       },
@@ -2913,11 +3064,13 @@
       ],
       "eligibility": {
         "confirmatory": {
-          "applies_to": "the register pair. A control with an open concern is listed in controls_with_open_concerns and does not block the pair.",
+          "applies_to": "the register pair of a held-out family. Discovery families calibrate thresholds and are not part of a confirmatory statement (calibration_split). A control with an open concern is listed in controls_with_open_concerns and does not block the pair. Without a named stem the command has not looked for measurements and reports no family as eligible. Once the batch has measurements this command cannot verify that a split was recorded first, so it reports no family as eligible: eligibility is read from a manifest written before measurement.",
           "blocked_by": [
             "protocol_not_signed",
             "clinician_review_missing",
-            "patient_language_review_missing"
+            "patient_language_review_missing",
+            "domain_review_not_passed",
+            "calibration_split"
           ],
           "controls_with_open_concerns": {},
           "eligible": false
@@ -2978,11 +3131,23 @@
             "not_checked": 3
           },
           "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
-          "per_expression": {
-            "loosen up": "not_checked",
-            "stiff": "not_checked",
-            "swollen painful knuckles on both hands": "not_checked"
-          }
+          "per_citation": [
+            {
+              "expression": "swollen painful knuckles on both hands",
+              "identifier": "PMID: 24729397; DOI: 10.1093/rheumatology/keu159",
+              "status": "not_checked"
+            },
+            {
+              "expression": "stiff",
+              "identifier": "PMID: 24729397; DOI: 10.1093/rheumatology/keu159",
+              "status": "not_checked"
+            },
+            {
+              "expression": "loosen up",
+              "identifier": "PMID: 24729397; DOI: 10.1093/rheumatology/keu159",
+              "status": "not_checked"
+            }
+          ]
         },
         "with_evidence_sentence": 0
       },
@@ -3161,11 +3326,13 @@
       ],
       "eligibility": {
         "confirmatory": {
-          "applies_to": "the register pair. A control with an open concern is listed in controls_with_open_concerns and does not block the pair.",
+          "applies_to": "the register pair of a held-out family. Discovery families calibrate thresholds and are not part of a confirmatory statement (calibration_split). A control with an open concern is listed in controls_with_open_concerns and does not block the pair. Without a named stem the command has not looked for measurements and reports no family as eligible. Once the batch has measurements this command cannot verify that a split was recorded first, so it reports no family as eligible: eligibility is read from a manifest written before measurement.",
           "blocked_by": [
             "protocol_not_signed",
             "clinician_review_missing",
-            "patient_language_review_missing"
+            "patient_language_review_missing",
+            "domain_review_not_passed",
+            "calibration_split"
           ],
           "controls_with_open_concerns": {},
           "eligible": false
@@ -3226,10 +3393,18 @@
             "not_checked": 2
           },
           "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
-          "per_expression": {
-            "burning when I pee": "not_checked",
-            "stinging and burning when I pee": "not_checked"
-          }
+          "per_citation": [
+            {
+              "expression": "burning when I pee",
+              "identifier": "PMID: 20139217; DOI: 10.1136/bmj.c279",
+              "status": "not_checked"
+            },
+            {
+              "expression": "stinging and burning when I pee",
+              "identifier": "PMID: 20139217; DOI: 10.1136/bmj.c279",
+              "status": "not_checked"
+            }
+          ]
         },
         "with_evidence_sentence": 0
       },
@@ -3416,11 +3591,12 @@
       ],
       "eligibility": {
         "confirmatory": {
-          "applies_to": "the register pair. A control with an open concern is listed in controls_with_open_concerns and does not block the pair.",
+          "applies_to": "the register pair of a held-out family. Discovery families calibrate thresholds and are not part of a confirmatory statement (calibration_split). A control with an open concern is listed in controls_with_open_concerns and does not block the pair. Without a named stem the command has not looked for measurements and reports no family as eligible. Once the batch has measurements this command cannot verify that a split was recorded first, so it reports no family as eligible: eligibility is read from a manifest written before measurement.",
           "blocked_by": [
             "protocol_not_signed",
             "clinician_review_missing",
             "patient_language_review_missing",
+            "domain_review_not_passed",
             "owner_read_stale"
           ],
           "controls_with_open_concerns": {},
@@ -3490,10 +3666,18 @@
             "not_checked": 2
           },
           "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
-          "per_expression": {
-            "ear pulling": "not_checked",
-            "pulling her right ear": "not_checked"
-          }
+          "per_citation": [
+            {
+              "expression": "ear pulling",
+              "identifier": "PMID: 35606702; DOI: 10.1186/s12875-022-01737-4",
+              "status": "not_checked"
+            },
+            {
+              "expression": "pulling her right ear",
+              "identifier": "PMID: 35606702; DOI: 10.1186/s12875-022-01737-4",
+              "status": "not_checked"
+            }
+          ]
         },
         "with_evidence_sentence": 0
       },
@@ -3638,12 +3822,14 @@
       ],
       "eligibility": {
         "confirmatory": {
-          "applies_to": "the register pair. A control with an open concern is listed in controls_with_open_concerns and does not block the pair.",
+          "applies_to": "the register pair of a held-out family. Discovery families calibrate thresholds and are not part of a confirmatory statement (calibration_split). A control with an open concern is listed in controls_with_open_concerns and does not block the pair. Without a named stem the command has not looked for measurements and reports no family as eligible. Once the batch has measurements this command cannot verify that a split was recorded first, so it reports no family as eligible: eligibility is read from a manifest written before measurement.",
           "blocked_by": [
             "protocol_not_signed",
             "clinician_review_missing",
             "patient_language_review_missing",
-            "exploratory_stratum:register_with_dialect"
+            "domain_review_not_passed",
+            "exploratory_stratum:register_with_dialect",
+            "calibration_split"
           ],
           "controls_with_open_concerns": {},
           "eligible": false
@@ -3706,9 +3892,13 @@
             "not_checked": 1
           },
           "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
-          "per_expression": {
-            "loose motions": "not_checked"
-          }
+          "per_citation": [
+            {
+              "expression": "loose motions",
+              "identifier": "PMID: 39686534; DOI: 10.12659/AJCR.946133",
+              "status": "not_checked"
+            }
+          ]
         },
         "with_evidence_sentence": 0
       },
@@ -3863,11 +4053,12 @@
       ],
       "eligibility": {
         "confirmatory": {
-          "applies_to": "the register pair. A control with an open concern is listed in controls_with_open_concerns and does not block the pair.",
+          "applies_to": "the register pair of a held-out family. Discovery families calibrate thresholds and are not part of a confirmatory statement (calibration_split). A control with an open concern is listed in controls_with_open_concerns and does not block the pair. Without a named stem the command has not looked for measurements and reports no family as eligible. Once the batch has measurements this command cannot verify that a split was recorded first, so it reports no family as eligible: eligibility is read from a manifest written before measurement.",
           "blocked_by": [
             "protocol_not_signed",
             "clinician_review_missing",
             "patient_language_review_missing",
+            "domain_review_not_passed",
             "open_concern_on_register_pair:r9-16-c1"
           ],
           "controls_with_open_concerns": {},
@@ -3929,12 +4120,28 @@
             "not_checked": 4
           },
           "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
-          "per_expression": {
-            "burning in my chest after meals": "not_checked",
-            "burning rises in my chest after eating": "not_checked",
-            "sour throat acid": "not_checked",
-            "throat acid": "not_checked"
-          }
+          "per_citation": [
+            {
+              "expression": "burning in my chest after meals",
+              "identifier": "PMID: 18334869; DOI: 10.1097/MEG.0b013e3282f2a5bd",
+              "status": "not_checked"
+            },
+            {
+              "expression": "burning rises in my chest after eating",
+              "identifier": "PMID: 18334869; DOI: 10.1097/MEG.0b013e3282f2a5bd",
+              "status": "not_checked"
+            },
+            {
+              "expression": "throat acid",
+              "identifier": "PMID: 18334869; DOI: 10.1097/MEG.0b013e3282f2a5bd",
+              "status": "not_checked"
+            },
+            {
+              "expression": "sour throat acid",
+              "identifier": "PMID: 18334869; DOI: 10.1097/MEG.0b013e3282f2a5bd",
+              "status": "not_checked"
+            }
+          ]
         },
         "with_evidence_sentence": 0
       },
@@ -4152,7 +4359,10 @@
       "r9-14-qc",
       "r9-14-reg"
     ],
+    "clean": true,
+    "clean_means": "No row has a repeated or missing id and no contrast differs from the batch. Absent contrasts and rows of other batches are listed, not judged.",
     "differs": [],
+    "duplicate_ids": {},
     "identical": 70,
     "index_of": {
       "r9-01-chg": 4,
@@ -4228,7 +4438,8 @@
     },
     "not_in_this_batch": [],
     "pairs": 70,
-    "pairs_file": "agscen_r9_pairs.json"
+    "pairs_file": "agscen_r9_pairs.json",
+    "rows_without_id": []
   },
   "measurements": {
     "existing_run_directories": [],
@@ -4251,6 +4462,7 @@
     "ica_basis": "one fitted basis per model, fitted on discovery families only, used unchanged for every register and every stratum",
     "outcome_selected": false,
     "requested": 4,
+    "restored_from_previous_manifest": false,
     "rule": "A method states which alignment classes it reads. A family is never rewritten to reach a class: unnatural patient wording is a worse defect than a coarser alignment.",
     "seed": 20261112,
     "selection": "a seeded draw of families, made before any measurement of the batch, from owner-kept discovery families in the register stratum without flags; care levels are visited in turn. Held-out families are not drawn: a mechanism developed on them could not be confirmed on them.",
@@ -4327,6 +4539,12 @@
     },
     "errors": 0,
     "is": "structural checks by this command. It says nothing about clinical content or patient language.",
+    "parameters": {
+      "forbid": ",;-",
+      "lexicon_supplied": true,
+      "max_words": 40,
+      "note": "Caller-set. Another value changes which texts pass; compare runs on these."
+    },
     "status": "passed",
     "unusable_families": [],
     "warnings": 5
@@ -4340,7 +4558,15 @@
     "method": "python random.Random(seed); for each care level from highest to lowest: sort the family ids, rng.shuffle, first half discovery, next quarter validation, rest fresh_test",
     "newly_assigned": [],
     "open": "families per split is not fixed in the protocol (its section 14)",
-    "records_checked": [],
+    "records_checked": [
+      {
+        "lists_its_strata": false,
+        "record": 1,
+        "reproduces_from_its_seed": true,
+        "seed": 20261111
+      }
+    ],
+    "records_timing": "The batch has no measurements under its stem.",
     "seed_for_new_assignments": null,
     "source": {
       "r9-01": "record 1",

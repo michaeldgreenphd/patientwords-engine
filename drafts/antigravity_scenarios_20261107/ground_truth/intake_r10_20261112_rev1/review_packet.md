@@ -2,7 +2,7 @@
 
 Source: draft/antigravity-scenarios-20261107:drafts/antigravity_scenarios_20261107/round10_20261112_rev1/families.json (revision 1 of round10_20261112 at 9a495c763) (SHA-256 `6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f`).
 
-Design rules: `data/experiments/intake_design.v1.json` (`06ab88fe3ffe`). Status of those rules: draft, 2026-11-12: proposed by the batch-intake change; not agreed. The owner agrees it by a commit that changes this line.
+Design rules: `data/experiments/intake_design.v1.json` (`52fae93517fb`). Status of those rules: draft, 2026-11-12: proposed by the batch-intake change; not agreed. The owner agrees it by a commit that changes this line.
 
 What has and has not been reviewed:
 
@@ -10,7 +10,7 @@ What has and has not been reviewed:
 - **Owner's read:** 24 not read. This is the owner's keep or exclude decision on a named version of the texts. It is not a clinician's review.
 - **Domain review:** 24 domain review pending. A family is reviewed only when a clinician and a patient-language reviewer have both recorded their items; nothing in this packet does that.
 - **Known concerns:** 34 open, 0 closed. A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.
-- **Sources:** 5 not checked, 51 record and sentence found. A check shows that the cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression.
+- **Sources:** 5 not checked, 52 record and sentence found. A check shows that the cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression.
 
 No model output appears in this packet.
 
@@ -250,7 +250,7 @@ Patient explanation (adds a belief, analysed apart from register): "and I think 
 |---|---|---|---|---|
 | dry cough | direct patient quote | record and sentence found | Nantanda R, Najjingo I, Kjaergaard J, Reventlow S, Ndekezi D, Ssemata AS, Østergaard MS (2 PMID: 41714660; DOI: 10.1038/s41533-026-00493-7 | Initially they used to say that he had malaria, and it was causing the dry cough until he developed difficulty in breathing, and they diagnosed asthma at four years old (CG 4, Female). |
 | not getting the air in | direct patient quote | record and sentence found | Banzett RBB, Sheridan AR, Baker KM, Lansing RW, Stevens JP (2020). 'Scared to death' dyspn PMID: 32169831; DOI: 10.1136/bmjresp-2019-000493 | ‘Breathing discomfort gets to a point where it feels like I can’t take another breath, feels very stressful and anxious’ (1VC-19); ‘Panicking, couldn’t get any air in. Scared the shit out of me’ (1VC-40); ‘scary, not getting the air in’ (1VC14). |
-| smothering | authors' summary | not checked | Ferguson ON, Mitchell RA, Schaeffer MR, Ramsook AH, Dhillon SS, Dominelli PB, Molgat-Seon  PMID: 36469484; DOI: 10.1249/MSS.0000000000003074 | There were significant increases in the sensory quality of "smothering/air hunger" ( P = 0.01) and the emotional response of "anxiousness" ( P = 0.04) in the FM condition. |
+| smothering | authors' summary | record and sentence found | Ferguson ON, Mitchell RA, Schaeffer MR, Ramsook AH, Dhillon SS, Dominelli PB, Molgat-Seon  PMID: 36469484; DOI: 10.1249/MSS.0000000000003074 | There were significant increases in the sensory quality of "smothering/air hunger" ( P = 0.01) and the emotional response of "anxiousness" ( P = 0.04) in the FM condition. |
 | smothering | dictionary definition | not checked | Wiktionary contributors (verified 2026-11-09 in dialect_lexicon_20261109.json). Entry 'smo https://en.wiktionary.org/wiki/smother | # {{lb|en|intransitive}} To [[breathe]] with great difficulty by reason of smoke, dust, close covering or wrapping, or the like. |
 | and I think I just have a cold | direct patient quote | record and sentence found | Jiao M, Wang W, Chen C, Zhang X, Zhao X (2025). Treatment Inertia Among Elderly Patients w PMID: 41393075; DOI: 10.2147/PPA.S560907 | I initially thought I just had a cold and was feeling breathless, so I took cold medicine for a while, but it didn’t improve anything. When I couldn’t bear it anymore, I came to the hospital for a check-up. [A12] |
 
