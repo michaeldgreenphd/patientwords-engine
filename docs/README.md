@@ -33,7 +33,7 @@ the revision of its own date.
 
 | File | What it is |
 |---|---|
-| [`docs/start_here.md`](start_here.md#case-lifecycle) | The case lifecycle: where a paired stimulus is authored, reviewed, measured and published, with the command and who runs each step. |
+| [`docs/start_here.md`](start_here.md#case-lifecycle) | The case lifecycle: where a comparison pair or a case family is authored, reviewed, measured and published, with the command and who runs each step. It separates the review of each case from the catalogue's class-wide review label. |
 | [`docs/review/README.md`](review/README.md) | Owner and rater review material, with the rater instructions for the stimulus review packet. |
 | [`docs/verification_protocol.md`](verification_protocol.md) | Draft protocol for physician ratings of pairs, advice questions and scripts. The rating app is in a private repository. |
 | [`scripts/README.md`](../scripts/README.md#analysis-and-checks) | The row for `scripts/check_candidate_pairs.py`, the mechanical check of hand-written candidate pairs. |
