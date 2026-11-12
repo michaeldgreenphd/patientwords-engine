@@ -724,3 +724,48 @@ def test_a_clinicians_cannot_judge_does_not_pass_the_review_and_every_blocker_is
                 seen.add("owner_read" if blocker.startswith("owner_read_") else blocker.split(":")[0])
     assert seen <= named, seen - named
     assert seen == named, named - seen                                      # and the design names no blocker the command never gives
+
+
+def test_repeated_inputs_are_merged_when_they_agree_and_refused_when_they_do_not() -> None:
+    """Verdicts, source checks and tokenization files can each be passed more than once. The order of the arguments
+    never decides the result."""
+    # Owner reads: the later read applies, in either argument order; two reads at one time that differ are refused.
+    early, late = _verdicts(), _verdicts(s_02="excluded")
+    early["owner_read_utc"], late["owner_read_utc"] = "2000-01-01T00:00:00Z", "2000-01-02T00:00:00Z"
+    for order in ([early, late], [late, early]):
+        assert _family(_run(verdicts=order), "s-02")["review"]["owner_read"]["status"] == "excluded"
+        assert _family(_run(verdicts=order), "s-01")["review"]["owner_read"]["status"] == "kept"
+    same_time = dict(late, owner_read_utc=early["owner_read_utc"])
+    with pytest.raises(Refusal) as refusal:
+        _run(verdicts=[early, same_time])
+    assert refusal.value.code == "conflicting_verdicts"
+    assert _family(_run(verdicts=[early, _verdicts()]), "s-02")["review"]["owner_read"]["status"] == "kept"   # the same read twice
+    # Source checks: a citation checked twice must agree.
+    cited = next(e for e in _batch()[0]["everyday_sources"] if e["quote_type"] != "none")
+    entry = {"family_id": "s-01", "expression": cited["expression"], "identifier": cited["pmid_or_doi"],
+             "record_matches_citation": True, "evidence_found": True}
+    check = {"schema": intake.SOURCE_CHECK_SCHEMA, "checked_utc": "2000-01-01", "method": "placeholder lookup", "entries": [entry]}
+    contrary = {**check, "entries": [{**entry, "evidence_found": False}]}
+    for order in ([check, contrary], [contrary, check]):
+        with pytest.raises(Refusal) as refusal:
+            _run(source_checks=order)
+        assert refusal.value.code == "conflicting_source_checks"
+    assert _run(source_checks=[check, check])["inventory"]["source_verification"]["record_and_sentence_found"] == 1
+    # Tokenization: two files of one tokenizer are merged; one prompt with two different id lists is refused.
+    texts = [text_ for f in _batch() for text_ in f["texts"].values()]
+    ids = {prompt_digest(t_): [n, n + 1] for n, t_ in enumerate(texts)}
+    half = len(ids) // 2
+    doc = {"schema": intake.TOKENIZATION_SCHEMA, "tokenizer_id": "fixture/toy-tokenizer", "tokenizer_revision": "1" * 40,
+           "source": "ids made by this test; not a tokenizer"}
+    first, second = {**doc, "prompts": dict(list(ids.items())[:half])}, {**doc, "prompts": dict(list(ids.items())[half:]),
+                                                                          "source": "a second placeholder file"}
+    merged = [_run(tokenizations=order)["tokenization"][0] for order in ([first, second], [second, first])]
+    assert all(m["prompts_recorded"] == len(ids) and m["files_merged"] == 2 for m in merged)
+    whole = _run(tokenizations=[{**doc, "prompts": ids}])
+    for order in ([first, second], [second, first]):                                 # every alignment as with one file
+        assert [c["alignment"] for r in _run(tokenizations=order)["families"] for c in r["contrasts"]] == [
+            c["alignment"] for r in whole["families"] for c in r["contrasts"]]
+    some = next(iter(first["prompts"]))
+    with pytest.raises(Refusal) as refusal:
+        _run(tokenizations=[first, {**second, "prompts": {**second["prompts"], some: [9, 9, 9]}}])
+    assert refusal.value.code == "conflicting_tokenization"

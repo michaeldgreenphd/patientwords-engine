@@ -183,6 +183,14 @@ only from `--tokenization` records of real token ids (every prompt and target va
 non-empty list of integers; anything else refuses `invalid_tokenization`). Without one the
 manifest says `not_recorded`. No family is rewritten to reach a class.
 
+**Repeated inputs.** Several inputs can be passed more than once, and the order of the
+arguments never decides a result. Owner reads: the read with the later `owner_read_utc`
+applies; two reads at one time that decide differently refuse `conflicting_verdicts`.
+Reviews of one role are combined item by item. Source checks of one citation must agree
+(`conflicting_source_checks`). Tokenization files of one tokenizer are merged, and one
+prompt with two different id lists refuses `conflicting_tokenization`. Split records
+that disagree refuse `split_conflict`; a repeated concern id refuses `invalid_concerns`.
+
 **Reruns.** The same inputs give byte-identical outputs. An existing output with the same
 bytes is `unchanged`; with other bytes the command refuses `output_differs` and writes
 nothing. Output paths follow *Where output may go* below. Exit 1 means software

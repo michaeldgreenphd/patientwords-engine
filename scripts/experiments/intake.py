@@ -217,9 +217,14 @@ def review_basis(family: Mapping[str, Any]) -> dict[str, Any]:
 
 def _owner_reads(batch: Sequence[Mapping[str, Any]], verdict_docs: Sequence[Mapping[str, Any]],
                  read_batches: Mapping[str, Sequence[Mapping[str, Any]]], batch_sha256: str) -> dict[str, dict[str, Any]]:
-    """family_id -> the owner's decision on the family's current review basis, or why none applies."""
+    """family_id -> the owner's decision on the family's current review basis, or why none applies.
+
+    When several verdict files cover one family, the read with the later ``owner_read_utc`` applies, whatever
+    the order of the arguments. Two reads at the same time (or with no time) that decide differently are
+    refused: the command does not choose between them."""
     current = {f["family_id"]: f for f in batch if isinstance(f, dict) and text(f.get("family_id"))}
     reads: dict[str, dict[str, Any]] = {fid: {"status": "not_read"} for fid in current}
+    latest: dict[str, tuple[str, str]] = {}
     for doc in verdict_docs:
         source_sha = (doc.get("source") or {}).get("families_sha256")
         require(isinstance(doc.get("families"), list) and bool(HEX64.fullmatch(str(source_sha))), "invalid_verdicts",
@@ -240,6 +245,14 @@ def _owner_reads(batch: Sequence[Mapping[str, Any]], verdict_docs: Sequence[Mapp
             entry = {"decision": OWNER_VERDICTS[verdict], "reasons": list(row.get("owner_reasons") or []),
                      "note": row.get("owner_note") or "", "read_utc": doc.get("owner_read_utc"),
                      "read_batch_sha256": source_sha}
+            when = str(entry["read_utc"] or "")
+            if fid in latest:
+                require(when != latest[fid][0] or entry["decision"] == latest[fid][1], "conflicting_verdicts",
+                        f"{fid}: two owner reads at the same time ({when or 'no time recorded'}) decide differently; "
+                        "record which one stands")
+                if when <= latest[fid][0]:
+                    continue                                   # an earlier read, or the same read again
+            latest[fid] = (when, entry["decision"])
             then, now = review_basis(read_families[fid]), review_basis(current[fid])
             changed = [part for part in BASIS_PARTS if then[part] != now[part]]
             reads[fid] = {"status": entry["decision"], **entry} if not changed else {
@@ -376,9 +389,12 @@ def _source_checks(docs: Sequence[Mapping[str, Any]]) -> dict[tuple[str, str, st
             require(text(row.get("family_id")) and text(row.get("expression")) and text(row.get("identifier"))
                     and isinstance(row.get("record_matches_citation"), bool) and isinstance(row.get("evidence_found"), bool),
                     "invalid_source_check", "An entry needs family_id, expression, identifier and two booleans")
-            out[(row["family_id"], row["expression"], row["identifier"])] = {
-                "record_matches_citation": row["record_matches_citation"],
-                "evidence_found": row["evidence_found"], "checked_utc": doc["checked_utc"]}
+            key = (row["family_id"], row["expression"], row["identifier"])
+            found = {"record_matches_citation": row["record_matches_citation"], "evidence_found": row["evidence_found"]}
+            require(key not in out or {k: out[key][k] for k in found} == found, "conflicting_source_checks",
+                    f"{row['family_id']}: two recorded checks of the citation {row['identifier']!r} for "
+                    f"{row['expression']!r} disagree; the command does not choose between them")
+            out.setdefault(key, {**found, "checked_utc": doc["checked_utc"]})
     return out
 
 
@@ -556,7 +572,18 @@ def _tokenizers(docs: Sequence[Mapping[str, Any]]) -> dict[tuple[str, str], Mapp
                 f"Expected a {TOKENIZATION_SCHEMA} document with tokenizer_id, a 40-hex tokenizer_revision, a source "
                 "saying where the ids were recorded, and prompts keyed by prompt SHA-256. Every prompt and target "
                 "value is a non-empty list of integer token ids")
-        out[(doc["tokenizer_id"], doc["tokenizer_revision"])] = doc
+        key = (doc["tokenizer_id"], doc["tokenizer_revision"])
+        if key not in out:
+            out[key] = {**doc, "prompts": dict(doc["prompts"]), "targets": dict(doc.get("targets", {})), "files": 1}
+            continue
+        merged = out[key]
+        for table in ("prompts", "targets"):
+            for name, ids in doc.get(table, {}).items():
+                require(merged[table].setdefault(name, ids) == ids, "conflicting_tokenization",
+                        f"Two files for {key[0]}@{key[1][:12]} record different token ids for one "
+                        f"{table[:-1]}; the command does not choose between them")
+        merged["files"] += 1
+        merged["source"] = merged["source"] if doc["source"] == merged["source"] else f"{merged['source']}; {doc['source']}"
     return out
 
 
@@ -839,7 +866,8 @@ def run_intake(batch: Any, *, batch_id: str, batch_sha256: str, source_ref: str,
         "mechanistic_subset": subset,
         "models": identities or NOT_RECORDED,
         "tokenization": [{"tokenizer_id": tid, "tokenizer_revision": rev, "source": doc["source"],
-                          "prompts_recorded": len(doc["prompts"])} for (tid, rev), doc in sorted(tokenizers.items())]
+                          "prompts_recorded": len(doc["prompts"]), "files_merged": doc.get("files", 1)}
+                         for (tid, rev), doc in sorted(tokenizers.items())]
         or {"status": NOT_RECORDED, "note": "No tokenizer file is available offline. Token ids come from a recorded run; "
                                               "until then alignment is known at word level only."},
         "inventory": {"all_admissible": inventory_of(admissible_rows), "owner_kept": inventory_of(kept_rows),
