@@ -78,6 +78,30 @@ Each path is the shortest set of documents for one kind of work. Read them in or
 6. [Execution and operations](agent_reference.md#execution-and-operations): the
    single-writer, queue and spend rules.
 
+## Case lifecycle
+
+Two units are in use, and they are not the same thing. A **comparison pair** is two wordings of one
+clinical situation measured against each other: in a study batch, one row `(batch, batch_index)` with a
+clinical wording and an everyday wording. The gallery lists pairs, and each row of a catalogue run is one
+pair. A **case family** is the unit of an experiment protocol: one clinical situation with a fixed set of
+reference facts and all of its wordings (`variants`). A protocol names the pairs of variants it compares
+(`comparisons`). A family taken from an existing study row joins that row through `legacy_join`, which is
+optional. The family is the independent unit of every analysis
+([protocol template, section 3](protocols/protocol_template.md#3-population-and-independent-unit)).
+
+Each row links the documents that govern its step, and a quoted command is written as its
+source writes it. [Trace A](ecosystem.md#3-trace-a-one-real-result-from-stimulus-to-page)
+follows one real result from stimulus to page.
+
+| Step | Where | Command | Who runs it | Governing document |
+|---|---|---|---|---|
+| Authored: generated batch | The `scenario-generation` lane, in CI, appends a batch and its `.report.json` cost sidecar under `data/simulated/`. Batches are append-only | `python scripts/fire_trigger.py fire --trigger <t> --params '<json>' --note '<why, with settle-bypass evidence if used>'`, with `scenario-generation` as `<t>` | A session that fires, through the script. The lane is paid: only on the owner's explicit words in a live chat | [Operators handbook, section 3](operators_handbook.md#3--standard-operating-procedures); [lanes](triggers.md#lanes); [invariants](../AGENTS.md#research-and-compatibility-invariants); [the generator](../README.md#generating-stress-test-scenarios) |
+| Authored: hand-written set | Candidates and the owner's verdicts are files on a draft branch. The committed set is `data/simulated/agscen_*.json`; its `.report.json` sidecar names those files and their commits. These sets are in no analysis membership | `python scripts/check_candidate_pairs.py CANDIDATES.json`; the options are in the script's docstring | A session, before each hand-authored round | [Script index](../scripts/README.md#analysis-and-checks); [memberships](open_results_policy.md#memberships) |
+| Reviewed: each case | Per case family, as its protocol declares. The register experiment requires two reviews of the pair. A clinician decides whether the two wordings state the same clinical facts, and sets the reference facts. A patient-language reviewer decides whether the everyday wording is language a patient would plausibly use and carries the same meaning for a lay reader. The result is recorded per family, in the form `pair_equivalence_review`; a family without both reviews keeps `review_status: domain_review_pending`. A model's statement that two wordings are equivalent is not a review. For a hand-written set, the owner's reading is recorded per candidate in the sidecar (`excluded_by_owner`, `retiered_by_owner`); it is neither of the two reviews | None. Reviewers fill the form | A clinician and a patient-language reviewer; physicians, in a private rating app (draft protocol); the owner reads hand-written candidates | [Register experiment, section 4](protocols/instrument_register_experiment_20261111.md#4-clinical-facts-held-equal-and-who-reviews-what); [protocol template, section 4](protocols/protocol_template.md#4-clinical-facts-held-equal); [review index](review/README.md); [physician protocol](verification_protocol.md) |
+| Reviewed: the catalogue's label | One label for a whole stimulus class: `clinical_review` in `data/results_policy/policy.v1.json`, which the results catalogue prints on every run of the class. It states the status of the class. It does not record that any case was reviewed | None. A class gets its label with its `stimulus_classes` entry in that file | The owner, in a reviewed pull request | [Open-results policy](open_results_policy.md#the-rule), with [adding a family](open_results_policy.md#adding-things) |
+| Measured | CI lanes. Trace and logits summaries land under `trace_out/`. A locally produced value is not a measurement | `python scripts/fire_trigger.py status`, then the fire command above with the lane's trigger; when the run is terminal and every expected output has landed, `python scripts/fire_trigger.py resolve --trigger <name>` | Every session that fires, and the Routine. A paid fire only on the owner's explicit words | [Procedure B](#procedure-b-model-execution); [fire-trigger-safe skill](../.claude/skills/fire-trigger-safe/SKILL.md); [harvest-resolve skill](../.claude/skills/harvest-resolve/SKILL.md); [script index](../scripts/README.md#ops-tooling-and-the-routine) |
+| Published | The chain writes `../patientwords/data/` and `../patientwords/modes/simulated/`. The site push is the publication: GitHub Pages serves the site's `main` | The chain, in the skill's order. `python scripts/results_snapshot.py check-release --site ../patientwords` must exit 0 before any push | The Routine, when new results land; by hand under the same skill. Data files only, never page text | [publish-site-data skill](../.claude/skills/publish-site-data/SKILL.md); [script index](../scripts/README.md#publish-chain); the site's `../patientwords/verify.md` |
+
 ## Procedure A: offline quickstart
 
 This procedure calls no model, needs no API key, no GPU stack and no method fork.

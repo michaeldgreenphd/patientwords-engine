@@ -13,7 +13,7 @@ before the dated records. Add a line here when you add a document.
 | [`AGENTS.md`](../AGENTS.md) (repository root) | The rules every agent and reviewer works from. |
 | [`verify.md`](../verify.md) (repository root) | Canonical developer setup, change-specific verification and evidence requirements. |
 | [`docs/agent_reference.md`](agent_reference.md) | Detailed architecture, operational rules, research limitations and review decisions linked from AGENTS.md. |
-| [`docs/ecosystem.md`](ecosystem.md) | Current map of the repositories, forks and external services (2026-11-10): what the engine consumes from each and as what type, the recorded heads against the executed pins, two identifier traces (one real result; the synthetic boundary check), test coverage, and a prioritised findings table with evidence and status. Machine-readable form: `data/ecosystem/repositories.v1.json`, checked by `scripts/ecosystem_status.py`. |
+| [`docs/ecosystem.md`](ecosystem.md) | Current map of the repositories, forks and external services (2026-11-11): what the engine consumes from each and as what type, the recorded heads against the executed pins, two identifier traces (one real result; the synthetic boundary check), test coverage, and a prioritised findings table with evidence and status. Machine-readable form: `data/ecosystem/repositories.v1.json`, checked by `scripts/ecosystem_status.py`. |
 
 ## Current guides, by task
 
@@ -28,6 +28,15 @@ the revision of its own date.
 | [`docs/experiment_interface/README.md`](experiment_interface/README.md) | The shared experiment interface (`scripts/experiments/`): one run envelope around typed payloads, the deterministic planner, the run store with resume and reuse, the capability matrix, and what was and was not verified. With [`docs/experiment_interface/ica_adapter.md`](experiment_interface/ica_adapter.md) (the optional ICA adapter on the ActivationDataset interchange) and [`docs/experiment_interface/neuronpedia.md`](experiment_interface/neuronpedia.md) (the Neuronpedia identity and link boundary: the representation registry with its verification and reference statuses, exact links and reference links, the offline fallback, the graph-interchange contract plan, and the list of sources that could not be read on 2026-11-10) and [`docs/experiment_interface/preview.md`](experiment_interface/preview.md) (the browser preview of the synthetic experiment bundle: procedure, what `scripts/check_experiment_preview.py` verifies and does not, findings, and what a real bundle needs before it is publishable). |
 | [`docs/protocols/protocol_template.md`](protocols/protocol_template.md) | Reusable research protocol template: copy it and fill every field before collecting or opening data for a new study. Its companions are listed under *Designs and plans, by arm*. |
 | [`docs/upgrade_checklist.md`](upgrade_checklist.md) | Repeatable procedure for syncing a fork without losing local patches and for evaluating a runtime pin change in isolation (interp-engine, Petri and Inspect): the checks to run, the parity record, one pin per commit, and the manifest update. States that the 2026-11-10 fork sync was not a runtime migration. |
+
+### Author and review a case
+
+| File | What it is |
+|---|---|
+| [`docs/start_here.md`](start_here.md#case-lifecycle) | The case lifecycle: where a comparison pair or a case family is authored, reviewed, measured and published, with the command and who runs each step. It separates the review of each case from the catalogue's class-wide review label. |
+| [`docs/review/README.md`](review/README.md) | Owner and rater review material, with the rater instructions for the stimulus review packet. |
+| [`docs/verification_protocol.md`](verification_protocol.md) | Draft protocol for physician ratings of pairs, advice questions and scripts. The rating app is in a private repository. |
+| [`scripts/README.md`](../scripts/README.md#analysis-and-checks) | The row for `scripts/check_candidate_pairs.py`, the mechanical check of hand-written candidate pairs. |
 
 ### Share and publish results
 
