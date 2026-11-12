@@ -160,8 +160,12 @@ measurements land; the command does not check that statement. A protocol counts 
 only when its status begins with the word `signed`. The manifest records the validation
 parameters the caller set (`software_validation.parameters`). A concern is withdrawn only
 by whoever raised it. The mechanistic
-subset is a seeded draw from owner-kept, unflagged discovery families, so it is not
-outcome-selected, and its estimate includes the three controls per site.
+subset is a seeded draw from owner-kept, unflagged discovery families that no review has
+removed, so it is not outcome-selected, and its estimate includes the three controls per
+site. With `--pairs-file` every row of the lane's input is accounted for: a contrast is
+`identical`, `differs`, `absent` or `duplicated`, rows with a repeated or missing id are
+listed, and `lane_input.clean` is true only when no such row exists and no contrast
+`differs`. Absent contrasts and rows of other batches are listed, not judged.
 
 **Tokenization.** Alignment classes (`position_aligned`, `suffix_aligned`) are computed
 only from `--tokenization` records of real token ids. Without one the manifest says

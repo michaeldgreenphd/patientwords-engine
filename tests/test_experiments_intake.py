@@ -271,6 +271,15 @@ def test_the_mechanistic_subset_is_a_seeded_draw_from_kept_unflagged_discovery_f
                     verdicts=[_verdicts()], mechanistic_families=3, mechanistic_seed=11)
     assert held_out["mechanistic_subset"]["families"] == []                         # held-out families are not drawn
     assert _run()["mechanistic_subset"]["status"] == "not_selected"
+    # A family that a review removed is not drawn, even when it is kept by the owner and already in discovery.
+    basis = {r["family_id"]: r["review_basis_sha256"] for r in _run()["families"]}
+    unflagged = [r["family_id"] for r in _run()["families"] if not r["flags"]]
+    removed = {"schema": intake.REVIEWS_SCHEMA, "reviews": [
+        _review(unflagged[0], "clinician", basis[unflagged[0]], items={"severity": "different"})]}
+    drawn = _run(split_records=[record], verdicts=[_verdicts()], reviews=[removed], mechanistic_families=8, mechanistic_seed=11)
+    assert _family(drawn, unflagged[0])["review"]["status"] == "removed_by_review" and _family(drawn, unflagged[0])["split"] == "discovery"
+    assert unflagged[0] not in drawn["mechanistic_subset"]["families"]
+    assert sorted(drawn["mechanistic_subset"]["families"]) == sorted(unflagged[1:])
 
 
 @pytest.mark.parametrize("mutate, expected", [
@@ -405,6 +414,20 @@ def test_a_pairs_file_is_reconciled_contrast_by_contrast() -> None:
     lane = _run(pairs_file=pairs, pairs_file_ref="pairs.json")["lane_input"]
     assert lane["identical"] == 1 and lane["index_of"] == {"s-01-reg": 1} and lane["differs"] == ["s-04-reg"]
     assert "s-02-reg" in lane["absent"] and lane["not_in_this_batch"] == ["other-1"]
+    assert lane["duplicate_ids"] == {} and lane["rows_without_id"] == [] and lane["clean"] is False
+    # A lane reads every row: a repeated id is reported with its rows, never collapsed into the last one.
+    repeated = [dict(pairs[1], generation={"id": "s-01-reg"}), pairs[0], {"top_prompt": "x", "bottom_prompt": "y",
+                                                                           "target_clinical_token": " ER"}, pairs[0]]
+    lane = _run(pairs_file=repeated, pairs_file_ref="pairs.json")["lane_input"]
+    assert lane["duplicate_ids"] == {"s-01-reg": [1, 2, 4]} and lane["rows_without_id"] == [3]
+    assert lane["identical"] == 0 and "s-01-reg" not in lane["index_of"] and lane["clean"] is False
+    whole = [{"top_prompt": top, "bottom_prompt": bottom, "target_clinical_token": f["target_token"], "generation": {"id": cid}}
+             for f in _batch() for cid, top, bottom in (
+                 (f"{f['family_id']}-{c['suffix']}", f["texts"].get(c["top"]), f["texts"].get(c["bottom"]))
+                 for c in intake.load_design()["contrasts"]) if top and bottom]
+    assert _run(pairs_file=whole, pairs_file_ref="pairs.json")["lane_input"]["clean"] is True
+    partial = _run(pairs_file=whole[:3] + [pairs[2]], pairs_file_ref="pairs.json")["lane_input"]   # absent and foreign rows are listed
+    assert partial["clean"] is True and partial["absent"] and partial["not_in_this_batch"] == ["other-1"]
 
 
 def test_outputs_are_reproducible_and_never_overwritten(tmp_path: Path) -> None:

@@ -763,7 +763,7 @@ def run_intake(batch: Any, *, batch_id: str, batch_sha256: str, source_ref: str,
     admissible_rows = [r for r in family_rows if r["admissible"]]
     kept_rows = [r for r in admissible_rows if r["review"]["owner_read"]["status"] == "kept"]
     subset_candidates = {r["family_id"]: r["right_care"] for r in kept_rows
-                         if not r["flags"] and r["split"] == SPLITS[0]}
+                         if not r["flags"] and r["split"] == SPLITS[0] and r["family_id"] not in removed}
     subset = _mechanistic(subset_candidates, mechanistic_families, mechanistic_seed, measured, previous_manifest, design,
                           batch_id, basis_sha, stem)
 
@@ -852,20 +852,32 @@ def run_intake(batch: Any, *, batch_id: str, batch_sha256: str, source_ref: str,
                                  "names only and never their contents."},
     }
     if pairs_file is not None:
-        by_id = {p.get("generation", {}).get("id"): (n, p) for n, p in enumerate(pairs_file, 1)}
+        # A lane reads every row of the file, so every row is accounted for: a repeated id is never collapsed
+        # into its last row, and a row without an id is counted.
+        rows_of: dict[Any, list[tuple[int, Mapping[str, Any]]]] = collections.defaultdict(list)
+        for n, pair in enumerate(pairs_file, 1):
+            generation = pair.get("generation") if isinstance(pair, dict) else None
+            rows_of[generation.get("id") if isinstance(generation, dict) else None].append((n, pair))
+        without_id = [n for n, _ in rows_of.pop(None, [])]
+        duplicated = {str(i): [n for n, _ in rows] for i, rows in sorted(rows_of.items(), key=lambda kv: str(kv[0]))
+                      if len(rows) > 1}
         state = {}
         for cid, (family, _, top, bottom) in contrast_rows.items():
-            hit = by_id.get(cid)
-            state[cid] = "absent" if hit is None else "identical" if (
-                hit[1]["top_prompt"], hit[1]["bottom_prompt"], hit[1]["target_clinical_token"]) == (
+            rows = rows_of.get(cid) or []
+            state[cid] = "absent" if not rows else "duplicated" if len(rows) > 1 else "identical" if (
+                rows[0][1].get("top_prompt"), rows[0][1].get("bottom_prompt"), rows[0][1].get("target_clinical_token")) == (
                 top, bottom, family["target_token"]) else "differs"
         manifest["lane_input"] = {
             "pairs_file": pairs_file_ref, "pairs": len(pairs_file),
             "identical": sum(v == "identical" for v in state.values()),
             "differs": sorted(c for c, v in state.items() if v == "differs"),
             "absent": sorted(c for c, v in state.items() if v == "absent"),
-            "not_in_this_batch": sorted(str(i) for i in by_id if i not in contrast_rows),
-            "index_of": {cid: by_id[cid][0] for cid in sorted(state) if state[cid] == "identical"}}
+            "duplicate_ids": duplicated, "rows_without_id": without_id,
+            "not_in_this_batch": sorted(str(i) for i in rows_of if i not in contrast_rows),
+            "clean": not duplicated and not without_id and "differs" not in state.values(),
+            "clean_means": "No row has a repeated or missing id and no contrast differs from the batch. Absent "
+                           "contrasts and rows of other batches are listed, not judged.",
+            "index_of": {cid: rows_of[cid][0][0] for cid in sorted(state) if state[cid] == "identical"}}
     return manifest
 
 
