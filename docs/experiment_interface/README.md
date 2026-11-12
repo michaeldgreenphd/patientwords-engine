@@ -143,8 +143,12 @@ cannot see when a record was written: the commit that added it is the evidence, 
 manifest says so (`records_timing`). A subset is restored only from `--previous-manifest`
 when that file is an intake manifest of this batch and this stem, written while no run
 directory of the stem existed, with the same seed and count, and every chosen family still has the review basis it had
-then; otherwise `subset_after_measurement` or `subset_family_changed`. A concern is
-withdrawn only by whoever raised it. The mechanistic
+then; otherwise `subset_after_measurement` or `subset_family_changed`. An earlier manifest
+is a file the caller supplies, so these are consistency checks and not proof of when it
+was written. A restored subset therefore has the status `restored_from_earlier_manifest`
+and `outcome_selected: not_verified_by_this_command`, never `selected_before_outcomes`;
+its `timing` field says that the commit which added the earlier manifest is the evidence.
+A concern is withdrawn only by whoever raised it. The mechanistic
 subset is a seeded draw from owner-kept, unflagged discovery families, so it is not
 outcome-selected, and its estimate includes the three controls per site.
 

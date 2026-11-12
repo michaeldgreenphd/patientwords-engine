@@ -164,7 +164,10 @@ def test_no_split_and_no_subset_is_chosen_after_measurement(measured_root: Path)
     assert refusal.value.code == "subset_after_measurement"
     restored = _run(**options, root=measured_root, previous_manifest=before)["mechanistic_subset"]
     assert restored["families"] == before["mechanistic_subset"]["families"] and restored["restored_from_previous_manifest"] is True
-    assert restored["status"] == "selected_before_outcomes" and restored["outcome_selected"] is False
+    # An earlier manifest is a caller-supplied file: the command restores from it and does not vouch for its timing.
+    assert restored["status"] == "restored_from_earlier_manifest" and restored["outcome_selected"] == intake.NOT_VERIFIED
+    assert restored["timing"].startswith("Not verified by this command") and "possibly outcome-selected" in restored["timing"]
+    assert before["mechanistic_subset"]["status"] == "selected_before_outcomes" and "timing" not in before["mechanistic_subset"]
 
 
 def test_after_measurement_a_split_record_must_be_this_batchs_seeded_draw() -> None:

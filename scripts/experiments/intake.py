@@ -73,6 +73,7 @@ QUOTE_TYPES = ("direct patient quote", "authors' summary", "dictionary definitio
 OWNER_VERDICTS = {"right": "kept", "kept": "kept", "excluded": "excluded"}
 OUTPUT_NAMES = ("intake_manifest.json", "review_packet.md", "review_form.json")
 NOT_RECORDED = "not_recorded"
+NOT_VERIFIED = "not_verified_by_this_command"
 SOURCE_ID = re.compile(r"PMID: ?\d{1,9}|DOI: ?10\.\S+|https://\S+")
 
 Sealed = Callable[[str], bool]
@@ -454,9 +455,15 @@ def _mechanistic(candidates: Mapping[str, int], n: int, seed: int | None, measur
                  previous: Mapping[str, Any] | None, design: Mapping[str, Any], batch_id: str,
                  basis: Mapping[str, str], stem: str | None) -> dict[str, Any]:
     """A seeded draw before measurement. After measurement nothing is drawn: the subset is restored from a
-    manifest of this batch and this stem that was itself written before any run directory of the stem existed,
-    and only while every family of that subset still has the review basis it had then. A manifest written
-    without a stem, or for another stem, lists no run directory whatever exists, so it proves nothing here."""
+    manifest of this batch and this stem that records no run directory of the stem, and only while every family
+    of that subset still has the review basis it had then. A manifest written without a stem, or for another
+    stem, lists no run directory whatever exists, so it is refused.
+
+    An earlier manifest is a file the caller supplies. Its fields can be checked for consistency; when it was
+    written cannot be established from them (it may have been produced against another tree, or edited). A
+    restored subset is therefore never labelled as selected before outcomes by this command: its status is
+    ``restored_from_earlier_manifest`` and the manifest says that the timing rests on the commit that added the
+    earlier manifest."""
     base = {"selection": design["mechanistic_subset"]["selection"], "rule": design["mechanistic_subset"]["rule"],
             "controls_per_site": design["mechanistic_subset"]["controls_per_site"],
             "ica_basis": design["mechanistic_subset"]["ica_basis"]}
@@ -483,8 +490,12 @@ def _mechanistic(candidates: Mapping[str, int], n: int, seed: int | None, measur
                 f"{moved}: the earlier manifest chose these families in another version than the batch now holds, or "
                 "does not record their version; its subset cannot be restored for this batch")
         return {**base, "families": sorted(earlier["families"]), "seed": seed, "requested": n,
-                "candidates": earlier.get("candidates"), "status": "selected_before_outcomes", "outcome_selected": False,
-                "restored_from_previous_manifest": True}
+                "candidates": earlier.get("candidates"), "status": "restored_from_earlier_manifest",
+                "outcome_selected": NOT_VERIFIED, "restored_from_previous_manifest": True,
+                "timing": "Not verified by this command. The batch has measurements. The subset is the one an earlier "
+                          "manifest of this batch and stem records, and that manifest lists no run directory; whether it "
+                          "was written before the measurements is shown by the commit that added it. Until that is "
+                          "checked, treat the subset as possibly outcome-selected and exploratory."}
     rng = random.Random(seed)
     queues = []
     for care in sorted(set(candidates.values()), reverse=True):
