@@ -45,6 +45,7 @@ output with other bytes is never overwritten: the command refuses and names the 
 from __future__ import annotations
 
 import collections
+import datetime
 import difflib
 import random
 import re
@@ -215,16 +216,31 @@ def review_basis(family: Mapping[str, Any]) -> dict[str, Any]:
             "changed_fact": {k: changed.get(k) for k in ("fact_id", "from", "to")}}
 
 
+def _instant(value: Any, family_id: str) -> datetime.datetime | None:
+    """A read time as an instant, so that reads are ordered chronologically and not as text."""
+    if value is None or value == "":
+        return None
+    try:
+        parsed = datetime.datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        parsed = None
+    require(parsed is not None, "invalid_verdicts",
+            f"{family_id}: owner_read_utc {value!r} is not an ISO 8601 date and time")
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=datetime.timezone.utc)
+
+
 def _owner_reads(batch: Sequence[Mapping[str, Any]], verdict_docs: Sequence[Mapping[str, Any]],
                  read_batches: Mapping[str, Sequence[Mapping[str, Any]]], batch_sha256: str) -> dict[str, dict[str, Any]]:
     """family_id -> the owner's decision on the family's current review basis, or why none applies.
 
-    When several verdict files cover one family, the read with the later ``owner_read_utc`` applies, whatever
-    the order of the arguments. Two reads at the same time (or with no time) that decide differently are
+    When several verdict files cover one family, the read made at the later instant applies, whatever the order
+    of the arguments. ``owner_read_utc`` is parsed as a time (an offset is honoured; a value without one is read
+    as UTC), never compared as text. Two reads that cannot be ordered (the same instant, or a time missing from
+    either) are the same read only if they give the same decision on the same batch version; otherwise they are
     refused: the command does not choose between them."""
     current = {f["family_id"]: f for f in batch if isinstance(f, dict) and text(f.get("family_id"))}
     reads: dict[str, dict[str, Any]] = {fid: {"status": "not_read"} for fid in current}
-    latest: dict[str, tuple[str, str]] = {}
+    latest: dict[str, tuple[Any, str, str]] = {}
     for doc in verdict_docs:
         source_sha = (doc.get("source") or {}).get("families_sha256")
         require(isinstance(doc.get("families"), list) and bool(HEX64.fullmatch(str(source_sha))), "invalid_verdicts",
@@ -245,14 +261,17 @@ def _owner_reads(batch: Sequence[Mapping[str, Any]], verdict_docs: Sequence[Mapp
             entry = {"decision": OWNER_VERDICTS[verdict], "reasons": list(row.get("owner_reasons") or []),
                      "note": row.get("owner_note") or "", "read_utc": doc.get("owner_read_utc"),
                      "read_batch_sha256": source_sha}
-            when = str(entry["read_utc"] or "")
+            when = _instant(entry["read_utc"], fid)
             if fid in latest:
-                require(when != latest[fid][0] or entry["decision"] == latest[fid][1], "conflicting_verdicts",
-                        f"{fid}: two owner reads at the same time ({when or 'no time recorded'}) decide differently; "
-                        "record which one stands")
-                if when <= latest[fid][0]:
-                    continue                                   # an earlier read, or the same read again
-            latest[fid] = (when, entry["decision"])
+                then_when, then_decision, then_sha = latest[fid]
+                if when is None or then_when is None or when == then_when:
+                    require((entry["decision"], source_sha) == (then_decision, then_sha), "conflicting_verdicts",
+                            f"{fid}: two owner reads cannot be ordered (the same time, or no time recorded) and differ "
+                            "in their decision or in the batch version they were made on; record which one stands")
+                    continue                                   # the same read again
+                if when < then_when:
+                    continue                                   # an earlier read
+            latest[fid] = (when, entry["decision"], source_sha)
             then, now = review_basis(read_families[fid]), review_basis(current[fid])
             changed = [part for part in BASIS_PARTS if then[part] != now[part]]
             reads[fid] = {"status": entry["decision"], **entry} if not changed else {
@@ -583,7 +602,9 @@ def _tokenizers(docs: Sequence[Mapping[str, Any]]) -> dict[tuple[str, str], Mapp
                         f"Two files for {key[0]}@{key[1][:12]} record different token ids for one "
                         f"{table[:-1]}; the command does not choose between them")
         merged["files"] += 1
-        merged["source"] = merged["source"] if doc["source"] == merged["source"] else f"{merged['source']}; {doc['source']}"
+        merged["sources"] = sorted(set(merged.get("sources", [merged["source"]])) | {doc["source"]})
+    for merged in out.values():                               # distinct sources in a fixed order, whatever the argument order
+        merged["source"] = "; ".join(merged.get("sources", [merged["source"]]))
     return out
 
 

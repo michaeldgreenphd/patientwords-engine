@@ -740,6 +740,27 @@ def test_repeated_inputs_are_merged_when_they_agree_and_refused_when_they_do_not
         _run(verdicts=[early, same_time])
     assert refusal.value.code == "conflicting_verdicts"
     assert _family(_run(verdicts=[early, _verdicts()]), "s-02")["review"]["owner_read"]["status"] == "kept"   # the same read twice
+    # Times are instants, not text: 01:00 at +02:00 is before 00:30 UTC, though it sorts after it as a string.
+    before, after = _verdicts(), _verdicts(s_02="excluded")
+    before["owner_read_utc"], after["owner_read_utc"] = "2000-01-02T01:00:00+02:00", "2000-01-02T00:30:00Z"
+    for order in ([before, after], [after, before]):
+        assert _family(_run(verdicts=order), "s-02")["review"]["owner_read"]["status"] == "excluded"
+    with pytest.raises(Refusal) as refusal:
+        _run(verdicts=[dict(_verdicts(), owner_read_utc="the day before yesterday")])
+    assert refusal.value.code == "invalid_verdicts"
+    # Two reads that cannot be ordered and were made on different batch versions are refused, in either order.
+    reworded = _batch()
+    reworded[1]["reference_facts"][0]["text"] = "another abstract fact"
+    reworded_sha = sha256_bytes(json.dumps(reworded).encode())
+    on_old, on_new = _verdicts(), _verdicts(reworded_sha)                           # same decision, same time, another version
+    for order in ([on_old, on_new], [on_new, on_old]):
+        with pytest.raises(Refusal) as refusal:
+            _run(reworded, batch_sha256=reworded_sha, verdicts=order, read_batches={BATCH_SHA: _batch()})
+        assert refusal.value.code == "conflicting_verdicts"
+    untimed = dict(_verdicts(s_02="excluded"), owner_read_utc=None)                  # no time: cannot be ordered either
+    with pytest.raises(Refusal) as refusal:
+        _run(verdicts=[early, untimed])
+    assert refusal.value.code == "conflicting_verdicts"
     # Source checks: a citation checked twice must agree.
     cited = next(e for e in _batch()[0]["everyday_sources"] if e["quote_type"] != "none")
     entry = {"family_id": "s-01", "expression": cited["expression"], "identifier": cited["pmid_or_doi"],
@@ -761,6 +782,8 @@ def test_repeated_inputs_are_merged_when_they_agree_and_refused_when_they_do_not
                                                                           "source": "a second placeholder file"}
     merged = [_run(tokenizations=order)["tokenization"][0] for order in ([first, second], [second, first])]
     assert all(m["prompts_recorded"] == len(ids) and m["files_merged"] == 2 for m in merged)
+    assert merged[0] == merged[1] and merged[0]["source"] == "a second placeholder file; ids made by this test; not a tokenizer"
+    assert _run(tokenizations=[first, second]) == _run(tokenizations=[second, first])   # the whole manifest, byte for byte
     whole = _run(tokenizations=[{**doc, "prompts": ids}])
     for order in ([first, second], [second, first]):                                 # every alignment as with one file
         assert [c["alignment"] for r in _run(tokenizations=order)["families"] for c in r["contrasts"]] == [
@@ -769,3 +792,28 @@ def test_repeated_inputs_are_merged_when_they_agree_and_refused_when_they_do_not
     with pytest.raises(Refusal) as refusal:
         _run(tokenizations=[first, {**second, "prompts": {**second["prompts"], some: [9, 9, 9]}}])
     assert refusal.value.code == "conflicting_tokenization"
+
+
+def test_the_command_line_gives_the_same_bytes_whatever_the_order_of_repeatable_arguments(tmp_path: Path, capsys) -> None:
+    cited = next(e for e in _batch()[0]["everyday_sources"] if e["quote_type"] != "none")
+    paths = []
+    for n, fid in enumerate(("s-01", "s-02")):
+        doc = _concerns(_concern(f"c-{n}", fid, ["reg"]))
+        path = tmp_path / f"concerns_{n}.json"
+        path.write_text(json.dumps(doc), encoding="utf-8")
+        paths.append(str(path))
+    check = {"schema": intake.SOURCE_CHECK_SCHEMA, "checked_utc": "2000-01-01", "method": "placeholder lookup", "entries": [
+        {"family_id": "s-01", "expression": cited["expression"], "identifier": cited["pmid_or_doi"],
+         "record_matches_citation": True, "evidence_found": True}]}
+    checks = []
+    for n in range(2):
+        path = tmp_path / f"check_{n}.json"
+        path.write_text(json.dumps(check), encoding="utf-8")
+        checks.append(str(path))
+    base = ["intake", "--batch", str(FIXTURE), "--batch-id", "synthetic", "--no-write"]
+    hashes = []
+    for a, b in ((0, 1), (1, 0)):
+        assert cli.main(base + ["--concerns", paths[a], "--concerns", paths[b],
+                                "--source-check", checks[a], "--source-check", checks[b]]) == 0
+        hashes.append(json.loads(capsys.readouterr().out)["output_sha256"])
+    assert hashes[0] == hashes[1]

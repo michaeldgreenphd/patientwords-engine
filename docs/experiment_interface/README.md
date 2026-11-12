@@ -184,8 +184,10 @@ non-empty list of integers; anything else refuses `invalid_tokenization`). Witho
 manifest says `not_recorded`. No family is rewritten to reach a class.
 
 **Repeated inputs.** Several inputs can be passed more than once, and the order of the
-arguments never decides a result. Owner reads: the read with the later `owner_read_utc`
-applies; two reads at one time that decide differently refuse `conflicting_verdicts`.
+arguments never decides a result or a byte of the output. Owner reads: the read made at
+the later instant applies (`owner_read_utc` is parsed as a time, offsets included); two
+reads that cannot be ordered and differ in decision or batch version refuse
+`conflicting_verdicts`.
 Reviews of one role are combined item by item. Source checks of one citation must agree
 (`conflicting_source_checks`). Tokenization files of one tokenizer are merged, and one
 prompt with two different id lists refuses `conflicting_tokenization`. Split records

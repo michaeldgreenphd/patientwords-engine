@@ -165,6 +165,11 @@ def cmd_capabilities(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def _records(paths: list[Path]) -> list[dict[str, str]]:
+    """File records of one repeatable input, by name and hash."""
+    return sorted((file_record(p) for p in paths), key=lambda r: (r["name"], r["sha256"]))
+
+
 def cmd_intake(args: argparse.Namespace) -> int:
     require(args.no_write or args.out is not None, "invalid_input", "Pass --out DIR, or --no-write")
     read_batches = {}
@@ -192,15 +197,16 @@ def cmd_intake(args: argparse.Namespace) -> int:
         stem=args.stem, pairs_file=_load(args.pairs_file, "pairs file") if args.pairs_file else None,
         pairs_file_ref=args.pairs_file.name if args.pairs_file else None,
         input_hashes={key: value for key, value in {
-            "verdicts": [file_record(p) for p in args.verdicts],
-            "read_batches": [file_record(p) for p in args.read_batch],
-            "reviews": [file_record(p) for p in args.reviews],
-            "concerns": [file_record(p) for p in args.concerns],
-            "source_checks": [file_record(p) for p in args.source_check],
-            "prior_batches": [{"label": item.partition("=")[0], **file_record(Path(item.partition("=")[2]))}
-                              for item in args.prior_batch],
-            "split_records": [file_record(p) for p in args.split_record],
-            "tokenizations": [file_record(p) for p in args.tokenization],
+            # Repeatable inputs are listed in a fixed order, so the manifest does not depend on argument order.
+            "verdicts": _records(args.verdicts),
+            "read_batches": _records(args.read_batch),
+            "reviews": _records(args.reviews),
+            "concerns": _records(args.concerns),
+            "source_checks": _records(args.source_check),
+            "prior_batches": sorted(({"label": item.partition("=")[0], **file_record(Path(item.partition("=")[2]))}
+                                     for item in args.prior_batch), key=lambda r: (r["label"], r["name"], r["sha256"])),
+            "split_records": _records(args.split_record),
+            "tokenizations": _records(args.tokenization),
             "previous_manifest": file_record(args.previous_manifest) if args.previous_manifest else None,
             "pairs_file": file_record(args.pairs_file) if args.pairs_file else None,
             "lexicon": file_record(args.lexicon) if args.lexicon else None}.items() if value},
