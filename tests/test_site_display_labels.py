@@ -43,6 +43,10 @@ Three tests of the follow-up of 2026-11-12 fail on site revision a9350a6, the re
 two subsets of the translated corpus on ``results/``, the spelling "self-care" on ``multi-turn/``, and the label
 "whitespace token" for a top prediction with no stored text on the two ``simulated-scenarios/`` pages.
 
+Two tests of 2026-11-13 fail on site revision 70ba286, the revision before them: the short words a ``results/`` row
+keeps for a review status that differs from the shared one, and the whole label of a status with no short words.
+The second also fails on site revision f5846a1, where Label values gave the row's words for a status no row printed.
+
 Skipped where the sibling site checkout, Playwright or a Chromium is missing.
 """
 from __future__ import annotations
@@ -816,6 +820,20 @@ def _words(text: str) -> list[str]:
     return [word for word in re.split(r"[^a-z0-9]+", text.lower()) if word]
 
 
+def _review_tables() -> tuple[dict[str, str], dict[str, str]]:
+    """``REVIEW_LABEL`` and ``REVIEW_IN_ROW`` as the page source writes them: stored review status to the whole
+    label, and to the short words a row keeps."""
+    source = (SITE / "results" / "index.html").read_text(encoding="utf-8")
+    tables: dict[str, dict[str, str]] = {}
+    for name in ("REVIEW_LABEL", "REVIEW_IN_ROW"):
+        found = re.search(rf"^\s*var {name}=(\{{.*?\}});", source, re.DOTALL | re.MULTILINE)
+        assert found, f"the page has no table {name}"
+        tables[name] = json.loads(found[1])
+    whole, short = tables["REVIEW_LABEL"], tables["REVIEW_IN_ROW"]
+    assert short and set(short) <= set(whole)
+    return whole, short
+
+
 def _one_run_index() -> dict:
     """The committed index cut to one run that has rows, so its title is no other run's."""
     index = _fixture("results_catalogue/index.json")
@@ -981,6 +999,86 @@ def test_results_study_context_states_each_fact_once(site) -> None:
             assert "includes" not in text and "included in" not in text, (where, text)
         assert "analysis eligibility" in wording["description"] and "analysis eligibility" in wording["subtitle"]
         assert "Eligibility is determined by the rules in Methods & source" in " ".join(wording["about"].split())
+
+
+def test_results_row_shortens_its_exceptional_review_status(site) -> None:
+    """(2026-11-13, owner request) A row whose review status differs from the shared one states it in the short
+    words the page lists for that stored value (``REVIEW_IN_ROW``), not in the whole label. Nothing is removed from
+    the page: the line's title keeps the stored value and the whole label, and the whole label stays in About, in
+    the Clinical review filter, in the opened run and in Label values, which gives the row's words beside it. A
+    status with no short entry is printed whole. No count or measured value is asserted."""
+    browser, base = site
+    _need("results_catalogue/index.json")
+    whole, short = _review_tables()
+    with _Page(browser, base, RESULTS) as view:
+        view.page.wait_for_selector("#cat-body tr.cat-run")
+        while view.page.is_visible("#cat-more"):
+            view.page.click("#cat-more")
+        lines = view.page.evaluate("""() => [...document.querySelectorAll(
+            '#cat-body tr.cat-run [data-exception="review"]')].map((line) => (
+                {text: line.innerText.trim(), title: line.getAttribute('title')}))""")
+        seen = set()
+        for line in lines:
+            assert line["title"].startswith("clinical_review: "), line
+            stored = line["title"].split(": ", 1)[1].split(" (")[0]
+            if stored in short:
+                assert line["text"] == short[stored] != whole[stored], line
+                assert line["title"] == f"clinical_review: {stored} ({whole[stored]})", line
+                seen.add(stored)
+            elif stored == "not recorded":
+                assert line["text"] == "\u2014", line
+            else:
+                assert line["text"] == whole.get(stored, stored), line
+        assert seen, "no row of the committed index has a review status the page shortens"
+        kept = view.page.evaluate("""() => ({
+            about: document.querySelector('#about-review').textContent,
+            filter: [...document.querySelectorAll('#f-review option')].map((option) => option.textContent).join(' | '),
+            label_values: document.querySelector('#legend-body').textContent})""")
+        for stored in seen:
+            for where, text in kept.items():
+                assert whole[stored] in text, (where, stored)
+            assert f"{whole[stored]}; in the run list: {short[stored]}" in kept["label_values"], stored
+        row = view.page.locator("#cat-body tr.cat-run", has=view.page.locator('[data-exception="review"]')).first
+        stored = row.locator('[data-exception="review"]').get_attribute("title").split(": ", 1)[1].split(" (")[0]
+        row.locator("td.c-exp button").click()
+        view.page.wait_for_selector("#cat-body tr.cat-detail .det-links a[download]")
+        opened = view.page.evaluate("() => document.querySelector('#cat-body tr.cat-detail').textContent")
+        assert f"clinical review: {whole.get(stored, stored)}" in opened
+
+
+def test_results_row_prints_a_review_status_with_no_short_words_whole(site) -> None:
+    """(2026-11-13, a check of the change above) The committed index gives no row a status without short words, so
+    this page is the committed index changed in memory: the status the page shortens is the one most runs record,
+    and three runs differ from it. A status with a whole label and no short words is printed whole, a status in
+    neither table is printed as stored, and a missing status is a dash whose title says "not recorded". No row
+    prints the shared status, so Label values gives the whole label of the shortened status and no row wording
+    for it. No count or measured value is asserted."""
+    browser, base = site
+    _need("results_catalogue/index.json")
+    whole, short = _review_tables()
+    shortened = next(iter(short))
+    whole_only = next(value for value in whole if value not in short)
+    unlisted = "zz_panel_read"
+    index = copy.deepcopy(_fixture("results_catalogue/index.json"))
+    runs = index["runs"] = index["runs"][:8]
+    for run in runs[:5]:
+        run["clinical_review"] = shortened
+    runs[5]["clinical_review"], runs[6]["clinical_review"] = whole_only, unlisted
+    del runs[7]["clinical_review"]
+    with _Page(browser, base, RESULTS, {RESULTS_INDEX: _json(index)}) as view:
+        view.page.wait_for_selector("#cat-body tr.cat-run")
+        lines = view.page.evaluate("""() => Object.fromEntries([...document.querySelectorAll(
+            '#cat-body tr.cat-run')].map((row) => { const line = row.querySelector('[data-exception="review"]');
+                return [row.dataset.run, line && [line.innerText.trim(), line.getAttribute('title')]]; }))""")
+        assert len(lines) == 8
+        for run in runs[:5]:
+            assert lines[run["run_dir"]] is None, run["run_dir"]              # the shared status: no line
+        assert lines[runs[5]["run_dir"]] == [whole[whole_only], f"clinical_review: {whole_only}"]
+        assert lines[runs[6]["run_dir"]] == [unlisted, f"clinical_review: {unlisted}"]
+        assert lines[runs[7]["run_dir"]] == ["\u2014", "clinical_review: not recorded"]
+        label_values = view.page.evaluate("() => document.querySelector('#legend-body').textContent")
+        assert whole[shortened] in label_values and "in the run list" not in label_values
+        assert view.errors == []
         assert view.errors == []
 
 
