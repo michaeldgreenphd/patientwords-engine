@@ -1,18 +1,22 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-11-10T13:51:56Z",
+  "updated_utc": "2026-11-13T16:15:20Z",
   "updated_by": "routine",
   "queue": {
     "circuit-trace": {
       "running": {
-        "fired_utc": "2026-11-10T13:46:33Z",
+        "fired_utc": "2026-11-13T16:05:24Z",
         "commit": "",
         "note": "PARK (resting-state rule): cheapest no-op default committed so branch operations that touch this trigger file re-run a $0/negligible stage instead of the last expensive fire; commit_outputs false where the workflow supports it. Owner-approved maintenance hardening, 2026-08-27."
       },
       "pending": null
     },
     "logits-eval": {
-      "running": null,
+      "running": {
+        "fired_utc": "2026-11-13T15:33:08Z",
+        "commit": "",
+        "note": "PARK (resting-state rule): cheapest no-op default committed so branch operations that touch this trigger file re-run a $0/negligible stage instead of the last expensive fire; commit_outputs false where the workflow supports it. Owner-approved maintenance hardening, 2026-08-27."
+      },
       "pending": null
     },
     "activation-patching": {
@@ -21,7 +25,7 @@
     },
     "jlens-readout": {
       "running": {
-        "fired_utc": "2026-11-10T13:51:13Z",
+        "fired_utc": "2026-11-13T16:10:12Z",
         "commit": "",
         "note": "PARK (resting-state rule): cheapest no-op default committed so branch operations that touch this trigger file re-run a $0/negligible stage instead of the last expensive fire; commit_outputs false where the workflow supports it. Owner-approved maintenance hardening, 2026-08-27."
       },
@@ -37,9 +41,9 @@
     },
     "archive-renders": {
       "running": {
-        "fired_utc": "2026-11-10T13:31:47Z",
+        "fired_utc": "2026-11-13T15:34:40Z",
         "commit": "",
-        "note": "PNG sweep (maintenance item 3d, $0): archive+prune drift_sentinel_20261106 (6 PNGs). Lane 0 active at fire time (its 13:30 park, run 42825133067, GitHub-confirmed terminal and resolved first). The 7 unarchived agscen_ exploratory runs (11-08..11-10, 466 PNGs) left in the tree for the owner's decision. Harvest and re-park next cycle."
+        "note": "PNG sweep (maintenance item 3d, $0): archive+prune drift_sentinel_20261110 (6 PNGs). Lane 0 active at fire time (its 15:32 park, run 43453688551, GitHub-confirmed terminal and resolved first). The 7 agscen_ runs stay out pending AGSCEN-PNG-SWEEP-20261110. Harvest and re-park next cycle."
       },
       "pending": null
     },
@@ -65,6 +69,55 @@
     }
   },
   "runs_recent": [
+    {
+      "workflow": "jlens_readout",
+      "run_id": null,
+      "fired_utc": "2026-11-13T16:10:12Z",
+      "status": "in_progress",
+      "note": "Item 3f re-park of jlens-readout after the lens sentinel resolved, --ignore-settle (run 43459212850 GitHub-confirmed terminal first). $0. Left for the next cycle's opening harvest."
+    },
+    {
+      "workflow": "jlens_readout",
+      "run_id": 43459212850,
+      "fired_utc": "2026-11-13T16:05:40Z",
+      "status": "completed/success",
+      "note": "Item 3f lens sentinel on drift_sentinel_20261113, gemma-2-2b + gemma-2-2b-it. GitHub-confirmed completed/success 16:05:45Z -> 16:06:39Z; both parts on main. lens_sentinel_check.py exit 0: no new step on 20261113 (40 days); 3 historical steps unchanged. Resolved in-cycle."
+    },
+    {
+      "workflow": "circuit_trace_evaluation",
+      "run_id": 43459177161,
+      "fired_utc": "2026-11-13T16:05:24Z",
+      "status": "in_progress",
+      "note": "Item 3c re-park of circuit-trace after the sentinel resolved, --ignore-settle (run 43453577844 GitHub-confirmed terminal first). $0. Left for the next cycle's opening harvest."
+    },
+    {
+      "workflow": "circuit_trace_evaluation",
+      "run_id": 43453577844,
+      "fired_utc": "2026-11-13T15:32:03Z",
+      "status": "completed/failure",
+      "note": "Drift sentinel 2026-11-13 (alias 8588eb13). GitHub-confirmed completed/failure 15:32:11Z -> 16:02:37Z. Pairs 1-2 committed (c7e1798d; language_penalty 0.045, 0.369; part completed false). Pair 3 failed on its patient side: Neuronpedia /api/graph/generate HTTP 500 'Server busy, please try again later' on all 4 attempts (job 131981918097). Upstream 500: permanent hole for pair 3 on 20261113, no same-day retry. Verdict on pairs 1-2 vs 20261110: max |dp| 0.0, 4 top words unchanged. Resolved in-cycle."
+    },
+    {
+      "workflow": "logits_evaluation",
+      "run_id": 43453907431,
+      "fired_utc": "2026-11-13T15:33:08Z",
+      "status": "completed/success",
+      "note": "Item 3e park of logits-eval. Ran alone: the 3e leg fired at 15:33:02Z (pairs_20260713T135755Z 1-5/5 x llama-3.2-3b+olmo-2-1b+gemma-2-2b-it) exited 1 (origin moved), and the park was then committed on top of it before publish (PUBLISH-STACKED-PARK-20261103). The guard refused splitting them, so the leg's entry is marked evicted (never ran, $0) and the park published. The leg is left for the backfill chain, which replans from coverage."
+    },
+    {
+      "workflow": "archive_renders",
+      "run_id": 43454017045,
+      "fired_utc": "2026-11-13T15:34:28Z",
+      "status": "completed/success",
+      "note": "Item 3d PNG sweep, tag renders-20261113, runs [trace_out/drift_sentinel_20261110] (6 PNGs), prune true. GitHub-confirmed completed/success 15:34:46Z -> 15:35:05Z. The 7 agscen_ runs left out (AGSCEN-PNG-SWEEP-20261110). Journal entry left unresolved per 3d; harvest and re-park next cycle."
+    },
+    {
+      "workflow": "archive_renders",
+      "run_id": 43453688551,
+      "fired_utc": "2026-11-13T15:32:43Z",
+      "status": "completed/success",
+      "note": "Opening re-park of archive-renders (the 11-10 sweep, run 42825349166, GitHub-confirmed completed/success; journal entry past 8h). Park resolved in-cycle before the 3d sweep."
+    },
     {
       "workflow": "jlens_readout",
       "run_id": null,
@@ -982,6 +1035,7 @@
     "generation_status": "COMPLETE 2026-08-06: 1,600/1,600 accepted across the 20 cadence batches. The validator-yield stopping rule never tripped. Generation spend closed at $2.7678 of the $8 pre-registered ceiling (35%). No further scenario-generation fire is warranted - priority-1 of the standing prompt is retired for this campaign."
   },
   "verdicts": [
+    "INSTRUMENT HELD ON THE PAIRS MEASURED; SENTINEL INCOMPLETE. The 2026-11-13 drift sentinel (circuit-trace run 43453577844, GitHub-confirmed completed/failure, ~30.5m) traced pairs 1-2 and failed on pair 3's patient side: Neuronpedia /api/graph/generate returned HTTP 500 'Server busy, please try again later' on all 4 attempts. language_penalty on the 2 landed rows: 0.045, 0.369 (same as 11-10). data/drift_series.json now holds 56 measured days ending 20261113 (published to the live site as patientwords 5d607dc); the 20261113 day holds 2 of 3 pairs. Delta against 20261110 on pairs 1-2: max |dp| 0.0, 4 top words unchanged. Pair 3 is a permanent hole for 20261113 (no same-day retry, owner rule 2026-08-23). The two historic DRIFT days (20260715, 20260814) are unchanged; threshold 0.01. 11-11..11-12 are Tue/Fri cadence gaps. Lens sentinel (3f): run 43459212850 completed/success on the same host minutes later, both models landed; lens_sentinel_check.py exit 0, no new step on 20261113 (40 days; 3 historical steps: gemma-2-2b@20260731, gemma-2-2b@20260814, gemma-2-2b-it@20260814).",
     "INSTRUMENT HEALTHY, twenty-fifth consecutive measured sentinel since the 08-22..08-25 outage. The 2026-11-10 drift sentinel succeeded (circuit-trace run 42825105471, GitHub-confirmed completed/success, ~15.3m, one run for the push). 3 rows verified, language_penalty present on all three (0.045, 0.369, -0.046). data/drift_series.json now holds 55 measured days ending 20261110 (published to the live site as patientwords f1504ce). Delta against 20261106: max |dp| 0.0, top words unchanged. The two historic DRIFT days (20260715 max |dp| 0.027, 20260814 max |dp| 0.023, both pair 2 patient, top words unchanged) are unchanged; threshold 0.01. 11-07..11-09 are Tue/Fri cadence gaps, not holes. Lens sentinel (3f): run 42827659688 completed/success, both models landed; lens_sentinel_check.py exit 0, no new step on 20261110 (39 days; 3 historical steps: gemma-2-2b@20260731, gemma-2-2b@20260814, gemma-2-2b-it@20260814).",
     "INSTRUMENT HEALTHY, twenty-fourth consecutive measured sentinel since the 08-22..08-25 outage. The 2026-11-06 drift sentinel succeeded (circuit-trace run 42224171554, GitHub-confirmed completed/success, ~24.5m, one run for the push). 3 rows verified, language_penalty present on all three (0.045, 0.369, -0.046). data/drift_series.json now holds 54 measured days ending 20261106 (published to the live site as patientwords 4eb328a). Delta against 20261103: max |dp| 0.0, top words unchanged. The two historic DRIFT days (20260715 max |dp| 0.027, 20260814 max |dp| 0.023, both pair 2 patient, top words unchanged) are unchanged; threshold 0.01. 11-04..11-05 are Tue/Fri cadence gaps, not holes. Lens sentinel (3f): run 42227829299 completed/success, both models landed; lens_sentinel_check.py exit 0, no new step on 20261106 (38 days; 3 historical steps: gemma-2-2b@20260731, gemma-2-2b@20260814, gemma-2-2b-it@20260814).",
     "INSTRUMENT HEALTHY, twenty-third consecutive measured sentinel since the 08-22..08-25 outage. The 2026-11-03 drift sentinel succeeded (circuit-trace run 41645282990, GitHub-confirmed completed/success, ~19.5m, one run for the push). 3 rows verified, language_penalty present on all three (0.045, 0.369, -0.046). data/drift_series.json now holds 53 measured days ending 20261103 (published to the live site as patientwords 12556f6). Delta against 20261030: max |dp| 0.0, top words unchanged. The two historic DRIFT days (20260715 max |dp| 0.027, 20260814 max |dp| 0.023, both pair 2 patient, top words unchanged) are unchanged; threshold 0.01. 10-31..11-02 are Tue/Fri cadence gaps, not holes. Lens sentinel (3f, first Routine run since its 10-31 restoration): run 41648831963 completed/success, both models landed; lens_sentinel_check.py exit 0, no new step on 20261103 (37 days; 3 historical steps: gemma-2-2b@20260731, gemma-2-2b@20260814, gemma-2-2b-it@20260814).",
@@ -1136,6 +1190,10 @@
     {
       "date": "2026-11-10",
       "text": "DRIFT verdict: no new breach. Sentinel SUCCEEDED (run 42825105471, ~15m, GitHub-confirmed); 55 days, max |dp| 0.0 vs 11-06; drift_series.json published (site f1504ce). Lens exit 0, no new step (39 days). 3e leg NOT fired: refused by this session's permission layer, nothing written. 3d swept the 11-06 sentinel only; 7 agscen_ runs (466 PNGs) await owner decision AGSCEN-PNG-SWEEP-20261110."
+    },
+    {
+      "date": "2026-11-13",
+      "text": "2026-11-13 - DRIFT verdict: no new breach on the pairs measured; sentinel INCOMPLETE. Run 43453577844 completed/failure: pairs 1-2 landed (max |dp| 0.0 vs 11-10), pair 3 hit Neuronpedia HTTP 500 'Server busy' on all 4 attempts, permanent hole (blocker sentinel-pair3-500-20261113). drift_series.json published (site 5d607dc, 56 days). Lens exit 0, no new step (40 days). 3e leg evicted after stacking with its park again (PUBLISH-STACKED-PARK-20261103); park ran, leg left to the backfill chain. 3d swept the 11-10 sentinel; 7 agscen_ runs still await AGSCEN-PNG-SWEEP-20261110. Catalogue-only publish: 13 new part hashes, 0 statistics files changed."
     }
   ],
   "decisions_pending": [
@@ -1333,10 +1391,15 @@
   ],
   "blockers": [
     {
+      "id": "sentinel-pair3-500-20261113",
+      "recorded_utc": "2026-11-13T16:15:20Z",
+      "what": "Drift sentinel 2026-11-13 is incomplete: run 43453577844 traced pairs 1-2 and failed on pair 3's patient side with Neuronpedia /api/graph/generate HTTP 500 'Server busy, please try again later' on all 4 attempts (16:00-16:02Z). Pairs 1-2 read max |dp| 0.0 against 20261110. Per the owner rule of 2026-08-23 there is no same-day retry, so pair 3 is a permanent hole for 20261113. drift_sentinel.py's 20261113 day holds 2 pairs; its delta compares only the pairs present. The same-day lens sentinel on the same host succeeded. Next cycle: if the next sentinel also fails, record it as consecutive."
+    },
+    {
       "id": "PUBLISH-STACKED-PARK-20261103",
       "recorded_utc": "2026-11-03T14:12:00Z",
-      "updated_utc": "2026-11-03T14:12:00Z",
-      "what": "Section 3e runs the leg's fire and then the park at once. When the leg's push is rejected (exit 1), the park still commits on top of it locally and is rejected too. fire_trigger.py publish accepts two unpushed commits that touch the same trigger file plus the journal as one fire and pushes them in one push; the workflow reads the trigger file at the pushed head, so only the park would run and the leg would sit journaled with no run. On 2026-11-03 the Routine split them by hand (set the park aside, published the leg, cherry-picked and published the park). Owner decision: either publish refuses a range holding two fires of one lane, or 3e skips the park when the leg's fire exits 1.",
+      "updated_utc": "2026-11-13T16:15:20Z",
+      "what": "Section 3e runs the leg's fire and then the park at once. When the leg's push is rejected (exit 1), the park still commits on top of it locally and is rejected too. fire_trigger.py publish accepts two unpushed commits that touch the same trigger file plus the journal as one fire and pushes them in one push; the workflow reads the trigger file at the pushed head, so only the park would run and the leg would sit journaled with no run. On 2026-11-03 the Routine split them by hand (set the park aside, published the leg, cherry-picked and published the park). Owner decision: either publish refuses a range holding two fires of one lane, or 3e skips the park when the leg's fire exits 1. || RECURRED 2026-11-13: the Routine again committed the 3e park after the leg's exit 1 and before publish. This time the session guard refused both the hand split (git reset of a trigger-file commit) and any plain push carrying a trigger change, so the only route left was the one publish itself names: the leg's entry (fired 2026-11-13T15:33:02Z) was marked evicted in the journal and the park published alone (run 43453907431, success). The leg never ran; the backfill chain replans it. The fix the owner decides should make 3e stop after a leg's exit 1 and run publish before any park.",
       "owner_action": "Decide the fix; until then a Routine that sees two stacked logits-eval fire commits after an exit 1 must publish them one at a time."
     },
     {
@@ -1382,6 +1445,7 @@
     }
   ],
   "notes": [
+    "2026-11-13 cycle: section 0 gate did NOT trip (newest brief brief_20261110.md, 3 days old). Bootstrap: both repos arrived clean on session branches whose tips equalled origin/main (engine fd73d99d, site d385650b); shallow clones, switched to local main, a --depth=1 fetch confirmed no new commits. Preflight: main in both, dashboard identical to origin/main, seal_check exit 0, push --dry-run clean. Harvest: 0 journal-active entries at open; 11-10 carry-overs (3d sweep 42825349166 completed/success; circuit-trace and jlens parks) past 8h. Section 2a: ledger_update.py found 0 new sidecars (lifetime $102.4868, today $0/$2); nothing to commit. Section 3: sentinel 43453577844 completed/failure with pairs 1-2 (pair 3 upstream 500, see blocker sentinel-pair3-500-20261113); verdict max |dp| 0.0 on pairs 1-2; 56 measured days. 3c re-park fired. 3d: archive-renders re-parked (43453688551) then swept drift_sentinel_20261110 (43454017045). 3e: planner not at parity; leg fired but evicted after stacking with its park (PUBLISH-STACKED-PARK-20261103); park ran. 3f: lens 43459212850 success, check exit 0. Section 5: catalogue-only chain plus data/drift_series.json; contract 0 errors, claim_check all verified, seal (docs,ops,data/verification) exit 0 with 3 allowlisted; check-release passed (0 statistics files changed, no snapshot); site 5d607dc; --published passed. GitHub terminality confirmed via GitHub tools for every run named here.",
     "2026-11-10 cycle: section 0 gate did NOT trip (newest brief brief_20261106.md, 4 days old). Bootstrap: both repos arrived clean on session branches whose tips equalled remote main (engine d8d0855d, site b7da4530; checked with ls-remote); engine clone shallow, switched to local main without fetching or deepening. Preflight: main in both, dashboard identical to origin/main, seal_check CLEAN (183 phrases, 869 files; 3 allowlisted occurrences of ruling 2026-09-23), push --dry-run clean. Harvest: 0 journal-active entries at open; 11-06 carry-overs (3d sweep 42224295051, circuit-trace park 42227766116, jlens park 42228570125) GitHub-confirmed completed/success, past 8h and unresolvable by fire_trigger.py, recorded here. Section 2a: ledger_update.py folded 20 new sidecars (7 $0 agscen alias reports, 6 advice judge sidecars, 2 advice response sidecars, 3 colloquial rewrites, all from other sessions; lifetime $102.4868, today $0/$2), no WARNING lines, committed cc0c27c9. Fires: drift sentinel (15.3m, success); archive-renders opening re-park; 3d sweep renders-20261110 (sentinel 20261106 only); circuit-trace re-park; lens sentinel (success) and jlens-readout re-park. Section 3e: planner printed leg pairs_20260711T051145Z_txplacebo 1-44/50 x 6 original models (lane 0 active, no prior entry with that note); the fire was REFUSED by this session's tool-permission layer before fire_trigger.py ran, as on 11-06; nothing written, skipped, not worked around. The scheduled backfill_chain normally runs this leg. Section 5: contract 0 errors, claim_check all verified, seal_check (docs,ops,data/verification) CLEAN (871 files); published data/drift_series.json only (site f1504ce).",
     "2026-11-06 cycle: section 0 gate did NOT trip (newest brief brief_20261103.md, 3 days old). Bootstrap: both repos arrived clean on session branches whose tips equalled origin/main (engine f2a168ec, site 70f1229); switched to local main; engine clone shallow (a blobless fetch of main was run once before that was noticed; it completed without deepening). Preflight: main in both, dashboard identical to origin/main, seal_check CLEAN (183 phrases, 865 files), push --dry-run clean. Harvest: 0 journal-active entries; 11-03 carry-overs (3d sweep 41645369939) GitHub-confirmed completed/success; 11-03 circuit-trace and jlens-readout parks confirmed terminal (no run queued or in progress at open), past 8h and unresolvable by fire_trigger.py, recorded here. Section 2a: ledger_update.py folded 0 new sidecars (lifetime $91.3778, today $0/$2), nothing to commit. Fires: archive-renders re-park; drift sentinel (24.5m, success); 3d sweep renders-20261106; circuit-trace re-park; lens sentinel (success) and jlens-readout re-park. Section 3e: planner printed leg pairs_20260707T215921Z 56-80/80 x llama-3.2-3b+olmo-2-1b+gemma-2-2b-it (lane 0 active, no prior entry with that note); the fire was REFUSED by this session's tool-permission layer before fire_trigger.py ran, so nothing was written or pushed; skipped, not worked around. The scheduled backfill_chain normally runs this leg. Concurrent: another session resolved and parked advice-eval during this cycle (407c39fb, a1c620a7). Section 5: contract 0 errors, claim_check all verified, seal_check (docs,ops,data/verification) CLEAN; published data/drift_series.json only (site 4eb328a).",
     "2026-11-03 cycle: section 0 cadence gate did NOT trip - newest brief was brief_20261030.md at 4 days old. Bootstrap: both repos arrived clean on session branches whose tips equalled remote main (engine 3e84be67); engine clone shallow, switched to local main without deepening; site sparse-checkout disable a no-op. Preflight: main in both, dashboard identical to origin/main, seal_check CLEAN (183 sealed phrases, 861 files), push --dry-run clean. Harvest: 10-30 carry-overs (3d sweep 41056229284, circuit-trace park 41060856515) GitHub-confirmed completed/success; both past 8h and unresolvable by fire_trigger.py, recorded here. Section 2a: ledger_update.py folded 37 new sidecars (15 $0 __lenspairs alias reports, 22 Petri run/judge/rejudge sidecars from other sessions; lifetime $81.5686 -> $91.3778, today $0/$2), no WARNING lines, committed 067767d6. Fires: archive-renders re-park; sentinel; 3d sweep of drift_sentinel_20261030; 3e leg pairs_20260707T023706Z 1-44/50 x 6 original models and its park; circuit-trace re-park; 3f lens sentinel; jlens-readout re-park. Exit-1 incident: the 3e leg's push was rejected (origin moved under CI output commits) and the park, run next, committed on top of it locally and was rejected too. fire_trigger.py publish would have pushed both commits in one push, and the workflow reads the trigger file at the pushed head, so only the park would have run and the leg would have been journaled with no run. Recovery: set the park commit aside on a temporary local branch, publish the leg alone (640c433d -> run 41645592435), cherry-pick the park and publish it (d9b0548f -> run 41645636851), delete the temp branch. Nothing re-fired; both journal entries are the originals. Publish: data/drift_series.json only (site 12556f6); gates validate_frontend_contract 0 errors / 1 standing warning (urgency_shift orphan rows 1728/13652), claim_check all verified, seal_check CLEAN over docs,ops,data/verification (863 files). Lens check exit 0. GitHub terminality checks this cycle were confirmed via the GitHub tools, except the 11-03 3d sweep, inferred from its committed manifest and left unresolved per 3d.",
