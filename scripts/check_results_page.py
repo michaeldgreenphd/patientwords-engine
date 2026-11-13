@@ -144,8 +144,9 @@ PAGE_LABEL_RULES = (
 )
 # The page's label tables, each written in the page as ``var NAME={...};`` with a JSON object. ``page_labels``
 # reads them from the page source. They are not restated here.
-LABEL_TABLES = ("CLASS_LABEL", "FAMILY_LABEL", "EVIDENCE_LABEL", "STATE_LABEL", "REVIEW_LABEL", "SAMPLING_LABEL",
-                "SCREENING_LABEL", "RESTRICTION_LABEL", "INSTRUMENT_LABEL", "SUFFIX_LABEL", "RULE_LABEL")
+LABEL_TABLES = ("CLASS_LABEL", "FAMILY_LABEL", "EVIDENCE_LABEL", "STATE_LABEL", "REVIEW_LABEL", "REVIEW_IN_ROW",
+                "SAMPLING_LABEL", "SCREENING_LABEL", "RESTRICTION_LABEL", "INSTRUMENT_LABEL", "SUFFIX_LABEL",
+                "RULE_LABEL")
 LABEL_STRINGS = ("CLASS_OTHER",)
 
 # The check names, in the order they run. The run stops with an error if what was recorded differs from this.
@@ -312,6 +313,13 @@ def label_of(table: Mapping[str, str], value: Any) -> str:
     if not isinstance(value, str) or not value:
         return DASH
     return table.get(value, value)
+
+
+def row_review(value: Any, labels: PageLabels) -> str:
+    """The review status a row of the run list states where it differs from the shared one: the words
+    ``REVIEW_IN_ROW`` keeps for the stored value; with no entry, the whole ``REVIEW_LABEL`` entry."""
+    short = labels.table("REVIEW_IN_ROW").get(value) if isinstance(value, str) else None
+    return short or label_of(labels.table("REVIEW_LABEL"), value)
 
 
 def stored(value: Any) -> str:
@@ -1210,22 +1218,28 @@ def check_first_view(s: Session, recorder: Recorder) -> None:
             assert wanted in shared, f"the shared status does not say that review is pending for {wanted}"
             common = shared_review(runs)
             by_id = {run["run_dir"]: run for run in runs}
-            exceptions = repeated = 0
+            exceptions = repeated = shortened = 0
             for name, own, text, title in state["context"]:
                 review = by_id[name].get("clinical_review")
                 differs = (_text(review) or "not recorded") != common
                 if differs:
-                    assert own == label_of(x.labels.table("REVIEW_LABEL"), review), (
+                    assert own == row_review(review, x.labels), (
                         f"the row of {name} does not state its own review status")
                     assert (_text(review) or "not recorded") in (title or ""), (
                         f"the review status of {name} does not keep its stored value in its title")
+                    # A row that keeps the short words of REVIEW_IN_ROW keeps the whole label in its title.
+                    whole = label_of(x.labels.table("REVIEW_LABEL"), review)
+                    assert own == whole or whole in (title or ""), (
+                        f"the row of {name} shortens its review status and its title lacks the whole label")
                     exceptions += 1
+                    shortened += own != whole
                 else:
                     assert own is None, f"the row of {name} repeats the review status every run shares"
                 repeated += any(word in text.lower() for word in ("simulated", "not statements from patients"))
             assert repeated == 0, f"{repeated} row(s) repeat the status stated once above the list"
             return {"review_pending_runs": pending, "shared_review_status": common, "rows_read": len(state["context"]),
-                    "rows_with_their_own_review_status": exceptions}
+                    "rows_with_their_own_review_status": exceptions,
+                    "rows_with_a_shortened_review_status": shortened}
 
         def navigation() -> dict[str, Any]:
             found = page.evaluate(NAV_STATE)

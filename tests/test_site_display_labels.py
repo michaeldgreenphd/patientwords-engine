@@ -43,6 +43,9 @@ Three tests of the follow-up of 2026-11-12 fail on site revision a9350a6, the re
 two subsets of the translated corpus on ``results/``, the spelling "self-care" on ``multi-turn/``, and the label
 "whitespace token" for a top prediction with no stored text on the two ``simulated-scenarios/`` pages.
 
+One test of 2026-11-13 fails on site revision 70ba286, the revision before it: the short words a ``results/`` row
+keeps for a review status that differs from the shared one.
+
 Skipped where the sibling site checkout, Playwright or a Chromium is missing.
 """
 from __future__ import annotations
@@ -981,6 +984,56 @@ def test_results_study_context_states_each_fact_once(site) -> None:
             assert "includes" not in text and "included in" not in text, (where, text)
         assert "analysis eligibility" in wording["description"] and "analysis eligibility" in wording["subtitle"]
         assert "Eligibility is determined by the rules in Methods & source" in " ".join(wording["about"].split())
+
+
+def test_results_row_shortens_its_exceptional_review_status(site) -> None:
+    """(2026-11-13, owner request) A row whose review status differs from the shared one states it in the short
+    words the page lists for that stored value (``REVIEW_IN_ROW``), not in the whole label. Nothing is removed from
+    the page: the line's title keeps the stored value and the whole label, and the whole label stays in About, in
+    the Clinical review filter, in the opened run and in Label values, which gives the row's words beside it. A
+    status with no short entry is printed whole. No count or measured value is asserted."""
+    browser, base = site
+    _need("results_catalogue/index.json")
+    source = (SITE / "results" / "index.html").read_text(encoding="utf-8")
+    tables: dict[str, dict[str, str]] = {}
+    for name in ("REVIEW_LABEL", "REVIEW_IN_ROW"):
+        found = re.search(rf"^\s*var {name}=(\{{.*?\}});", source, re.DOTALL | re.MULTILINE)
+        assert found, f"the page has no table {name}"
+        tables[name] = json.loads(found[1])
+    whole, short = tables["REVIEW_LABEL"], tables["REVIEW_IN_ROW"]
+    assert short and set(short) <= set(whole)
+    with _Page(browser, base, RESULTS) as view:
+        view.page.wait_for_selector("#cat-body tr.cat-run")
+        while view.page.is_visible("#cat-more"):
+            view.page.click("#cat-more")
+        lines = view.page.evaluate("""() => [...document.querySelectorAll(
+            '#cat-body tr.cat-run [data-exception="review"]')].map((line) => (
+                {text: line.innerText.trim(), title: line.getAttribute('title')}))""")
+        seen = set()
+        for line in lines:
+            assert line["title"].startswith("clinical_review: "), line
+            stored = line["title"].split(": ", 1)[1].split(" (")[0]
+            if stored in short:
+                assert line["text"] == short[stored] != whole[stored], line
+                assert line["title"] == f"clinical_review: {stored} ({whole[stored]})", line
+                seen.add(stored)
+            else:
+                assert line["text"] == whole.get(stored, stored), line
+        assert seen, "no row of the committed index has a review status the page shortens"
+        kept = view.page.evaluate("""() => ({
+            about: document.querySelector('#about-review').textContent,
+            filter: [...document.querySelectorAll('#f-review option')].map((option) => option.textContent).join(' | '),
+            label_values: document.querySelector('#legend-body').textContent})""")
+        for stored in seen:
+            for where, text in kept.items():
+                assert whole[stored] in text, (where, stored)
+            assert f"{whole[stored]}; in the run list: {short[stored]}" in kept["label_values"], stored
+        row = view.page.locator("#cat-body tr.cat-run", has=view.page.locator('[data-exception="review"]')).first
+        stored = row.locator('[data-exception="review"]').get_attribute("title").split(": ", 1)[1].split(" (")[0]
+        row.locator("td.c-exp button").click()
+        view.page.wait_for_selector("#cat-body tr.cat-detail .det-links a[download]")
+        opened = view.page.evaluate("() => document.querySelector('#cat-body tr.cat-detail').textContent")
+        assert f"clinical review: {whole.get(stored, stored)}" in opened
         assert view.errors == []
 
 

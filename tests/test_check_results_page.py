@@ -49,7 +49,8 @@ TOY_TABLES: dict[str, dict[str, str]] = {
     "EVIDENCE_LABEL": {"registered_cohort": "registered cohort", "exploratory_set": "exploratory, toy set"},
     "STATE_LABEL": {"completed": "completed", "partial": "partial",
                     "completion_not_recorded": "completion not recorded"},
-    "REVIEW_LABEL": {"a_pending": "review A pending"},
+    "REVIEW_LABEL": {"a_pending": "review A pending", "b_read_c_pending": "B read, review C pending"},
+    "REVIEW_IN_ROW": {"b_read_c_pending": "B read only"},
     "SAMPLING_LABEL": {"other": "other stimulus family"},
     "SCREENING_LABEL": {"screened_out": "screened out"},
     "RESTRICTION_LABEL": {"sealed_holdout": "Sealed holdout"},
@@ -291,6 +292,13 @@ def test_shared_review_is_the_most_frequent_status_and_the_first_of_a_tie() -> N
     assert crp.shared_review([run("a_pending"), run("b_pending")]) == "a_pending"         # a tie: the first listed
     assert crp.shared_review([run(None), run(None), run("a_pending")]) == "not recorded"
     assert crp.shared_review([]) == ""
+
+
+def test_a_row_keeps_the_short_words_for_its_review_status_only_where_the_page_lists_them() -> None:
+    assert crp.row_review("b_read_c_pending", LABELS) == "B read only"          # an entry in REVIEW_IN_ROW
+    assert crp.row_review("a_pending", LABELS) == "review A pending"             # none: the whole REVIEW_LABEL entry
+    assert crp.row_review("unmapped_status", LABELS) == "unmapped_status"        # in neither table: as stored
+    assert crp.row_review(None, LABELS) == crp.row_review("", LABELS) == crp.DASH
 
 
 def _stop(**fields: Any) -> dict[str, Any]:
@@ -582,7 +590,8 @@ def test_the_page_carries_the_ids_and_strings_the_checker_reads() -> None:
     for text in ("'Medical wording'", "'Everyday wording'", "['Target-token probability','num','medical wording']",
                  "['Target-token probability','num','everyday wording']", f"['Difference','','{crp.DIFFERENCE_ORDER}']",
                  *crp.SHARED_STATUS, *crp.DIFFERENCE_NOTE, "DASH+' not measured'", "'data-exception','review'",
-                 "el('span','ln',labelOf(REVIEW_LABEL,r.clinical_review))"):
+                 "el('span','ln',rs?REVIEW_IN_ROW[rk]:labelOf(REVIEW_LABEL,r.clinical_review))",
+                 "(rs?' ('+labelOf(REVIEW_LABEL,rk)+')':'')"):
         assert text in script.replace("\u2019s", "").replace("\u2019", ""), text
     assert "'Clinical wording'" not in script and "'Patient wording'" not in script
     assert "var(--penalty)" not in source and "bdg-restricted" not in source and "draft-flag" not in source
@@ -651,6 +660,10 @@ def test_the_pages_label_tables_cover_the_sites_index_and_the_fallback_is_the_cl
     for key, name in (("evidence_class", "EVIDENCE_LABEL"), ("clinical_review", "REVIEW_LABEL")):
         for value in sorted({run.get(key) for run in runs if isinstance(run.get(key), str)}):
             assert crp.label_of(labels.table(name), value) in (labels.table(name).get(value), value)
+    # A status a row shortens has its whole label too: the filter, the open run and the row's title print that.
+    assert set(labels.table("REVIEW_IN_ROW")) <= set(labels.table("REVIEW_LABEL"))
+    for value, short in labels.table("REVIEW_IN_ROW").items():
+        assert short != labels.table("REVIEW_LABEL")[value] and crp.row_review(value, labels) == short
 
 
 # ------------------------------------------------------------------------------------------ the browser run
