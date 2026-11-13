@@ -66,6 +66,150 @@ every prompt of a family without a join, is checked as a bare phrase with no bat
 index. Any hit refuses `holdout_refusal`; the refusal names the family and variant and
 never repeats prompt text.
 
+## Batch intake: from an authored batch to a review packet and a manifest
+
+Added 2026-11-12. `intake` reads one authored batch of case families (the `families.json`
+of a draft round) and writes three files. It loads no model and reads no measurement.
+
+```bash
+python -m scripts.experiments.cli intake --batch tests/fixtures/experiments/intake_families_synthetic.json --batch-id synthetic --stem placeholder_stem --split-seed 7 --no-write
+```
+
+| Output | Holds |
+|---|---|
+| `review_packet.md` | per family, on one screen: reference facts, every wording, the changed fact, the patient's explanation where there is one, each everyday expression with its declared source and evidence sentence, and the software findings. No model output |
+| `review_form.json` | one empty record per family and reviewer role, with the items of `pair_equivalence_review` in the draft rubric set to null. A null is "not reviewed" |
+| `intake_manifest.json` | the proposed measurement manifest: family ids, SHA-256 of each family, of its texts and of each prompt, strata, splits, the mechanistic subset, review status, model and tokenizer pins, and estimated work. It holds no prompt text |
+
+The rules it applies are data, in `data/experiments/intake_design.v1.json`. That file is a
+draft the owner has not agreed; the packet and the manifest repeat its status line.
+
+**Four layers of review, never merged.** Software validation (this command, extending
+`scripts/check_candidate_pairs.py`) covers structure only. The owner's read is a keep or
+exclude decision on a named version of the family. Clinician review and patient-language
+review come only from `--reviews` records whose `reviewer_kind` is `human`; anything else
+is refused (`not_a_review`). A family without both reviews is `domain_review_pending`.
+Several reviews of one role are combined item by item and never by input order: any
+`different` stands and removes the family, `same` needs every reviewer who recorded the
+item to say `same`, and the manifest lists the items they disagree on.
+
+**What a read or review is bound to.** The family's review basis
+(`review_basis_sha256`): its texts, reference facts, care levels (`right_care` and
+`right_care_after`), carrier, target and changed-fact declaration. When any of them
+changes, with or without a change of prompt text, the owner's read and both reviews are
+`stale` and the manifest names the part that changed. They are not carried over.
+
+**Known concerns** (`--concerns`, schema `patientwords.intake-concerns/1`). A concern
+about a family's content (a control that adds a fact, a disputed level, a stated negative,
+source fit) is a record of its own, with a kind, the contrasts it applies to, who raised it
+and a disposition. The owner keeping a family does not close a concern, and neither does a
+review: only its recorded disposition does. `accepted_as_is` and `resolved_by_revision`
+are a person's decisions and a model cannot record either (`not_a_disposition`); a revision
+made to address a concern leaves it open as `revised_pending_reread` until a person
+confirms it. `resolved_by_revision` names the review basis of the version that resolved
+it; for any other version the concern is open again. An open concern on the family or its
+register contrast blocks a confirmatory statement on the register pair. An open concern on
+a control is listed on that control (`controls_with_open_concerns`) and does not block the
+pair; neither does one on the reviewer-only label. The packet prints every
+concern with its disposition; the review form lists the open ones.
+
+**Source verification and source fit.** `--source-check` (schema
+`patientwords.source-check/1`) records, per citation (an expression with one identifier),
+that the cited record exists and contains the evidence sentence. A check of one citation
+does not count for another citation of the same wording. That is verification. Whether patients in the family's
+population use the expression is source fit, a judgement that verification never implies;
+it is recorded as a concern of kind `source_fit`.
+
+**Strata.** Each contrast belongs to one stratum and strata are never pooled:
+`register` (medical against everyday), `patient_explanation` (everyday against everyday
+plus the speaker's stated belief; the clause adds information, so it is not a register
+contrast) and `syntax_crossing`. A family that uses a dialect form, or a carrier phrase
+with no earlier measurement, has its register contrast reported in `register_with_dialect`
+or `new_carrier`. Only an unflagged family's `register` contrast is a candidate for a
+confirmatory statement, and only under a signed protocol. Care tiers are not compared:
+families at different tiers end on different carrier phrases and target words.
+
+**Two kinds of eligibility.** `eligibility.publication` follows
+[open_results_policy.md](../open_results_policy.md): an admissible family's intact results
+are shareable under `public-display/1` whatever their effect, with their labels.
+`eligibility.confirmatory` lists what blocks a confirmatory statement
+(`protocol_not_signed`, a missing review, a flag, an unassigned split, and
+`calibration_split` for a discovery family: the protocol makes its primary contrast on
+held-out families and uses discovery families for calibration only). Every blocker the
+command can give is defined in the design file (`eligibility.confirmatory_blockers`),
+which also says which criteria the protocol draft names and which this design adds: the
+owner's keep, the open-concern rule and the named stem. A recorded clinician review with a
+`cannot_judge` does not pass (`domain_review_not_passed`). The two are
+separate fields because an exploratory or null result is shared, not hidden.
+
+**Splits and the mechanistic subset.** A split is drawn per family (every wording of a
+case together), per care level, from a recorded seed. A recorded split
+(`--split-record`) is read and never redrawn; two records that disagree refuse
+`split_conflict`. A split record is accepted, before or after measurement, only when it
+carries a seed and its splits are exactly the draw that seed gives over this batch's
+families and care levels (if it lists strata, they must be the batch's); a bare mapping or
+a hand-placed assignment refuses `split_record_unbound`.
+When `trace_out/` already holds a directory for `--stem`, nothing is drawn: a new split
+refuses `split_after_measurement`. The command
+cannot see when a record was written: the commit that added it is the evidence, and the
+manifest says so (`records_timing`). A subset is restored only from `--previous-manifest`
+when that file is an intake manifest of this batch and this stem, written while no run
+directory of the stem existed, with the same seed and count, and every chosen family still has the review basis it had
+then; otherwise `subset_after_measurement` or `subset_family_changed`. An earlier manifest
+is a file the caller supplies, so these are consistency checks and not proof of when it
+was written. A restored subset therefore has the status `restored_from_earlier_manifest`
+and `outcome_selected: not_verified_by_this_command`, never `selected_before_outcomes`;
+its `timing` field says that the commit which added the earlier manifest is the evidence.
+A subset is not restored when one of its families is no longer an owner-kept, unflagged
+discovery family (`subset_family_not_candidate`). For the same reason no family of a
+measured batch is reported as eligible for a confirmatory statement
+(`split_timing_not_verified`): eligibility is read from a manifest written before
+measurement. A split or a subset is assigned only for a named `--stem` (`stem_required`),
+and without a stem no family is reported as eligible (`stem_not_named`): the command has
+not looked for measurements. The stem is the caller's statement of where the batch's
+measurements land; the command does not check that statement. A protocol counts as signed
+only when its status begins with the word `signed`. The manifest records the validation
+parameters the caller set (`software_validation.parameters`). A concern is withdrawn only
+by whoever raised it. The mechanistic
+subset is a seeded draw from owner-kept, unflagged discovery families that no review has
+removed, so it is not outcome-selected, and its estimate includes the three controls per
+site. With `--pairs-file` every row of the lane's input is accounted for: a contrast is
+`identical`, `differs`, `absent` or `duplicated`, rows with a repeated or missing id are
+listed, and `lane_input.clean` is true only when no such row exists and no contrast
+`differs`. Absent contrasts and rows of other batches are listed, not judged.
+
+**Tokenization.** Alignment classes (`position_aligned`, `suffix_aligned`) are computed
+only from `--tokenization` records of real token ids (every prompt and target value a
+non-empty list of integers; anything else refuses `invalid_tokenization`). Without one the
+manifest says `not_recorded`. No family is rewritten to reach a class.
+
+**Repeated inputs.** Several inputs can be passed more than once, and the order of the
+arguments never decides a result or a byte of the output. Owner reads: the read made at
+the later instant applies (`owner_read_utc` is parsed as a time, offsets included); two
+reads that cannot be ordered (the same instant, or a time missing from either) and differ
+in any recorded field (decision, reasons, note, batch version, or whether a time was
+recorded) refuse `conflicting_verdicts`.
+Reviews of one role are combined item by item, and their reviewers are listed by name and
+date. Source checks of one citation must agree (`conflicting_source_checks`). Tokenization
+files of one tokenizer are merged, and one prompt with two different id lists refuses
+`conflicting_tokenization`. Split records that disagree refuse `split_conflict`; the
+manifest numbers the accepted records by seed, not by argument position. A
+repeated concern id refuses `invalid_concerns`, and a family's concerns are listed by
+concern id. Models are listed once each, by study id. A `--prior-batch` label names one
+file; the same label twice refuses `invalid_input`. Earlier batches are compared in label
+order, so a text held by two of them is reported against the same one each time.
+
+**Unusable input files.** A file that cannot be read, is not JSON, or does not have the
+outer shape its argument expects is a refusal with exit 2 (`unreadable_input`,
+`invalid_input` or the input's own `invalid_…` code), for every file argument including
+`--batch` and `--design`. The command does not end in an uncaught error on a file it was
+given.
+
+**Reruns.** The same inputs give byte-identical outputs. An existing output with the same
+bytes is `unchanged`; with other bytes the command refuses `output_differs` and writes
+nothing. Output paths follow *Where output may go* below. Exit 1 means software
+validation found an error; the three files are still written so the errors can be read.
+
 ## Three things kept apart
 
 **Execution state** says what happened to a task: `not_run`, `unsupported`, `unavailable`,
@@ -238,6 +382,7 @@ the platforms the project runs on (Linux).
 | Each named refusal fires | `tests/test_experiments_core.py`, `tests/test_experiments_store.py`, `tests/test_experiments_compare.py` |
 | The ICA adapter agrees with the `icalens` library on toy data | `tests/test_experiments_ica_icalens.py`, run in an isolated environment with torch 2.13.0 and icalens 0.4.0 |
 | The existing exploratory contract is unchanged | `tests/test_exploratory_methods.py` passes; its fixtures are byte-identical |
+| Batch intake keeps review layers, strata, splits and outputs as stated | `tests/test_experiments_intake.py`, on eight placeholder families |
 | Any real model | not verified. No model was loaded. Fixture timings say nothing about a model run |
 | Any measurement validity | not verified. Toy values are chosen by hand so that expected results are computable |
 

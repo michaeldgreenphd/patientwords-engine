@@ -29,12 +29,25 @@ def _text() -> str:
 def test_the_protocol_is_an_unsigned_draft_that_reports_no_result() -> None:
     text = _text()
     assert "**Status: draft, not signed. Nothing in it has been run on a model." in text
-    assert "None of these has a value yet, and none is proposed here." in text
+    assert "None of these has a value yet." in text
+    assert "a recommendation is not a value, and the table changes only by the owner's decision" in text
     assert "None. Nothing has been run under this protocol." in text
-    # Section 14 holds no number: every margin and threshold is "not fixed".
-    table = PROTOCOL.read_text(encoding="utf-8").split("## 14.")[1].split("## 15.")[0]
+    # Section 14 holds no number: every margin and threshold is "not fixed". Section 14.1 recommends and fixes nothing.
+    section = PROTOCOL.read_text(encoding="utf-8").split("\n## 14. ")[1].split("\n## 15. ")[0]
+    table, recommendations = section.split("### 14.1")
     rows = [line for line in table.splitlines() if line.startswith("| ") and "Field" not in line and "---" not in line]
     assert len(rows) == 5 and all(row.split("|")[2].strip() == "not fixed" for row in rows)
+    assert recommendations.startswith(" Recommendations awaiting the owner's decision")
+    assert "No outcome-blind family has been measured" in recommendations
+
+
+def test_the_pilot_on_authored_families_is_a_proposal_on_discovery_families_only() -> None:
+    text = _text()
+    assert "**The smallest pilot on authored families: proposed, not approved, not fired (2026-11-12).**" in text
+    assert "no validation or fresh-test family is measured" in text
+    for stratum in ("`patient_explanation`", "`syntax_crossing`", "`register_with_dialect`", "`new_carrier`"):
+        assert stratum in text, stratum
+    assert "Care tiers are not compared with each other" in text
 
 
 def test_the_four_parts_stay_separate_and_name_their_level_of_evidence() -> None:
