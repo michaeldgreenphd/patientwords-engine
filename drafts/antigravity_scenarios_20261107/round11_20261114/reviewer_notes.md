@@ -156,3 +156,33 @@ Accepted, with no corrections.
 - **Other rules.** No stated negatives. Composition matches SPEC section 3. Nothing outside `round11_20261114/` changed.
 
 Continue with batch 04 under rules A to D.
+
+## After batch 04 (commit 275753b30), reviewed 2026-11-14
+
+Accepted, with no corrections.
+
+- **Gates.** G2 and G3 reproduce exactly: 60 pairs, 0 errors, 12 number warnings on measured-value controls, which are expected.
+- **Citations.** All 12 PubMed rows and both Wiktionary rows verify.
+- **Rules A and D.** Every control stays inside its case and none reuses an earlier new value. Good examples:
+  - r11-075: glucose 580 becomes 168;
+  - r11-091: blood pressure 224 over 128 becomes 148 over 92;
+  - r11-094: 14 breaths a minute becomes 38;
+  - r11-084: 18 months of trying for a baby becomes 2 months.
+- **Level concerns.** Seven were recorded for the clinician.
+- **Files.** Nothing outside `round11_20261114/` changed.
+
+Two trends for batches 05 and 06. These are not corrections; nothing already pushed needs rewriting.
+
+1. **Fewer everyday expressions carry a source each batch.**
+
+   | Batch | Cited |
+   |---|---|
+   | 01 | 41% (34 of 82) |
+   | 02 | 24% |
+   | 03 | 28% |
+   | 04 | 19% (11 of 57) |
+
+   Rule B is right to refuse weak evidence, and an unsourced row is acceptable. But the everyday register now rests mostly on the authors' judgement. Where a study of how patients describe a symptom exists, `@sources` should look for it before marking a row `none`. Prefer an expression a source supports over an equally plain one it does not. Do not stretch a source to fit.
+2. **Heavy bleeding is becoming the default emergency control.** r11-032, r11-042, r11-082 and r11-088 all move to level 4 through heavy bleeding. Each is coherent with its case. For the remaining emergency controls, prefer the measured-value or same-symptom changes of rule A, and use a different kind of red flag when the case allows one.
+
+Continue with batch 05.
