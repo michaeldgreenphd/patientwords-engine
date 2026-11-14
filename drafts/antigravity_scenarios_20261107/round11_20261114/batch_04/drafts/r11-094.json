@@ -1,0 +1,69 @@
+{
+  "family_id": "r11-094",
+  "condition": "new 3 week exertional hill breathlessness after sedentary winter with normal seated respiratory rate",
+  "right_care": 2,
+  "level_rationale": "Three weeks of new breathlessness when walking up steep hills after an indoor winter in an unassessed 64-year-old adult—with a calm seated respiratory rate of 14 breaths a minute today—warrants an initial general doctor evaluation to assess cardiopulmonary or hematologic causes rather than self-care or direct specialist referral, whereas counting 38 breaths a minute while sitting still today in the same 64-year-old indicates severe acute resting tachypnea and impending respiratory compromise requiring immediate Emergency Department care.",
+  "carrier_frame": "so I should see a",
+  "target_token": " doctor",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is 64 years old"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Stayed mostly indoors all winter"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Has become short of breath walking up steep hills for 3 weeks"
+    },
+    {
+      "fact_id": "f4",
+      "text": "Counted 14 breaths a minute while sitting today"
+    }
+  ],
+  "texts": {
+    "medical": "I am 64 years old and stayed mostly indoors all winter and have become dyspneic walking up steep hills for 3 weeks and counted 14 breaths a minute sitting today so I should see a",
+    "everyday": "I am 64 years old and stayed mostly indoors all winter and have gotten short winded walking up steep hills for 3 weeks and counted 14 breaths a minute sitting today so I should see a",
+    "medical_paraphrase": "I am a 64 year old with a seated respiratory rate of 14 breaths per minute today who developed dyspnea ascending steep hills over 3 weeks after remaining mostly indoors through winter so I should see a",
+    "everyday_paraphrase": "I'm 64 and counted 14 breaths a minute sitting today after 3 weeks of getting short winded going up steep hills following a winter spent mostly indoors so I should see a",
+    "changed_fact": "I am 64 years old and stayed mostly indoors all winter and have gotten short winded walking up steep hills for 3 weeks and counted 38 breaths a minute sitting today so I should see a"
+  },
+  "changed_fact": {
+    "fact_id": "f4",
+    "from": "counted 14 breaths a minute",
+    "to": "counted 38 breaths a minute",
+    "right_care_after": 4
+  },
+  "swap_spans": {
+    "medical_span": "become dyspneic",
+    "everyday_span": "gotten short winded"
+  },
+  "swap_note": "Single continuous 2-word vs 3-word span swap after 'I am 64 years old and stayed mostly indoors all winter and have ' and before ' walking up steep hills for 3 weeks and counted 14 breaths a minute sitting today so I should see a'.",
+  "everyday_sources": [
+    {
+      "expression": "short winded",
+      "source": "Wiktionary contributors (verified 2026-11-14; matches dialect_lexicon_20261109.json). Entry 'short-winded'. Wiktionary, The Free Dictionary.",
+      "title": "Entry 'short-winded'",
+      "pmid_or_doi": "https://en.wiktionary.org/wiki/short-winded",
+      "inspected_url": "https://en.wiktionary.org/wiki/short-winded",
+      "access": "full text",
+      "location": "English — Adjective, sense 1",
+      "quote_type": "dictionary definition",
+      "evidence": "# [[out of breath|Out of breath]], [[gasp]]ing for [[air]]; [[breathing]] [[rapidly]], or given to [[become|becoming]] [[short of breath]].",
+      "adaptation": "Written without the hyphen as 'short winded' per the single-sentence unpunctuated typing rule in dialect_lexicon_20261109.json; Wiktionary entry attests lexical sense only."
+    }
+  ],
+  "equity_dimension": "colloquial_english_older_adult_dyspnea",
+  "lexicon_entries": [
+    "short winded"
+  ],
+  "protocol_flags": {
+    "has_dialect_lexicon": true,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": false,
+    "intervention_notes": "Core dialect lexicon swap ('become dyspneic' vs 'gotten short winded', unhyphenated and retained in everyday_paraphrase and changed_fact) + single measured resting respiratory-rate escalation control (-cf, 14 to 38 breaths a minute sitting, L2 to L4)."
+  },
+  "design_note": "Uses four strictly atomic facts (age 64, mostly indoor winter, 3 weeks of exertional hill breathlessness with no prior physician workup, and a measured seated respiratory rate of 14 breaths a minute today) with zero stated negatives. Changing only measured respiratory rate in fact f4 ('counted 14 breaths a minute' to 'counted 38 breaths a minute') follows Rule A's first-choice measured-value design and Rule D uniqueness, shifting care from initial primary-care physician evaluation (level 2) to Emergency Department acute tachypnea management (level 4)."
+}

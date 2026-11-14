@@ -1,0 +1,57 @@
+{
+  "family_id": "r11-092",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 54 years old",
+      "For 5 months has had brief episodes of syncope when standing up",
+      "Episodes persist despite 6 weeks in doctor's compression stockings",
+      "Episodes happen 2 times a month"
+    ],
+    "everyday": [
+      "Speaker is 54 years old",
+      "For 5 months has had brief episodes of falling out when standing up",
+      "Episodes persist despite 6 weeks in doctor's compression stockings",
+      "Episodes happen 2 times a month"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 54 years old",
+      "Has a 5 month history of brief orthostatic syncope on standing",
+      "Episodes persist despite wearing physician-prescribed compression stockings for 6 weeks",
+      "Episodes occur 2 times per month"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 54 years old",
+      "Brief bouts of falling out when standing up have lasted 5 months",
+      "Episodes persist despite wearing compression stockings from doctor for 6 weeks",
+      "Episodes happen 2 times each month"
+    ],
+    "changed_fact": [
+      "Speaker is 54 years old",
+      "For 5 months has had brief episodes of falling out when standing up",
+      "Episodes persist despite 6 weeks in doctor's compression stockings",
+      "It happened 6 times this morning"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 4 reference_facts (f1: 54 years old, f2: brief episodes of losing consciousness when standing up for 5 months, f3: wore doctor-prescribed compression stockings for 6 weeks, f4: episodes happen 2 times a month) are strictly atomic, single checkable statements with zero named underlying diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday": "Matches f1, f2, f3, and f4 exactly; core dialect entry 'fell out / falling out' ('fainted, lost consciousness, had syncope') matches 'syncope'.",
+    "medical_paraphrase": "Matches f1, f2, f3, and f4 exactly ('orthostatic syncope on standing' = 'syncope when standing up').",
+    "everyday_paraphrase": "Matches f1, f2, f3, and f4 exactly and retains the core dialect form 'falling out'.",
+    "changed_fact": "Matches f1, f2, and f3 identically to everyday (retaining 'falling out') and changes only the episode frequency in f4 ('happens 2 times a month' -> 'happened 6 times this morning')."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 5 texts (orthostatic syncope/falling out on standing and lower-limb compression stockings; no unstated laterality).",
+    "timing": "Identical across all 4 non-control texts ('5 months'/'5 month history', 'brief', 'when standing up'/'on standing', '6 weeks', '2 times a/per/each month'); changed_fact escalates f4 frequency/timing to '6 times this morning'.",
+    "count_and_numbers": "Identical ('54' years old, '5' months, '6' weeks, '2' times a month) across all 4 non-control texts; changed_fact substitutes '6' times this morning in f4.",
+    "severity_and_quality": "Identical across all 4 non-control texts ('brief episodes of syncope' = 'brief episodes/bouts of falling out'); changed_fact escalates f4 to acute repetitive morning episodes ('6 times this morning').",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named underlying diagnoses, and zero added clinical facts or adjectives across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

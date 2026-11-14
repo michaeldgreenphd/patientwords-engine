@@ -1,0 +1,71 @@
+{
+  "family_id": "r11-073",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 42 years old",
+      "Developed dull frontal cephalgia for 1 hour tonight",
+      "Operated a portable gasoline powered generator inside the enclosed garage at their residence before headache onset"
+    ],
+    "everyday": [
+      "Speaker is 42 years old",
+      "Got a dull headache across the forehead for 1 hour tonight",
+      "Ran a portable gas generator inside the closed garage at their house before headache onset"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 42 years old",
+      "Experienced dull frontal cephalgia for 1 hour tonight",
+      "Operated a portable gasoline powered generator inside their enclosed residential garage before headache onset"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 42 years old",
+      "Has had a dull headache across the forehead for 1 hour tonight",
+      "Ran a portable gas generator in their closed garage at home before headache onset"
+    ],
+    "changed_fact": [
+      "Speaker is 42 years old",
+      "Got a dull headache across the forehead for 1 hour tonight",
+      "Stared at spreadsheets on their laptop at their house before headache onset"
+    ],
+    "everyday_attribution": [
+      "Speaker is 42 years old",
+      "Got a dull headache across the forehead for 1 hour tonight",
+      "Ran a portable gas generator inside the closed garage at their house before headache onset",
+      "Causal belief only (non-clinical): thinks it is dehydration"
+    ],
+    "quad_b": [
+      "Speaker is 42 years old",
+      "Got dull frontal cephalgia for 1 hour tonight",
+      "Ran a portable gasoline powered generator inside the enclosed garage at their residence before headache onset"
+    ],
+    "quad_c": [
+      "Speaker is 42 years old",
+      "Developed a dull headache across the forehead for 1 hour tonight",
+      "Operated a portable gas generator inside the closed garage at their house before headache onset"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 42 years old, f2: dull frontal forehead headache for 1 hour tonight, f3: ran a portable gasoline generator inside the closed garage at home before the headache started) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly ('dull frontal cephalgia' = 'dull headache across my forehead'; 'operating a portable gasoline powered generator inside the enclosed garage at my residence' = 'running a portable gas generator inside the closed garage at my house').",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday and appends only one causal belief clause ('and I think it's dehydration') with zero added clinical facts.",
+    "quad_b": "Matches f1, f2, and f3 exactly (everyday syntax with medical vocabulary).",
+    "quad_c": "Matches f1, f2, and f3 exactly (medical syntax with everyday vocabulary).",
+    "changed_fact": "Matches f1 and f2 identically to everyday and replaces only the preceding household exposure in f3 ('running a portable gas generator inside the closed garage' -> 'staring at spreadsheets on my laptop') at the speaker's house."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 8 texts ('frontal cephalgia' = 'headache across my forehead').",
+    "timing": "Identical across all 8 texts ('for 1 hour tonight', 'after'/'following').",
+    "count_and_numbers": "Identical across all 8 texts ('42' years old, '1' hour).",
+    "severity_and_quality": "Identical across all 7 non-control texts ('dull' headache/cephalgia after enclosed-garage gas generator operation); changed_fact replaces the f3 exposure with laptop spreadsheet work.",
+    "uncertainty": "Factual clinical certainty is identical across all texts; everyday_attribution marks causal belief explicitly with 'I think'.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added clinical facts or adjectives across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

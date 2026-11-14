@@ -55,3 +55,16 @@
 - `2026-11-14T18:57:54Z`: Wave 3 revised draft r11-052 validated across batch_03 (0 errors, 0 warnings); dispatching full G4-G8 re-audit.
 - `2026-11-14T19:00:52Z`: Wave 3 rev passed G4-G8: r11-052. All 24/24 batch_03 families passed G4-G8 (0 dropped, 0 stated negatives); dispatching @builder for Gate G1.
 - `2026-11-14T19:12:28Z`: Batch 03 passed Gates G1, G2 (60 pairs, 0 errors, 10 -cf number-warning candidates), and G3 (intake 0 errors against r9, r10, r11_b01, r11_b02; concerns_selfreported_check 0 errors, 10 open concerns).
+- `2026-11-14T19:50:17Z`: Pulled origin/draft/antigravity-scenarios-20261107 (cd962a7a) and refreshed ../pw-main (1a3be644). Read reviewer_notes.md 'After batch 03': batch_03 accepted with no corrections (all 17 PubMed + 4 Wiktionary rows verified, G2/G3 reproduced byte-for-byte, Rules A-D and level concerns satisfied). Starting batch_04 (r11-073..r11-096) under Rules A-D.
+- `2026-11-14T20:02:02Z`: batch_04 wave 1 drafts ready (r11-091..r11-096 from @author-flag); dispatching G4-G8 audits.
+- `2026-11-14T20:05:30Z`: batch_04 wave 1 passed G4-G8: r11-091, r11-093, r11-094, r11-095.
+- `2026-11-14T20:05:32Z`: batch_04 wave 1 returned (1st return, G5): r11-092 (changed_fact timeframe collision + paraphrase placement), r11-096 ('my front thighs' alignment-compressed wording).
+- `2026-11-14T20:12:38Z`: batch_04 wave 2 drafts ready (r11-079..r11-084 from @author-l3); dispatching G4-G8 audits.
+- `2026-11-14T20:13:02Z`: batch_04 revised r11-092 and r11-096 ready from @author-flag; dispatching full G4-G8 re-audit alongside wave 2 (r11-079..r11-084).
+- `2026-11-14T20:18:23Z`: batch_04 wave 3 drafts ready (r11-085..r11-090 from @author-l2); dispatching G4-G8 audits.
+- `2026-11-14T20:18:40Z`: batch_04 wave 2 passed G4-G8: r11-079..r11-084 and revised r11-092, r11-096 (12/24 batch_04 families now passed).
+- `2026-11-14T20:25:25Z`: batch_04 wave 3 passed G4-G8: r11-085, r11-086, r11-087, r11-089, r11-090 (17/24 passed).
+- `2026-11-14T20:25:26Z`: batch_04 wave 3 returned (1st return, G7 Rule B): r11-088 ('on toilet paper' PMID 17521401 study definition rather than patient wording in use).
+- `2026-11-14T20:30:58Z`: batch_04 wave 4 drafts ready (r11-073..r11-078 from @author-l4 + revised r11-088 from @author-l2); dispatching G4-G8 audits.
+- `2026-11-14T20:38:58Z`: batch_04 wave 4 passed G4-G8: r11-073..r11-078 and revised r11-088. All 24/24 batch_04 families passed G4-G8 (0 dropped, 0 stated negatives, same_share 9/14 = 64.3%). Dispatching @builder for G1.
+- `2026-11-14T20:41:26Z`: batch_04 passed G1-G3 (60 pairs, 0 errors, 12 -cf number-warning candidates / 19 number warnings; G3 intake status=intake, 0 errors vs r9+r10+r11_b01..b03; concerns_selfreported 8 open, 0 errors). Preparing commit + push.

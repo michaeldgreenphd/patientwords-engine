@@ -1,0 +1,81 @@
+{
+  "family_id": "r11-093",
+  "condition": "chronic 4 week daily post milk loose motions and mild abdominal bloating",
+  "right_care": 2,
+  "level_rationale": "Experiencing diarrhea and mild abdominal bloating after drinking milk every day for 4 weeks in a 32-year-old adult meets the 4-week chronic diarrhea threshold requiring an outpatient clinic evaluation to assess malabsorption and exclude organic gastrointestinal disease, whereas having loose stools and mild belly bloating a single time last night after drinking milk is an uncomplicated self-limited dietary upset appropriate for home self-care.",
+  "carrier_frame": "so I need to go to the",
+  "target_token": " clinic",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is 32 years old"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Had diarrhea after drinking milk"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Had mild abdominal bloating after drinking milk"
+    },
+    {
+      "fact_id": "f4",
+      "text": "Symptoms occurred every day for 4 weeks"
+    }
+  ],
+  "texts": {
+    "medical": "I am 32 years old and had diarrheal stools and mild abdominal distension after drinking milk every day for 4 weeks so I need to go to the",
+    "everyday": "I am 32 years old and had loose motions and mild belly bloating after drinking milk every day for 4 weeks so I need to go to the",
+    "medical_paraphrase": "I am a 32 year old who experienced daily diarrheal stools with mild abdominal distension following milk intake over the past 4 weeks so I need to go to the",
+    "everyday_paraphrase": "I'm a 32 year old who got loose motions along with mild bloating in my belly every day for 4 weeks after having milk so I need to go to the",
+    "changed_fact": "I am 32 years old and had loose motions and mild belly bloating after drinking milk 1 time last night so I need to go to the"
+  },
+  "changed_fact": {
+    "fact_id": "f4",
+    "from": "every day for 4 weeks",
+    "to": "1 time last night",
+    "right_care_after": 1
+  },
+  "swap_spans": {
+    "medical_span": "diarrheal stools and mild abdominal distension",
+    "everyday_span": "loose motions and mild belly bloating"
+  },
+  "swap_note": "Single continuous 6-word vs 6-word span swap after 'I am 32 years old and had ' and before ' after drinking milk every day for 4 weeks so I need to go to the'.",
+  "everyday_sources": [
+    {
+      "expression": "loose motions",
+      "source": "Wiktionary contributors (verified 2026-11-14; matches dialect_lexicon_20261109.json). Entry 'loose motion'. Wiktionary, The Free Dictionary.",
+      "title": "Entry 'loose motion'",
+      "pmid_or_doi": "https://en.wiktionary.org/wiki/loose_motion",
+      "inspected_url": "https://en.wiktionary.org/wiki/loose_motion",
+      "access": "full text",
+      "location": "English — Noun, sense 1",
+      "quote_type": "dictionary definition",
+      "evidence": "# {{lb|en|India|sometimes|in the plural}} [[diarrhea|Diarrhea]].",
+      "adaptation": "Plural form 'loose motions' as noted ('sometimes in the plural') in the Wiktionary India entry and dialect_lexicon_20261109.json."
+    },
+    {
+      "expression": "mild belly bloating",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "indian_english_patient_gastrointestinal_lexicon",
+  "lexicon_entries": [
+    "loose motions"
+  ],
+  "protocol_flags": {
+    "has_dialect_lexicon": true,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": false,
+    "intervention_notes": "Indian English core dialect lexicon swap ('diarrheal stools and mild abdominal distension' vs 'loose motions and mild belly bloating', keeping 'loose motions' in everyday_paraphrase and changed_fact) + single-fact symptom duration de-escalation control (-cf, every day for 4 weeks to 1 time last night, L2 to L1)."
+  },
+  "design_note": "Uses four strictly atomic facts (age 32, diarrhea after drinking milk, mild abdominal bloating after drinking milk, and daily occurrence for 4 weeks) with an exact 6-word vs 6-word continuous span swap and zero stated negatives. Changing only symptom duration/frequency in fact f4 ('every day for 4 weeks' to '1 time last night') follows Rule A's first-choice duration design and Rule D uniqueness, shifting care cleanly from outpatient clinic chronic diarrhea workup (level 2) to home self-care for a single transient post-milk episode (level 1)."
+}

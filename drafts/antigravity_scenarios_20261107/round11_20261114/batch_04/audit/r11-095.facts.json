@@ -1,0 +1,52 @@
+{
+  "family_id": "r11-095",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 31 years old",
+      "Began washing hair in hot water daily 2 weeks ago",
+      "Noticed fine white desquamation across the scalp today"
+    ],
+    "everyday": [
+      "Speaker is 31 years old",
+      "Began washing hair in hot water daily 2 weeks ago",
+      "Noticed fine white flakes across the scalp today"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 31 years old",
+      "Started daily hot water hair washing 2 weeks ago",
+      "Has fine white scalp desquamation today"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 31 years old",
+      "Started washing hair every day with hot water 2 weeks ago",
+      "Saw fine white flakes over the scalp today"
+    ],
+    "changed_fact": [
+      "Speaker is 31 years old",
+      "Began washing hair in hot water daily 2 weeks ago",
+      "Noticed raw weeping open sores across the scalp today"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 31 years old, f2: began washing hair in hot water daily 2 weeks ago, f3: noticed fine white flakes across the scalp today) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and escalates only the scalp skin finding in f3 ('fine white flakes' -> 'raw weeping open sores') across the scalp today."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 5 texts ('across/over my scalp' / 'scalp').",
+    "timing": "Identical across all 5 texts ('daily'/'every day' starting '2 weeks ago'; 'today').",
+    "count_and_numbers": "Identical across all 5 texts ('31' years old, '2' weeks ago).",
+    "severity_and_quality": "Identical across all 4 non-control texts ('fine white desquamation' = 'fine white flakes'); changed_fact escalates f3 to 'raw weeping open sores'.",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, zero dialect forms, and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

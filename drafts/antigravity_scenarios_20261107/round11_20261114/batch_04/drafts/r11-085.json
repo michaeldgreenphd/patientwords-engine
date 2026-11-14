@@ -1,0 +1,89 @@
+{
+  "family_id": "r11-085",
+  "condition": "lateral epicondylitis outer elbow tendon pain gripping tools for 4 weeks",
+  "right_care": 2,
+  "level_rationale": "Four weeks of sharp pain on the outer side of the right elbow provoked whenever a 44-year-old carpenter grips hand tools during daily work indicates subacute occupational lateral elbow extensor tendinopathy warranting an outpatient general-physician visit for clinical examination, activity modification guidance, and targeted rehabilitation rather than unguided self-care or emergency care, whereas 10 minutes of slight soreness on the outer side of the right elbow after gripping tools yesterday represents transient post-work muscle fatigue needing only routine home self-care.",
+  "carrier_frame": "so I should see a",
+  "target_token": " doctor",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is a 44 year old carpenter"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Uses hand tools every workday"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Has had sharp pain on the outer side of the right elbow for 4 weeks when gripping tools"
+    }
+  ],
+  "texts": {
+    "medical": "I am 44 and work as a carpenter using hand tools daily and have experienced sharp pain over the lateral aspect of my right elbow for 4 weeks provoked by grasping tools so I should see a",
+    "everyday": "I am 44 and work as a carpenter using hand tools daily and have had sharp pain on the outer side of my right elbow for 4 weeks when gripping tools so I should see a",
+    "medical_paraphrase": "I am a 44 year old carpenter who uses hand tools daily and for 4 weeks I have experienced sharp pain over the lateral aspect of my right elbow provoked by grasping tools so I should see a",
+    "everyday_paraphrase": "I am a 44 year old carpenter who uses hand tools daily and for 4 weeks the outer side of my right elbow has hurt sharply when gripping tools so I should see a",
+    "changed_fact": "I am 44 and work as a carpenter using hand tools daily and felt slight soreness on the outer side of my right elbow for 10 minutes after gripping tools yesterday so I should see a",
+    "quad_b": "I am 44 and work as a carpenter using hand tools daily and have had sharp pain over the lateral aspect of my right elbow for 4 weeks when grasping tools so I should see a",
+    "quad_c": "I am 44 and work as a carpenter using hand tools daily and have experienced sharp pain on the outer side of my right elbow for 4 weeks provoked by gripping tools so I should see a"
+  },
+  "changed_fact": {
+    "fact_id": "f3",
+    "from": "have had sharp pain on the outer side of my right elbow for 4 weeks when gripping tools",
+    "to": "felt slight soreness on the outer side of my right elbow for 10 minutes after gripping tools yesterday",
+    "right_care_after": 1
+  },
+  "swap_spans": {
+    "medical_span": "have experienced sharp pain over the lateral aspect of my right elbow for 4 weeks provoked by grasping tools",
+    "everyday_span": "have had sharp pain on the outer side of my right elbow for 4 weeks when gripping tools"
+  },
+  "swap_note": "Single continuous 19-word vs 18-word span swap after 'I am 44 and work as a carpenter using hand tools daily and ' and before ' so I should see a'.",
+  "everyday_sources": [
+    {
+      "expression": "gripping",
+      "source": "Welsh P (2018). Tendon neuroplastic training for lateral elbow tendinopathy: 2 case reports. The Journal of the Canadian Chiropractic Association.",
+      "title": "Tendon neuroplastic training for lateral elbow tendinopathy: 2 case reports.",
+      "pmid_or_doi": "PMID: 30305765",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/30305765/",
+      "access": "abstract only",
+      "location": "Abstract",
+      "quote_type": "authors' summary",
+      "evidence": "Patient 2: A 37-year-old male electrician presented with two months of recurrent left lateral elbow pain related to repetitive motions of gripping and pulling at work.",
+      "adaptation": null
+    },
+    {
+      "expression": "on the outer side of my right elbow",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "felt slight soreness on the outer side of my right elbow for 10 minutes after gripping tools yesterday",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "adult_patient_plain_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": true,
+    "has_patient_attribution": false,
+    "intervention_notes": "Plain adult tradesperson everyday lexical register swap (-reg) + 2x2 syntax-by-vocabulary crossing (quad_b, quad_c) + single-fact same-elbow symptom severity and duration de-escalation control (-cf, L2 to L1)."
+  },
+  "design_note": "Three atomic reference facts state age 44 and carpentry occupation, daily hand-tool use, and 4 weeks of sharp outer right elbow pain when gripping tools without naming epicondylitis, with a 1-word span difference (19 vs 18 words) and clean 2x2 syntax-by-vocabulary crossing. Under reviewer_notes Rule A first choice and Rule D, changing only the symptom severity and duration in f3 on the same outer right elbow after gripping tools shifts care cleanly from outpatient physician evaluation (level 2) to routine self-care (level 1) with zero stated negatives."
+}

@@ -1,0 +1,57 @@
+{
+  "family_id": "r11-094",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 64 years old",
+      "Stayed mostly indoors all winter",
+      "Became dyspneic walking up steep hills for 3 weeks",
+      "Counted 14 breaths a minute while sitting today"
+    ],
+    "everyday": [
+      "Speaker is 64 years old",
+      "Stayed mostly indoors all winter",
+      "Gotten short winded walking up steep hills for 3 weeks",
+      "Counted 14 breaths a minute while sitting today"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 64 years old",
+      "Remained mostly indoors through winter",
+      "Developed dyspnea ascending steep hills over 3 weeks",
+      "Seated respiratory rate of 14 breaths per minute today"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 64 years old",
+      "Spent winter mostly indoors",
+      "3 weeks of getting short winded going up steep hills",
+      "Counted 14 breaths a minute while sitting today"
+    ],
+    "changed_fact": [
+      "Speaker is 64 years old",
+      "Stayed mostly indoors all winter",
+      "Gotten short winded walking up steep hills for 3 weeks",
+      "Counted 38 breaths a minute while sitting today"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 4 reference_facts (f1: 64 years old, f2: stayed mostly indoors all winter, f3: has become short of breath walking up steep hills for 3 weeks, f4: counted 14 breaths a minute while sitting today) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday": "Matches f1, f2, f3, and f4 exactly; core dialect entry 'short winded' ('short of breath', unhyphenated) matches 'dyspneic'.",
+    "medical_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, f3, and f4 exactly and retains the core dialect form 'short winded'.",
+    "changed_fact": "Matches f1, f2, and f3 identically to everyday and escalates only the single measured resting respiratory rate in f4 ('counted 14 breaths a minute' -> 'counted 38 breaths a minute') while sitting today."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 5 texts (respiratory breathlessness and seated respiratory rate; no laterality).",
+    "timing": "Identical across all 5 texts ('all/through winter', 'for/over 3 weeks', 'sitting'/'seated' 'today').",
+    "count_and_numbers": "Identical ('64' years old, '3' weeks, '14' breaths per minute) across all 4 non-control texts; changed_fact substitutes '38' breaths a minute in f4.",
+    "severity_and_quality": "Identical across all 4 non-control texts ('dyspneic'/'dyspnea' = 'short winded' ascending/walking up steep hills); changed_fact escalates f4 to severe resting tachypnea ('38 breaths a minute').",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

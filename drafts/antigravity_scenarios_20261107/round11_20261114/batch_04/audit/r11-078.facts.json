@@ -1,0 +1,59 @@
+{
+  "family_id": "r11-078",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Patient is the speaker's 2 year old son",
+      "Experienced mild serous nasal discharge yesterday",
+      "Began exhibiting loud harsh inspiratory stridor on every breath at rest tonight"
+    ],
+    "everyday": [
+      "Patient is the speaker's 2 year old son",
+      "Had a mild watery runny nose yesterday",
+      "Started making a loud harsh squeak on every breath in while resting tonight"
+    ],
+    "medical_paraphrase": [
+      "Patient is the speaker's 2 year old son",
+      "Had mild serous rhinorrhea yesterday",
+      "Developed loud harsh inspiratory stridor with every breath at rest tonight"
+    ],
+    "everyday_paraphrase": [
+      "Patient is the speaker's 2 year old boy",
+      "Had a mild watery runny nose yesterday",
+      "Began making a loud harsh squeaking sound on each breath in while resting tonight"
+    ],
+    "changed_fact": [
+      "Patient is the speaker's 2 year old son",
+      "Had a mild watery runny nose yesterday",
+      "Gave 3 brief dry coughs after lying down tonight"
+    ],
+    "everyday_attribution": [
+      "Patient is the speaker's 2 year old son",
+      "Had a mild watery runny nose yesterday",
+      "Started making a loud harsh squeak on every breath in while resting tonight",
+      "Causal belief only (non-clinical): thinks it is bedroom dust"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: speaker's 2 year old son, f2: mild watery nasal discharge yesterday, f3: started making loud harsh inspiratory stridor on every breath at rest tonight) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly ('mild serous nasal discharge' = 'mild watery runny nose'; 'loud harsh inspiratory stridor on every breath at rest' = 'loud harsh squeak on every breath in while resting').",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly ('mild serous rhinorrhea' = 'mild watery runny nose').",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday and appends only one causal belief clause ('and I think it's bedroom dust') with zero added clinical facts.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only the tonight respiratory symptom in f3 ('started making a loud harsh squeak on every breath in while resting' -> 'gave 3 brief dry coughs after lying down') tonight."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 6 texts (nasal discharge and upper-airway inspiratory sound / dry cough; no laterality).",
+    "timing": "Identical across all 5 non-control texts ('yesterday', 'on every/each breath [in] at rest/while resting tonight'); changed_fact substitutes 'after lying down tonight' in f3.",
+    "count_and_numbers": "Identical ('2' year old) across all 5 non-control texts; changed_fact adds '3' brief dry coughs in f3.",
+    "severity_and_quality": "Identical across all 5 non-control texts ('mild serous nasal discharge/rhinorrhea' = 'mild watery runny nose', 'loud harsh inspiratory stridor' = 'loud harsh squeak/squeaking sound on every/each breath in'); changed_fact de-escalates f3 to '3 brief dry coughs'.",
+    "uncertainty": "Factual clinical certainty is identical across all texts; everyday_attribution marks causal belief explicitly with 'I think'.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added clinical facts or adjectives across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

@@ -1,0 +1,69 @@
+{
+  "family_id": "r11-091",
+  "condition": "acute symptomatic severe hypertension 224 over 128 with giddiness in young adult on therapy",
+  "right_care": 4,
+  "level_rationale": "A home blood pressure reading of 224 over 128 right now accompanied by 1 hour of acute dizziness in a 29-year-old adult on daily blood pressure tablets represents symptomatic severe hypertension requiring immediate hospital evaluation and monitored blood pressure management, whereas a home reading of 148 over 92 with 1 hour of mild dizziness in the same treated hypertensive patient reflects suboptimal outpatient blood pressure control appropriate for an outpatient clinic medication review rather than emergency care.",
+  "carrier_frame": "so I need to go to the",
+  "target_token": " hospital",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is 29 years old"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Takes daily blood pressure tablets"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Has had mild dizziness for 1 hour this morning"
+    },
+    {
+      "fact_id": "f4",
+      "text": "Home blood pressure cuff reads 224 over 128 right now"
+    }
+  ],
+  "texts": {
+    "medical": "I am 29 years old on daily blood pressure tablets and have had mild dizziness for 1 hour this morning while my home cuff reads 224 over 128 right now so I need to go to the",
+    "everyday": "I am 29 years old on daily blood pressure tablets and have had mild giddiness for 1 hour this morning while my home cuff reads 224 over 128 right now so I need to go to the",
+    "medical_paraphrase": "I am a 29 year old taking daily antihypertensive tablets who developed mild dizziness over the past 1 hour this morning with a current home blood pressure reading of 224 over 128 so I need to go to the",
+    "everyday_paraphrase": "I'm a 29 year old who takes blood pressure pills every day and got mild giddiness for 1 hour this morning with my home cuff showing 224 over 128 right now so I need to go to the",
+    "changed_fact": "I am 29 years old on daily blood pressure tablets and have had mild giddiness for 1 hour this morning while my home cuff reads 148 over 92 right now so I need to go to the"
+  },
+  "changed_fact": {
+    "fact_id": "f4",
+    "from": "reads 224 over 128",
+    "to": "reads 148 over 92",
+    "right_care_after": 2
+  },
+  "swap_spans": {
+    "medical_span": "dizziness",
+    "everyday_span": "giddiness"
+  },
+  "swap_note": "Single continuous 1-word vs 1-word span swap after 'I am 29 years old on daily blood pressure tablets and have had mild ' and before ' for 1 hour this morning while my home cuff reads 224 over 128 right now so I need to go to the'.",
+  "everyday_sources": [
+    {
+      "expression": "giddiness",
+      "source": "Joseph TC, Goswami DB, Pradeep MA, Anupama TK, Parmar E, Renuka V, Remya S, Ravishankar CN (2021). Pufferfish poisoning from Arothron stellatus: The first confirmed case in India with exact DNA sequencing-based species identification. Toxicon.",
+      "title": "Pufferfish poisoning from Arothron stellatus: The first confirmed case in India with exact DNA sequencing-based species identification.",
+      "pmid_or_doi": "PMID: 34332005; DOI: 10.1016/j.toxicon.2021.07.014",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/34332005/",
+      "access": "abstract only",
+      "location": "Abstract, sentence 1",
+      "quote_type": "authors' summary",
+      "evidence": "A puffer fish poisoning case was reported from the coastal city of Veraval in the Gujarat state of India with patient reporting symptoms of giddiness, vertigo, aphasia and heaviness of head following consumption of cooked fish.",
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "indian_english_patient_symptom_lexicon",
+  "lexicon_entries": [
+    "giddiness / feeling giddy"
+  ],
+  "protocol_flags": {
+    "has_dialect_lexicon": true,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": false,
+    "intervention_notes": "Indian English core dialect lexicon swap ('dizziness' vs 'giddiness', retained in everyday_paraphrase) + single measured blood-pressure de-escalation control (-cf, 224 over 128 to 148 over 92, L4 to L2)."
+  },
+  "design_note": "Uses four strictly atomic facts (age 29, daily blood pressure tablets, 1 hour of mild dizziness this morning, and home cuff reading 224 over 128 right now) with zero stranded emergency red flags in f1-f3 and zero stated negatives. Changing only measured cuff values in fact f4 ('reads 224 over 128' to 'reads 148 over 92') follows Rule A's first-choice measured-value design and Rule D uniqueness, shifting care cleanly from emergency hospital care (level 4) to outpatient clinic antihypertensive review (level 2)."
+}

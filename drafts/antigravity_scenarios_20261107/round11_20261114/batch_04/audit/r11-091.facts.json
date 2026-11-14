@@ -1,0 +1,57 @@
+{
+  "family_id": "r11-091",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 29 years old",
+      "Takes daily blood pressure tablets",
+      "Has had mild dizziness for 1 hour this morning",
+      "Home blood pressure cuff reads 224 over 128 right now"
+    ],
+    "everyday": [
+      "Speaker is 29 years old",
+      "Takes daily blood pressure tablets",
+      "Has had mild giddiness for 1 hour this morning",
+      "Home blood pressure cuff reads 224 over 128 right now"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 29 years old",
+      "Takes daily antihypertensive tablets",
+      "Developed mild dizziness over the past 1 hour this morning",
+      "Current home blood pressure reading is 224 over 128"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 29 years old",
+      "Takes blood pressure pills every day",
+      "Got mild giddiness for 1 hour this morning",
+      "Home cuff shows 224 over 128 right now"
+    ],
+    "changed_fact": [
+      "Speaker is 29 years old",
+      "Takes daily blood pressure tablets",
+      "Has had mild giddiness for 1 hour this morning",
+      "Home blood pressure cuff reads 148 over 92 right now"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 4 reference_facts (f1: 29 years old, f2: takes daily blood pressure tablets, f3: mild dizziness for 1 hour this morning, f4: home blood pressure cuff reads 224 over 128 right now) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday": "Matches f1, f2, f3, and f4 exactly; core dialect entry 'giddiness / feeling giddy' ('dizziness, vertigo') matches 'dizziness'.",
+    "medical_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, f3, and f4 exactly and retains the core dialect form 'giddiness'.",
+    "changed_fact": "Matches f1, f2, and f3 identically to everyday and changes only the single measured home cuff reading in f4 ('reads 224 over 128' -> 'reads 148 over 92') right now."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 5 texts (systemic dizziness/giddiness and home blood pressure cuff; no laterality).",
+    "timing": "Identical across all 5 texts ('daily'/'every day', 'for 1 hour'/'over the past 1 hour' 'this morning', 'right now'/'current').",
+    "count_and_numbers": "Identical ('29' years old, '1' hour, '224 over 128') across all 4 non-control texts; changed_fact substitutes '148 over 92' in f4.",
+    "severity_and_quality": "Identical across all 4 non-control texts ('mild dizziness' = 'mild giddiness'); changed_fact de-escalates f4 blood pressure reading to '148 over 92'.",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

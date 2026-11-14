@@ -1,0 +1,71 @@
+{
+  "family_id": "r11-079",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is a 26 year old woman with dark brown skin",
+      "Has 9 months of weekly bilateral axillary shaving",
+      "Has recurrent painful draining sinus tracts beneath the axillary skin"
+    ],
+    "everyday": [
+      "Speaker is a 26 year old woman with dark brown skin",
+      "Shaved both armpits weekly for 9 months",
+      "Got recurring painful draining tunnels under the armpit skin"
+    ],
+    "medical_paraphrase": [
+      "Speaker is a 26 year old woman with dark brown skin",
+      "Reports 9 months of weekly bilateral axillary shaving",
+      "Has recurrent painful draining sinus tracts beneath the axillary skin"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is a 26 year old woman with dark brown skin",
+      "Shaved both armpits every week for 9 months",
+      "Keeps getting painful draining tunnels under the armpit skin"
+    ],
+    "changed_fact": [
+      "Speaker is a 26 year old woman with dark brown skin",
+      "Shaved both armpits weekly for 9 months",
+      "Got brief mild razor sting on the armpit skin"
+    ],
+    "everyday_attribution": [
+      "Speaker is a 26 year old woman with dark brown skin",
+      "Shaved both armpits weekly for 9 months",
+      "Got recurring painful draining tunnels under the armpit skin",
+      "Causal belief only (non-clinical): thinks they are ingrown hairs"
+    ],
+    "quad_b": [
+      "Speaker is a 26 year old woman with dark brown skin",
+      "Performed bilateral axillary shaving weekly for 9 months",
+      "Developed recurrent painful draining sinus tracts beneath the axillary skin"
+    ],
+    "quad_c": [
+      "Speaker is a 26 year old woman with dark brown skin",
+      "Has 9 months of weekly shaving of both armpits",
+      "Has recurring painful draining tunnels under the armpit skin"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 26 year old woman with dark brown skin, f2: shaved both armpits weekly for 9 months, f3: recurring painful draining tunnels under the armpit skin) are checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly ('bilateral axillary' = 'both armpits'; 'recurrent painful draining sinus tracts beneath my axillary skin' = 'recurring painful draining tunnels under my armpit skin').",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday and appends only one causal belief clause ('and I think they're ingrown hairs') with zero added clinical facts.",
+    "quad_b": "Matches f1, f2, and f3 exactly (everyday syntax with medical vocabulary).",
+    "quad_c": "Matches f1, f2, and f3 exactly (medical syntax with everyday vocabulary).",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only f3 ('got recurring painful draining tunnels under my armpit skin' -> 'got brief mild razor sting on my armpit skin') on the same armpit skin."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 8 texts ('bilateral axillary'/'both armpits' for shaving and 'beneath my axillary skin'/'under my armpit skin' in non-control texts; 'on my armpit skin' in changed_fact).",
+    "timing": "Identical across all non-control texts ('weekly'/'every week' for '9 months', 'recurrent'/'recurring'/'keep getting'); changed_fact substitutes 'brief' in f3.",
+    "count_and_numbers": "Identical across all 8 texts ('26' years old, '9' months).",
+    "severity_and_quality": "Identical across all 7 non-control texts ('recurrent painful draining sinus tracts' = 'recurring painful draining tunnels'); changed_fact de-escalates f3 to 'brief mild razor sting'.",
+    "uncertainty": "Factual clinical certainty is identical across all texts; everyday_attribution marks causal belief explicitly with 'I think'.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added clinical facts or adjectives across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

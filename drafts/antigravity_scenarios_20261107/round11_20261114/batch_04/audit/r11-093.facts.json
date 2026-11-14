@@ -1,0 +1,57 @@
+{
+  "family_id": "r11-093",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 32 years old",
+      "Had diarrheal stools after drinking milk",
+      "Had mild abdominal distension after drinking milk",
+      "Symptoms occurred every day for 4 weeks"
+    ],
+    "everyday": [
+      "Speaker is 32 years old",
+      "Had loose motions after drinking milk",
+      "Had mild belly bloating after drinking milk",
+      "Symptoms occurred every day for 4 weeks"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 32 years old",
+      "Experienced diarrheal stools following milk intake",
+      "Experienced mild abdominal distension following milk intake",
+      "Symptoms occurred daily over the past 4 weeks"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 32 years old",
+      "Got loose motions after having milk",
+      "Got mild bloating in the belly after having milk",
+      "Symptoms occurred every day for 4 weeks"
+    ],
+    "changed_fact": [
+      "Speaker is 32 years old",
+      "Had loose motions after drinking milk",
+      "Had mild belly bloating after drinking milk",
+      "Occurred 1 time last night"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 4 reference_facts (f1: 32 years old, f2: diarrhea after drinking milk, f3: mild abdominal bloating after drinking milk, f4: symptoms occurred every day for 4 weeks) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday": "Matches f1, f2, f3, and f4 exactly; core dialect entry 'loose motions' ('diarrhea') matches 'diarrheal stools'.",
+    "medical_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, f3, and f4 exactly and retains the core dialect form 'loose motions'.",
+    "changed_fact": "Matches f1, f2, and f3 identically to everyday and de-escalates only symptom duration/frequency in f4 ('every day for 4 weeks' -> '1 time last night') with zero added or stranded facts."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 5 texts ('abdominal distension' = 'belly bloating' / 'bloating in my belly'; bowel stools/motions).",
+    "timing": "Identical 'after drinking/having milk' / 'following milk intake' across all 5 texts; 'every day'/'daily' for '4 weeks' across all 4 non-control texts, de-escalated to '1 time last night' in changed_fact.",
+    "count_and_numbers": "Identical ('32' years old, '4' weeks) across all 4 non-control texts; changed_fact substitutes '1 time last night' in f4.",
+    "severity_and_quality": "Identical across all 4 non-control texts ('diarrheal stools'/'loose motions', 'mild abdominal distension'/'mild belly bloating'); changed_fact changes only duration/frequency in f4.",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses ('lactose intolerance' omitted), and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

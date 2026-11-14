@@ -1,0 +1,71 @@
+{
+  "family_id": "r11-080",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Has a 4 month history of sore posterior teeth each morning",
+      "Has tooth clenching upon awakening",
+      "Has temporomandibular joint clicking and catching on wide mouth opening"
+    ],
+    "everyday": [
+      "Has had sore back teeth each morning for 4 months",
+      "Wakes up clenching teeth",
+      "Gets jaw joint clicking and catching when opening the mouth wide"
+    ],
+    "medical_paraphrase": [
+      "Has experienced 4 months of sore posterior teeth every morning",
+      "Has tooth clenching upon awakening",
+      "Has temporomandibular joint clicking with catching during wide mouth opening"
+    ],
+    "everyday_paraphrase": [
+      "Has sore back teeth every morning over 4 months",
+      "Has been waking up clenching teeth",
+      "Gets clicking with catching in the jaw joint whenever opening the mouth wide"
+    ],
+    "changed_fact": [
+      "Has had sore back teeth each morning for 4 months",
+      "Wakes up clenching teeth",
+      "Jaw joint locked rigid wide open when opening the mouth wide"
+    ],
+    "everyday_attribution": [
+      "Has had sore back teeth each morning for 4 months",
+      "Wakes up clenching teeth",
+      "Gets jaw joint clicking and catching when opening the mouth wide",
+      "Causal belief only (non-clinical): thinks it is stress"
+    ],
+    "quad_b": [
+      "Has had sore posterior teeth each morning for 4 months",
+      "Awakens with tooth clenching",
+      "Experiences temporomandibular joint clicking and catching when opening the mouth wide"
+    ],
+    "quad_c": [
+      "Has a 4 month history of sore back teeth each morning",
+      "Has clenching of the teeth upon waking up",
+      "Has jaw joint clicking and catching on wide mouth opening"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: back teeth sore each morning for 4 months, f2: wakes up clenching teeth, f3: jaw joint clicking and catching when opening the mouth wide) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly ('posterior teeth' = 'back teeth'; 'temporomandibular joint' = 'jaw joint').",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday and appends only one causal belief clause ('and I think it's stress') with zero added clinical facts.",
+    "quad_b": "Matches f1, f2, and f3 exactly (everyday syntax with medical vocabulary).",
+    "quad_c": "Matches f1, f2, and f3 exactly (medical syntax with everyday vocabulary).",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only f3 ('get jaw joint clicking and catching when opening my mouth wide' -> 'my jaw joint locked rigid wide open when I opened my mouth wide') on the same jaw joint during wide mouth opening."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 8 texts ('posterior teeth'/'back teeth', 'temporomandibular joint'/'jaw joint', 'mouth'; no unstated laterality).",
+    "timing": "Identical across all 8 texts ('each morning'/'every morning' for '4 months', 'upon awakening'/'upon waking up'/'wake up', and during wide mouth opening).",
+    "count_and_numbers": "Identical across all 8 texts ('4' months).",
+    "severity_and_quality": "Identical across all 7 non-control texts ('sore', 'clenching', 'clicking and/with catching'); changed_fact escalates f3 mechanical joint behavior to 'locked rigid wide open'.",
+    "uncertainty": "Factual clinical certainty is identical across all texts; everyday_attribution marks causal belief explicitly with 'I think'.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added clinical facts or adjectives across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

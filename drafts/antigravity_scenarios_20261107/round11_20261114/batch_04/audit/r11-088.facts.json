@@ -1,0 +1,52 @@
+{
+  "family_id": "r11-088",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 41 years old",
+      "Has experienced defecatory straining with firm stools for 3 weeks",
+      "Observed drops of hematochezia on toilet tissue when wiping"
+    ],
+    "everyday": [
+      "Speaker is 41 years old",
+      "Has had to strain with firm stools for 3 weeks",
+      "Seen drops of bright red blood on toilet paper when wiping"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 41 years old",
+      "Has experienced 3 weeks of defecatory straining with firm stools",
+      "Noted drops of hematochezia on toilet tissue upon wiping"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 41 years old",
+      "For 3 weeks has strained with firm stools",
+      "Noticed drops of bright red blood on toilet paper when wiping"
+    ],
+    "changed_fact": [
+      "Speaker is 41 years old",
+      "Has had to strain with firm stools for 3 weeks",
+      "Heavy bright red blood has been pouring from the rectum for 20 minutes"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 41 years old, f2: has strained with firm stools for 3 weeks, f3: sees drops of bright red blood on toilet paper when wiping) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly ('defecatory straining with firm stools' = 'strain with firm stools'; 'drops of hematochezia on toilet tissue when wiping' = 'drops of bright red blood on toilet paper when wiping').",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only the rectal bleeding volume and duration in f3 ('seen drops of bright red blood on toilet paper when wiping' -> 'heavy bright red blood has been pouring from my rectum for 20 minutes')."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 5 texts (rectal outlet / defecatory bleeding; no unstated laterality or unrelated body site).",
+    "timing": "Identical across all 4 non-control texts ('for 3 weeks'/'3 weeks of' and 'when/upon wiping'); changed_fact modifies f3 to continuous bleeding 'for 20 minutes'.",
+    "count_and_numbers": "Identical ('41' years old, '3' weeks) across all 4 non-control texts; changed_fact adds '20' minutes in f3.",
+    "severity_and_quality": "Identical across all 4 non-control texts ('firm stools', 'drops of hematochezia' = 'drops of bright red blood'); changed_fact escalates f3 to 'heavy bright red blood has been pouring'.",
+    "uncertainty": "Identical factual certainty across all 5 texts.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added clinical facts or adjectives across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

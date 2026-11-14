@@ -1,0 +1,59 @@
+{
+  "family_id": "r11-076",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 51 years old with dark brown skin",
+      "Experiences brief aching beneath the right costal margin after consuming fatty food",
+      "Developed scleral icterus of the eyes today"
+    ],
+    "everyday": [
+      "Speaker is 51 years old with dark brown skin",
+      "Gets brief aches under the right ribs after eating greasy food",
+      "Whites of the eyes turned yellow today"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 51 years old with dark brown skin",
+      "Gets brief right subcostal aching after ingesting fatty food",
+      "Developed scleral icterus in the eyes today"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 51 years old with dark brown skin",
+      "Gets short aches under the right ribs after eating greasy food",
+      "Saw the whites of the eyes turn yellow today"
+    ],
+    "changed_fact": [
+      "Speaker is 51 years old with dark brown skin",
+      "Gets brief aches under the right ribs after eating greasy food",
+      "Had 3 of those 20 minute aches this week"
+    ],
+    "everyday_attribution": [
+      "Speaker is 51 years old with dark brown skin",
+      "Gets brief aches under the right ribs after eating greasy food",
+      "Whites of the eyes turned yellow today",
+      "Causal belief only (non-clinical): thinks it is indigestion"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 51 years old with dark brown skin, f2: gets brief aches beneath the right ribs after eating greasy food, f3: whites of the eyes turned yellow today) are checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly ('beneath my right costal margin' = 'under my right ribs'; 'fatty food' = 'greasy food'; 'scleral icterus of my eyes' = 'the whites of my eyes turned yellow').",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly ('right subcostal aching' = 'aches under my right ribs').",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly ('short aches' = 'brief aches').",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday and appends only one causal belief clause ('and I think it's indigestion') with zero added clinical facts.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and replaces only f3 ('the whites of my eyes turned yellow today' -> 'had 3 of those 20 minute aches this week') within the same postprandial right-rib ache presentation."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 5 non-control texts ('beneath my right costal margin'/'right subcostal' = 'under my right ribs', and 'scleral ... eyes' = 'whites of my eyes'); changed_fact stays on 'those ... aches' under the right ribs.",
+    "timing": "Identical across all 5 non-control texts ('brief'/'short', 'after consuming/ingesting fatty food' = 'after eating greasy food', 'today'); changed_fact substitutes '3 of those 20 minute aches this week' in f3.",
+    "count_and_numbers": "Identical ('51' years old) across all 5 non-control texts; changed_fact introduces '3' and '20' minute in f3.",
+    "severity_and_quality": "Identical across all 5 non-control texts ('brief aching'/'brief aches', 'scleral icterus' = 'whites of my eyes turned yellow'); changed_fact removes scleral icterus and specifies recurrent brief aches.",
+    "uncertainty": "Factual clinical certainty is identical across all texts; everyday_attribution marks causal belief explicitly with 'I think'.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added clinical facts or adjectives across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

@@ -1,0 +1,64 @@
+{
+  "family_id": "r11-086",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker washes dishes in a restaurant",
+      "Sustained a periungual skin tear adjacent to the right index fingernail 3 days ago",
+      "Developed a painful edematous purulent white collection there today"
+    ],
+    "everyday": [
+      "Speaker washes dishes in a restaurant",
+      "Tore a hangnail beside the right index fingernail 3 days ago",
+      "Has a painful swollen pocket of white pus there today"
+    ],
+    "medical_paraphrase": [
+      "Speaker works washing dishes in a restaurant",
+      "3 days ago sustained a periungual skin tear adjacent to the right index fingernail",
+      "Has a painful edematous purulent white collection present there today"
+    ],
+    "everyday_paraphrase": [
+      "Speaker works washing dishes in a restaurant",
+      "3 days ago tore a hangnail next to the right index fingernail",
+      "Has a painful swollen pocket of white pus there today"
+    ],
+    "changed_fact": [
+      "Speaker washes dishes in a restaurant",
+      "Tore a hangnail beside the right index fingernail 3 days ago",
+      "Has clean smooth healed skin there today"
+    ],
+    "quad_b": [
+      "Speaker washes dishes in a restaurant",
+      "Sustained a periungual skin tear adjacent to the right index fingernail 3 days ago",
+      "Has a painful edematous purulent white collection there today"
+    ],
+    "quad_c": [
+      "Speaker washes dishes in a restaurant",
+      "Tore a hangnail beside the right index fingernail 3 days ago",
+      "Developed a painful swollen pocket of white pus there today"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: washes dishes in a restaurant, f2: tore a hangnail beside the right index fingernail 3 days ago, f3: has a painful swollen pocket of white pus beside that fingernail today) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly ('periungual skin tear adjacent to my right index fingernail' = 'tore a hangnail beside my right index fingernail'; 'painful edematous purulent white collection' = 'painful swollen pocket of white pus').",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "quad_b": "Matches f1, f2, and f3 exactly (everyday syntax with medical vocabulary).",
+    "quad_c": "Matches f1, f2, and f3 exactly (medical syntax with everyday vocabulary).",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only the local nail-fold skin state in f3 ('a painful swollen pocket of white pus' -> 'clean smooth healed skin') at the same site today."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 7 texts ('adjacent to'/'beside'/'next to' 'my right index fingernail', 'there').",
+    "timing": "Identical across all 7 texts ('3 days ago' and 'today').",
+    "count_and_numbers": "Identical across all 7 texts ('3' days ago).",
+    "severity_and_quality": "Identical across all 6 non-control texts ('painful edematous purulent white collection' = 'painful swollen pocket of white pus'); changed_fact de-escalates f3 to 'clean smooth healed skin'.",
+    "uncertainty": "Identical factual certainty across all 7 texts.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added clinical facts or adjectives across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

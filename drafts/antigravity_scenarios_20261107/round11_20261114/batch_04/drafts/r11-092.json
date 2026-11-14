@@ -1,0 +1,69 @@
+{
+  "family_id": "r11-092",
+  "condition": "refractory orthostatic falling out on standing despite primary care compression stockings",
+  "right_care": 3,
+  "level_rationale": "Five months of recurrent brief orthostatic syncope occurring 2 times a month upon standing in a 54-year-old adult that persists despite 6 weeks of doctor-prescribed compression stockings warrants an outpatient cardiology or autonomic neurology specialist referral since initial primary-care therapy has failed, whereas fainting 6 times in a single morning whenever standing up indicates acute hemodynamic instability requiring immediate Emergency Department evaluation and stabilization.",
+  "carrier_frame": "so I should see a",
+  "target_token": " specialist",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is 54 years old"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Has had brief episodes of losing consciousness when standing up for 5 months"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Wore doctor prescribed compression stockings for 6 weeks"
+    },
+    {
+      "fact_id": "f4",
+      "text": "Episodes happen 2 times a month"
+    }
+  ],
+  "texts": {
+    "medical": "I am 54 years old and for 5 months have had brief episodes of syncope when standing up despite 6 weeks in my doctor's compression stockings and it happens 2 times a month so I should see a",
+    "everyday": "I am 54 years old and for 5 months have had brief episodes of falling out when standing up despite 6 weeks in my doctor's compression stockings and it happens 2 times a month so I should see a",
+    "medical_paraphrase": "I am a 54 year old with a 5 month history of brief orthostatic syncope on standing despite wearing physician prescribed compression stockings for 6 weeks and episodes occur 2 times per month so I should see a",
+    "everyday_paraphrase": "I'm 54 and despite wearing compression stockings from my doctor for 6 weeks my brief bouts of falling out when standing up have lasted 5 months and happen 2 times each month so I should see a",
+    "changed_fact": "I am 54 years old and for 5 months have had brief episodes of falling out when standing up despite 6 weeks in my doctor's compression stockings and it happened 6 times this morning so I should see a"
+  },
+  "changed_fact": {
+    "fact_id": "f4",
+    "from": "happens 2 times a month",
+    "to": "happened 6 times this morning",
+    "right_care_after": 4
+  },
+  "swap_spans": {
+    "medical_span": "syncope",
+    "everyday_span": "falling out"
+  },
+  "swap_note": "Single continuous 1-word vs 2-word span swap after 'I am 54 years old and for 5 months have had brief episodes of ' and before ' when standing up despite 6 weeks in my doctor\\'s compression stockings and it happens 2 times a month so I should see a'.",
+  "everyday_sources": [
+    {
+      "expression": "falling out",
+      "source": "Davis TL, Freemon FR (1990). Electroencephalography should not be routine in the evaluation of syncope in adults. Archives of Internal Medicine.",
+      "title": "Electroencephalography should not be routine in the evaluation of syncope in adults.",
+      "pmid_or_doi": "PMID: 2222088",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/2222088/",
+      "access": "abstract only",
+      "location": "Abstract, sentence 4",
+      "quote_type": "authors' summary",
+      "evidence": "Twenty-six patients were referred for other complaints similar to syncope (ie, blackouts, loss of consciousness, falling out, passing out, and fainting).",
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "us_dialect_syncope_referral_wording",
+  "lexicon_entries": [
+    "fell out / falling out"
+  ],
+  "protocol_flags": {
+    "has_dialect_lexicon": true,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": false,
+    "intervention_notes": "US dialect core lexicon swap ('syncope' vs 'falling out', retained in everyday_paraphrase and changed_fact) + single-fact same-symptom episode-frequency escalation control (-cf, 2 times a month to 6 times this morning, L3 to L4)."
+  },
+  "design_note": "Uses four strictly atomic facts (age 54, 5-month history of brief orthostatic syncope on standing, 6 weeks of doctor-prescribed compression stockings establishing completed primary-care therapy, and frequency of 2 times a month) in the medical syncope sense only. Escalating only episode frequency in fact f4 ('2 times a month' to '6 times this morning') obeys Rule A's first-choice same-symptom frequency design and Rule D uniqueness, shifting care from outpatient specialist referral (level 3) to Emergency Department evaluation for acute repetitive syncope (level 4) with zero stated negatives."
+}

@@ -1,0 +1,59 @@
+{
+  "family_id": "r11-081",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 68 years old",
+      "Has had a resting right hand tremor for 8 months",
+      "Has a slow shuffling gait in both legs when walking"
+    ],
+    "everyday": [
+      "Speaker is 68 years old",
+      "Right hand has been shaking at rest for 8 months",
+      "Both legs move in slow shuffling steps when walking"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 68 years old",
+      "Has had a resting tremor in the right hand over 8 months",
+      "Displays a slow shuffling gait in both legs during ambulation"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 68 years old",
+      "Right hand has kept shaking at rest over 8 months",
+      "Both legs take slow shuffling steps when walking"
+    ],
+    "changed_fact": [
+      "Speaker is 68 years old",
+      "Right hand has been shaking at rest for 8 months",
+      "Both legs suddenly went limp under the speaker when walking"
+    ],
+    "everyday_attribution": [
+      "Speaker is 68 years old",
+      "Right hand has been shaking at rest for 8 months",
+      "Both legs move in slow shuffling steps when walking",
+      "Causal belief only (non-clinical): thinks it is old age"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 68 years old, f2: right hand shaking at rest for 8 months, f3: both legs move in slow shuffling steps when walking) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly ('resting right hand tremor' = 'right hand shaking at rest'; 'slow shuffling gait in both legs when walking' = 'both legs move in slow shuffling steps when walking').",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday and appends only one causal belief clause ('and I think it's old age') with zero added clinical facts.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only f3 ('both my legs move in slow shuffling steps when walking' -> 'both my legs suddenly went limp under me when walking') on the same bilateral legs during walking."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 6 texts ('right hand' and 'both legs'/'both my legs').",
+    "timing": "Identical across all 5 non-control texts ('at rest'/'resting' for/over '8 months', 'when walking'/'during ambulation'); changed_fact modifies f3 onset to 'suddenly' when walking.",
+    "count_and_numbers": "Identical across all 6 texts ('68' years old, '8' months).",
+    "severity_and_quality": "Identical across all 5 non-control texts ('resting ... tremor' = 'shaking at rest', 'slow shuffling gait' = 'slow shuffling steps'); changed_fact escalates f3 to 'suddenly went limp under me'.",
+    "uncertainty": "Factual clinical certainty is identical across all texts; everyday_attribution marks causal belief explicitly with 'I think'.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added clinical facts or adjectives across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

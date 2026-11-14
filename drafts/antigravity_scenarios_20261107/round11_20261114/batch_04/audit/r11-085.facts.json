@@ -1,0 +1,64 @@
+{
+  "family_id": "r11-085",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 44 years old and works as a carpenter",
+      "Uses hand tools daily",
+      "Has experienced sharp pain over the lateral aspect of the right elbow for 4 weeks provoked by grasping tools"
+    ],
+    "everyday": [
+      "Speaker is 44 years old and works as a carpenter",
+      "Uses hand tools daily",
+      "Has had sharp pain on the outer side of the right elbow for 4 weeks when gripping tools"
+    ],
+    "medical_paraphrase": [
+      "Speaker is a 44 year old carpenter",
+      "Uses hand tools daily",
+      "For 4 weeks has experienced sharp pain over the lateral aspect of the right elbow provoked by grasping tools"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is a 44 year old carpenter",
+      "Uses hand tools daily",
+      "For 4 weeks the outer side of the right elbow has hurt sharply when gripping tools"
+    ],
+    "changed_fact": [
+      "Speaker is 44 years old and works as a carpenter",
+      "Uses hand tools daily",
+      "Felt slight soreness on the outer side of the right elbow for 10 minutes after gripping tools yesterday"
+    ],
+    "quad_b": [
+      "Speaker is 44 years old and works as a carpenter",
+      "Uses hand tools daily",
+      "Has had sharp pain over the lateral aspect of the right elbow for 4 weeks when grasping tools"
+    ],
+    "quad_c": [
+      "Speaker is 44 years old and works as a carpenter",
+      "Uses hand tools daily",
+      "Has experienced sharp pain on the outer side of the right elbow for 4 weeks provoked by gripping tools"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 44 year old carpenter, f2: daily occupational hand-tool use, f3: sharp pain on the outer side of the right elbow for 4 weeks when gripping tools) are checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly ('lateral aspect of my right elbow' = 'outer side of my right elbow'; 'provoked by grasping tools' = 'when gripping tools').",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly ('hurt sharply' = 'sharp pain').",
+    "quad_b": "Matches f1, f2, and f3 exactly (everyday syntax with medical vocabulary).",
+    "quad_c": "Matches f1, f2, and f3 exactly (medical syntax with everyday vocabulary).",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only f3 ('have had sharp pain on the outer side of my right elbow for 4 weeks when gripping tools' -> 'felt slight soreness on the outer side of my right elbow for 10 minutes after gripping tools yesterday') on the same outer right elbow."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 7 texts ('lateral aspect of my right elbow' = 'outer side of my right elbow', right side).",
+    "timing": "Identical across all 6 non-control texts ('daily', 'for 4 weeks', 'provoked by grasping tools'/'when gripping tools'); changed_fact modifies f3 to 'for 10 minutes after gripping tools yesterday'.",
+    "count_and_numbers": "Identical across all 6 non-control texts ('44' years old, '4' weeks); changed_fact substitutes '10' minutes in f3.",
+    "severity_and_quality": "Identical across all 6 non-control texts ('sharp pain'/'hurt sharply'); changed_fact de-escalates f3 to 'slight soreness'.",
+    "uncertainty": "Identical factual certainty across all 7 texts.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added clinical facts or adjectives across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

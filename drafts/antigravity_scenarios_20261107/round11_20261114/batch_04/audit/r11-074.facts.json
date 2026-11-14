@@ -1,0 +1,71 @@
+{
+  "family_id": "r11-074",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is a 35 year old janitor",
+      "Cleaned a washbasin 10 minutes ago",
+      "Sustained a caustic alkaline drain cleaner splash in the right eye"
+    ],
+    "everyday": [
+      "Speaker is a 35 year old janitor",
+      "Cleaned a sink 10 minutes ago",
+      "Got strong lye drain cleaner splashed into the right eye"
+    ],
+    "medical_paraphrase": [
+      "Speaker is a 35 year old janitor",
+      "Cleaned a washbasin 10 minutes ago",
+      "Experienced an ocular splash of caustic alkaline drain cleaner in the right eye"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is a 35 year old janitor",
+      "Was cleaning a sink 10 minutes ago",
+      "Splashed strong lye drain cleaner into the right eye"
+    ],
+    "changed_fact": [
+      "Speaker is a 35 year old janitor",
+      "Cleaned a sink 10 minutes ago",
+      "Got clean lukewarm faucet water splashed into the right eye"
+    ],
+    "everyday_attribution": [
+      "Speaker is a 35 year old janitor",
+      "Cleaned a sink 10 minutes ago",
+      "Got strong lye drain cleaner splashed into the right eye",
+      "Causal belief only (non-clinical): thinks trapped air made it splash"
+    ],
+    "quad_b": [
+      "Speaker is a 35 year old janitor",
+      "Cleaned a washbasin 10 minutes ago",
+      "Got caustic alkaline drain cleaner splashed into the right eye"
+    ],
+    "quad_c": [
+      "Speaker is a 35 year old janitor",
+      "Cleaned a sink 10 minutes ago",
+      "Sustained a strong lye drain cleaner splash in the right eye"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 35 year old janitor, f2: cleaned a sink 10 minutes ago, f3: got caustic alkaline lye drain cleaner splashed into the right eye) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly ('washbasin' = 'sink'; 'caustic alkaline drain cleaner' = 'strong lye drain cleaner').",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday and appends only one causal belief clause ('and I think trapped air made it splash') with zero added clinical facts.",
+    "quad_b": "Matches f1, f2, and f3 exactly (everyday syntax with medical vocabulary).",
+    "quad_c": "Matches f1, f2, and f3 exactly (medical syntax with everyday vocabulary).",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only the splashed substance in f3 ('strong lye drain cleaner' -> 'clean lukewarm faucet water') into the right eye."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 8 texts ('my right eye').",
+    "timing": "Identical across all 8 texts ('10 minutes ago').",
+    "count_and_numbers": "Identical across all 8 texts ('35' years old, '10' minutes).",
+    "severity_and_quality": "Identical across all 7 non-control texts ('caustic alkaline drain cleaner' = 'strong lye drain cleaner'); changed_fact de-escalates f3 substance to 'clean lukewarm faucet water'.",
+    "uncertainty": "Factual clinical certainty is identical across all texts; everyday_attribution marks causal belief explicitly with 'I think'.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added clinical facts or adjectives across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

@@ -1,0 +1,101 @@
+{
+  "family_id": "r11-078",
+  "condition": "acute severe pediatric upper airway obstruction presenting with continuous loud harsh inspiratory stridor at rest following mild viral rhinorrhea",
+  "right_care": 4,
+  "level_rationale": "Continuous loud harsh inspiratory stridor on every breath at rest tonight in a 2-year-old boy following mild watery nasal discharge yesterday indicates moderate-to-severe acute upper airway obstruction requiring immediate emergency hospital evaluation for nebulized epinephrine, systemic corticosteroids, and airway monitoring, whereas giving 3 brief dry coughs after lying down tonight after yesterday's mild watery runny nose describes an uncomplicated mild viral cold appropriate for home supportive self-care.",
+  "carrier_frame": "so I need to go to the",
+  "target_token": " hospital",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Patient is the speaker's 2 year old son"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Had mild watery nasal discharge yesterday"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Started making loud harsh inspiratory stridor on every breath at rest tonight"
+    }
+  ],
+  "texts": {
+    "medical": "My 2 year old son experienced mild serous nasal discharge yesterday and began exhibiting loud harsh inspiratory stridor on every breath at rest tonight so I need to go to the",
+    "everyday": "My 2 year old son had a mild watery runny nose yesterday and started making a loud harsh squeak on every breath in while resting tonight so I need to go to the",
+    "medical_paraphrase": "My 2 year old son had mild serous rhinorrhea yesterday and developed loud harsh inspiratory stridor with every breath at rest tonight so I need to go to the",
+    "everyday_paraphrase": "My 2 year old boy had a mild watery runny nose yesterday and began making a loud harsh squeaking sound on each breath in while resting tonight so I need to go to the",
+    "changed_fact": "My 2 year old son had a mild watery runny nose yesterday and gave 3 brief dry coughs after lying down tonight so I need to go to the",
+    "everyday_attribution": "My 2 year old son had a mild watery runny nose yesterday and started making a loud harsh squeak on every breath in while resting tonight and I think it's bedroom dust so I need to go to the"
+  },
+  "changed_fact": {
+    "fact_id": "f3",
+    "from": "started making a loud harsh squeak on every breath in while resting",
+    "to": "gave 3 brief dry coughs after lying down",
+    "right_care_after": 1
+  },
+  "attribution": {
+    "clause": "and I think it's bedroom dust",
+    "explains": "attributes continuous resting inspiratory airway stridor in a toddler to household bedroom dust irritation",
+    "source": "none",
+    "title": null,
+    "pmid_or_doi": null,
+    "inspected_url": null,
+    "access": null,
+    "location": null,
+    "quote_type": "none",
+    "evidence": null,
+    "adaptation": null
+  },
+  "swap_spans": {
+    "medical_span": "experienced mild serous nasal discharge yesterday and began exhibiting loud harsh inspiratory stridor on every breath at rest",
+    "everyday_span": "had a mild watery runny nose yesterday and started making a loud harsh squeak on every breath in while resting"
+  },
+  "swap_note": "Single continuous 18-word vs 20-word span swap after 'My 2 year old son ' and before ' tonight so I need to go to the'.",
+  "everyday_sources": [
+    {
+      "expression": "a loud harsh squeak on every breath in while resting",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "a mild watery runny nose",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "gave 3 brief dry coughs after lying down",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "parent_carer_plain_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": true,
+    "intervention_notes": "Plain parent-carer lexical register swap (-reg) + causal belief-addition clause (-att) + same-cold positive mild bedtime cough self-care control (-cf)."
+  },
+  "design_note": "Uses three strictly atomic reference facts (2-year-old son, mild watery runny nose yesterday, and continuous loud harsh inspiratory stridor on every breath at rest tonight) with a 2-word span difference (18 vs 20 words), zero diagnosis labels ('croup' omitted), and 8 shared trailing tokens ('tonight so I need to go to the'). Under Rule A and Rule D, replacing continuous resting stridor in f3 with a positive unprompted mild symptom ('gave 3 brief dry coughs after lying down') keeps the same viral prodrome while shifting care cleanly from emergency hospital evaluation (level 4) to home self-care (level 1) with zero stated negatives."
+}

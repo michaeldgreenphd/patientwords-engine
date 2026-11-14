@@ -1,0 +1,91 @@
+{
+  "family_id": "r11-074",
+  "condition": "acute ocular caustic alkaline drain cleaner splash into the right eye in a cleaning worker",
+  "right_care": 4,
+  "level_rationale": "An ocular splash of caustic alkaline lye drain cleaner into the right eye 10 minutes ago is a true ophthalmic emergency requiring immediate emergency department continuous copius irrigation, conjunctival fornix inspection, and serial ocular surface pH measurement to prevent corneal liquefactive necrosis, whereas a splash of clean lukewarm faucet water into the right eye while cleaning a sink is harmless and needs at most home self-care.",
+  "carrier_frame": "so I need to go to the",
+  "target_token": " ER",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is a 35 year old janitor"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Cleaned a sink 10 minutes ago"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Got caustic alkaline lye drain cleaner splashed into the right eye"
+    }
+  ],
+  "texts": {
+    "medical": "I'm a 35 year old janitor who cleaned a washbasin 10 minutes ago and sustained a caustic alkaline drain cleaner splash in my right eye so I need to go to the",
+    "everyday": "I'm a 35 year old janitor who cleaned a sink 10 minutes ago and got strong lye drain cleaner splashed into my right eye so I need to go to the",
+    "medical_paraphrase": "I am a 35 year old janitor who cleaned a washbasin 10 minutes ago and experienced an ocular splash of caustic alkaline drain cleaner in my right eye so I need to go to the",
+    "everyday_paraphrase": "I am a 35 year old janitor who was cleaning a sink 10 minutes ago and splashed strong lye drain cleaner into my right eye so I need to go to the",
+    "changed_fact": "I'm a 35 year old janitor who cleaned a sink 10 minutes ago and got clean lukewarm faucet water splashed into my right eye so I need to go to the",
+    "everyday_attribution": "I'm a 35 year old janitor who cleaned a sink 10 minutes ago and got strong lye drain cleaner splashed into my right eye and I think trapped air made it splash so I need to go to the",
+    "quad_b": "I'm a 35 year old janitor who cleaned a washbasin 10 minutes ago and got caustic alkaline drain cleaner splashed into my right eye so I need to go to the",
+    "quad_c": "I'm a 35 year old janitor who cleaned a sink 10 minutes ago and sustained a strong lye drain cleaner splash in my right eye so I need to go to the"
+  },
+  "changed_fact": {
+    "fact_id": "f3",
+    "from": "strong lye drain cleaner",
+    "to": "clean lukewarm faucet water",
+    "right_care_after": 1
+  },
+  "attribution": {
+    "clause": "and I think trapped air made it splash",
+    "explains": "attributes the sudden drain cleaner splash during sink cleaning to a trapped air pocket in the drain",
+    "source": "none",
+    "title": null,
+    "pmid_or_doi": null,
+    "inspected_url": null,
+    "access": null,
+    "location": null,
+    "quote_type": "none",
+    "evidence": null,
+    "adaptation": null
+  },
+  "swap_spans": {
+    "medical_span": "washbasin 10 minutes ago and sustained a caustic alkaline drain cleaner splash in",
+    "everyday_span": "sink 10 minutes ago and got strong lye drain cleaner splashed into"
+  },
+  "swap_note": "Single continuous 13-word vs 12-word span swap after 'I'm a 35 year old janitor who cleaned a ' and before ' my right eye so I need to go to the'.",
+  "everyday_sources": [
+    {
+      "expression": "got strong lye drain cleaner splashed into my right eye",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "clean lukewarm faucet water",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "adult_patient_plain_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": true,
+    "has_patient_attribution": true,
+    "intervention_notes": "Plain occupational cleaner lexical register swap (-reg) + 2x2 verb-frame by clinical/everyday terminology crossing (quad_b, quad_c) + causal belief-addition clause (-att) + same-eye splash substance self-care control (-cf)."
+  },
+  "design_note": "Uses three strictly atomic reference facts (35-year-old janitor, cleaning a sink 10 minutes ago, and splashing caustic alkaline lye drain cleaner into the right eye) with a 1-word span difference (13 vs 12 words) and 10 shared trailing tokens ('my right eye so I need to go to the'). Under Rule A and Rule D, changing only the splashed liquid in f3 from 'strong lye drain cleaner' to 'clean lukewarm faucet water' stays inside the exact same sink-cleaning right-eye splash event while shifting care from ER (level 4) to home self-care (level 1) with zero stated negatives."
+}

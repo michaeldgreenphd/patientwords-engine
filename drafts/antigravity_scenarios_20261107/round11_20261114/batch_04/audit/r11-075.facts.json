@@ -1,0 +1,65 @@
+{
+  "family_id": "r11-075",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Patient is the speaker's 74 year old mother",
+      "Takes daily metformin",
+      "Has experienced polyuria for 3 days",
+      "Blood glucose meter registered 580 mg per dL today"
+    ],
+    "everyday": [
+      "Patient is the speaker's 74 year old mom",
+      "Takes daily metformin",
+      "Has been peeing a lot for 3 days",
+      "Blood sugar monitor read 580 mg per dL today"
+    ],
+    "medical_paraphrase": [
+      "Patient is the speaker's 74 year old mother",
+      "Takes daily metformin",
+      "Has had polyuria for 3 days",
+      "Home blood glucose meter recorded 580 mg per dL today"
+    ],
+    "everyday_paraphrase": [
+      "Patient is the speaker's 74 year old mom",
+      "Takes metformin every day",
+      "Has been peeing a lot over 3 days",
+      "Blood sugar monitor showed 580 mg per dL today"
+    ],
+    "changed_fact": [
+      "Patient is the speaker's 74 year old mom",
+      "Takes daily metformin",
+      "Has been peeing a lot for 3 days",
+      "Blood sugar monitor read 168 mg per dL today"
+    ],
+    "everyday_attribution": [
+      "Patient is the speaker's 74 year old mom",
+      "Takes daily metformin",
+      "Has been peeing a lot for 3 days",
+      "Blood sugar monitor read 580 mg per dL today",
+      "Causal belief only (non-clinical): thinks it is her diet"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 4 reference_facts (f1: speaker's 74 year old mother, f2: takes daily metformin, f3: has urinated excessively for 3 days, f4: home blood glucose meter read 580 mg per dL today) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, and f4 exactly ('polyuria' = 'peeing a lot'; 'her blood glucose meter' = 'her blood sugar monitor').",
+    "everyday": "Matches f1, f2, f3, and f4 exactly.",
+    "medical_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday_attribution": "Matches f1, f2, f3, and f4 identically to everyday and appends only one causal belief clause ('and I think it's her diet') with zero added clinical facts.",
+    "changed_fact": "Matches f1, f2, and f3 identically to everyday and changes only the measured blood glucose meter reading in f4 ('580' -> '168') mg per dL today."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 6 texts (urinary frequency/volume and personal blood glucose meter reading; no laterality).",
+    "timing": "Identical across all 6 texts ('daily'/'every day', 'for 3 days'/'over 3 days', 'today').",
+    "count_and_numbers": "Identical ('74' years old, '3' days, '580' mg per dL) across all 5 non-control texts; changed_fact substitutes '168' mg per dL in f4.",
+    "severity_and_quality": "Identical across all 5 non-control texts ('polyuria' = 'peeing a lot', '580 mg per dL'); changed_fact de-escalates f4 reading to '168 mg per dL'.",
+    "uncertainty": "Factual clinical certainty is identical across all texts; everyday_attribution marks causal belief explicitly with 'I think'.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added clinical facts or adjectives across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

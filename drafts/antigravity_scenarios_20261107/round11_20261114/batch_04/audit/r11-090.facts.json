@@ -1,0 +1,52 @@
+{
+  "family_id": "r11-090",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 68 years old",
+      "Nail plates of both great toes have been thickened and yellow for 8 months",
+      "Nail plates of both great toes have friable distal margins today"
+    ],
+    "everyday": [
+      "Speaker is 68 years old",
+      "Nails on both big toes have been thick and yellow for 8 months",
+      "Their tips are crumbly today"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 68 years old",
+      "Nail plates of both great toes have remained thickened and yellow for 8 months",
+      "Have friable distal margins today"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 68 years old",
+      "Both big toenails have been thick and yellow for 8 months",
+      "Have crumbly tips today"
+    ],
+    "changed_fact": [
+      "Speaker is 68 years old",
+      "Nails on both big toes have been thick and yellow for 8 months",
+      "Red streaks started spreading up from those big toes today"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 68 years old, f2: nails on both big toes have been thick and yellow for 8 months, f3: tips of both big toenails are crumbly today) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly ('nail plates of both great toes' = 'nails on both big toes'; 'thickened and yellow' = 'thick and yellow'; 'friable distal margins today' = 'their tips are crumbly today').",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and replaces only f3 ('and their tips are crumbly' -> 'and red streaks started spreading up from those big toes') today on those same big toes."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical bilateral big toes ('both great toes' = 'both big toes' / 'both of my big toenails'; 'distal margins' = 'tips' in non-control texts; 'spreading up from those big toes' in changed_fact).",
+    "timing": "Identical across all 5 texts ('for 8 months' and 'today').",
+    "count_and_numbers": "Identical across all 5 texts ('68' years old, '8' months).",
+    "severity_and_quality": "Identical across all 4 non-control texts ('thickened and yellow' = 'thick and yellow', 'friable distal margins' = 'crumbly tips'); changed_fact escalates f3 to 'red streaks started spreading up from those big toes'.",
+    "uncertainty": "Identical factual certainty across all 5 texts.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added clinical facts or adjectives across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

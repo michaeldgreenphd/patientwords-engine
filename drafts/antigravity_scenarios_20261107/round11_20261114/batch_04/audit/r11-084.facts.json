@@ -1,0 +1,59 @@
+{
+  "family_id": "r11-084",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is a 28 year old woman",
+      "Has been attempting conception through regular intercourse with her 29 year old husband",
+      "Duration is 18 months"
+    ],
+    "everyday": [
+      "Speaker is a 28 year old woman",
+      "Has been trying for a baby through regular sex with her 29 year old husband",
+      "Duration is 18 months"
+    ],
+    "medical_paraphrase": [
+      "Speaker is a 28 year old woman",
+      "Has attempted conception via regular sexual intercourse with her 29 year old husband",
+      "Duration is 18 months"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is a 28 year old woman",
+      "Speaker and her 29 year old husband have been trying for a baby with regular sex",
+      "Duration is 18 months"
+    ],
+    "changed_fact": [
+      "Speaker is a 28 year old woman",
+      "Has been trying for a baby through regular sex with her 29 year old husband",
+      "Duration is 2 months"
+    ],
+    "everyday_attribution": [
+      "Speaker is a 28 year old woman",
+      "Has been trying for a baby through regular sex with her 29 year old husband",
+      "Duration is 18 months",
+      "Causal belief only (non-clinical): thinks their timing was off"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 28 year old woman, f2: regular sexual intercourse with her 29 year old husband to conceive, f3: duration of trying to conceive is 18 months) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly ('attempting conception through regular intercourse' = 'trying for a baby through regular sex').",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday and appends only one causal belief clause ('and I think our timing was off') with zero added clinical facts.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only the measured conception-attempt duration in f3 ('for 18 months' -> 'for 2 months')."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 6 texts (reproductive conception attempt; no anatomical side or body-site shift).",
+    "timing": "Identical across all 5 non-control texts ('regular', 'for 18 months'/'over 18 months'); changed_fact substitutes 'for 2 months' in f3.",
+    "count_and_numbers": "Identical ('28' years old, '29' years old, '18' months) across all 5 non-control texts; changed_fact substitutes '2' months in f3.",
+    "severity_and_quality": "Identical across all 5 non-control texts; changed_fact shortens duration in f3 to within normal fecundity ('2 months').",
+    "uncertainty": "Factual clinical certainty is identical across all texts; everyday_attribution marks causal belief explicitly with 'I think'.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added clinical facts or adjectives across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

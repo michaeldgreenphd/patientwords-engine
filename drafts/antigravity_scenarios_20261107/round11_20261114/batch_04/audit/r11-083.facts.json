@@ -1,0 +1,59 @@
+{
+  "family_id": "r11-083",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is a 31 year old office worker",
+      "Has 6 months of weekly team meetings",
+      "Marked anxiety about speaking before colleagues causes the speaker to avoid every meeting"
+    ],
+    "everyday": [
+      "Speaker is a 31 year old office worker",
+      "Has 6 months of weekly team meetings",
+      "Intense fear of speaking in front of coworkers makes the speaker skip every meeting"
+    ],
+    "medical_paraphrase": [
+      "Speaker is a 31 year old office worker",
+      "Has had weekly team meetings across 6 months",
+      "Has avoided every meeting due to marked anxiety about speaking before colleagues"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is a 31 year old office worker",
+      "Has had weekly team meetings across 6 months",
+      "Keeps skipping every meeting out of intense fear of speaking in front of coworkers"
+    ],
+    "changed_fact": [
+      "Speaker is a 31 year old office worker",
+      "Has 6 months of weekly team meetings",
+      "Feels brief mild butterflies right before speaking in front of coworkers"
+    ],
+    "everyday_attribution": [
+      "Speaker is a 31 year old office worker",
+      "Has 6 months of weekly team meetings",
+      "Intense fear of speaking in front of coworkers makes the speaker skip every meeting",
+      "Causal belief only (non-clinical): thinks they are just shy"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 31 year old office worker, f2: weekly team meetings over 6 months, f3: intense fear of speaking in front of coworkers causes the speaker to skip every meeting) are checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly ('marked anxiety about speaking before colleagues causes me to avoid every meeting' = 'intense fear of speaking in front of coworkers makes me skip every meeting').",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday and appends only one causal belief clause ('and I think I'm just shy') with zero added clinical facts.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only f3 ('intense fear of speaking in front of coworkers makes me skip every meeting' -> 'I feel brief mild butterflies right before speaking in front of coworkers') within the same workplace speaking scenario."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 6 texts (affective/behavioral response to workplace speaking; no body-site shift or unstated laterality).",
+    "timing": "Identical across all 5 non-control texts ('6 months', 'weekly', 'every meeting'); changed_fact modifies f3 to 'brief' 'right before speaking'.",
+    "count_and_numbers": "Identical across all 6 texts ('31' years old, '6' months).",
+    "severity_and_quality": "Identical across all 5 non-control texts ('marked anxiety ... avoid every meeting' = 'intense fear ... skip every meeting'); changed_fact de-escalates f3 to 'brief mild butterflies' without meeting avoidance.",
+    "uncertainty": "Factual clinical certainty is identical across all texts; everyday_attribution marks causal belief explicitly with 'I think'.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added clinical facts or adjectives across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

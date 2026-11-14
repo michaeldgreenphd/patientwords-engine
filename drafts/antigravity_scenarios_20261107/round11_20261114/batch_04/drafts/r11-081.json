@@ -1,0 +1,101 @@
+{
+  "family_id": "r11-081",
+  "condition": "unilateral resting right hand tremor and slow shuffling gait in both legs over 8 months in an older adult",
+  "right_care": 3,
+  "level_rationale": "An 8-month history of unilateral resting right-hand tremor accompanied by a slow shuffling gait in both legs in a 68-year-old adult is a classic presentation of degenerative parkinsonism warranting neurology specialist evaluation and dopaminergic management, whereas both legs suddenly going limp under the patient when walking represents acute bilateral lower-extremity paraparesis requiring immediate emergency department spinal and neurovascular evaluation.",
+  "carrier_frame": "so I should see a",
+  "target_token": " specialist",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is 68 years old"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Right hand has been shaking at rest for 8 months"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Both legs move in slow shuffling steps when walking"
+    }
+  ],
+  "texts": {
+    "medical": "I am 68 and have had a resting right hand tremor for 8 months and a slow shuffling gait in both legs when walking so I should see a",
+    "everyday": "I am 68 and my right hand has been shaking at rest for 8 months and both my legs move in slow shuffling steps when walking so I should see a",
+    "medical_paraphrase": "I am 68 years old and have had a resting tremor in my right hand over 8 months while displaying a slow shuffling gait in both legs during ambulation so I should see a",
+    "everyday_paraphrase": "I am 68 years old and my right hand has kept shaking at rest over 8 months while both my legs take slow shuffling steps when I walk so I should see a",
+    "changed_fact": "I am 68 and my right hand has been shaking at rest for 8 months and both my legs suddenly went limp under me when walking so I should see a",
+    "everyday_attribution": "I am 68 and my right hand has been shaking at rest for 8 months and both my legs move in slow shuffling steps when walking and I think it's old age so I should see a"
+  },
+  "changed_fact": {
+    "fact_id": "f3",
+    "from": "both my legs move in slow shuffling steps when walking",
+    "to": "both my legs suddenly went limp under me when walking",
+    "right_care_after": 4
+  },
+  "attribution": {
+    "clause": "and I think it's old age",
+    "explains": "normalizes unilateral resting hand tremor and slow shuffling steps by attributing them to normal aging",
+    "source": "none",
+    "title": null,
+    "pmid_or_doi": null,
+    "inspected_url": null,
+    "access": null,
+    "location": null,
+    "quote_type": "none",
+    "evidence": null,
+    "adaptation": null
+  },
+  "swap_spans": {
+    "medical_span": "have had a resting right hand tremor for 8 months and a slow shuffling gait in both legs",
+    "everyday_span": "my right hand has been shaking at rest for 8 months and both my legs move in slow shuffling steps"
+  },
+  "swap_note": "Single continuous 18-word vs 20-word span swap after 'I am 68 and ' and before ' when walking so I should see a'.",
+  "everyday_sources": [
+    {
+      "expression": "shaking",
+      "source": "Thangavel G, Memedi M, Hedström K (2024). Information and Communication Technology for Managing Social Isolation and Loneliness Among People Living With Parkinson Disease: Qualitative Study of Barriers and Facilitators. J Med Internet Res.",
+      "title": "Information and Communication Technology for Managing Social Isolation and Loneliness Among People Living With Parkinson Disease: Qualitative Study of Barriers and Facilitators.",
+      "pmid_or_doi": "PMID: 38231548; DOI: 10.2196/48175",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/38231548/",
+      "access": "full text",
+      "location": "Results — Physical Limitations, para 1",
+      "quote_type": "authors' summary",
+      "evidence": "Due to Parkinson tremors and shaking symptoms, some people living with PD expressed difficulties in using a keyboard and mouse.",
+      "adaptation": null
+    },
+    {
+      "expression": "slow shuffling steps",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "both my legs suddenly went limp under me when walking",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "older_adult_plain_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": true,
+    "intervention_notes": "Plain older-adult everyday lexical register swap (-reg) + unsourced normal-aging causal belief clause (-att) + single-fact bilateral lower-extremity motor escalation control (-cf)."
+  },
+  "design_note": "Uses three strictly atomic reference facts (age 68, 8 months of right-hand shaking at rest, and slow shuffling steps in both legs when walking) without naming Parkinson disease, with a 2-word span difference (18 vs 20 words), zero stated negatives, and identical digit multisets across all 6 variants. Under reviewer_notes Rules A and D, escalating only f3 on the exact same 'both my legs ... when walking' frame from chronic slow shuffling steps to suddenly going limp under the speaker keeps the 8-month resting hand tremor fully coherent while shifting care cleanly from neurology specialist evaluation (level 3) to emergency department evaluation (level 4)."
+}

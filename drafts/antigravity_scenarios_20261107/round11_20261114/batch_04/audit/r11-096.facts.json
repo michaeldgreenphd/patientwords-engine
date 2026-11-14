@@ -1,0 +1,57 @@
+{
+  "family_id": "r11-096",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 25 years old",
+      "Did first squat workout at the gym 2 days ago",
+      "Has myalgia in the anterior muscles of the thighs today",
+      "Has mild stiffness during ambulation"
+    ],
+    "everyday": [
+      "Speaker is 25 years old",
+      "Did first squat workout at the gym 2 days ago",
+      "Has sore muscles in the front of the thighs today",
+      "Thigh muscles feel mildly stiff when walking"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 25 years old",
+      "Completed first squat session at the gym 2 days ago",
+      "Has myalgia of the anterior thigh muscles today",
+      "Has mild stiffness while walking"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 25 years old",
+      "Did first squat workout at the gym 2 days ago",
+      "Muscles in the front of the thighs are sore today",
+      "Thigh muscles feel mildly stiff as the speaker walks"
+    ],
+    "changed_fact": [
+      "Speaker is 25 years old",
+      "Did first squat workout at the gym 2 days ago",
+      "Has sore muscles in the front of the thighs today",
+      "Sore thigh muscles make the speaker limp on every step"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 4 reference_facts (f1: 25 years old, f2: did a first squat workout at the gym 2 days ago, f3: has sore muscles in the front of the thighs today, f4: thigh muscles feel mildly stiff when walking) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, and f4 exactly ('myalgia in the anterior muscles of my thighs' = 'sore muscles in the front of my thighs'; 'mild stiffness during ambulation' = 'feel mildly stiff when walking').",
+    "everyday": "Matches f1, f2, and f3, and f4 exactly.",
+    "medical_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "changed_fact": "Matches f1, f2, and f3 identically to everyday and changes only the gait-impact severity in f4 ('that feel mildly stiff when walking' -> 'that make me limp on every step') on the same anterior thigh muscles."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 5 texts ('anterior muscles of my thighs'/'anterior thigh muscles' = 'muscles in the front of my thighs', plural bilateral thighs).",
+    "timing": "Identical across all 5 texts ('2 days ago'/'2 days after', 'today', and during walking/every step).",
+    "count_and_numbers": "Identical across all 5 texts ('25' years old, 'first' squat workout, '2' days).",
+    "severity_and_quality": "Identical across all 4 non-control texts ('myalgia' = 'sore muscles', 'mild stiffness during ambulation' = 'feel mildly stiff when walking'); changed_fact escalates f4 to 'make me limp on every step'.",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added clinical facts or adjectives across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

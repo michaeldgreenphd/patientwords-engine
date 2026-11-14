@@ -1,0 +1,52 @@
+{
+  "family_id": "r11-089",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 9 weeks pregnant",
+      "Has experienced morning nausea with 1 episode of emesis daily for 2 weeks",
+      "Retains daytime meals and water"
+    ],
+    "everyday": [
+      "Speaker is 9 weeks pregnant",
+      "Has felt queasy and thrown up 1 time each morning for 2 weeks",
+      "Keeps daytime meals and water down"
+    ],
+    "medical_paraphrase": [
+      "Speaker is at 9 weeks of gestation",
+      "Has had morning nausea with 1 daily episode of emesis for 2 weeks",
+      "Retains daytime meals and water"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 9 weeks pregnant",
+      "Every morning for 2 weeks has felt queasy and thrown up 1 time",
+      "Still keeps daytime meals and water down"
+    ],
+    "changed_fact": [
+      "Speaker is 9 weeks pregnant",
+      "Has felt queasy and thrown up 1 time each morning for 2 weeks",
+      "Has retched up bile 18 times since midnight"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 9 weeks pregnant, f2: morning nausea with vomiting 1 time each morning for 2 weeks, f3: keeps daytime meals and water down) are checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 ('morning nausea with 1 episode of emesis daily for 2 weeks' alongside 'retaining daytime meals and water' matches morning queasiness with 1 morning vomiting episode daily; 'retaining daytime meals and water' = 'keeping daytime meals and water down').",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 ('9 weeks of gestation' = '9 weeks pregnant').",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and replaces only f3 ('while keeping daytime meals and water down' -> 'and I have retched up bile 18 times since midnight') inside the same early-pregnancy vomiting presentation."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 5 texts (early-pregnancy upper-GI nausea/emesis and oral intake; no laterality or unrelated body site).",
+    "timing": "Consistent across all 4 non-control texts ('9 weeks', 'morning'/'each morning'/'every morning', 'daily', 'for 2 weeks', 'daytime'); changed_fact escalates f3 to 'since midnight'.",
+    "count_and_numbers": "Identical ('9' weeks, '1' episode/time, '2' weeks) across all 4 non-control texts; changed_fact substitutes '18' times since midnight in f3.",
+    "severity_and_quality": "Identical across all 4 non-control texts ('nausea'/'queasy', '1 episode of emesis'/'thrown up 1 time', 'retaining'/'keeping ... down' daytime meals and water); changed_fact escalates f3 to 'retched up bile 18 times'.",
+    "uncertainty": "Identical factual certainty across all 5 texts.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added clinical facts or adjectives across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

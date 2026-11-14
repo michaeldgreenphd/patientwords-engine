@@ -1,0 +1,59 @@
+{
+  "family_id": "r11-077",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 31 years old",
+      "Crashed bicycle onto asphalt 20 minutes ago",
+      "Sustained a deep laceration over the anterior right lower leg with exposed bone protruding"
+    ],
+    "everyday": [
+      "Speaker is 31 years old",
+      "Crashed bike onto asphalt 20 minutes ago",
+      "Got a deep gash on the right shin with bone sticking out"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 31 years old",
+      "Crashed bicycle onto asphalt 20 minutes ago",
+      "Suffered a deep anterior right lower leg laceration with exposed bone protruding"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 31 years old",
+      "Wrecked bike on asphalt 20 minutes ago",
+      "Tore a deep gash on the right shin with bone sticking out"
+    ],
+    "changed_fact": [
+      "Speaker is 31 years old",
+      "Crashed bike onto asphalt 20 minutes ago",
+      "Got a shallow 2 cm road scrape on the right shin"
+    ],
+    "everyday_attribution": [
+      "Speaker is 31 years old",
+      "Crashed bike onto asphalt 20 minutes ago",
+      "Got a deep gash on the right shin with bone sticking out",
+      "Causal belief only (non-clinical): thinks that protruding piece is gravel"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 31 years old, f2: crashed a bicycle onto asphalt 20 minutes ago, f3: sustained a deep wound on the right shin with exposed bone protruding) are checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly ('anterior right lower leg' = 'right shin'; 'deep laceration ... with exposed bone protruding' = 'deep gash ... with bone sticking out').",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday and appends only one causal belief clause ('and I think that piece is gravel') with zero added clinical facts.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only the right-shin wound severity in f3 ('got a deep gash on my right shin with bone sticking out' -> 'got a shallow 2 cm road scrape on my right shin')."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 6 texts ('anterior right lower leg' = 'right shin', right side).",
+    "timing": "Identical across all 6 texts ('20 minutes ago').",
+    "count_and_numbers": "Identical ('31' years old, '20' minutes) across all 5 non-control texts; changed_fact adds '2' cm in f3.",
+    "severity_and_quality": "Identical across all 5 non-control texts ('deep laceration ... with exposed bone protruding' = 'deep gash ... with bone sticking out'); changed_fact de-escalates f3 to 'a shallow 2 cm road scrape'.",
+    "uncertainty": "Factual clinical certainty is identical across all texts; everyday_attribution marks causal belief explicitly with 'I think'.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added clinical facts or adjectives across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

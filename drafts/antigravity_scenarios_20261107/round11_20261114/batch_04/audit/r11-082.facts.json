@@ -1,0 +1,59 @@
+{
+  "family_id": "r11-082",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is a 22 year old woman",
+      "Has a 5 month history of daily episodes of excessive food intake",
+      "Each episode is followed immediately by self-induced emesis of the meal"
+    ],
+    "everyday": [
+      "Speaker is a 22 year old woman",
+      "For 5 months has eaten huge amounts of food every day",
+      "Makes herself throw up her meal right after"
+    ],
+    "medical_paraphrase": [
+      "Speaker is a 22 year old woman",
+      "Reports 5 months of daily episodes of excessive food intake",
+      "Each episode is followed immediately by self-induced emesis of the meal"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is a 22 year old woman",
+      "Over 5 months has been eating huge amounts of food every day",
+      "Forces herself to throw up her meal right after"
+    ],
+    "changed_fact": [
+      "Speaker is a 22 year old woman",
+      "For 5 months has eaten huge amounts of food every day",
+      "Threw up a bowlful of fresh red blood right after eating"
+    ],
+    "everyday_attribution": [
+      "Speaker is a 22 year old woman",
+      "For 5 months has eaten huge amounts of food every day",
+      "Makes herself throw up her meal right after",
+      "Causal belief only (non-clinical): thinks it is college stress"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 22 year old woman, f2: daily episodes of eating huge amounts of food over 5 months, f3: induces vomiting of the meal immediately afterward) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly ('excessive food intake' states the clinical abnormal-quantity counterpart of 'huge amounts of food'; 'self induced emesis of my meal' = 'make myself throw up my meal').",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday and appends only one causal belief clause ('and I think it's college stress') with zero added clinical facts.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only f3 ('make myself throw up my meal right after' -> 'I threw up a bowlful of fresh red blood right after eating') in the same immediate post-meal emesis slot."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 6 texts (oral intake and upper-GI vomiting/emesis; no unstated laterality or extra body sites).",
+    "timing": "Identical across all 6 texts ('5 months'/'5 month history', 'daily'/'every day', 'immediately'/'right after').",
+    "count_and_numbers": "Identical across all 6 texts ('22' years old, '5' months).",
+    "severity_and_quality": "Consistent across all 5 non-control texts ('excessive food intake' = 'huge amounts of food', 'self induced emesis of my meal' = 'make/forcing myself [to] throw up my meal'); changed_fact escalates f3 to 'threw up a bowlful of fresh red blood'.",
+    "uncertainty": "Factual clinical certainty is identical across all texts; everyday_attribution marks causal belief explicitly with 'I think'.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added clinical facts across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}
