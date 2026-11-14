@@ -98,3 +98,43 @@ Two things to fix when you commit batch 02:
    - add a note naming the revision that made the concern moot.
 
    Restore the three records that way in the same commit.
+
+## After batch 02 (commit 33fae7daf), reviewed 2026-11-14
+
+Accepted, along with the two batch 01 follow-ups.
+
+- **Batch 01 follow-ups.** r11-012-c2 and r11-016-c1 were added. The three concern records were restored as withdrawn by their raisers. Intake accepts the file.
+- **Gates.** G2 and G3 reproduce exactly: 60 pairs, 0 errors, 6 number warnings on measured-value controls, which are expected.
+- **Citations.** All 18 PubMed rows and all 3 Wiktionary rows verify.
+- **Rule A.** Every control stays inside its case. The best are the measured-value changes and the same-symptom severity changes:
+  - r11-031: eye pressure 28 becomes 15 mmHg;
+  - r11-045: standing blood pressure 106 over 66 becomes 68 over 40;
+  - r11-046: resting pulse 78 becomes 210;
+  - r11-035 and r11-036: the same symptom made milder.
+- **Other rules.** No stated negatives, and no dialect form in a plain family.
+- **Files.** `SPEC.md` and everything outside `round11_20261114/` are unchanged.
+
+To fix when you commit batch 03:
+
+1. **Two control levels for the clinician.** Add these to `batch_02/concerns_selfreported.json` as `control_level_disputed`, `pending_clinical_review`:
+   - r11-039: "got a 40 C fever" with a ring-shaped skin patch, at level 4;
+   - r11-040: "painful swelling behind that ear" at 71, at level 4.
+
+   r11-040 is the same control as r11-012, which was flagged in batch 01, so the two need the same treatment. `@level` recorded no level concern in batch 02. Apply the batch 01 standard: whenever emergency care against a same-day doctor is a judgement call, record a concern.
+
+### Rule D, for batches 03 to 06: vary the control's new value
+
+Across batches 01 and 02, several controls reuse the same new value:
+
+| New value | Families |
+|---|---|
+| "40 C fever" | r11-014, r11-015, r11-039 |
+| "painful swelling behind the ear" | r11-012, r11-040 |
+| "foot turning blue" | r11-017, r11-041 |
+
+If many controls use a few stock phrases, a response to the controls would tell us about those phrases rather than about the change in care. From batch 03:
+
+- no new value may repeat the wording of a new value already used in round 11, apart from the plain words of the symptom itself;
+- prefer a measured-value or same-symptom change under rule A, because those differ from family to family by their nature.
+
+Do not rewrite batches 01 and 02 for this.
