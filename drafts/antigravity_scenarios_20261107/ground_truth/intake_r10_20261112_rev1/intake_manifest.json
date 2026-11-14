@@ -3,7 +3,7 @@
     "batch_id": "r10_20261112_rev1",
     "families": 24,
     "sha256": "6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f",
-    "source": "draft/antigravity-scenarios-20261107:drafts/antigravity_scenarios_20261107/round10_20261112_rev1/families.json (revision 1 of round10_20261112 at 9a495c763)"
+    "source": "draft/antigravity-scenarios-20261107@42fe714bf:drafts/antigravity_scenarios_20261107/round10_20261112_rev1/families.json (revision 1 of round10_20261112 at 9a495c763)"
   },
   "comparisons_not_made": [
     "Care tiers are not compared with each other: families at different tiers use different carrier phrases and target words, so their endpoints are probabilities of different tokens in different contexts.",
@@ -16,18 +16,17 @@
       "manipulated_dimension": "register only",
       "status": "draft, not signed"
     },
-    "sha256": "52fae93517fb8cb6228307bb79574506c73f42e4e6856d1f52e9e057fe065566",
-    "status": "draft, 2026-11-12: proposed by the batch-intake change; not agreed. The owner agrees it by a commit that changes this line."
+    "sha256": "bc93653f26ed69fcbc570e737b18c22fc993206218cf23f8b40a78ae2ba8ed8b",
+    "status": "draft, 2026-11-13: the items listed under decisions are as the owner decided on 2026-11-13; every other rule is proposed by the batch-intake change and not agreed. The owner agrees the rest by a commit that changes this line."
   },
   "eligibility_rules": {
-    "confirmatory": "A held-out family's register contrast can enter a confirmatory statement only when none of the blockers in confirmatory_blockers applies. The protocol draft names the signed protocol, the two reviews, the single manipulated dimension and the split made before measurement. The owner's keep, the open-concern rule and the named stem are criteria this design adds; the owner agrees or removes them with the rest of this file.",
+    "confirmatory": "A held-out family's register contrast can enter a confirmatory statement only when none of the blockers in confirmatory_blockers applies. The protocol draft names the signed protocol, the two reviews, the single manipulated dimension and the split made before measurement. The open-concern rule and the named stem are criteria this design adds and are not yet agreed. The owner's read is not a criterion (decisions, 2026-11-13): it is recorded, and inclusion rests on the two reviews.",
     "confirmatory_blockers": {
       "calibration_split": "the family is in discovery, which calibrates thresholds and is never part of a confirmatory statement",
       "clinician_review_missing": "no clinician has recorded all six dimensions on this version of the family",
       "domain_review_not_passed": "the rubric's status rule does not give 'reviewed': the clinician did not record 'same' on all six dimensions (a 'cannot_judge' is not 'same'), or a review is missing",
       "exploratory_stratum": "the family has a flag (a dialect form, or a carrier with no earlier measurement), so its register contrast changes more than register",
       "open_concern_on_register_pair": "an open concern applies to the family or to its register contrast. Added by this design",
-      "owner_read": "the owner has not kept this version of the family (not_read, excluded or stale). Added by this design; the owner's read is not a domain review and does not replace one",
       "patient_language_review_missing": "no patient-language reviewer has recorded both items on this version of the family",
       "protocol_not_signed": "the protocol's status does not begin with the word 'signed'",
       "removed_by_review": "a reviewer recorded 'different' on an item",
@@ -50,11 +49,62 @@
   },
   "estimated_work": {
     "behavioural_pass_owner_kept": {
+      "cpu_logits": {
+        "assumptions": [
+          "time scales with the number of prompts, so a family of v variants is v / 2 pairs",
+          "failed_attempt_fraction = 0.0 is a stated allowance, not a measured rate",
+          "the rates are for the legacy first-token endpoint and include model load",
+          "runner seconds are not wall-clock time: queueing, install and parallelism are not modelled"
+        ],
+        "attempted_pair_equivalents": 126,
+        "formula": "runner_seconds = ceil(pair_equivalents * (1 + failed_attempt_fraction)) * seconds_per_pair, summed over models; pair_equivalents = case_families * replicates * prompts_per_family / 2; legs = ceil(attempted_pairs / max(1, min(max_pairs_per_leg, floor(leg_budget_seconds / seconds_per_pair))))",
+        "measured": false,
+        "pair_equivalents": 126.0,
+        "per_model": {
+          "gemma-2-2b-it": {
+            "legs": 2,
+            "pairs_per_leg": 81,
+            "runner_seconds": 11151.0,
+            "seconds_per_pair": 88.5
+          },
+          "gemma-3-4b-it": {
+            "legs": 3,
+            "pairs_per_leg": 44,
+            "runner_seconds": 20235.6,
+            "seconds_per_pair": 160.6
+          },
+          "llama-3.2-3b": {
+            "legs": 3,
+            "pairs_per_leg": 55,
+            "runner_seconds": 16304.400000000001,
+            "seconds_per_pair": 129.4
+          },
+          "olmo-2-1b": {
+            "legs": 2,
+            "pairs_per_leg": 120,
+            "runner_seconds": 5544.0,
+            "seconds_per_pair": 44.0
+          },
+          "qwen3-1.7b": {
+            "legs": 2,
+            "pairs_per_leg": 107,
+            "runner_seconds": 8467.2,
+            "seconds_per_pair": 67.2
+          },
+          "qwen3-4b": {
+            "legs": 3,
+            "pairs_per_leg": 46,
+            "runner_seconds": 19630.800000000003,
+            "seconds_per_pair": 155.8
+          }
+        },
+        "runner_seconds": 81333.0
+      },
       "measured": false,
       "no_recorded_rate": [
         "gemma-2-2b"
       ],
-      "pairs": 0,
+      "pairs": 126,
       "rates_label": "measured (slowest successful run per model; sample size not recorded)",
       "rates_source": "scripts/backfill_planner.py SECONDS_PER_PAIR: the SLOWEST rate each model showed in its successful logits-eval runs on GitHub Actions up to 2026-10-09: the 'Measure next-token behavior' step's duration (model load included) over the pairs the run's trigger file asked for. Medians were about half these (gemma-3-4b-it 94, qwen3-1.7b 33, qwen3-4b 76, llama-3.2-3b 69, olmo-2-1b 37, gemma-2-2b-it 79 s/pair), so sizing on the slowest keeps a slow runner inside the timeout too"
     },
@@ -274,7 +324,6 @@
             "clinician_review_missing",
             "patient_language_review_missing",
             "domain_review_not_passed",
-            "owner_read_not_read",
             "split_unassigned",
             "stem_not_named",
             "open_concern_on_register_pair:r10-01-c1"
@@ -308,7 +357,12 @@
           "status": "not_reviewed"
         },
         "owner_read": {
-          "status": "not_read"
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f",
+          "read_utc": "2026-11-13T23:54:55Z",
+          "reasons": [],
+          "status": "kept"
         },
         "patient_language_reviewer": {
           "items": {
@@ -520,7 +574,6 @@
             "clinician_review_missing",
             "patient_language_review_missing",
             "domain_review_not_passed",
-            "owner_read_not_read",
             "split_unassigned",
             "stem_not_named"
           ],
@@ -553,7 +606,12 @@
           "status": "not_reviewed"
         },
         "owner_read": {
-          "status": "not_read"
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f",
+          "read_utc": "2026-11-13T23:54:55Z",
+          "reasons": [],
+          "status": "kept"
         },
         "patient_language_reviewer": {
           "items": {
@@ -825,7 +883,6 @@
             "clinician_review_missing",
             "patient_language_review_missing",
             "domain_review_not_passed",
-            "owner_read_not_read",
             "exploratory_stratum:register_with_dialect",
             "split_unassigned",
             "stem_not_named"
@@ -865,7 +922,12 @@
           "status": "not_reviewed"
         },
         "owner_read": {
-          "status": "not_read"
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f",
+          "read_utc": "2026-11-13T23:54:55Z",
+          "reasons": [],
+          "status": "kept"
         },
         "patient_language_reviewer": {
           "items": {
@@ -1118,7 +1180,6 @@
             "clinician_review_missing",
             "patient_language_review_missing",
             "domain_review_not_passed",
-            "owner_read_not_read",
             "split_unassigned",
             "stem_not_named",
             "open_concern_on_register_pair:r10-04-c2"
@@ -1156,7 +1217,12 @@
           "status": "not_reviewed"
         },
         "owner_read": {
-          "status": "not_read"
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f",
+          "read_utc": "2026-11-13T23:54:55Z",
+          "reasons": [],
+          "status": "kept"
         },
         "patient_language_reviewer": {
           "items": {
@@ -1366,7 +1432,6 @@
             "clinician_review_missing",
             "patient_language_review_missing",
             "domain_review_not_passed",
-            "owner_read_not_read",
             "split_unassigned",
             "stem_not_named"
           ],
@@ -1399,7 +1464,12 @@
           "status": "not_reviewed"
         },
         "owner_read": {
-          "status": "not_read"
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f",
+          "read_utc": "2026-11-13T23:54:55Z",
+          "reasons": [],
+          "status": "kept"
         },
         "patient_language_reviewer": {
           "items": {
@@ -1659,7 +1729,6 @@
             "clinician_review_missing",
             "patient_language_review_missing",
             "domain_review_not_passed",
-            "owner_read_not_read",
             "exploratory_stratum:register_with_dialect",
             "split_unassigned",
             "stem_not_named",
@@ -1703,7 +1772,12 @@
           "status": "not_reviewed"
         },
         "owner_read": {
-          "status": "not_read"
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f",
+          "read_utc": "2026-11-13T23:54:55Z",
+          "reasons": [],
+          "status": "kept"
         },
         "patient_language_reviewer": {
           "items": {
@@ -1963,7 +2037,6 @@
             "clinician_review_missing",
             "patient_language_review_missing",
             "domain_review_not_passed",
-            "owner_read_not_read",
             "exploratory_stratum:register_with_dialect",
             "split_unassigned",
             "stem_not_named",
@@ -2004,7 +2077,12 @@
           "status": "not_reviewed"
         },
         "owner_read": {
-          "status": "not_read"
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f",
+          "read_utc": "2026-11-13T23:54:55Z",
+          "reasons": [],
+          "status": "kept"
         },
         "patient_language_reviewer": {
           "items": {
@@ -2246,7 +2324,6 @@
             "clinician_review_missing",
             "patient_language_review_missing",
             "domain_review_not_passed",
-            "owner_read_not_read",
             "exploratory_stratum:register_with_dialect",
             "split_unassigned",
             "stem_not_named",
@@ -2283,7 +2360,12 @@
           "status": "not_reviewed"
         },
         "owner_read": {
-          "status": "not_read"
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f",
+          "read_utc": "2026-11-13T23:54:55Z",
+          "reasons": [],
+          "status": "kept"
         },
         "patient_language_reviewer": {
           "items": {
@@ -2551,7 +2633,6 @@
             "clinician_review_missing",
             "patient_language_review_missing",
             "domain_review_not_passed",
-            "owner_read_not_read",
             "split_unassigned",
             "stem_not_named",
             "open_concern_on_register_pair:r10-09-c1"
@@ -2585,7 +2666,12 @@
           "status": "not_reviewed"
         },
         "owner_read": {
-          "status": "not_read"
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f",
+          "read_utc": "2026-11-13T23:54:55Z",
+          "reasons": [],
+          "status": "kept"
         },
         "patient_language_reviewer": {
           "items": {
@@ -2883,7 +2969,6 @@
             "clinician_review_missing",
             "patient_language_review_missing",
             "domain_review_not_passed",
-            "owner_read_not_read",
             "split_unassigned",
             "stem_not_named",
             "open_concern_on_register_pair:r10-10-c1"
@@ -2921,7 +3006,12 @@
           "status": "not_reviewed"
         },
         "owner_read": {
-          "status": "not_read"
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f",
+          "read_utc": "2026-11-13T23:54:55Z",
+          "reasons": [],
+          "status": "kept"
         },
         "patient_language_reviewer": {
           "items": {
@@ -3048,7 +3138,7 @@
             ],
             "concern_id": "r10-11-c2",
             "disposition": {
-              "note": "Found on the second version; not revised. The case is now an adolescent with low mood that did not respond to 2 medicines; whether that case and its level are suitable is a clinical and owner judgement.",
+              "note": "Found on the second version; not revised. The case is now an adolescent with low mood that did not respond to 2 medicines; whether that case and its level are suitable is a clinical and owner judgement. On 2026-11-13 the owner decided to keep the adolescent case, pending clinical review; that decision keeps the family in the batch and does not close this concern.",
               "status": "pending_clinical_review"
             },
             "family_changed_since_raised": true,
@@ -3202,7 +3292,6 @@
             "clinician_review_missing",
             "patient_language_review_missing",
             "domain_review_not_passed",
-            "owner_read_not_read",
             "split_unassigned",
             "stem_not_named",
             "open_concern_on_register_pair:r10-11-c1,r10-11-c2,r10-11-c3"
@@ -3243,7 +3332,12 @@
           "status": "not_reviewed"
         },
         "owner_read": {
-          "status": "not_read"
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f",
+          "read_utc": "2026-11-13T23:54:55Z",
+          "reasons": [],
+          "status": "kept"
         },
         "patient_language_reviewer": {
           "items": {
@@ -3528,7 +3622,6 @@
             "clinician_review_missing",
             "patient_language_review_missing",
             "domain_review_not_passed",
-            "owner_read_not_read",
             "exploratory_stratum:register_with_dialect",
             "split_unassigned",
             "stem_not_named",
@@ -3569,7 +3662,12 @@
           "status": "not_reviewed"
         },
         "owner_read": {
-          "status": "not_read"
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f",
+          "read_utc": "2026-11-13T23:54:55Z",
+          "reasons": [],
+          "status": "kept"
         },
         "patient_language_reviewer": {
           "items": {
@@ -3784,7 +3882,6 @@
             "clinician_review_missing",
             "patient_language_review_missing",
             "domain_review_not_passed",
-            "owner_read_not_read",
             "split_unassigned",
             "stem_not_named"
           ],
@@ -3817,7 +3914,12 @@
           "status": "not_reviewed"
         },
         "owner_read": {
-          "status": "not_read"
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f",
+          "read_utc": "2026-11-13T23:54:55Z",
+          "reasons": [],
+          "status": "kept"
         },
         "patient_language_reviewer": {
           "items": {
@@ -4044,7 +4146,6 @@
             "clinician_review_missing",
             "patient_language_review_missing",
             "domain_review_not_passed",
-            "owner_read_not_read",
             "split_unassigned",
             "stem_not_named",
             "open_concern_on_register_pair:r10-14-c1"
@@ -4078,7 +4179,12 @@
           "status": "not_reviewed"
         },
         "owner_read": {
-          "status": "not_read"
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f",
+          "read_utc": "2026-11-13T23:54:55Z",
+          "reasons": [],
+          "status": "kept"
         },
         "patient_language_reviewer": {
           "items": {
@@ -4323,7 +4429,6 @@
             "clinician_review_missing",
             "patient_language_review_missing",
             "domain_review_not_passed",
-            "owner_read_not_read",
             "split_unassigned",
             "stem_not_named",
             "open_concern_on_register_pair:r10-15-c1"
@@ -4357,7 +4462,12 @@
           "status": "not_reviewed"
         },
         "owner_read": {
-          "status": "not_read"
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f",
+          "read_utc": "2026-11-13T23:54:55Z",
+          "reasons": [],
+          "status": "kept"
         },
         "patient_language_reviewer": {
           "items": {
@@ -4601,7 +4711,6 @@
             "clinician_review_missing",
             "patient_language_review_missing",
             "domain_review_not_passed",
-            "owner_read_not_read",
             "split_unassigned",
             "stem_not_named",
             "open_concern_on_register_pair:r10-16-c1"
@@ -4635,7 +4744,12 @@
           "status": "not_reviewed"
         },
         "owner_read": {
-          "status": "not_read"
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f",
+          "read_utc": "2026-11-13T23:54:55Z",
+          "reasons": [],
+          "status": "kept"
         },
         "patient_language_reviewer": {
           "items": {
@@ -4847,7 +4961,6 @@
             "clinician_review_missing",
             "patient_language_review_missing",
             "domain_review_not_passed",
-            "owner_read_not_read",
             "split_unassigned",
             "stem_not_named",
             "open_concern_on_register_pair:r10-17-c1"
@@ -4881,7 +4994,12 @@
           "status": "not_reviewed"
         },
         "owner_read": {
-          "status": "not_read"
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f",
+          "read_utc": "2026-11-13T23:54:55Z",
+          "reasons": [],
+          "status": "kept"
         },
         "patient_language_reviewer": {
           "items": {
@@ -5075,7 +5193,6 @@
             "clinician_review_missing",
             "patient_language_review_missing",
             "domain_review_not_passed",
-            "owner_read_not_read",
             "split_unassigned",
             "stem_not_named",
             "open_concern_on_register_pair:r10-18-c1"
@@ -5109,7 +5226,12 @@
           "status": "not_reviewed"
         },
         "owner_read": {
-          "status": "not_read"
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f",
+          "read_utc": "2026-11-13T23:54:55Z",
+          "reasons": [],
+          "status": "kept"
         },
         "patient_language_reviewer": {
           "items": {
@@ -5294,7 +5416,6 @@
             "clinician_review_missing",
             "patient_language_review_missing",
             "domain_review_not_passed",
-            "owner_read_not_read",
             "exploratory_stratum:register_with_dialect",
             "split_unassigned",
             "stem_not_named",
@@ -5331,7 +5452,12 @@
           "status": "not_reviewed"
         },
         "owner_read": {
-          "status": "not_read"
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f",
+          "read_utc": "2026-11-13T23:54:55Z",
+          "reasons": [],
+          "status": "kept"
         },
         "patient_language_reviewer": {
           "items": {
@@ -5415,7 +5541,7 @@
       "concerns": {
         "closed": 0,
         "note": "A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.",
-        "open": 3,
+        "open": 4,
         "records": [
           {
             "applies_to": [
@@ -5470,6 +5596,23 @@
             "raised_on": "2026-11-12",
             "state": "open",
             "text": "The texts state a negative ('but easy resting breathing today') that a patient would rarely volunteer. It is kept: it is the fact the control changes. Reviewer's reading of how plausible it is in a patient's mouth: possible."
+          },
+          {
+            "applies_to": [
+              "family"
+            ],
+            "concern_id": "r10-20-c4",
+            "disposition": {
+              "note": "On 2026-11-13 the owner decided to leave this question for the clinician.",
+              "status": "pending_clinical_review"
+            },
+            "family_changed_since_raised": false,
+            "kind": "other",
+            "raised_by": "Claude review session (a model's reading; not a clinician's or a patient-language reviewer's)",
+            "raised_by_kind": "model",
+            "raised_on": "2026-11-13",
+            "state": "open",
+            "text": "Whether 'brittle' is one of the family's facts. The first version's fact f2 was 'Pale inner eyelids and brittle spoon shaped nails'; the author's second version removed 'brittle' from the fact, and revision 1 removed it from the two second wordings so that every text carries the same facts. If 'brittle' matters to the case, it belongs in the fact and in every wording."
           }
         ]
       },
@@ -5577,11 +5720,10 @@
             "clinician_review_missing",
             "patient_language_review_missing",
             "domain_review_not_passed",
-            "owner_read_not_read",
             "exploratory_stratum:register_with_dialect",
             "split_unassigned",
             "stem_not_named",
-            "open_concern_on_register_pair:r10-20-c1,r10-20-c3"
+            "open_concern_on_register_pair:r10-20-c1,r10-20-c3,r10-20-c4"
           ],
           "controls_with_open_concerns": {
             "r10-20-chg": [
@@ -5625,7 +5767,12 @@
           "status": "not_reviewed"
         },
         "owner_read": {
-          "status": "not_read"
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f",
+          "read_utc": "2026-11-13T23:54:55Z",
+          "reasons": [],
+          "status": "kept"
         },
         "patient_language_reviewer": {
           "items": {
@@ -5861,7 +6008,6 @@
             "clinician_review_missing",
             "patient_language_review_missing",
             "domain_review_not_passed",
-            "owner_read_not_read",
             "exploratory_stratum:new_carrier",
             "split_unassigned",
             "stem_not_named",
@@ -5898,7 +6044,12 @@
           "status": "not_reviewed"
         },
         "owner_read": {
-          "status": "not_read"
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f",
+          "read_utc": "2026-11-13T23:54:55Z",
+          "reasons": [],
+          "status": "kept"
         },
         "patient_language_reviewer": {
           "items": {
@@ -6100,7 +6251,6 @@
             "clinician_review_missing",
             "patient_language_review_missing",
             "domain_review_not_passed",
-            "owner_read_not_read",
             "exploratory_stratum:new_carrier",
             "split_unassigned",
             "stem_not_named",
@@ -6137,7 +6287,12 @@
           "status": "not_reviewed"
         },
         "owner_read": {
-          "status": "not_read"
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f",
+          "read_utc": "2026-11-13T23:54:55Z",
+          "reasons": [],
+          "status": "kept"
         },
         "patient_language_reviewer": {
           "items": {
@@ -6373,7 +6528,6 @@
             "clinician_review_missing",
             "patient_language_review_missing",
             "domain_review_not_passed",
-            "owner_read_not_read",
             "exploratory_stratum:new_carrier",
             "split_unassigned",
             "stem_not_named",
@@ -6410,7 +6564,12 @@
           "status": "not_reviewed"
         },
         "owner_read": {
-          "status": "not_read"
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f",
+          "read_utc": "2026-11-13T23:54:55Z",
+          "reasons": [],
+          "status": "kept"
         },
         "patient_language_reviewer": {
           "items": {
@@ -6646,7 +6805,6 @@
             "clinician_review_missing",
             "patient_language_review_missing",
             "domain_review_not_passed",
-            "owner_read_not_read",
             "exploratory_stratum:new_carrier",
             "split_unassigned",
             "stem_not_named",
@@ -6687,7 +6845,12 @@
           "status": "not_reviewed"
         },
         "owner_read": {
-          "status": "not_read"
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f",
+          "read_utc": "2026-11-13T23:54:55Z",
+          "reasons": [],
+          "status": "kept"
         },
         "patient_language_reviewer": {
           "items": {
@@ -6774,7 +6937,7 @@
     "concerns": [
       {
         "name": "concerns_r10_20261112.json",
-        "sha256": "8df6549df50fa9e82c7b2ec79c59ac8148dcc6af142e73b30bd55fbc19fe0dad"
+        "sha256": "b9fe733981dbdd15adb791ac6d7687a2ac8d5d8b37285058569395520798322b"
       }
     ],
     "lexicon": {
@@ -6784,7 +6947,7 @@
     "prior_batches": [
       {
         "label": "r9_20261110",
-        "name": "families_r9_d4b27148.json",
+        "name": "families.json",
         "sha256": "d5e347fd46c48343bf6b8dbbca89461b4261a69247d2747893929b1c283f67f2"
       }
     ],
@@ -6792,6 +6955,12 @@
       {
         "name": "source_check_r10_20261112.json",
         "sha256": "e1e78b6239ed199d4b3c0291db98c1d6517483ce0b1ae50d3674b908ad57a660"
+      }
+    ],
+    "verdicts": [
+      {
+        "name": "gt_r10_20261113.json",
+        "sha256": "ae0d4cae832c895b21da6131a5b4e3dce744b85ed6f5803fe246827a2f003fd7"
       }
     ]
   },
@@ -6839,9 +7008,9 @@
     },
     "concerns": {
       "closed": 0,
-      "open": 34,
+      "open": 35,
       "open_by_disposition": {
-        "pending_clinical_review": 7,
+        "pending_clinical_review": 8,
         "pending_patient_language_review": 21,
         "revised_pending_reread": 6
       },
@@ -6849,23 +7018,77 @@
         "control_adds_fact": 1,
         "control_level_disputed": 3,
         "fact_parity": 4,
-        "other": 4,
+        "other": 5,
         "source_fit": 4,
         "stated_negative": 15,
         "wording": 3
       },
-      "owner_kept_families_with_open_concerns": [],
+      "owner_kept_families_with_open_concerns": [
+        "r10-01",
+        "r10-03",
+        "r10-04",
+        "r10-06",
+        "r10-07",
+        "r10-08",
+        "r10-09",
+        "r10-10",
+        "r10-11",
+        "r10-12",
+        "r10-14",
+        "r10-15",
+        "r10-16",
+        "r10-17",
+        "r10-18",
+        "r10-19",
+        "r10-20",
+        "r10-21",
+        "r10-22",
+        "r10-23",
+        "r10-24"
+      ],
       "rule": "A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it."
     },
     "confirmatory_eligible": 0,
     "owner_kept": {
-      "contrasts": 0,
-      "contrasts_by_stratum_and_role": {},
-      "families": 0,
-      "families_by_carrier_and_target": {},
-      "families_by_register_stratum": {},
-      "families_by_split": {},
-      "prompts": 0
+      "contrasts": 126,
+      "contrasts_by_stratum_and_role": {
+        "new_carrier/changed_fact_control": 4,
+        "new_carrier/contrast": 4,
+        "new_carrier/paraphrase_control": 8,
+        "patient_explanation/contrast": 14,
+        "register/changed_fact_control": 13,
+        "register/contrast": 13,
+        "register/paraphrase_control": 26,
+        "register_with_dialect/changed_fact_control": 7,
+        "register_with_dialect/contrast": 7,
+        "register_with_dialect/paraphrase_control": 14,
+        "syntax_crossing/contrast": 16
+      },
+      "families": 24,
+      "families_by_carrier_and_target": {
+        "so I just need some | cream": 1,
+        "so I just need some | lotion": 1,
+        "so I just need some | medicine": 1,
+        "so I just need some | ointment": 1,
+        "so I need to go to the | ER": 4,
+        "so I need to go to the | clinic": 3,
+        "so I need to go to the | hospital": 4,
+        "so I should see a | dentist": 1,
+        "so I should see a | dermatologist": 1,
+        "so I should see a | doctor": 3,
+        "so I should see a | psychiatrist": 1,
+        "so I should see a | specialist": 2,
+        "so I should see a | therapist": 1
+      },
+      "families_by_register_stratum": {
+        "new_carrier": 4,
+        "register": 13,
+        "register_with_dialect": 7
+      },
+      "families_by_split": {
+        "None": 24
+      },
+      "prompts": 150
     },
     "owner_kept_discovery": {
       "contrasts": 0,
@@ -6877,7 +7100,7 @@
       "prompts": 0
     },
     "owner_read": {
-      "not_read": 24
+      "kept": 24
     },
     "review_status": {
       "domain_review_pending": 24
@@ -6964,7 +7187,7 @@
   ],
   "review_layers": {
     "clinician_review": "six dimensions of the rubric, recorded by a clinician",
-    "owner_read": "the owner's keep or exclude decision on a named version of the texts. It is not a clinician's review.",
+    "owner_read": "the owner's keep or exclude decision on a named version of the texts. It is not a clinician's review. It is recorded and shown in every output, and it does not gate confirmatory eligibility (decisions, 2026-11-13)",
     "patient_language_review": "two items of the rubric, recorded by a patient-language reviewer",
     "software_validation": "structural checks by this command. It says nothing about clinical content or patient language."
   },

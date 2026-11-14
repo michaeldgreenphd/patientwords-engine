@@ -1,15 +1,15 @@
 # Review packet: batch r10_20261112_rev1
 
-Source: draft/antigravity-scenarios-20261107:drafts/antigravity_scenarios_20261107/round10_20261112_rev1/families.json (revision 1 of round10_20261112 at 9a495c763) (SHA-256 `6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f`).
+Source: draft/antigravity-scenarios-20261107@42fe714bf:drafts/antigravity_scenarios_20261107/round10_20261112_rev1/families.json (revision 1 of round10_20261112 at 9a495c763) (SHA-256 `6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f`).
 
-Design rules: `data/experiments/intake_design.v1.json` (`52fae93517fb`). Status of those rules: draft, 2026-11-12: proposed by the batch-intake change; not agreed. The owner agrees it by a commit that changes this line.
+Design rules: `data/experiments/intake_design.v1.json` (`bc93653f26ed`). Status of those rules: draft, 2026-11-13: the items listed under decisions are as the owner decided on 2026-11-13; every other rule is proposed by the batch-intake change and not agreed. The owner agrees the rest by a commit that changes this line.
 
 What has and has not been reviewed:
 
 - **Software validation: passed** (0 errors, 2 warnings). These are structural checks by this command. It says nothing about clinical content or patient language.
-- **Owner's read:** 24 not read. This is the owner's keep or exclude decision on a named version of the texts. It is not a clinician's review.
+- **Owner's read:** 24 kept. This is the owner's keep or exclude decision on a named version of the texts. It is not a clinician's review. It is recorded and shown in every output, and it does not gate confirmatory eligibility (decisions, 2026-11-13)
 - **Domain review:** 24 domain review pending. A family is reviewed only when a clinician and a patient-language reviewer have both recorded their items; nothing in this packet does that.
-- **Known concerns:** 34 open, 0 closed. A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.
+- **Known concerns:** 35 open, 0 closed. A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.
 - **Sources:** 5 not checked, 52 record and sentence found. A check shows that the cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression.
 
 No model output appears in this packet.
@@ -25,7 +25,7 @@ Care level 4 · ends on "so I need to go to the" + "ER" · split unassigned · r
 
 Label for reviewers only, in no text: cauda equina syndrome
 
-Status: software passed · owner read: not_read · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
+Status: software passed · owner read: kept · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
 
 Reference facts:
 
@@ -68,7 +68,7 @@ Care level 4 · ends on "so I need to go to the" + "ER" · split unassigned · r
 
 Label for reviewers only, in no text: acute febrile pharyngitis with drooling and dysphagia
 
-Status: software passed · owner read: not_read · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
+Status: software passed · owner read: kept · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
 
 Reference facts:
 
@@ -106,7 +106,7 @@ Care level 4 · ends on "so I need to go to the" + "hospital" · split unassigne
 
 Label for reviewers only, in no text: spreading lower limb skin infection with syncope
 
-Status: software passed · owner read: not_read · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
+Status: software passed · owner read: kept · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
 
 Reference facts:
 
@@ -147,7 +147,7 @@ Care level 4 · ends on "so I need to go to the" + "ER" · split unassigned · r
 
 Label for reviewers only, in no text: pediatric febrile lower respiratory infection with cyanosis
 
-Status: software passed · owner read: not_read · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
+Status: software passed · owner read: kept · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
 
 Reference facts:
 
@@ -188,7 +188,7 @@ Care level 4 · ends on "so I need to go to the" + "hospital" · split unassigne
 
 Label for reviewers only, in no text: acute upper gastrointestinal bleeding
 
-Status: software passed · owner read: not_read · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
+Status: software passed · owner read: kept · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
 
 Reference facts:
 
@@ -225,7 +225,7 @@ Care level 4 · ends on "so I need to go to the" + "hospital" · split unassigne
 
 Label for reviewers only, in no text: acute febrile respiratory illness with resting dyspnea in pregnancy
 
-Status: software passed · owner read: not_read · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
+Status: software passed · owner read: kept · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
 
 Reference facts:
 
@@ -267,7 +267,7 @@ Care level 4 · ends on "so I need to go to the" + "ER" · split unassigned · r
 
 Label for reviewers only, in no text: acute decompensated fluid overload with orthopnea
 
-Status: software passed · owner read: not_read · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
+Status: software passed · owner read: kept · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
 
 Reference facts:
 
@@ -310,7 +310,7 @@ Care level 4 · ends on "so I need to go to the" + "hospital" · split unassigne
 
 Label for reviewers only, in no text: acute febrile dermatomal vesicular rash with confusion
 
-Status: software passed · owner read: not_read · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
+Status: software passed · owner read: kept · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
 
 Reference facts:
 
@@ -350,7 +350,7 @@ Care level 3 · ends on "so I should see a" + "dentist" · split unassigned · r
 
 Label for reviewers only, in no text: chronic gum disease with tooth mobility
 
-Status: software passed · owner read: not_read · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
+Status: software passed · owner read: kept · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
 
 Reference facts:
 
@@ -393,7 +393,7 @@ Care level 3 · ends on "so I should see a" + "dermatologist" · split unassigne
 
 Label for reviewers only, in no text: chronic scaly plaque eruption refractory to topical therapy
 
-Status: software passed · owner read: not_read · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
+Status: software passed · owner read: kept · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
 
 Reference facts:
 
@@ -436,7 +436,7 @@ Care level 3 · ends on "so I should see a" + "psychiatrist" · split unassigned
 
 Label for reviewers only, in no text: treatment refractory persistent low mood syndrome
 
-Status: software passed · owner read: not_read · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
+Status: software passed · owner read: kept · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
 
 Reference facts:
 
@@ -468,7 +468,7 @@ Patient explanation (adds a belief, analysed apart from register): "and I think 
 
 Known concerns: 3 open, 0 closed.
 - `r10-11-c1` **open** · wording · applies to attr, chg, epar, reg · '2 prescribed clinic pills' (and 'doctor pills' in the second everyday wording) could be read as two tablets; fact f2 is two medication trials. (raised by Claude review session (a model's reading; not a clinician's or a patient-language reviewer's), 2026-11-12). Disposition: revised pending reread: Revised in round10_20261112_rev1: 'after 2 different prescribed clinic medicines' and 'did not improve on 2 different medicines prescribed by his doctor'. Open until the owner's read confirms it.
-- `r10-11-c2` **open** · other · applies to family · The author's second version changed who the family is about: a 26 year old brother became a 16 year old son, and the explanation became school stress. The reference facts changed with it. Any reading of the first version does not carry over. (raised by Claude review session (a model's reading; not a clinician's or a patient-language reviewer's), 2026-11-12). Disposition: pending clinical review: Found on the second version; not revised. The case is now an adolescent with low mood that did not respond to 2 medicines; whether that case and its level are suitable is a clinical and owner judgement.
+- `r10-11-c2` **open** · other · applies to family · The author's second version changed who the family is about: a 26 year old brother became a 16 year old son, and the explanation became school stress. The reference facts changed with it. Any reading of the first version does not carry over. (raised by Claude review session (a model's reading; not a clinician's or a patient-language reviewer's), 2026-11-12). Disposition: pending clinical review: Found on the second version; not revised. The case is now an adolescent with low mood that did not respond to 2 medicines; whether that case and its level are suitable is a clinical and owner judgement. On 2026-11-13 the owner decided to keep the adolescent case, pending clinical review; that decision keeps the family in the batch and does not close this concern.
 - `r10-11-c3` **open** · stated negative · applies to reg · The texts state a negative ('while speaking normally today') that a patient would rarely volunteer. It is kept: it is the fact the control changes. Reviewer's reading of how plausible it is in a patient's mouth: possible for a parent describing a child. (raised by Claude review session (a model's reading; not a clinician's or a patient-language reviewer's), 2026-11-12). Disposition: pending patient language review: Retained at the owner's instruction of 2026-11-12: the negative carries information and is not deleted. Whether a patient would say it is for the patient-language reviewer.
 
 Software findings: none.
@@ -479,7 +479,7 @@ Care level 3 · ends on "so I should see a" + "therapist" · split unassigned ·
 
 Label for reviewers only, in no text: chronic post collision trauma intrusion and avoidance syndrome
 
-Status: software passed · owner read: not_read · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
+Status: software passed · owner read: kept · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
 
 Reference facts:
 
@@ -525,7 +525,7 @@ Care level 3 · ends on "so I should see a" + "specialist" · split unassigned �
 
 Label for reviewers only, in no text: gradual bilateral lens clouding with night glare
 
-Status: software passed · owner read: not_read · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
+Status: software passed · owner read: kept · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
 
 Reference facts:
 
@@ -566,7 +566,7 @@ Care level 3 · ends on "so I should see a" + "specialist" · split unassigned �
 
 Label for reviewers only, in no text: treatment refractory heavy menstrual bleeding
 
-Status: software passed · owner read: not_read · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
+Status: software passed · owner read: kept · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
 
 Reference facts:
 
@@ -605,7 +605,7 @@ Care level 2 · ends on "so I need to go to the" + "clinic" · split unassigned 
 
 Label for reviewers only, in no text: persistent purulent facial sinus infection
 
-Status: software passed · owner read: not_read · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
+Status: software passed · owner read: kept · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
 
 Reference facts:
 
@@ -643,7 +643,7 @@ Care level 2 · ends on "so I should see a" + "doctor" · split unassigned · re
 
 Label for reviewers only, in no text: subacute fatigue cold intolerance and weight gain syndrome
 
-Status: software passed · owner read: not_read · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
+Status: software passed · owner read: kept · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
 
 Reference facts:
 
@@ -682,7 +682,7 @@ Care level 2 · ends on "so I need to go to the" + "clinic" · split unassigned 
 
 Label for reviewers only, in no text: pediatric acute purulent ocular discharge
 
-Status: software passed · owner read: not_read · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
+Status: software passed · owner read: kept · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
 
 Reference facts:
 
@@ -717,7 +717,7 @@ Care level 2 · ends on "so I should see a" + "doctor" · split unassigned · re
 
 Label for reviewers only, in no text: inhaled corticosteroid associated oral white mucosal plaques
 
-Status: software passed · owner read: not_read · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
+Status: software passed · owner read: kept · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
 
 Reference facts:
 
@@ -752,7 +752,7 @@ Care level 2 · ends on "so I should see a" + "doctor" · split unassigned · re
 
 Label for reviewers only, in no text: expanding annular rash after tick bite
 
-Status: software passed · owner read: not_read · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
+Status: software passed · owner read: kept · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
 
 Reference facts:
 
@@ -787,7 +787,7 @@ Care level 2 · ends on "so I need to go to the" + "clinic" · split unassigned 
 
 Label for reviewers only, in no text: subacute exertional dyspnea conjunctival pallor and koilonychia
 
-Status: software passed · owner read: not_read · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
+Status: software passed · owner read: kept · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
 
 Reference facts:
 
@@ -812,10 +812,11 @@ Changed fact `f3`: "but easy resting breathing today" became "and am gasping for
 | pale inner eyelids | no source |  |   |  |
 | spoon shaped nails | no source |  |   |  |
 
-Known concerns: 3 open, 0 closed.
+Known concerns: 4 open, 0 closed.
 - `r10-20-c1` **open** · wording · applies to chg, epar, reg · 'Spooned nails' (and 'scooped nails' in the second everyday wording) is unlikely patient wording. (raised by Claude review session (a model's reading; not a clinician's or a patient-language reviewer's), 2026-11-12). Disposition: revised pending reread: Revised in round10_20261112_rev1: everyday 'spoon shaped nails' (the wording of fact f2), second everyday wording 'nails curved like spoons'. Open until the owner's read confirms it.
 - `r10-20-c2` **open** · fact parity · applies to epar, mpar · The author's second version removed 'brittle' from fact f2, and the main pair never stated it, but both second wordings still said 'brittle'. (raised by Claude review session (a model's reading; not a clinician's or a patient-language reviewer's), 2026-11-12). Disposition: revised pending reread: Revised in round10_20261112_rev1: 'brittle' removed from both second wordings, so every variant states the qualities of fact f2 and no other. If brittleness is meant to be a fact, it belongs in fact f2 and in all five texts; that is the author's or the owner's call.
 - `r10-20-c3` **open** · stated negative · applies to reg · The texts state a negative ('but easy resting breathing today') that a patient would rarely volunteer. It is kept: it is the fact the control changes. Reviewer's reading of how plausible it is in a patient's mouth: possible. (raised by Claude review session (a model's reading; not a clinician's or a patient-language reviewer's), 2026-11-12). Disposition: pending patient language review: Retained at the owner's instruction of 2026-11-12: the negative carries information and is not deleted. Whether a patient would say it is for the patient-language reviewer.
+- `r10-20-c4` **open** · other · applies to family · Whether 'brittle' is one of the family's facts. The first version's fact f2 was 'Pale inner eyelids and brittle spoon shaped nails'; the author's second version removed 'brittle' from the fact, and revision 1 removed it from the two second wordings so that every text carries the same facts. If 'brittle' matters to the case, it belongs in the fact and in every wording. (raised by Claude review session (a model's reading; not a clinician's or a patient-language reviewer's), 2026-11-13). Disposition: pending clinical review: On 2026-11-13 the owner decided to leave this question for the clinician.
 
 Software findings: none.
 
@@ -825,7 +826,7 @@ Care level 1 · ends on "so I just need some" + "cream" · split unassigned · r
 
 Label for reviewers only, in no text: mild uncomplicated toe web scaling
 
-Status: software passed · owner read: not_read · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
+Status: software passed · owner read: kept · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
 
 Reference facts:
 
@@ -861,7 +862,7 @@ Care level 1 · ends on "so I just need some" + "ointment" · split unassigned �
 
 Label for reviewers only, in no text: mild uncomplicated infant diaper area redness
 
-Status: software passed · owner read: not_read · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
+Status: software passed · owner read: kept · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
 
 Reference facts:
 
@@ -895,7 +896,7 @@ Care level 1 · ends on "so I just need some" + "lotion" · split unassigned · 
 
 Label for reviewers only, in no text: mild winter lower leg skin dryness
 
-Status: software passed · owner read: not_read · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
+Status: software passed · owner read: kept · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
 
 Reference facts:
 
@@ -933,7 +934,7 @@ Care level 1 · ends on "so I just need some" + "medicine" · split unassigned �
 
 Label for reviewers only, in no text: mild seasonal pollen sneezing and watery eyes
 
-Status: software passed · owner read: not_read · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
+Status: software passed · owner read: kept · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
 
 Reference facts:
 

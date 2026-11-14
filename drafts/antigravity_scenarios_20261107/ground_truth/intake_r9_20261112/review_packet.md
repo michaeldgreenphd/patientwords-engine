@@ -2,12 +2,12 @@
 
 Source: draft/antigravity-scenarios-20261107@d4b27148:drafts/antigravity_scenarios_20261107/round9_20261110/families.json (SHA-256 `d5e347fd46c48343bf6b8dbbca89461b4261a69247d2747893929b1c283f67f2`).
 
-Design rules: `data/experiments/intake_design.v1.json` (`52fae93517fb`). Status of those rules: draft, 2026-11-12: proposed by the batch-intake change; not agreed. The owner agrees it by a commit that changes this line.
+Design rules: `data/experiments/intake_design.v1.json` (`bc93653f26ed`). Status of those rules: draft, 2026-11-13: the items listed under decisions are as the owner decided on 2026-11-13; every other rule is proposed by the batch-intake change and not agreed. The owner agrees the rest by a commit that changes this line.
 
 What has and has not been reviewed:
 
 - **Software validation: passed** (0 errors, 5 warnings). These are structural checks by this command. It says nothing about clinical content or patient language.
-- **Owner's read:** 15 kept, 1 stale. This is the owner's keep or exclude decision on a named version of the texts. It is not a clinician's review.
+- **Owner's read:** 16 kept. This is the owner's keep or exclude decision on a named version of the texts. It is not a clinician's review. It is recorded and shown in every output, and it does not gate confirmatory eligibility (decisions, 2026-11-13)
 - **Domain review:** 16 domain review pending. A family is reviewed only when a clinician and a patient-language reviewer have both recorded their items; nothing in this packet does that.
 - **Known concerns:** 8 open, 0 closed. A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.
 - **Sources:** 42 not checked. A check shows that the cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression.
@@ -526,7 +526,7 @@ Care level 2 · ends on "so I should see a" + "doctor" · split validation · re
 
 Label for reviewers only, in no text: uncomplicated acute otitis media
 
-Status: software passed · owner read: stale (texts changed after this read; the decision is not carried over) · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
+Status: software passed · owner read: kept · clinician: not_reviewed · patient language: not_reviewed · overall: **domain_review_pending**
 
 Reference facts:
 

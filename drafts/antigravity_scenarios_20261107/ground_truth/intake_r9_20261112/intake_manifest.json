@@ -16,18 +16,17 @@
       "manipulated_dimension": "register only",
       "status": "draft, not signed"
     },
-    "sha256": "52fae93517fb8cb6228307bb79574506c73f42e4e6856d1f52e9e057fe065566",
-    "status": "draft, 2026-11-12: proposed by the batch-intake change; not agreed. The owner agrees it by a commit that changes this line."
+    "sha256": "bc93653f26ed69fcbc570e737b18c22fc993206218cf23f8b40a78ae2ba8ed8b",
+    "status": "draft, 2026-11-13: the items listed under decisions are as the owner decided on 2026-11-13; every other rule is proposed by the batch-intake change and not agreed. The owner agrees the rest by a commit that changes this line."
   },
   "eligibility_rules": {
-    "confirmatory": "A held-out family's register contrast can enter a confirmatory statement only when none of the blockers in confirmatory_blockers applies. The protocol draft names the signed protocol, the two reviews, the single manipulated dimension and the split made before measurement. The owner's keep, the open-concern rule and the named stem are criteria this design adds; the owner agrees or removes them with the rest of this file.",
+    "confirmatory": "A held-out family's register contrast can enter a confirmatory statement only when none of the blockers in confirmatory_blockers applies. The protocol draft names the signed protocol, the two reviews, the single manipulated dimension and the split made before measurement. The open-concern rule and the named stem are criteria this design adds and are not yet agreed. The owner's read is not a criterion (decisions, 2026-11-13): it is recorded, and inclusion rests on the two reviews.",
     "confirmatory_blockers": {
       "calibration_split": "the family is in discovery, which calibrates thresholds and is never part of a confirmatory statement",
       "clinician_review_missing": "no clinician has recorded all six dimensions on this version of the family",
       "domain_review_not_passed": "the rubric's status rule does not give 'reviewed': the clinician did not record 'same' on all six dimensions (a 'cannot_judge' is not 'same'), or a review is missing",
       "exploratory_stratum": "the family has a flag (a dialect form, or a carrier with no earlier measurement), so its register contrast changes more than register",
       "open_concern_on_register_pair": "an open concern applies to the family or to its register contrast. Added by this design",
-      "owner_read": "the owner has not kept this version of the family (not_read, excluded or stale). Added by this design; the owner's read is not a domain review and does not replace one",
       "patient_language_review_missing": "no patient-language reviewer has recorded both items on this version of the family",
       "protocol_not_signed": "the protocol's status does not begin with the word 'signed'",
       "removed_by_review": "a reviewer recorded 'different' on an item",
@@ -57,55 +56,55 @@
           "the rates are for the legacy first-token endpoint and include model load",
           "runner seconds are not wall-clock time: queueing, install and parallelism are not modelled"
         ],
-        "attempted_pair_equivalents": 70,
+        "attempted_pair_equivalents": 76,
         "formula": "runner_seconds = ceil(pair_equivalents * (1 + failed_attempt_fraction)) * seconds_per_pair, summed over models; pair_equivalents = case_families * replicates * prompts_per_family / 2; legs = ceil(attempted_pairs / max(1, min(max_pairs_per_leg, floor(leg_budget_seconds / seconds_per_pair))))",
         "measured": false,
-        "pair_equivalents": 70.0,
+        "pair_equivalents": 76.0,
         "per_model": {
           "gemma-2-2b-it": {
             "legs": 1,
             "pairs_per_leg": 81,
-            "runner_seconds": 6195.0,
+            "runner_seconds": 6726.0,
             "seconds_per_pair": 88.5
           },
           "gemma-3-4b-it": {
             "legs": 2,
             "pairs_per_leg": 44,
-            "runner_seconds": 11242.0,
+            "runner_seconds": 12205.6,
             "seconds_per_pair": 160.6
           },
           "llama-3.2-3b": {
             "legs": 2,
             "pairs_per_leg": 55,
-            "runner_seconds": 9058.0,
+            "runner_seconds": 9834.4,
             "seconds_per_pair": 129.4
           },
           "olmo-2-1b": {
             "legs": 1,
             "pairs_per_leg": 120,
-            "runner_seconds": 3080.0,
+            "runner_seconds": 3344.0,
             "seconds_per_pair": 44.0
           },
           "qwen3-1.7b": {
             "legs": 1,
             "pairs_per_leg": 107,
-            "runner_seconds": 4704.0,
+            "runner_seconds": 5107.2,
             "seconds_per_pair": 67.2
           },
           "qwen3-4b": {
             "legs": 2,
             "pairs_per_leg": 46,
-            "runner_seconds": 10906.0,
+            "runner_seconds": 11840.800000000001,
             "seconds_per_pair": 155.8
           }
         },
-        "runner_seconds": 45185.0
+        "runner_seconds": 49058.0
       },
       "measured": false,
       "no_recorded_rate": [
         "gemma-2-2b"
       ],
-      "pairs": 70,
+      "pairs": 76,
       "rates_label": "measured (slowest successful run per model; sample size not recorded)",
       "rates_source": "scripts/backfill_planner.py SECONDS_PER_PAIR: the SLOWEST rate each model showed in its successful logits-eval runs on GitHub Actions up to 2026-10-09: the 'Measure next-token behavior' step's duration (model load included) over the pairs the run's trigger file asked for. Medians were about half these (gemma-3-4b-it 94, qwen3-1.7b 33, qwen3-4b 76, llama-3.2-3b 69, olmo-2-1b 37, gemma-2-2b-it 79 s/pair), so sizing on the slowest keeps a slow runner inside the timeout too"
     },
@@ -3596,8 +3595,7 @@
             "protocol_not_signed",
             "clinician_review_missing",
             "patient_language_review_missing",
-            "domain_review_not_passed",
-            "owner_read_stale"
+            "domain_review_not_passed"
           ],
           "controls_with_open_concerns": {},
           "eligible": false
@@ -3628,20 +3626,12 @@
           "status": "not_reviewed"
         },
         "owner_read": {
-          "changed_since_read": [
-            "texts"
-          ],
-          "detail": "texts changed after this read; the decision is not carried over",
-          "previous": {
-            "decision": "excluded",
-            "note": "My 4 year old daughter. would be better. patients speak in active voice from 1st person",
-            "read_batch_sha256": "e374bd21da7b4209b87ca4e9f4e4c5f9607e7096f49e64c59b5d011d1547cb2f",
-            "read_utc": "2026-11-11T02:41:33Z",
-            "reasons": [
-              "unrealistic"
-            ]
-          },
-          "status": "stale"
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "d5e347fd46c48343bf6b8dbbca89461b4261a69247d2747893929b1c283f67f2",
+          "read_utc": "2026-11-13T23:54:59Z",
+          "reasons": [],
+          "status": "kept"
         },
         "patient_language_reviewer": {
           "items": {
@@ -4196,7 +4186,7 @@
       "sha256": "e39ce3ca5f2d2f88e8141f1d91213cfa52c44beb087a6449b59b26dfcdf9abc1"
     },
     "pairs_file": {
-      "name": "agscen_r9_pairs.json",
+      "name": "agscen_r9_20261110.json",
       "sha256": "478de1ab99539775d6ec80536eebc2fd58735a57f189642b544b11143741b699"
     },
     "read_batches": [
@@ -4207,13 +4197,17 @@
     ],
     "split_records": [
       {
-        "name": "gt_r9_splits.json",
+        "name": "gt_r9_splits_20261111.json",
         "sha256": "337954a7cec939d0707ce4bbcee614e6e247dafb57d4d83d3c6b352dd8ed319c"
       }
     ],
     "verdicts": [
       {
-        "name": "gt_r9.json",
+        "name": "gt_r9_14v2_20261113.json",
+        "sha256": "33b9df60873618978e33cbe42f16e4267675846ccec02a2a83e79536df633fdc"
+      },
+      {
+        "name": "gt_r9_20261110.json",
         "sha256": "6d403429777b075ebb20c9eabf2eb216ff65d153ebb02bdcc81a8182b41ade1c"
       }
     ]
@@ -4278,37 +4272,37 @@
     },
     "confirmatory_eligible": 0,
     "owner_kept": {
-      "contrasts": 70,
+      "contrasts": 76,
       "contrasts_by_stratum_and_role": {
-        "register/changed_fact_control": 10,
-        "register/contrast": 10,
-        "register/paraphrase_control": 20,
+        "register/changed_fact_control": 11,
+        "register/contrast": 11,
+        "register/paraphrase_control": 22,
         "register_with_dialect/changed_fact_control": 5,
         "register_with_dialect/contrast": 5,
         "register_with_dialect/paraphrase_control": 10,
-        "syntax_crossing/contrast": 10
+        "syntax_crossing/contrast": 12
       },
-      "families": 15,
+      "families": 16,
       "families_by_carrier_and_target": {
         "so I need to go to the | ER": 4,
         "so I need to go to the | clinic": 2,
         "so I need to go to the | hospital": 4,
         "so I should see a | dentist": 1,
         "so I should see a | dermatologist": 1,
-        "so I should see a | doctor": 1,
+        "so I should see a | doctor": 2,
         "so I should see a | psychiatrist": 1,
         "so I should see a | specialist": 1
       },
       "families_by_register_stratum": {
-        "register": 10,
+        "register": 11,
         "register_with_dialect": 5
       },
       "families_by_split": {
         "discovery": 8,
         "fresh_test": 4,
-        "validation": 3
+        "validation": 4
       },
-      "prompts": 85
+      "prompts": 92
     },
     "owner_kept_discovery": {
       "contrasts": 38,
@@ -4340,8 +4334,7 @@
       "prompts": 46
     },
     "owner_read": {
-      "kept": 15,
-      "stale": 1
+      "kept": 16
     },
     "review_status": {
       "domain_review_pending": 16
@@ -4438,7 +4431,7 @@
     },
     "not_in_this_batch": [],
     "pairs": 70,
-    "pairs_file": "agscen_r9_pairs.json",
+    "pairs_file": "agscen_r9_20261110.json",
     "rows_without_id": []
   },
   "measurements": {
@@ -4528,7 +4521,7 @@
   ],
   "review_layers": {
     "clinician_review": "six dimensions of the rubric, recorded by a clinician",
-    "owner_read": "the owner's keep or exclude decision on a named version of the texts. It is not a clinician's review.",
+    "owner_read": "the owner's keep or exclude decision on a named version of the texts. It is not a clinician's review. It is recorded and shown in every output, and it does not gate confirmatory eligibility (decisions, 2026-11-13)",
     "patient_language_review": "two items of the rubric, recorded by a patient-language reviewer",
     "software_validation": "structural checks by this command. It says nothing about clinical content or patient language."
   },
