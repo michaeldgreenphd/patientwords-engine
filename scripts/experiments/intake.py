@@ -12,7 +12,8 @@ Three things are kept apart in every output:
 * **software validation**: structural checks (``scripts/check_candidate_pairs.py`` on every contrast, plus the
   family-level checks here). It says nothing about clinical content or patient language.
 * **the owner's read**: a keep or exclude decision on a named version of the texts. A decision on texts that
-  have since changed is reported as stale and is not carried over.
+  have since changed is reported as stale and is not carried over. It is recorded and shown; it does not gate
+  confirmatory eligibility (the owner's decision of 2026-11-13, in the design file's ``decisions``).
 * **domain review**: the clinician's six dimensions and the patient-language reviewer's two items of the
   rubric (``data/protocols/instrument_validity_rubric.draft.json``). Nothing here fills them in; a family
   without both stays ``domain_review_pending``.
@@ -835,7 +836,6 @@ def run_intake(batch: Any, *, batch_id: str, batch_sha256: str, source_ref: str,
             # The rubric's own rule decides: a recorded clinician review with a 'cannot_judge' is not a passed review.
             ("domain_review_not_passed", review_status[fid] != design["review"]["reviewed_status"]),
             ("removed_by_review", fid in removed),
-            (f"owner_read_{owner[fid]['status']}", owner[fid]["status"] != "kept"),
             (f"exploratory_stratum:{register_stratum}", bool(flags)),
             ("split_unassigned", splits["per_family"][fid] is None),
             ("calibration_split", splits["per_family"][fid] == SPLITS[0]),

@@ -138,7 +138,11 @@ are shareable under `public-display/1` whatever their effect, with their labels.
 held-out families and uses discovery families for calibration only). Every blocker the
 command can give is defined in the design file (`eligibility.confirmatory_blockers`),
 which also says which criteria the protocol draft names and which this design adds: the
-owner's keep, the open-concern rule and the named stem. A recorded clinician review with a
+open-concern rule and the named stem. The owner's read is not a blocker: by the owner's
+decision of 2026-11-13 it is recorded and shown, and inclusion rests on the two reviews.
+The design file's `decisions` list holds that decision and the three made with it (the
+strata, the review requirement, and the commit as the evidence of when a split record was
+written); every other rule in the file is still a draft. A recorded clinician review with a
 `cannot_judge` does not pass (`domain_review_not_passed`). The two are
 separate fields because an exploratory or null result is shared, not hidden.
 

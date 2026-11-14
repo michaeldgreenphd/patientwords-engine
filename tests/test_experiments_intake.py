@@ -111,8 +111,8 @@ def test_a_clean_batch_passes_software_validation_and_nothing_else_is_implied() 
         assert row["eligibility"]["publication"]["shareable"] is True              # shared whatever the effect
         blocked = row["eligibility"]["confirmatory"]["blocked_by"]
         assert not row["eligibility"]["confirmatory"]["eligible"]
-        assert {"protocol_not_signed", "clinician_review_missing", "patient_language_review_missing",
-                "owner_read_not_read"} <= set(blocked)
+        assert {"protocol_not_signed", "clinician_review_missing", "patient_language_review_missing"} <= set(blocked)
+        assert not any(b.startswith("owner_read") for b in blocked)                 # an unread family is not blocked for that
     assert manifest["inventory"]["confirmatory_eligible"] == 0
 
 
@@ -358,7 +358,8 @@ def test_an_owner_read_applies_only_to_the_texts_it_was_made_on() -> None:
     manifest = _run(verdicts=[_verdicts(s_02="excluded")])
     assert _family(manifest, "s-01")["review"]["owner_read"]["status"] == "kept"
     assert _family(manifest, "s-02")["review"]["owner_read"]["status"] == "excluded"
-    assert "owner_read_excluded" in _family(manifest, "s-02")["eligibility"]["confirmatory"]["blocked_by"]
+    # The read is recorded and is not a gate (the owner's decision of 2026-11-13): no blocker names it.
+    assert not any(b.startswith("owner_read") for r in manifest["families"] for b in r["eligibility"]["confirmatory"]["blocked_by"])
     assert manifest["inventory"]["owner_kept"]["families"] == 7
     assert _family(manifest, "s-01")["review"]["status"] == "domain_review_pending"  # a read is not a domain review
     earlier = _batch()
@@ -598,7 +599,7 @@ def test_a_read_and_a_review_go_stale_when_facts_or_care_labels_change_under_unc
     assert read["status"] == "stale" and read["changed_since_read"] == [part] and read["previous"]["decision"] == "kept"
     assert row["review"]["clinician"]["status"] == row["review"]["patient_language_reviewer"]["status"] == "stale"
     assert row["review"]["status"] == "domain_review_pending"
-    assert {"owner_read_stale", "clinician_review_missing"} <= set(row["eligibility"]["confirmatory"]["blocked_by"])
+    assert "clinician_review_missing" in row["eligibility"]["confirmatory"]["blocked_by"]
     untouched = _family(after, "s-02")                                             # the other family keeps both
     assert untouched["review"]["owner_read"]["status"] == "kept" and untouched["review"]["status"] == "reviewed"
 
@@ -721,9 +722,15 @@ def test_a_clinicians_cannot_judge_does_not_pass_the_review_and_every_blocker_is
                      run({"severity": "different"})):
         for family in manifest["families"]:
             for blocker in family["eligibility"]["confirmatory"]["blocked_by"]:
-                seen.add("owner_read" if blocker.startswith("owner_read_") else blocker.split(":")[0])
+                seen.add(blocker.split(":")[0])
     assert seen <= named, seen - named
     assert seen == named, named - seen                                      # and the design names no blocker the command never gives
+    # The owner's read is recorded and does not gate: with both reviews passed, a held-out family the owner
+    # excluded, or never read, is eligible, and its read is still in the manifest.
+    for verdicts, status in (([_verdicts(**{held_out.replace("-", "_"): "excluded"})], "excluded"), ([], "not_read")):
+        row = _family(run(verdicts=verdicts), held_out)
+        assert row["review"]["owner_read"]["status"] == status and row["eligibility"]["confirmatory"]["eligible"] is True
+    assert "owner_read" not in named and [d["answer"] for d in signed["decisions"]][-1] == "record it, do not gate on it"
 
 
 def test_repeated_inputs_are_merged_when_they_agree_and_refused_when_they_do_not() -> None:
