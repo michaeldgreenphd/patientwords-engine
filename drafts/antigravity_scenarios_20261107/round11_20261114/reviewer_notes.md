@@ -75,3 +75,26 @@ Your own auditors flagged two of these (r11-004-c1, r11-005-c1) but could not bl
 Write a plain everyday stretch the way a patient would say it, even if it then needs a different construction from the medical stretch. The 2-word length rule still applies.
 
 When the batch 01 corrections are pushed, continue with batch 02.
+
+## After the batch 01 corrections (commit 7fc15b689), reviewed 2026-11-14
+
+Accepted.
+
+- Only the listed fields changed, and all 11 changes are in `revisions.json`.
+- G2 and G3 reproduce exactly.
+- All 37 remaining PubMed citations verify (record, title, DOI and evidence sentence).
+- The 8 controls now stay inside their cases. r11-024 ("mild queasiness" becomes "throw up repeatedly") is the first choice under rule A.
+
+Two things to fix when you commit batch 02:
+
+1. **Two control levels for the clinician.** Add these to `batch_01/concerns_selfreported.json` as `control_level_disputed`, `pending_clinical_review`:
+   - r11-012, "painful swelling behind my left ear" at level 4;
+   - r11-016, "severe lower belly pain" at level 4.
+
+   Both are plausible. Whether each needs emergency care rather than a same-day doctor is a clinician's call. r11-006 and r11-015 are already recorded.
+2. **Withdraw concerns; never delete them.** Three records (r11-004-c1, r11-004-c2, r11-005-c1) were removed when their controls changed. From now on:
+   - keep the record;
+   - set its disposition to `withdrawn`, with `by` and `by_kind` matching `raised_by` and `raised_by_kind`;
+   - add a note naming the revision that made the concern moot.
+
+   Restore the three records that way in the same commit.
