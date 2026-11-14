@@ -1,0 +1,59 @@
+{
+  "family_id": "r11-009",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 23 years old with dark brown skin",
+      "Completed 3 months of prescribed oral antibiotic therapy",
+      "Still develops new indented dermal scars on both cheeks"
+    ],
+    "everyday": [
+      "Speaker is 23 years old with dark brown skin",
+      "Took prescribed antibiotics by mouth for 3 months",
+      "Still gets new sunken skin scars on both cheeks"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 23 years old with dark brown skin",
+      "Finished a 3 month course of prescribed systemic oral antibiotics",
+      "Continues forming new indented cutaneous scars on both cheeks"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 23 years old with dark brown skin",
+      "Finished 3 months of antibiotics by mouth from a doctor",
+      "Keeps getting new sunken scars on the skin of both cheeks"
+    ],
+    "changed_fact": [
+      "Speaker is 23 years old with dark brown skin",
+      "Took prescribed antibiotics by mouth for 3 months",
+      "Has mild dry skin on both cheeks"
+    ],
+    "everyday_attribution": [
+      "Speaker is 23 years old with dark brown skin",
+      "Took prescribed antibiotics by mouth for 3 months",
+      "Still gets new sunken skin scars on both cheeks",
+      "Causal belief only (no new clinical fact): thinks it is poor hygiene"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 23 years old with dark brown skin, f2: completed 3 months of prescribed oral antibiotics, f3: still develops new indented or sunken skin scars on both cheeks) are checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly ('from my doctor' matches 'prescribed').",
+    "changed_fact": "Matches f1 and f2 identically to everyday, preserves 'on both cheeks', and changes only f3 ('still get new sunken skin scars' -> 'have mild dry skin') with zero added facts.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday; inserted clause ('and I think it is poor hygiene') states a causal belief only and adds no clinical fact."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical bilateral location ('on both cheeks') across all 6 texts.",
+    "timing": "Identical ('3 months'/'3 month course' completed; ongoing 'still'/'continue'/'keep' new scar formation across all 5 non-control texts).",
+    "count_and_numbers": "Identical ('23', '3' months) across all 6 texts; no ambiguous quantities.",
+    "severity_and_quality": "Identical ('dark brown skin', 'new indented'/'new sunken' dermal/cutaneous/skin scars) across all 5 non-control texts; changed_fact substitutes single self-care skin finding ('mild dry skin').",
+    "uncertainty": "Identical factual certainty across all texts; causal belief isolated in everyday_attribution.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

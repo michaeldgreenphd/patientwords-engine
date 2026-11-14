@@ -1,0 +1,71 @@
+{
+  "family_id": "r11-007",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker performs manual labor",
+      "Used a nocturnal right wrist splint for 8 weeks",
+      "Still experiences right hand numbness every night"
+    ],
+    "everyday": [
+      "Speaker does manual work",
+      "Wore a right wrist splint at night for 8 weeks",
+      "Right hand still goes numb every night"
+    ],
+    "medical_paraphrase": [
+      "Speaker works in manual labor",
+      "Completed 8 weeks of nocturnal right wrist splinting",
+      "Still has right hand numbness every night"
+    ],
+    "everyday_paraphrase": [
+      "Speaker has a manual job",
+      "Kept a splint on the right wrist at night for 8 weeks",
+      "Right hand still goes numb every night"
+    ],
+    "changed_fact": [
+      "Speaker does manual work",
+      "Wore a right wrist splint at night for 8 weeks",
+      "Right hand gets a faint strap mark every night"
+    ],
+    "everyday_attribution": [
+      "Speaker does manual work",
+      "Wore a right wrist splint at night for 8 weeks",
+      "Right hand still goes numb every night",
+      "Causal belief only (no new clinical fact): thinks it is from working"
+    ],
+    "quad_b": [
+      "Speaker does manual labor",
+      "Wore a nocturnal right wrist splint for 8 weeks",
+      "Still gets right hand numbness every night"
+    ],
+    "quad_c": [
+      "Speaker performs manual work",
+      "Used a right wrist splint at night for 8 weeks",
+      "Still has right hand go numb every night"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: performs manual work, f2: used a right wrist splint at night for 8 weeks, f3: right hand still goes numb every night) are atomic checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday, preserves 'my right hand' and 'every night', and changes only f3 ('still goes numb' -> 'gets a faint strap mark') with zero added facts.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday; inserted clause ('and I think it is from working') states a causal belief only and adds no clinical fact.",
+    "quad_b": "Matches f1, f2, and f3 exactly.",
+    "quad_c": "Matches f1, f2, and f3 exactly."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 8 texts ('right wrist' splint; 'right hand').",
+    "timing": "Identical across all 8 texts ('nocturnal'/'at night' 'for 8 weeks'; 'every night').",
+    "count_and_numbers": "Identical across all 8 texts ('8' weeks); no ambiguous quantities.",
+    "severity_and_quality": "Identical ('still' numb / numbness every night) across all 7 non-control texts; changed_fact substitutes single benign finding ('gets a faint strap mark').",
+    "uncertainty": "Identical factual certainty across all texts; causal belief isolated in everyday_attribution.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

@@ -1,0 +1,65 @@
+{
+  "family_id": "r11-010",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Patient is the speaker's 28 year old husband",
+      "Obtained 2 hours of sleep per night for 4 nights",
+      "Continuous rapid speech",
+      "Recklessly expended household savings"
+    ],
+    "everyday": [
+      "Patient is the speaker's 28 year old husband",
+      "Slept 2 hours a night for 4 nights",
+      "Nonstop fast talking",
+      "Spent household savings recklessly"
+    ],
+    "medical_paraphrase": [
+      "Patient is the speaker's 28 year old husband",
+      "Got 2 hours of nocturnal sleep nightly for 4 nights",
+      "Continuous rapid speech",
+      "Reckless expenditure of household savings"
+    ],
+    "everyday_paraphrase": [
+      "Patient is the speaker's 28 year old husband",
+      "Slept 2 hours each night for 4 nights",
+      "Talking fast nonstop",
+      "Spending household savings recklessly"
+    ],
+    "changed_fact": [
+      "Patient is the speaker's 28 year old husband",
+      "Slept 2 hours a night for 4 nights",
+      "Nonstop fast talking",
+      "Collapsed unconscious"
+    ],
+    "everyday_attribution": [
+      "Patient is the speaker's 28 year old husband",
+      "Slept 2 hours a night for 4 nights",
+      "Nonstop fast talking",
+      "Spent household savings recklessly",
+      "Causal belief only (no new clinical fact): thinks it is just his personality"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 4 reference_facts (f1: speaker's husband is 28 years old, f2: slept 2 hours per night for 4 nights, f3: has continuous rapid speech, f4: spent household savings recklessly) are atomic checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday": "Matches f1, f2, f3, and f4 exactly.",
+    "medical_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "changed_fact": "Matches f1, f2, and f3 identically to everyday and changes only f4 ('spent our savings recklessly' -> 'collapsed unconscious') with zero added facts.",
+    "everyday_attribution": "Matches f1, f2, f3, and f4 identically to everyday; inserted clause ('and I think it is just his personality') states a causal belief only and adds no clinical fact."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 6 texts (no laterality).",
+    "timing": "Identical across all 6 texts ('2 hours per/a/nightly/each night for 4 nights').",
+    "count_and_numbers": "Identical across all 6 texts ('28' year old, '2' hours, '4' nights); no ambiguous quantities.",
+    "severity_and_quality": "Identical ('continuous rapid speech'/'nonstop fast talking', 'recklessly expended'/'spent ... recklessly' our savings) across all 5 non-control texts; changed_fact substitutes single acute emergency sign ('collapsed unconscious').",
+    "uncertainty": "Identical factual certainty across all texts; causal belief isolated in everyday_attribution.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

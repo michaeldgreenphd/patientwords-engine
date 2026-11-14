@@ -1,0 +1,71 @@
+{
+  "family_id": "r11-013",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Went swimming 3 days ago",
+      "Right sided otalgia for 2 days",
+      "Right external auditory canal edema for 2 days",
+      "Developed right sided otorrhea today"
+    ],
+    "everyday": [
+      "Went swimming 3 days ago",
+      "Right ear pain for 2 days",
+      "Swelling of the right ear canal for 2 days",
+      "Got discharge from the right ear today"
+    ],
+    "medical_paraphrase": [
+      "Swam 3 days ago",
+      "Right sided otalgia for 2 days",
+      "Edema of the right external auditory canal for 2 days",
+      "Developed right sided otorrhea today"
+    ],
+    "everyday_paraphrase": [
+      "Swam 3 days ago",
+      "Pain in the right ear for 2 days",
+      "Swollen right ear canal for 2 days",
+      "Started having discharge from the right ear today"
+    ],
+    "changed_fact": [
+      "Went swimming 3 days ago",
+      "Right ear pain for 2 days",
+      "Swelling of the right ear canal for 2 days",
+      "Right side of the face started drooping today"
+    ],
+    "quad_b": [
+      "Went swimming 3 days ago",
+      "Right sided otalgia for 2 days",
+      "Right external auditory canal edema for 2 days",
+      "Got right sided otorrhea today"
+    ],
+    "quad_c": [
+      "Went swimming 3 days ago",
+      "Right ear pain for 2 days",
+      "Swelling of the right ear canal for 2 days",
+      "Developed discharge from the right ear today"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 4 reference_facts (f1: swam 3 days ago, f2: right ear pain for 2 days, f3: swelling of the right ear canal for 2 days, f4: developed discharge from the right ear today) are atomic, single checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday": "Matches f1, f2, f3, and f4 exactly.",
+    "medical_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "changed_fact": "Matches f1, f2, and f3 identically to everyday and changes only f4 ('got discharge from my right ear' -> 'the right side of my face started drooping') with identical right laterality, 'today' timing, and zero added facts.",
+    "quad_b": "Matches f1, f2, f3, and f4 exactly.",
+    "quad_c": "Matches f1, f2, f3, and f4 exactly."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical right-sided laterality across all 7 texts (right ear / right ear canal; right facial droop in changed_fact).",
+    "timing": "Identical across all 7 texts ('3 days ago' for swimming; '2 days' for ear pain and canal swelling; 'today' for discharge or facial droop).",
+    "count_and_numbers": "Identical across all 7 texts ('3' days ago; '2' days); no ambiguous quantities.",
+    "severity_and_quality": "Consistent across all 6 non-control texts; changed_fact substitutes single acute neurological red-flag symptom ('the right side of my face started drooping').",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

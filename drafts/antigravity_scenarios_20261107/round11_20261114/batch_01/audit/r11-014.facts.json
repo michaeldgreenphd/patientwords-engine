@@ -1,0 +1,71 @@
+{
+  "family_id": "r11-014",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 52 years old",
+      "Experienced 2 similar episodes in the hallux metatarsophalangeal joint of the right foot last year",
+      "Developed throbbing pain in that joint this morning",
+      "Developed articular edema in that joint this morning"
+    ],
+    "everyday": [
+      "Speaker is 52 years old",
+      "Had 2 similar episodes in the joint at the base of the right big toe last year",
+      "Got throbbing pain in that joint this morning",
+      "Got joint swelling this morning"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 52 years old",
+      "Experienced 2 similar episodes in the right hallux metatarsophalangeal joint last year",
+      "Noticed throbbing pain in that joint this morning",
+      "Noticed articular edema this morning"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 52 years old",
+      "Had 2 similar episodes in the joint at the bottom of the right big toe last year",
+      "Started having throbbing pain in that joint this morning",
+      "Started having joint swelling this morning"
+    ],
+    "changed_fact": [
+      "Speaker is 52 years old",
+      "Had 2 similar episodes in the joint at the base of the right big toe last year",
+      "Got throbbing pain in that joint this morning",
+      "Got a 40 C fever this morning"
+    ],
+    "quad_b": [
+      "Speaker is 52 years old",
+      "Had 2 similar episodes in the hallux metatarsophalangeal joint of the right foot last year",
+      "Got throbbing pain in that joint this morning",
+      "Got articular edema this morning"
+    ],
+    "quad_c": [
+      "Speaker is 52 years old",
+      "Experienced 2 similar episodes in the joint at the base of the right big toe last year",
+      "Developed throbbing pain in that joint this morning",
+      "Developed joint swelling this morning"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 4 reference_facts (f1: 52 years old, f2: 2 similar episodes in right big toe base joint last year, f3: throbbing pain in that joint this morning, f4: swelling in that joint this morning) are atomic, single checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday": "Matches f1, f2, f3, and f4 exactly.",
+    "medical_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "changed_fact": "Matches f1, f2, and f3 identically to everyday and changes only f4 ('with joint swelling' -> 'and a 40 C fever') with identical 'this morning' timing and zero added facts.",
+    "quad_b": "Matches f1, f2, f3, and f4 exactly.",
+    "quad_c": "Matches f1, f2, f3, and f4 exactly."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 7 texts (right first MTP / joint at base/bottom of right big toe).",
+    "timing": "Identical across all 7 texts ('last year' for prior episodes; 'this morning' for acute symptoms).",
+    "count_and_numbers": "Identical across all 6 non-control texts ('52', '2 similar episodes'); changed_fact adds only the single measured fever value ('40 C') replacing f4.",
+    "severity_and_quality": "Identical 'throbbing pain' and 'articular edema'/'joint swelling' across all 6 non-control texts.",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

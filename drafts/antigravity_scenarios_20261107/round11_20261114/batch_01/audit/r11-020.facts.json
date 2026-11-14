@@ -1,0 +1,57 @@
+{
+  "family_id": "r11-020",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Patient is the speaker's 48 year old husband",
+      "Completed antibiotic therapy 4 days ago",
+      "Has had 4 episodes of watery diarrhea daily for 2 days",
+      "Developed disorientation to place tonight"
+    ],
+    "everyday": [
+      "Patient is the speaker's 48 year old husband",
+      "Finished his antibiotics 4 days ago",
+      "Has had 4 watery loose motions (diarrhea) a day for 2 days",
+      "Got confused about where he is tonight"
+    ],
+    "medical_paraphrase": [
+      "Patient is the speaker's 48 year old husband",
+      "Finished an antibiotic regimen 4 days ago",
+      "Passed 4 watery diarrheal stools per day for 2 days",
+      "Became disoriented to location tonight"
+    ],
+    "everyday_paraphrase": [
+      "Patient is the speaker's 48 year old husband",
+      "Finished taking his antibiotics 4 days ago",
+      "Passed 4 watery loose motions each day for 2 days",
+      "Became confused about where he is tonight"
+    ],
+    "changed_fact": [
+      "Patient is the speaker's 48 year old husband",
+      "Finished his antibiotics 4 days ago",
+      "Has had 4 watery loose motions a day for 2 days",
+      "Lost his appetite tonight"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 4 reference_facts (f1: speaker's 48 year old husband, f2: finished an antibiotic course 4 days ago, f3: 4 episodes of watery diarrhea per day for 2 days, f4: developed disorientation to place tonight) are atomic checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday": "Matches f1, f2, f3, and f4 exactly (documented dialect meaning of 'loose motions' in core lexicon is diarrhea).",
+    "medical_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, f3, and f4 exactly and retains dialect form ('loose motions').",
+    "changed_fact": "Matches f1, f2, and f3 identically to everyday and changes only f4 ('got confused about where he is' -> 'lost his appetite') with identical 'tonight' timing and zero added facts."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 5 texts (no laterality).",
+    "timing": "Identical across all 5 texts ('4 days ago', 'daily'/'a day'/'per day'/'each day' 'for 2 days', 'tonight').",
+    "count_and_numbers": "Identical across all 5 texts ('48' year old, '4' days ago, '4' episodes/motions per day, '2' days); no ambiguous quantities.",
+    "severity_and_quality": "Identical ('watery' diarrhea/loose motions; 'disorientation to place'/'disoriented to location'/'confused about where he is') across all 4 non-control texts; changed_fact substitutes single non-emergent symptom ('lost his appetite').",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

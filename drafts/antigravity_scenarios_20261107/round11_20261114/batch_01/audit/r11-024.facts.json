@@ -1,0 +1,52 @@
+{
+  "family_id": "r11-024",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 33 years old",
+      "Takes a 40 minute commuter ferry every weekday",
+      "Experiences mild nausea during the vessel crossing"
+    ],
+    "everyday": [
+      "Speaker is 33 years old",
+      "Takes a 40 minute commuter ferry every weekday",
+      "Gets mild queasiness during the boat ride"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 33 years old",
+      "Rides a 40 minute commuter ferry each weekday",
+      "Develops mild nausea during the boat transit"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 33 years old",
+      "Rides a 40 minute commuter ferry each weekday",
+      "Feels mild queasiness on the boat ride"
+    ],
+    "changed_fact": [
+      "Speaker is 33 years old",
+      "Takes a 40 minute commuter ferry every weekday",
+      "Starts wheezing during the boat ride"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 33 years old, f2: rides a 40 minute commuter ferry every weekday, f3: experiences mild nausea during the boat ride) are atomic checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only f3 ('get mild queasiness' -> 'start wheezing') during the boat ride with zero added facts."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 5 texts (no laterality).",
+    "timing": "Identical across all 5 texts ('40 minute' commuter ferry 'every weekday'/'each weekday'; 'during the vessel crossing'/'during the boat ride'/'during the boat transit'/'on the boat ride').",
+    "count_and_numbers": "Identical across all 5 texts ('33' years old, '40' minute); no ambiguous quantities.",
+    "severity_and_quality": "Identical ('mild' nausea/queasiness) across all 4 non-control texts; changed_fact substitutes single respiratory symptom ('start wheezing').",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

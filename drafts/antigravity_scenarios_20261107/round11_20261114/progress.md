@@ -1,0 +1,23 @@
+# Round 11 Progress
+
+- `2026-11-14T00:12:04Z`: Pulled `draft/antigravity-scenarios-20261107` (`dce34f97`), read `SPEC.md` in full, and refreshed `../pw-main` worktree to `origin/main` (`fa4a2a9c`).
+- `2026-11-14T00:31:00Z`: Wrote `plan.json` (144 primary slots `r11-001`..`r11-144` + 36 reserve slots, verified 0 repeats against all 40 Round 9 and Round 10 conditions and verified all target tiers against `data/urgency_tiers.draft.json`), `ledger.json`, and `revisions.json`.
+- `2026-11-14T01:02:26Z`: Tools built in round11_20261114/tools/; rehearsal family r11-001 drafted by @author-l4 and dispatched to @sources, @facts, @language, @level, and @adversary.
+- `2026-11-14T01:22:54Z`: Rehearsal r11-001 returned once to @author-l4 (passed G6, G7; returned on G4, G5, G8).
+- `2026-11-14T01:38:18Z`: Rehearsal r11-001 revised draft validated (0 errors, 0 warnings); re-dispatched G4-G8 auditors.
+- `2026-11-14T01:42:29Z`: Rehearsal r11-001 passed all 5 auditor gates (G4, G5, G6, G7, G8); dispatching @builder for G1-G3 rehearsal check.
+- `2026-11-14T01:45:10Z`: Rehearsal r11-001 passed all 8 gates (G1-G8) end-to-end (0 errors, 0 warnings, 2/2 same source fit). Rehearsal complete; starting Batch 01 (r11-002..r11-024).
+- `2026-11-14T01:48:01Z`: Pre-Batch-01 git pull completed (draft branch at 57f58309, ../pw-main at 0aebbb28); reviewer_notes.md absent. Dispatching Batch 01 authors in parallel (r11-002..r11-024; r11-001 already passed rehearsal).
+- `2026-11-14T02:22:20Z`: Batch 01 wave 1 (@author-l4: r11-002..r11-006) validated offline (0 errors, 0 warnings); dispatched G4-G8 auditors.
+- `2026-11-14T02:23:13Z`: Batch 01 @author-l2 drafts (r11-013..r11-018) validated offline (0 errors, 0 warnings); queued for wave-2 audit.
+- `2026-11-14T02:30:01Z`: Batch 01 wave 1 (r11-002..r11-006) passed all 5 auditor gates (G4-G8) with 0 errors, 0 warnings.
+- `2026-11-14T02:33:30Z`: Batch 01 wave 3 (@author-flag: r11-019..r11-024) validated offline (0 errors, 0 warnings); dispatched G4, G5, G6, G8 auditors.
+- `2026-11-14T02:35:37Z`: Batch 01 wave 2 (r11-013..r11-018) passed all 5 auditor gates (G4-G8) with 0 errors, 0 warnings (12/24 passed so far).
+- `2026-11-14T02:41:05Z`: Batch 01 wave 3 (r11-019..r11-024) passed all 5 auditor gates (G4-G8) with 0 errors, 0 warnings (18/24 passed so far).
+- `2026-11-14T02:47:23Z`: batch_01 Wave 4 drafts r11-007..r11-012 validated offline (0 errors, 0 warnings); dispatched @sources, @facts, @language, @level, @adversary
+- `2026-11-14T02:57:40Z`: batch_01 Wave 4: r11-007, r11-008, r11-010, r11-011, r11-012 passed G4-G8 on first pass (23/24 batch_01 families passed so far)
+- `2026-11-14T02:57:42Z`: batch_01 Wave 4: r11-009 returned once (returned_count=1) to @author-l3 on G5 ('I am 23 with dark brown skin who...' headless relative / verb person clash)
+- `2026-11-14T02:59:53Z`: batch_01: r11-009 v2 revised by @author-l3 and validated offline; dispatched all 5 auditors for re-audit
+- `2026-11-14T03:02:52Z`: batch_01: r11-009 v2 passed all 5 auditor gates G4-G8; all 24/24 batch_01 families passed G4-G8 (0 dropped)
+- `2026-11-14T03:23:11Z`: batch_01: Gate G1 passed on all 24 families (families.json, check_pairs.json, sources.md, source_fit.json same_share=0.9286 [39/42 same, 3/42 adjacent, 0 different], concerns_selfreported.json generated). Elapsed time: 76 min for Batch 01 authoring+auditing+G1 (01:48Z-03:04Z; 172 min total since 00:12Z setup+rehearsal). Agents/models used: coordinator, @author-l4, @author-l3, @author-l2, @author-flag, @sources, @facts, @language, @level, @builder on gemini-4-carbon-high (quota 100%->19%, resets 2026-11-14T05:10:32Z); @adversary on claude-opus-4-6-thinking (quota 100%->74%, resets 2026-11-14T05:41:49Z). Paused before Gate G2/G3 (--run-gates) and git commit/push because unsandboxed permission prompt on .venv/bin/python timed out after 60s awaiting user approval.
+- `2026-11-14T13:38:12Z`: batch_01: Gates G2 (60 candidates, 0 errors, 3 expected -cf number warnings) and G3 (status=intake, software_validation.errors=0, 24 families / 120 contrasts / 144 prompts; concerns_selfreported.json verified 0 errors, 24 open concerns) PASSED on all 24 families (0 dropped).

@@ -1,0 +1,52 @@
+{
+  "family_id": "r11-018",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Tender erythematous nodule on the right upper palpebral margin for 10 days",
+      "Refractory to warm compresses 2 times a day",
+      "Right ciliary crusting today"
+    ],
+    "everyday": [
+      "Tender red bump on the right upper eyelid edge for 10 days",
+      "Persisted despite warm compresses 2 times a day",
+      "Crusts on the right eyelashes today"
+    ],
+    "medical_paraphrase": [
+      "10 days of a tender erythematous nodule along the right upper eyelid margin",
+      "Unresponsive to warm compresses 2 times a day",
+      "Crusting of the right eyelashes today"
+    ],
+    "everyday_paraphrase": [
+      "Tender red lump along the edge of the right upper eyelid for 10 days",
+      "Persisted even after warm compresses 2 times a day",
+      "Crusts on the right eyelashes today"
+    ],
+    "changed_fact": [
+      "Tender red bump on the right upper eyelid edge for 10 days",
+      "Persisted despite warm compresses 2 times a day",
+      "Started seeing double today"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: tender red bump on the right upper eyelid edge for 10 days, f2: persisted despite warm compresses 2 times a day, f3: crusts on the right eyelashes today) are checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only f3 ('with crusts on my right eyelashes' -> 'and started seeing double') with identical 'today' timing and zero added facts."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical right upper eyelid margin/edge across all 5 texts and right eyelashes across all 4 non-control texts.",
+    "timing": "Identical across all 5 texts ('10 days', '2 times a day', 'today').",
+    "count_and_numbers": "Identical across all 5 texts ('10' days, '2 times a day'); no ambiguous quantities.",
+    "severity_and_quality": "Identical ('tender', 'erythematous'/'red', 'nodule'/'bump'/'lump', 'crusting'/'crusts') across all 4 non-control texts; changed_fact substitutes single orbital red-flag symptom ('started seeing double').",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

@@ -1,0 +1,52 @@
+{
+  "family_id": "r11-016",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Vaginal pruritus for 6 days",
+      "Applied nonprescription intravaginal antimycotic cream for 3 nights without resolution",
+      "Still has thick white vaginal leukorrhea today"
+    ],
+    "everyday": [
+      "Vaginal itching for 6 days",
+      "Used over the counter vaginal antifungal cream for 3 nights without resolution",
+      "Still has thick white vaginal discharge today"
+    ],
+    "medical_paraphrase": [
+      "6 days of vaginal pruritus",
+      "Refractory to 3 nights of nonprescription intravaginal antimycotic cream",
+      "Continues to have thick white vaginal leukorrhea today"
+    ],
+    "everyday_paraphrase": [
+      "6 days of itching in the vagina",
+      "Persisted even after 3 nights of over the counter antifungal vaginal cream",
+      "Still has thick white vaginal discharge today"
+    ],
+    "changed_fact": [
+      "Vaginal itching for 6 days",
+      "Used over the counter vaginal antifungal cream for 3 nights without resolution",
+      "Has fainted 2 times today"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: vaginal itching for 6 days, f2: used over the counter vaginal antifungal cream for 3 nights, f3: still has thick white vaginal discharge today) are atomic checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only f3 ('still have thick white vaginal discharge' -> 'have fainted 2 times') with identical 'today' timing and zero added facts."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all texts (vaginal / intravaginal).",
+    "timing": "Identical across all 5 texts ('6 days', '3 nights', 'today').",
+    "count_and_numbers": "Identical ('6' days, '3' nights) across all 5 texts; changed_fact uses unambiguous '2 times' for syncope episodes.",
+    "severity_and_quality": "Identical ('thick white' vaginal leukorrhea/discharge, refractory/despite 3 nights of OTC cream) across all 4 non-control texts.",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

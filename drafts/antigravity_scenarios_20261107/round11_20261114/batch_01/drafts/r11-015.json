@@ -1,0 +1,87 @@
+{
+  "family_id": "r11-015",
+  "condition": "pediatric localized perioral honey crusted impetigo sores",
+  "right_care": 2,
+  "level_rationale": "Three small localized perioral skin sores for 4 days with honey-colored crusts in a 5-year-old boy describe uncomplicated nonbullous impetigo requiring outpatient pediatric clinic evaluation and prescription topical or oral antibiotic therapy, whereas a 5-year-old child with 4 days of facial sores who is hard to wake up today has acute lethargy requiring immediate ER evaluation.",
+  "carrier_frame": "so I need to go to the",
+  "target_token": " clinic",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker's 5 year old son"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Has had 3 small skin sores around his mouth for 4 days"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Honey colored crusts on those sores today"
+    }
+  ],
+  "texts": {
+    "medical": "My 5 year old son has had 3 small perioral cutaneous erosions for 4 days with honey colored crusting on those lesions today so I need to go to the",
+    "everyday": "My 5 year old son has had 3 small skin sores around his mouth for 4 days with honey colored crusts on those sores today so I need to go to the",
+    "medical_paraphrase": "My 5 year old son has experienced 4 days of 3 small perioral cutaneous erosions accompanied by honey colored crusting over those lesions today so I need to go to the",
+    "everyday_paraphrase": "My 5 year old boy has had 3 small sores on the skin around his mouth for 4 days with honey colored crusts covering them today so I need to go to the",
+    "changed_fact": "My 5 year old son has had 3 small skin sores around his mouth for 4 days and has been hard to wake up today so I need to go to the"
+  },
+  "changed_fact": {
+    "fact_id": "f3",
+    "from": "with honey colored crusts on those sores",
+    "to": "and has been hard to wake up",
+    "right_care_after": 4
+  },
+  "swap_spans": {
+    "medical_span": "perioral cutaneous erosions for 4 days with honey colored crusting on those lesions",
+    "everyday_span": "skin sores around his mouth for 4 days with honey colored crusts on those sores"
+  },
+  "swap_note": "Single continuous 13-word vs 15-word span swap after 'My 5 year old son has had 3 small ' and before ' today so I need to go to the'.",
+  "everyday_sources": [
+    {
+      "expression": "honey colored crusts",
+      "source": "Trang DT, Buck EC, Schoenherr DT (2026). Impetigo: Rapid Evidence Review. American Family Physician.",
+      "title": "Impetigo: Rapid Evidence Review.",
+      "pmid_or_doi": "PMID: 41839109",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/41839109/",
+      "access": "abstract only",
+      "location": "Abstract",
+      "quote_type": "authors' summary",
+      "evidence": "Diagnosis of impetigo is based primarily on clinical examination and should be suspected in individuals with erythematous papules that progress to ruptured vesicles or bullae over 4 to 6 days, forming honey-colored crusts.",
+      "adaptation": "Removed hyphen from 'honey-colored crusts' to satisfy the unpunctuated single-sentence prompt rule."
+    },
+    {
+      "expression": "skin sores around his mouth",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "hard to wake up",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "parent_carer_plain_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": false,
+    "intervention_notes": "Plain parent/carer everyday lexical register swap (-reg) + single-fact pediatric lethargy escalation control (-cf)."
+  },
+  "design_note": "Three atomic reference facts state the child's age and relationship (5-year-old son), count and 4-day duration of localized perioral sores (3 small sores), and honey-colored crusts today, with a 2-word span difference (13 vs 15 words) and 8 identical trailing tokens ('today so I need to go to the'). Swapping atomic fact f3 to acute difficulty waking the child shifts care from outpatient clinic (level 2) to ER (level 4) with zero stated negatives."
+}

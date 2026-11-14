@@ -1,0 +1,103 @@
+{
+  "family_id": "r11-002",
+  "condition": "acute rhegmatogenous retinal detachment presenting with unilateral curtain visual field loss",
+  "right_care": 4,
+  "level_rationale": "Sudden onset today of a dark curtain obstructing the visual field of one eye in a 56-year-old man with myopia indicates suspected acute rhegmatogenous retinal detachment requiring immediate emergency evaluation to preserve sight, whereas uncomplicated yellow ocular discharge in a spectacle wearer without pain or vision loss warrants non-emergent outpatient clinic evaluation.",
+  "carrier_frame": "so I need to go to the",
+  "target_token": " ER",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is a 56 year old man"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Wears eyeglasses for nearsightedness"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Developed a sudden dark curtain blocking the field of view in the right eye today"
+    }
+  ],
+  "texts": {
+    "medical": "I'm a 56 year old man who uses spectacles for myopia and developed an acute dark curtain obstructing the visual field in my right eye today so I need to go to the",
+    "everyday": "I'm a 56 year old man who wears glasses for nearsightedness and got a sudden dark curtain blocking the field of view in my right eye today so I need to go to the",
+    "medical_paraphrase": "I'm a 56 year old male who relies on spectacles for myopia and experienced an acute dark curtain occluding the visual field in my right eye today so I need to go to the",
+    "everyday_paraphrase": "I'm a 56 year old man who uses glasses for nearsightedness and started seeing a sudden dark curtain blocking the field of view in my right eye today so I need to go to the",
+    "changed_fact": "I'm a 56 year old man who wears glasses for nearsightedness and got yellow discharge in my right eye today so I need to go to the",
+    "everyday_attribution": "I'm a 56 year old man who wears glasses for nearsightedness and got a sudden dark curtain blocking the field of view in my right eye today and I think it is eyestrain so I need to go to the",
+    "quad_b": "I'm a 56 year old man who wears spectacles for myopia and got an acute dark curtain obstructing the visual field in my right eye today so I need to go to the",
+    "quad_c": "I'm a 56 year old man who uses glasses for nearsightedness and developed a sudden dark curtain blocking the field of view in my right eye today so I need to go to the"
+  },
+  "changed_fact": {
+    "fact_id": "f3",
+    "from": "got a sudden dark curtain blocking the field of view",
+    "to": "got yellow discharge",
+    "right_care_after": 2
+  },
+  "attribution": {
+    "clause": "and I think it is eyestrain",
+    "explains": "attributes sudden unilateral dark curtain visual field loss to benign eyestrain",
+    "source": "none",
+    "title": null,
+    "pmid_or_doi": null,
+    "inspected_url": null,
+    "access": null,
+    "location": null,
+    "quote_type": "none",
+    "evidence": null,
+    "adaptation": null
+  },
+  "swap_spans": {
+    "medical_span": "uses spectacles for myopia and developed an acute dark curtain obstructing the visual field",
+    "everyday_span": "wears glasses for nearsightedness and got a sudden dark curtain blocking the field of view"
+  },
+  "swap_note": "Single continuous 14-word vs 15-word span swap after 'I'm a 56 year old man who ' and before ' in my right eye today so I need to go to the'.",
+  "everyday_sources": [
+    {
+      "expression": "a sudden dark curtain blocking the field of view",
+      "source": "Balikov DA, Zhou Y, Miller JML (2023). A Telephone Triage System for Patients Calling with Symptoms of a Posterior Vitreous Detachment. Ophthalmology Retina.",
+      "title": "A Telephone Triage System for Patients Calling with Symptoms of a Posterior Vitreous Detachment.",
+      "pmid_or_doi": "PMID: 36634817; DOI: 10.1016/j.oret.2023.01.003",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/36634817/",
+      "access": "full text",
+      "location": "Results — Characterization of Symptoms Documented by Phone Triage, para 1",
+      "quote_type": "authors' summary",
+      "evidence": "A significantly higher percentage of patients with RT/RD reported constant blurred vision or a curtain/veil in their field of view (Figure S3A).",
+      "adaptation": "Adapted authors' summary phrase 'a curtain/veil in their field of view' reported by adult retinal tear and detachment callers (mean age 59 years) to 'a sudden dark curtain blocking the field of view' to match reference fact f3."
+    },
+    {
+      "expression": "glasses for nearsightedness",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "yellow discharge",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "adult_patient_plain_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": true,
+    "has_patient_attribution": true,
+    "intervention_notes": "Plain adult everyday lexical register swap (-reg) + 2x2 verb-frame by clinical/everyday terminology crossing (quad_b, quad_c) + causal belief-addition clause (-att) + single-symptom outpatient ocular discharge control (-cf)."
+  },
+  "design_note": "Uses three strictly atomic reference facts (age and sex, eyeglasses for nearsightedness, and today's acute right-eye symptom) with a 1-word span difference (14 vs 15 words) and 12 shared trailing tokens ('in my right eye today so I need to go to the'). Swapping only the right-eye symptom in f3 from sudden dark curtain visual field loss to yellow discharge shifts care from ER (level 4) to outpatient clinic evaluation (level 2) with zero residual red flags and zero stated negatives."
+}

@@ -1,0 +1,59 @@
+{
+  "family_id": "r11-003",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is a 29 year old woman",
+      "At 7 weeks of gestation",
+      "Developed acute severe right lower quadrant abdominal pain today"
+    ],
+    "everyday": [
+      "Speaker is a 29 year old woman",
+      "Is 7 weeks pregnant",
+      "Got sudden severe pain in the right lower belly today"
+    ],
+    "medical_paraphrase": [
+      "Speaker is a 29 year old female",
+      "At 7 weeks gestation",
+      "Experienced abrupt severe pain in the right lower abdominal quadrant today"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is a 29 year old woman",
+      "Is 7 weeks along in pregnancy",
+      "Started having sudden severe pain in the right lower belly today"
+    ],
+    "changed_fact": [
+      "Speaker is a 29 year old woman",
+      "Is 7 weeks pregnant",
+      "Got burning when urinating today"
+    ],
+    "everyday_attribution": [
+      "Speaker is a 29 year old woman",
+      "Is 7 weeks pregnant",
+      "Got sudden severe pain in the right lower belly today",
+      "Causal belief only (no new clinical fact): thinks it is trapped gas"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 29 year old woman, f2: 7 weeks pregnant, f3: developed sudden severe pain in the right lower abdomen today) are strictly atomic, single checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only f3 ('got sudden severe pain in my right lower belly' -> 'got burning when I pee') with identical 'today' timing and zero added clinical findings.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday; inserted clause ('and I think it is trapped gas') states a causal belief only and adds no clinical fact."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 5 non-control texts ('right lower quadrant abdominal' / 'right lower abdominal quadrant' / 'right lower belly').",
+    "timing": "Identical across all 6 texts ('7 weeks' gestation/pregnancy; 'today' for symptom onset).",
+    "count_and_numbers": "Identical across all 6 texts ('29' years old; '7' weeks); no ambiguous quantities.",
+    "severity_and_quality": "Identical across all 5 non-control texts ('acute'/'abrupt'/'sudden' + 'severe' pain); changed_fact substitutes single outpatient symptom ('burning when I pee').",
+    "uncertainty": "Identical factual certainty across all texts; causal belief isolated in everyday_attribution.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

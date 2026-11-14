@@ -1,0 +1,99 @@
+{
+  "family_id": "r11-018",
+  "condition": "uncomplicated hordeolum painful eyelid margin stye persistent for 10 days",
+  "right_care": 2,
+  "level_rationale": "A tender red bump on the right upper eyelid margin persisting for 10 days despite warm compresses 2 times a day with eyelash crusting and no orbital signs warrants non-emergent outpatient primary-care physician evaluation and topical therapy, whereas new double vision alongside an inflamed eyelid lesion raises concern for orbital cellulitis requiring immediate ER evaluation.",
+  "carrier_frame": "so I should see a",
+  "target_token": " doctor",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Tender red bump on the right upper eyelid edge for 10 days"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Persisted despite warm compresses 2 times a day"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Crusts on the right eyelashes today"
+    }
+  ],
+  "texts": {
+    "medical": "I have had a tender erythematous nodule on my right upper palpebral margin for 10 days refractory to warm compresses 2 times a day accompanied by right ciliary crusting today so I should see a",
+    "everyday": "I have had a tender red bump on my right upper eyelid edge for 10 days despite warm compresses 2 times a day with crusts on my right eyelashes today so I should see a",
+    "medical_paraphrase": "I have experienced 10 days of a tender erythematous nodule along my right upper eyelid margin unresponsive to warm compresses 2 times a day with crusting of my right eyelashes today so I should see a",
+    "everyday_paraphrase": "I have had a tender red lump along the edge of my right upper eyelid for 10 days even after warm compresses 2 times a day and have crusts on my right eyelashes today so I should see a",
+    "changed_fact": "I have had a tender red bump on my right upper eyelid edge for 10 days despite warm compresses 2 times a day and started seeing double today so I should see a"
+  },
+  "changed_fact": {
+    "fact_id": "f3",
+    "from": "with crusts on my right eyelashes",
+    "to": "and started seeing double",
+    "right_care_after": 4
+  },
+  "swap_spans": {
+    "medical_span": "erythematous nodule on my right upper palpebral margin for 10 days refractory to warm compresses 2 times a day accompanied by right ciliary crusting",
+    "everyday_span": "red bump on my right upper eyelid edge for 10 days despite warm compresses 2 times a day with crusts on my right eyelashes"
+  },
+  "swap_note": "Single continuous 24-word vs 24-word span swap after 'I have had a tender ' and before ' today so I should see a'.",
+  "everyday_sources": [
+    {
+      "expression": "warm compresses",
+      "source": "Qin M, Liang Y, Su X, Zhuang J, Zhang Z, Chai H, Hu J (2026). Local Injections of Fluorouracil for Eyelid Hordeolum. Plastic and Reconstructive Surgery. Global Open.",
+      "title": "Local Injections of Fluorouracil for Eyelid Hordeolum.",
+      "pmid_or_doi": "PMID: 42367702; DOI: 10.1097/GOX.0000000000007886",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/42367702/",
+      "access": "abstract only",
+      "location": "Abstract",
+      "quote_type": "authors' summary",
+      "evidence": "Currently, treatment methods for hordeolum mainly include local warm compresses, local or systemic antibiotic therapy, and abscess incision and drainage.",
+      "adaptation": null
+    },
+    {
+      "expression": "tender red bump on my right upper eyelid edge",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "crusts on my right eyelashes",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "started seeing double",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "adult_patient_plain_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": false,
+    "intervention_notes": "Plain adult everyday lexical register swap (-reg) + single-fact acute diplopia escalation control (-cf)."
+  },
+  "design_note": "Three atomic reference facts state a 10-day tender red bump on the right upper eyelid edge, persistence despite warm compresses 2 times a day, and right eyelash crusts today, with an exact 24-word vs 24-word span alignment and 6 identical trailing tokens ('today so I should see a'). Replacing atomic fact f3 with new double vision today escalates care from outpatient primary-care physician (level 2) to ER evaluation for suspected orbital cellulitis (level 4) with zero stated negatives."
+}

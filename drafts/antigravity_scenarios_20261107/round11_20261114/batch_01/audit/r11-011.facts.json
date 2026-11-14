@@ -1,0 +1,59 @@
+{
+  "family_id": "r11-011",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker does office work",
+      "4 months of fears of surface contamination",
+      "Performs repetitive handwashing rituals for 3 hours every workday"
+    ],
+    "everyday": [
+      "Speaker does office work",
+      "4 months of worry about surface germs",
+      "Washes hands over and over for 3 hours every workday"
+    ],
+    "medical_paraphrase": [
+      "Speaker works in an office",
+      "Surface contamination fears for 4 months",
+      "Engages in repetitive handwashing rituals for 3 hours every workday"
+    ],
+    "everyday_paraphrase": [
+      "Speaker works in an office",
+      "Worried about germs on surfaces for 4 months",
+      "Washes hands over and over for 3 hours every workday"
+    ],
+    "changed_fact": [
+      "Speaker does office work",
+      "4 months of worry about surface germs",
+      "Carries hand sanitizer every workday"
+    ],
+    "everyday_attribution": [
+      "Speaker does office work",
+      "4 months of worry about surface germs",
+      "Washes hands over and over for 3 hours every workday",
+      "Causal belief only (no new clinical fact): thinks it is just being conscious about germs"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: speaker works in an office, f2: 4 months of fears or worry about surface germs, f3: spends 3 hours every workday on repetitive handwashing) are atomic checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday, preserves 'every workday', and changes only f3 ('wash my hands over and over for 3 hours' -> 'carry hand sanitizer') with zero added facts.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday; inserted clause ('and I think it is just being conscious about germs') states a normalizing belief only and adds no clinical fact."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 5 non-control texts ('hands'; no laterality).",
+    "timing": "Identical ('4 months'; 'for 3 hours every workday' across all 5 non-control texts, 'every workday' in changed_fact).",
+    "count_and_numbers": "Identical ('4' months across all 6 texts; '3' hours across all 5 non-control texts); no ambiguous quantities.",
+    "severity_and_quality": "Identical ('fears of surface contamination'/'worry about surface germs', 'repetitive handwashing rituals'/'wash my hands over and over') across all 5 non-control texts; changed_fact substitutes single non-impairing hygiene habit ('carry hand sanitizer').",
+    "uncertainty": "Identical factual certainty across all texts; causal belief isolated in everyday_attribution.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

@@ -1,0 +1,71 @@
+{
+  "family_id": "r11-001",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is a 64 year old man",
+      "Initiated antihypertensive drug therapy 2 weeks ago",
+      "Developed crushing retrosternal chest pressure today"
+    ],
+    "everyday": [
+      "Speaker is a 64 year old man",
+      "Started high blood pressure medicine 2 weeks ago",
+      "Got crushing pressure behind the breastbone today"
+    ],
+    "medical_paraphrase": [
+      "Speaker is a 64 year old male",
+      "Began antihypertensive medication 2 weeks ago",
+      "Experienced crushing substernal chest pressure today"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is a 64 year old man",
+      "Began taking medicine for high blood pressure 2 weeks ago",
+      "Started having crushing pressure behind the breastbone today"
+    ],
+    "changed_fact": [
+      "Speaker is a 64 year old man",
+      "Started high blood pressure medicine 2 weeks ago",
+      "Got a dry cough today"
+    ],
+    "everyday_attribution": [
+      "Speaker is a 64 year old man",
+      "Started high blood pressure medicine 2 weeks ago",
+      "Got crushing pressure behind the breastbone today",
+      "Causal belief only (no new clinical fact): thinks it is heartburn"
+    ],
+    "quad_b": [
+      "Speaker is a 64 year old man",
+      "Started antihypertensive drug therapy 2 weeks ago",
+      "Got crushing retrosternal chest pressure today"
+    ],
+    "quad_c": [
+      "Speaker is a 64 year old man",
+      "Initiated high blood pressure medicine 2 weeks ago",
+      "Developed crushing pressure behind the breastbone today"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: age/sex, f2: started high blood pressure medicine 2 weeks ago, f3: developed crushing pressure behind the breastbone today) are strictly atomic, single checkable statements matching the 3 blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly (64 year old man; initiated antihypertensive drug therapy 2 weeks ago; developed crushing retrosternal chest pressure today).",
+    "everyday": "Matches f1, f2, and f3 exactly (64 year old man; started high blood pressure medicine 2 weeks ago; got crushing pressure behind my breastbone today).",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly (64 year old male; began antihypertensive medication 2 weeks ago; experienced crushing substernal chest pressure today).",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly (64 year old man; began taking medicine for high blood pressure 2 weeks ago; started having crushing pressure behind my breastbone today).",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only f3 from 'got crushing pressure behind my breastbone' to 'got a dry cough' with identical 'today' timing and zero added clinical findings or maneuvers.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday; inserted clause ('and I think it is heartburn') states a causal belief only and adds no clinical fact.",
+    "quad_b": "Matches f1, f2, and f3 exactly.",
+    "quad_c": "Matches f1, f2, and f3 exactly."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all non-control texts ('retrosternal chest' / 'substernal chest' / 'behind my breastbone').",
+    "timing": "Identical across all 8 texts ('2 weeks ago' for medication start; 'today' for symptom onset).",
+    "count_and_numbers": "Identical across all 8 texts ('64' years old; '2' weeks ago); no ambiguous quantities.",
+    "severity_and_quality": "Identical across all 7 non-control texts ('crushing' pressure); changed_fact substitutes single benign symptom ('a dry cough') for f3.",
+    "uncertainty": "Identical factual certainty across all texts; causal belief isolated in everyday_attribution.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all register, paraphrase, attribution, and quad variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

@@ -1,0 +1,99 @@
+{
+  "family_id": "r11-023",
+  "condition": "minor superficial forearm thermal burn with dry epidermal flaking",
+  "right_care": 1,
+  "level_rationale": "A small 2 cm superficial thermal burn on the forearm from brushing a hot oven rack 3 days ago that now shows only mild redness and dry peeling skin is a healing minor household burn appropriate for over-the-counter ointment self-care, whereas thick yellow pus oozing from the burn site indicates localized secondary wound infection requiring an outpatient doctor visit.",
+  "carrier_frame": "so I just need some",
+  "target_token": " ointment",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Brushed the left forearm against a hot oven rack 3 days ago"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Has a 2 cm patch of mild skin redness"
+    },
+    {
+      "fact_id": "f3",
+      "text": "The patch has dry peeling skin today"
+    }
+  ],
+  "texts": {
+    "medical": "I brushed my left forearm against a hot oven rack 3 days ago and have a 2 cm patch of mild cutaneous erythema with dry superficial desquamation today so I just need some",
+    "everyday": "I brushed my left forearm against a hot oven rack 3 days ago and have a 2 cm patch of mild skin redness with dry peeling skin today so I just need some",
+    "medical_paraphrase": "I brushed my left forearm on a hot oven rack 3 days ago and developed a 2 cm area of mild epidermal erythema with dry surface scaling today so I just need some",
+    "everyday_paraphrase": "I brushed my left forearm on a hot oven rack 3 days ago and got a 2 cm spot of mild skin redness with dry flaking skin today so I just need some",
+    "changed_fact": "I brushed my left forearm against a hot oven rack 3 days ago and have a 2 cm patch of mild skin redness oozing thick yellow pus today so I just need some"
+  },
+  "changed_fact": {
+    "fact_id": "f3",
+    "from": "with dry peeling skin",
+    "to": "oozing thick yellow pus",
+    "right_care_after": 2
+  },
+  "swap_spans": {
+    "medical_span": "cutaneous erythema with dry superficial desquamation",
+    "everyday_span": "skin redness with dry peeling skin"
+  },
+  "swap_note": "Single continuous 6-word vs 6-word span swap after 'I brushed my left forearm against a hot oven rack 3 days ago and have a 2 cm patch of mild ' and before ' today so I just need some'.",
+  "everyday_sources": [
+    {
+      "expression": "skin redness",
+      "source": "Wasiak J, Cleland H (2009). Burns (minor thermal). BMJ Clinical Evidence.",
+      "title": "Burns (minor thermal).",
+      "pmid_or_doi": "PMID: 21718576",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/21718576/",
+      "access": "abstract only",
+      "location": "Abstract — Introduction, sentence 1",
+      "quote_type": "authors' summary",
+      "evidence": "Superficial burns that affect the epidermis and upper dermis only are characterised by redness of the skin that blanches on pressure, pain, and hypersensitivity.",
+      "adaptation": "Transposed 'redness of the skin' to noun-adjunct 'skin redness' for concise first-person everyday phrasing in a minor household thermal burn."
+    },
+    {
+      "expression": "dry peeling skin",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "dry flaking skin",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "oozing thick yellow pus",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "plain_self_care_everyday_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": false,
+    "intervention_notes": "Plain self-care dermatologic register swap ('cutaneous erythema with dry superficial desquamation' vs 'skin redness with dry peeling skin') + single-fact wound-surface escalation control (-cf, L1 to L2)."
+  },
+  "design_note": "Pairs a length-matched 6-word vs 6-word dermatologic register swap with 6 identical trailing tokens ('today so I just need some'). Swapping only atomic fact f3 from dry peeling skin to oozing thick yellow pus shifts care one step from over-the-counter burn ointment self-care (level 1) to outpatient physician wound care (level 2, obeying SPEC.md section 5.5) with zero stated negatives."
+}

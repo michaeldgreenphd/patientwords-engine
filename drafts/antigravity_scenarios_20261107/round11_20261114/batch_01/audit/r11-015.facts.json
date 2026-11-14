@@ -1,0 +1,52 @@
+{
+  "family_id": "r11-015",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker's 5 year old son",
+      "Has had 3 small perioral cutaneous erosions for 4 days",
+      "Honey colored crusting on those lesions today"
+    ],
+    "everyday": [
+      "Speaker's 5 year old son",
+      "Has had 3 small skin sores around his mouth for 4 days",
+      "Honey colored crusts on those sores today"
+    ],
+    "medical_paraphrase": [
+      "Speaker's 5 year old son",
+      "Has experienced 4 days of 3 small perioral cutaneous erosions",
+      "Honey colored crusting over those lesions today"
+    ],
+    "everyday_paraphrase": [
+      "Speaker's 5 year old boy (son)",
+      "Has had 3 small sores on the skin around his mouth for 4 days",
+      "Honey colored crusts covering them today"
+    ],
+    "changed_fact": [
+      "Speaker's 5 year old son",
+      "Has had 3 small skin sores around his mouth for 4 days",
+      "Has been hard to wake up today"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: speaker's 5 year old son, f2: 3 small skin sores around his mouth for 4 days, f3: honey colored crusts on those sores today) are checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly ('My 5 year old boy' denotes speaker's 5-year-old son).",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only f3 ('with honey colored crusts on those sores' -> 'and has been hard to wake up') with identical 'today' timing and zero added facts."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 5 texts ('perioral' / 'around his mouth').",
+    "timing": "Identical across all 5 texts ('for 4 days' / '4 days of'; 'today').",
+    "count_and_numbers": "Identical across all 5 texts ('5' year old, '3' small sores/erosions, '4' days); no ambiguous quantities.",
+    "severity_and_quality": "Identical ('small', 'honey colored' crusts/crusting) across all 4 non-control texts; changed_fact substitutes single lethargy red flag ('hard to wake up').",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

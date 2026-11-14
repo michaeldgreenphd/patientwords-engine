@@ -1,0 +1,67 @@
+{
+  "family_id": "r11-004",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Patient is the speaker's 15 year old son",
+      "Completed strenuous exercise 2 hours ago",
+      "Developed acute severe pain in his right testis today"
+    ],
+    "everyday": [
+      "Patient is the speaker's 15 year old son",
+      "Finished a hard workout 2 hours ago",
+      "Got sudden severe pain in his right testicle today"
+    ],
+    "medical_paraphrase": [
+      "Patient is the speaker's 15 year old son",
+      "Concluded vigorous physical exertion 2 hours ago",
+      "Experienced abrupt severe right testicular pain today"
+    ],
+    "everyday_paraphrase": [
+      "Patient is the speaker's 15 year old son",
+      "Got done with a hard workout 2 hours ago",
+      "Started having sudden severe pain in his right testicle today"
+    ],
+    "changed_fact": [
+      "Patient is the speaker's 15 year old son",
+      "Finished a hard workout 2 hours ago",
+      "Got white pus on his tonsils today"
+    ],
+    "everyday_attribution": [
+      "Patient is the speaker's 15 year old son",
+      "Finished a hard workout 2 hours ago",
+      "Got sudden severe pain in his right testicle today",
+      "Causal belief only (no new clinical fact): thinks he pulled a groin muscle"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: speaker's 15 year old son, f2: finished strenuous exercise 2 hours ago, f3: developed sudden severe pain in the right testicle today) are strictly atomic, single checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only f3 ('got sudden severe pain in his right testicle' -> 'got white pus on his tonsils') with identical 'today' timing and zero added facts.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday; inserted clause ('and I think he pulled a groin muscle') states a causal belief only and adds no clinical fact."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 5 non-control texts ('right testis' / 'right testicular' / 'right testicle').",
+    "timing": "Identical across all 6 texts ('2 hours ago' for exercise completion; 'today' for symptom onset).",
+    "count_and_numbers": "Identical across all 6 texts ('15' year old; '2' hours ago); no ambiguous quantities.",
+    "severity_and_quality": "Identical across all 5 non-control texts ('strenuous exercise'/'vigorous physical exertion'/'hard workout'; 'acute'/'abrupt'/'sudden' + 'severe' pain); changed_fact substitutes single outpatient finding ('white pus on his tonsils').",
+    "uncertainty": "Identical factual certainty across all texts; causal belief isolated in everyday_attribution.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [
+    {
+      "kind": "other",
+      "applies_to": [
+        "chg"
+      ],
+      "note": "Fact-level swap changes only f3, though substituting an unrelated pharyngeal finding ('white pus on his tonsils') leaves f2 ('finished a hard workout 2 hours ago') contextually unmotivated in changed_fact; noted for patient-language review."
+    }
+  ],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

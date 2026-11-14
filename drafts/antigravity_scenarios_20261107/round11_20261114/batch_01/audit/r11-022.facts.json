@@ -1,0 +1,62 @@
+{
+  "family_id": "r11-022",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 48 years old",
+      "Symptoms present for 5 days",
+      "Provoked by rolling over in bed",
+      "15 second episodes of rotational vertigo",
+      "Accompanied by mild nausea"
+    ],
+    "everyday": [
+      "Speaker is 48 years old",
+      "Symptoms present for 5 days",
+      "Brought on by rolling over in bed",
+      "15 second episodes of spinning giddiness",
+      "Accompanied by mild nausea"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 48 years old",
+      "5 days of symptoms",
+      "Triggered by rolling over in bed",
+      "15 second episodes of rotational vertigo",
+      "Accompanied by mild nausea"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 48 years old",
+      "Over the past 5 days",
+      "Turning over in bed triggers episodes",
+      "15 second bouts of spinning giddiness",
+      "Accompanied by mild nausea"
+    ],
+    "changed_fact": [
+      "Speaker is 48 years old",
+      "Symptoms present for 5 days",
+      "Brought on by rolling over in bed",
+      "15 second episodes of spinning giddiness",
+      "Accompanied by double vision"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 5 reference_facts (f1: 48 years old, f2: symptoms for 5 days, f3: triggered by rolling over in bed, f4: each episode of spinning dizziness lasts 15 seconds, f5: accompanied by mild nausea) are atomic checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, f4, and f5 exactly.",
+    "everyday": "Matches f1, f2, f3, f4, and f5 exactly ('spinning giddiness' conveys rotational vertigo using core lexicon 'giddiness').",
+    "medical_paraphrase": "Matches f1, f2, f3, f4, and f5 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, f3, f4, and f5 exactly and retains dialect form ('giddiness').",
+    "changed_fact": "Matches f1, f2, f3, and f4 identically to everyday and changes only f5 ('with mild nausea' -> 'with double vision') with zero added facts."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 5 texts (no laterality).",
+    "timing": "Identical across all 5 texts ('5 days'; '15 second' duration per episode).",
+    "count_and_numbers": "Identical across all 5 texts ('48' years old, '5' days, '15' second); no ambiguous quantities.",
+    "severity_and_quality": "Identical ('rotational vertigo'/'spinning giddiness', 'mild nausea') across all 4 non-control texts; changed_fact substitutes single central red-flag symptom ('double vision') for f5.",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

@@ -1,0 +1,52 @@
+{
+  "family_id": "r11-021",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 29 years old",
+      "Has taken 2 different anticonvulsant medications daily for 6 months",
+      "Still experiences 3 brief seizures each month"
+    ],
+    "everyday": [
+      "Speaker is 29 years old",
+      "Has taken 2 different seizure medicines daily for 6 months",
+      "Still has 3 brief fits (seizures) each month"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 29 years old",
+      "Taking 2 distinct anticonvulsant drugs every day for 6 months",
+      "Continues to have 3 short seizures per month"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 29 years old",
+      "On 2 different daily seizure medicines for 6 months",
+      "Keeps having 3 short fits a month"
+    ],
+    "changed_fact": [
+      "Speaker is 29 years old",
+      "Has taken 2 different seizure medicines daily for 6 months",
+      "Just had 3 brief fits this hour"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 29 years old, f2: has taken 2 different daily anticonvulsant medicines for 6 months, f3: continues to have 3 brief seizures each month) are atomic checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly (documented dialect meaning of 'fits' in core lexicon is seizures).",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly and retains dialect form ('fits').",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only the seizure frequency timeframe in f3 ('still have 3 brief fits each month' -> 'just had 3 brief fits this hour') with zero added facts."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 5 texts (no laterality).",
+    "timing": "Identical across all 4 non-control texts ('daily'/'every day' 'for 6 months'; 'each month'/'per month'/'a month'); changed_fact shifts only f3 rate window to 'this hour'.",
+    "count_and_numbers": "Identical and unambiguous across all 5 texts ('29' years old, '2 different'/'2 distinct' anticonvulsant/seizure medicines, '6' months, '3' brief/short seizures/fits).",
+    "severity_and_quality": "Identical ('brief'/'short' seizures/fits) across all 5 texts.",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

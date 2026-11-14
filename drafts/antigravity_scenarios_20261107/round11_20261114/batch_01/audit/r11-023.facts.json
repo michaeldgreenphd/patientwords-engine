@@ -1,0 +1,52 @@
+{
+  "family_id": "r11-023",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Brushed left forearm against a hot oven rack 3 days ago",
+      "Has a 2 cm patch of mild cutaneous erythema",
+      "Dry superficial desquamation on the patch today"
+    ],
+    "everyday": [
+      "Brushed left forearm against a hot oven rack 3 days ago",
+      "Has a 2 cm patch of mild skin redness",
+      "Dry peeling skin on the patch today"
+    ],
+    "medical_paraphrase": [
+      "Brushed left forearm on a hot oven rack 3 days ago",
+      "Developed a 2 cm area of mild epidermal erythema",
+      "Dry surface scaling on the area today"
+    ],
+    "everyday_paraphrase": [
+      "Brushed left forearm on a hot oven rack 3 days ago",
+      "Got a 2 cm spot of mild skin redness",
+      "Dry flaking skin on the spot today"
+    ],
+    "changed_fact": [
+      "Brushed left forearm against a hot oven rack 3 days ago",
+      "Has a 2 cm patch of mild skin redness",
+      "Patch is oozing thick yellow pus today"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: brushed left forearm against a hot oven rack 3 days ago, f2: 2 cm patch of mild skin redness, f3: dry peeling skin on the patch today) are atomic checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only f3 ('with dry peeling skin' -> 'oozing thick yellow pus') with identical 'today' timing and zero added facts."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 5 texts ('left forearm').",
+    "timing": "Identical across all 5 texts ('3 days ago'; 'today').",
+    "count_and_numbers": "Identical across all 5 texts ('3' days ago, '2 cm'); no ambiguous quantities.",
+    "severity_and_quality": "Identical ('mild' erythema/redness, 'dry' superficial desquamation/peeling/scaling/flaking) across all 4 non-control texts; changed_fact substitutes single localized purulent sign ('oozing thick yellow pus').",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

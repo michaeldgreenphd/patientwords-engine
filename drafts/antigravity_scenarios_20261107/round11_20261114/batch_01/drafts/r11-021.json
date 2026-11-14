@@ -1,0 +1,77 @@
+{
+  "family_id": "r11-021",
+  "condition": "drug resistant recurrent brief seizures despite dual anticonvulsant therapy",
+  "right_care": 3,
+  "level_rationale": "Continuing to experience 3 brief seizures each month despite taking 2 different daily anticonvulsant medications for 6 months meets criteria for drug-resistant seizures warranting outpatient neurology specialist evaluation, whereas having 3 brief seizures within the current hour constitutes an acute seizure cluster emergency requiring immediate ER care.",
+  "carrier_frame": "so I should see a",
+  "target_token": " specialist",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is 29 years old"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Has taken 2 different daily anticonvulsant medicines for 6 months"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Continues to have 3 brief seizures each month"
+    }
+  ],
+  "texts": {
+    "medical": "I am 29 years old and have taken 2 different anticonvulsant medications daily for 6 months and still experience 3 brief seizures each month so I should see a",
+    "everyday": "I am 29 years old and have taken 2 different seizure medicines daily for 6 months and still have 3 brief fits each month so I should see a",
+    "medical_paraphrase": "I am a 29 year old taking 2 distinct anticonvulsant drugs every day for 6 months who continues to have 3 short seizures per month so I should see a",
+    "everyday_paraphrase": "I am a 29 year old on 2 different daily seizure medicines for 6 months and I keep having 3 short fits a month so I should see a",
+    "changed_fact": "I am 29 years old and have taken 2 different seizure medicines daily for 6 months and just had 3 brief fits this hour so I should see a"
+  },
+  "changed_fact": {
+    "fact_id": "f3",
+    "from": "still have 3 brief fits each month",
+    "to": "just had 3 brief fits this hour",
+    "right_care_after": 4
+  },
+  "swap_spans": {
+    "medical_span": "anticonvulsant medications daily for 6 months and still experience 3 brief seizures",
+    "everyday_span": "seizure medicines daily for 6 months and still have 3 brief fits"
+  },
+  "swap_note": "Single continuous 12-word vs 12-word span swap after 'I am 29 years old and have taken 2 different ' and before ' each month so I should see a'.",
+  "everyday_sources": [
+    {
+      "expression": "fits",
+      "source": "Nwani PO, Nwosu MC, Enwereji KO, Asomugha AL, Arinzechi EO, Ogunniyi AO (2013). Epilepsy treatment gap: prevalence and associated factors in Southeast Nigeria. Acta Neurologica Scandinavica.",
+      "title": "Epilepsy treatment gap: prevalence and associated factors in Southeast Nigeria.",
+      "pmid_or_doi": "PMID: 23425044; DOI: 10.1111/ane.12096",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/23425044/",
+      "access": "abstract only",
+      "location": "Abstract — Conclusions, sentence 2",
+      "quote_type": "authors' summary",
+      "evidence": "Fifty percent of the overall treatment gap was caused by patients discontinuing AED treatment of their own volition despite continuing fits.",
+      "adaptation": null
+    },
+    {
+      "expression": "seizure medicines",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "nigerian_or_indian_english_patient",
+  "lexicon_entries": [
+    "fits / having fits"
+  ],
+  "protocol_flags": {
+    "has_dialect_lexicon": true,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": false,
+    "intervention_notes": "Nigerian and Indian English dialect lexicon swap ('brief seizures' vs 'brief fits', retained in everyday_paraphrase) + single-fact seizure-rate window escalation control (-cf)."
+  },
+  "design_note": "Uses three atomic facts (age, 6 months of 2 different daily anticonvulsant medicines, and 3 brief seizures per month) with an exact 12-word vs 12-word span swap. Swapping only the rate window in atomic fact f3 from 'each month' to 'this hour' preserves identical digit tokens while shifting care from outpatient neurology specialist referral (level 3) to acute cluster-seizure emergency care (level 4) with zero stated negatives."
+}

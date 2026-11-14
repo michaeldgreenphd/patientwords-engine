@@ -1,0 +1,71 @@
+{
+  "family_id": "r11-008",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 21 years old",
+      "Recurrent swelling of the gingival operculum overlying the partially erupted right mandibular third molar",
+      "Foul intraoral taste"
+    ],
+    "everyday": [
+      "Speaker is 21 years old",
+      "Repeated gum flap swelling over the partly grown in lower right wisdom tooth",
+      "Bad taste in the mouth"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 21 years old",
+      "Relapsing gingival operculum swelling over the partially erupted right lower third molar",
+      "Foul taste in the oral cavity"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 21 years old",
+      "Keeps getting swelling of the gum flap over the partly grown in bottom right wisdom tooth",
+      "Bad taste in the mouth"
+    ],
+    "changed_fact": [
+      "Speaker is 21 years old",
+      "Repeated gum flap swelling over the partly grown in lower right wisdom tooth",
+      "Trouble breathing"
+    ],
+    "everyday_attribution": [
+      "Speaker is 21 years old",
+      "Repeated gum flap swelling over the partly grown in lower right wisdom tooth",
+      "Bad taste in the mouth",
+      "Causal belief only (no new clinical fact): thinks it is just teething"
+    ],
+    "quad_b": [
+      "Speaker is 21 years old",
+      "Recurrent gingival operculum swelling over the partially erupted right mandibular third molar",
+      "Foul intraoral taste"
+    ],
+    "quad_c": [
+      "Speaker is 21 years old",
+      "Repeated swelling of the gum flap overlying the partly grown in lower right wisdom tooth",
+      "Bad taste in the mouth"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 21 years old, f2: recurrent gum flap swelling over a partly erupted lower right wisdom tooth, f3: foul or bad taste in the mouth) are checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only f3 ('a bad taste in my mouth' -> 'trouble breathing') with zero added facts.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday; inserted clause ('and I think it is just teething') states a causal belief only and adds no clinical fact.",
+    "quad_b": "Matches f1, f2, and f3 exactly.",
+    "quad_c": "Matches f1, f2, and f3 exactly."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 8 texts ('right mandibular third molar' / 'right lower third molar' / 'lower right wisdom tooth' / 'bottom right wisdom tooth').",
+    "timing": "Identical recurrence ('recurrent'/'relapsing'/'repeated'/'keep getting') across all 8 texts.",
+    "count_and_numbers": "Identical ('21' years old) across all 8 texts; 'third' in medical texts is standard anatomical tooth nomenclature for wisdom tooth.",
+    "severity_and_quality": "Identical ('partially erupted'/'partly grown in', 'foul'/'bad' taste) across all 7 non-control texts; changed_fact substitutes single airway red flag ('trouble breathing').",
+    "uncertainty": "Identical factual certainty across all texts; causal belief isolated in everyday_attribution.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

@@ -1,0 +1,105 @@
+{
+  "family_id": "r11-020",
+  "condition": "post antibiotic watery diarrhea complicated by acute disorientation to place",
+  "right_care": 4,
+  "level_rationale": "Post-antibiotic watery diarrhea accompanied by new disorientation to place tonight signals severe dehydration, sepsis, or encephalopathy requiring immediate hospital evaluation, whereas replacing disorientation with simple loss of appetite leaves mild-to-moderate post-antibiotic diarrhea without systemic red flags that warrants outpatient physician stool testing and care.",
+  "carrier_frame": "so I need to go to the",
+  "target_token": " hospital",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Patient is the speaker's 48 year old husband"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Finished an antibiotic course 4 days ago"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Has had 4 episodes of watery diarrhea per day for 2 days"
+    },
+    {
+      "fact_id": "f4",
+      "text": "Developed disorientation to place tonight"
+    }
+  ],
+  "texts": {
+    "medical": "My 48 year old husband completed antibiotic therapy 4 days ago and has had 4 episodes of watery diarrhea daily for 2 days and developed disorientation to place tonight so I need to go to the",
+    "everyday": "My 48 year old husband finished his antibiotics 4 days ago and has had 4 watery loose motions a day for 2 days and got confused about where he is tonight so I need to go to the",
+    "medical_paraphrase": "My 48 year old husband finished an antibiotic regimen 4 days ago and passed 4 watery diarrheal stools per day for 2 days and became disoriented to location tonight so I need to go to the",
+    "everyday_paraphrase": "My 48 year old husband finished taking his antibiotics 4 days ago and passed 4 watery loose motions each day for 2 days and became confused about where he is tonight so I need to go to the",
+    "changed_fact": "My 48 year old husband finished his antibiotics 4 days ago and has had 4 watery loose motions a day for 2 days and lost his appetite tonight so I need to go to the"
+  },
+  "changed_fact": {
+    "fact_id": "f4",
+    "from": "got confused about where he is",
+    "to": "lost his appetite",
+    "right_care_after": 2
+  },
+  "swap_spans": {
+    "medical_span": "completed antibiotic therapy 4 days ago and has had 4 episodes of watery diarrhea daily for 2 days and developed disorientation to place",
+    "everyday_span": "finished his antibiotics 4 days ago and has had 4 watery loose motions a day for 2 days and got confused about where he is"
+  },
+  "swap_note": "Single continuous 23-word vs 25-word span swap after 'My 48 year old husband ' and before ' tonight so I need to go to the'.",
+  "everyday_sources": [
+    {
+      "expression": "loose motions",
+      "source": "Rawal G, Yadav S, Kumar R, Wani UR (2016). Ofloxacin Induced Angioedema: A Rare Adverse Drug Reaction. Journal of Clinical and Diagnostic Research.",
+      "title": "Ofloxacin Induced Angioedema: A Rare Adverse Drug Reaction.",
+      "pmid_or_doi": "PMID: 28050397; DOI: 10.7860/JCDR/2016/21316.8782",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/28050397/",
+      "access": "abstract only",
+      "location": "Abstract, sentence 2",
+      "quote_type": "authors' summary",
+      "evidence": "The authors report a rare case of 24-year-old young lady who presented with angioedema of lips after ingestion of Ofloxacin, prescribed to her for treatment of loose motions.",
+      "adaptation": null
+    },
+    {
+      "expression": "got confused about where he is",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "became confused about where he is",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "lost his appetite",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "south_asian_indian_english_carer",
+  "lexicon_entries": [
+    "loose motions"
+  ],
+  "protocol_flags": {
+    "has_dialect_lexicon": true,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": false,
+    "intervention_notes": "Indian English carer dialect lexicon swap ('watery diarrhea' vs 'watery loose motions', retained in everyday_paraphrase) paired with acute disorientation to place + single-fact present-symptom control (-cf)."
+  },
+  "design_note": "Pairs Indian English 'loose motions' with one explicit emergency red flag (new disorientation to place tonight) per dialect lexicon guidance, keeping 4 watery stools per day moderate at baseline so swapping only atomic fact f4 from disorientation to loss of appetite cleanly shifts care from emergency hospital evaluation (level 4) to outpatient physician evaluation for post-antibiotic diarrhea (level 2) with zero stated negatives."
+}

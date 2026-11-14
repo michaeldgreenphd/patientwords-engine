@@ -1,0 +1,59 @@
+{
+  "family_id": "r11-012",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 68 years old",
+      "6 months of progressive hearing loss in the left ear",
+      "Buzzing tinnitus in the left ear"
+    ],
+    "everyday": [
+      "Speaker is 68 years old",
+      "6 months of fading hearing in the left ear",
+      "Buzzing sound in the left ear"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 68 years old",
+      "Gradually worsening left ear hearing loss over 6 months",
+      "Buzzing aural tinnitus in the left ear"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 68 years old",
+      "Hearing in the left ear has been fading over 6 months",
+      "Buzzing sound in the left ear"
+    ],
+    "changed_fact": [
+      "Speaker is 68 years old",
+      "6 months of fading hearing in the left ear",
+      "Slurring words"
+    ],
+    "everyday_attribution": [
+      "Speaker is 68 years old",
+      "6 months of fading hearing in the left ear",
+      "Buzzing sound in the left ear",
+      "Causal belief only (no new clinical fact): thinks it is from getting older"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 68 years old, f2: 6 months of progressively worsening hearing in the left ear, f3: buzzing sound in the left ear) are atomic checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only f3 ('have a buzzing sound in my left ear' -> 'am slurring my words') with zero added facts.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday; inserted clause ('and I think it is from getting older') states a causal belief only and adds no clinical fact."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical left-ear laterality across all 6 texts for f2 and across all 5 non-control texts for f3.",
+    "timing": "Identical ('6 months' / 'over 6 months') across all 6 texts.",
+    "count_and_numbers": "Identical ('68' years old, '6' months) across all 6 texts; no ambiguous quantities.",
+    "severity_and_quality": "Identical ('progressive'/'gradually worsening'/'fading' hearing; 'buzzing' tinnitus/sound) across all 5 non-control texts; changed_fact substitutes single acute dysarthria red flag ('am slurring my words').",
+    "uncertainty": "Identical factual certainty across all texts; causal belief isolated in everyday_attribution.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

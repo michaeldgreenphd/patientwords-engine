@@ -1,0 +1,52 @@
+{
+  "family_id": "r11-019",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 42 years old",
+      "3 weeks of daily mild dull frontal cephalalgia",
+      "Experienced abrupt syncope today"
+    ],
+    "everyday": [
+      "Speaker is 42 years old",
+      "3 weeks of daily mild dull forehead headaches",
+      "Suddenly fell out (fainted / lost consciousness) today"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 42 years old",
+      "Mild dull frontal head pain every day for 3 weeks",
+      "Suffered an abrupt syncopal episode today"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 42 years old",
+      "Mild dull headaches in the forehead every day for 3 weeks",
+      "Suddenly falling out (fainting / losing consciousness) today"
+    ],
+    "changed_fact": [
+      "Speaker is 42 years old",
+      "3 weeks of daily mild dull forehead headaches",
+      "Had trouble concentrating today"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 42 years old, f2: mild dull forehead headaches every day for 3 weeks, f3: suddenly lost consciousness today) are atomic checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly (documented dialect meaning of 'fell out' in core lexicon is fainted / lost consciousness).",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly and retains dialect form ('falling out').",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only f3 ('suddenly fell out' -> 'had trouble concentrating') with identical 'today' timing and zero added facts."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 5 texts ('frontal' / 'forehead').",
+    "timing": "Identical across all 5 texts ('3 weeks' daily/every day; 'today').",
+    "count_and_numbers": "Identical across all 5 texts ('42', '3' weeks); no ambiguous quantities.",
+    "severity_and_quality": "Identical ('mild dull' headache; 'abrupt'/'suddenly' syncope/falling out) across all 4 non-control texts; changed_fact substitutes single benign symptom ('had trouble concentrating').",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

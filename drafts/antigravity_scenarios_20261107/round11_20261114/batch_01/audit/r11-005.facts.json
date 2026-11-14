@@ -1,0 +1,67 @@
+{
+  "family_id": "r11-005",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is a 68 year old woman",
+      "Has hyperopia",
+      "Developed acute severe right ocular pain tonight"
+    ],
+    "everyday": [
+      "Speaker is a 68 year old woman",
+      "Is farsighted",
+      "Got sudden severe pain in the right eye tonight"
+    ],
+    "medical_paraphrase": [
+      "Speaker is a 68 year old female",
+      "Has hyperopia",
+      "Experienced abrupt severe right ocular pain tonight"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is a 68 year old woman",
+      "Has farsightedness",
+      "Started having sudden severe pain in the right eye tonight"
+    ],
+    "changed_fact": [
+      "Speaker is a 68 year old woman",
+      "Is farsighted",
+      "Got pus draining beside the right thumbnail tonight"
+    ],
+    "everyday_attribution": [
+      "Speaker is a 68 year old woman",
+      "Is farsighted",
+      "Got sudden severe pain in the right eye tonight",
+      "Causal belief only (no new clinical fact): thinks it is allergies"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 68 year old woman, f2: speaker is farsighted, f3: developed sudden severe pain in the right eye tonight) are strictly atomic, single checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only f3 ('got sudden severe pain in my right eye' -> 'got pus draining beside my right thumbnail') with identical 'tonight' timing and zero added facts.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday; inserted clause ('and I think it is allergies') states a causal belief only and adds no clinical fact."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 5 non-control texts ('right ocular' / 'right eye').",
+    "timing": "Identical across all 6 texts (baseline farsightedness; 'tonight' for acute symptom onset).",
+    "count_and_numbers": "Identical across all 6 texts ('68' years old); no ambiguous quantities.",
+    "severity_and_quality": "Identical across all 5 non-control texts ('acute'/'abrupt'/'sudden' + 'severe' pain); changed_fact substitutes single outpatient finding ('pus draining beside my right thumbnail').",
+    "uncertainty": "Identical factual certainty across all texts; causal belief isolated in everyday_attribution.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [
+    {
+      "kind": "other",
+      "applies_to": [
+        "chg"
+      ],
+      "note": "Fact-level swap changes only f3, though substituting a non-ocular finding ('pus draining beside my right thumbnail') leaves f2 ('who is farsighted') contextually unmotivated in changed_fact; noted for patient-language review."
+    }
+  ],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

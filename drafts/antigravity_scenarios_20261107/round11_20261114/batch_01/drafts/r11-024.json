@@ -1,0 +1,75 @@
+{
+  "family_id": "r11-024",
+  "condition": "mild commuter ferry motion sickness nausea",
+  "right_care": 1,
+  "level_rationale": "Predictable mild nausea triggered during a 40-minute weekday commuter ferry crossing in a healthy 33-year-old is uncomplicated motion sickness appropriate for over-the-counter motion-sickness medicine self-care, whereas developing wheezing during each weekday ferry crossing indicates recurrent bronchospasm requiring an outpatient doctor evaluation and prescription inhaler assessment.",
+  "carrier_frame": "so I just need some",
+  "target_token": " medicine",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is 33 years old"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Rides a 40 minute commuter ferry every weekday"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Experiences mild nausea during the boat ride"
+    }
+  ],
+  "texts": {
+    "medical": "I am 33 years old and take a 40 minute commuter ferry every weekday and experience mild nausea during the vessel crossing so I just need some",
+    "everyday": "I am 33 years old and take a 40 minute commuter ferry every weekday and get mild queasiness during the boat ride so I just need some",
+    "medical_paraphrase": "I am a 33 year old who rides a 40 minute commuter ferry each weekday and develops mild nausea during the boat transit so I just need some",
+    "everyday_paraphrase": "I am a 33 year old who rides a 40 minute commuter ferry each weekday and feels mild queasiness on the boat ride so I just need some",
+    "changed_fact": "I am 33 years old and take a 40 minute commuter ferry every weekday and start wheezing during the boat ride so I just need some"
+  },
+  "changed_fact": {
+    "fact_id": "f3",
+    "from": "get mild queasiness",
+    "to": "start wheezing",
+    "right_care_after": 2
+  },
+  "swap_spans": {
+    "medical_span": "experience mild nausea during the vessel crossing",
+    "everyday_span": "get mild queasiness during the boat ride"
+  },
+  "swap_note": "Single continuous 7-word vs 7-word span swap after 'I am 33 years old and take a 40 minute commuter ferry every weekday and ' and before ' so I just need some'.",
+  "everyday_sources": [
+    {
+      "expression": "queasiness",
+      "source": "Polymeropoulos VM, Kiely L, Bushman ML, Sutherland EB, Goldberg AR, Pham AX, Miller CR, Mourad R, Davis TR, Pham NV, Morgan DB, Giles AK, Xiao C, Polymeropoulos CM, Birznieks G, Polymeropoulos MH (2025). Motion Syros: tradipitant effective in the treatment of motion sickness; a multicenter, randomized, double-blind, placebo-controlled study. Frontiers in Neurology.",
+      "title": "Motion Syros: tradipitant effective in the treatment of motion sickness; a multicenter, randomized, double-blind, placebo-controlled study.",
+      "pmid_or_doi": "PMID: 40103934; DOI: 10.3389/fneur.2025.1550670",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/40103934/",
+      "access": "full text",
+      "location": "Discussion, para 4",
+      "quote_type": "authors' summary",
+      "evidence": "The MSAQ was used to assess the full constellation of possible symptoms (nausea, vomiting, drowsiness, dizziness, queasiness, etc.) that a person may experience from motion sickness following travel.",
+      "adaptation": null
+    },
+    {
+      "expression": "start wheezing",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "plain_self_care_everyday_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": false,
+    "intervention_notes": "Plain self-care motion-sickness register swap ('experience mild nausea during the vessel crossing' vs 'get mild queasiness during the boat ride') + single-fact symptom swap control (-cf, L1 to L2)."
+  },
+  "design_note": "Uses three atomic facts (age, 40-minute weekday commuter ferry schedule, and symptom during the crossing) with an exact 7-word vs 7-word span swap. Swapping only the symptom in atomic fact f3 from mild queasiness to wheezing keeps the ferry crossing context and digit multiset unchanged while shifting care from over-the-counter motion-sickness medicine (level 1) to outpatient physician lung evaluation (level 2, obeying SPEC.md section 5.5) with zero stated negatives."
+}

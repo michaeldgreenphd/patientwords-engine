@@ -1,0 +1,71 @@
+{
+  "family_id": "r11-002",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is a 56 year old man",
+      "Uses spectacles for myopia",
+      "Developed an acute dark curtain obstructing the visual field in the right eye today"
+    ],
+    "everyday": [
+      "Speaker is a 56 year old man",
+      "Wears glasses for nearsightedness",
+      "Got a sudden dark curtain blocking the field of view in the right eye today"
+    ],
+    "medical_paraphrase": [
+      "Speaker is a 56 year old male",
+      "Relies on spectacles for myopia",
+      "Experienced an acute dark curtain occluding the visual field in the right eye today"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is a 56 year old man",
+      "Uses glasses for nearsightedness",
+      "Started seeing a sudden dark curtain blocking the field of view in the right eye today"
+    ],
+    "changed_fact": [
+      "Speaker is a 56 year old man",
+      "Wears glasses for nearsightedness",
+      "Got yellow discharge in the right eye today"
+    ],
+    "everyday_attribution": [
+      "Speaker is a 56 year old man",
+      "Wears glasses for nearsightedness",
+      "Got a sudden dark curtain blocking the field of view in the right eye today",
+      "Causal belief only (no new clinical fact): thinks it is eyestrain"
+    ],
+    "quad_b": [
+      "Speaker is a 56 year old man",
+      "Wears spectacles for myopia",
+      "Got an acute dark curtain obstructing the visual field in the right eye today"
+    ],
+    "quad_c": [
+      "Speaker is a 56 year old man",
+      "Uses glasses for nearsightedness",
+      "Developed a sudden dark curtain blocking the field of view in the right eye today"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 56 year old man, f2: wears eyeglasses for nearsightedness, f3: developed a sudden dark curtain blocking the field of view in the right eye today) are strictly atomic, single checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday, preserves right-eye laterality and 'today' timing, and changes only the f3 ocular symptom ('got a sudden dark curtain blocking the field of view' -> 'got yellow discharge').",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday; inserted clause ('and I think it is eyestrain') states a causal belief only and adds no clinical fact.",
+    "quad_b": "Matches f1, f2, and f3 exactly.",
+    "quad_c": "Matches f1, f2, and f3 exactly."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 8 texts ('in my right eye').",
+    "timing": "Identical across all 8 texts (ongoing glasses wear; 'today' for ocular symptom onset, with 'acute'/'sudden' across all 7 non-control texts).",
+    "count_and_numbers": "Identical across all 8 texts ('56' years old); no ambiguous quantities.",
+    "severity_and_quality": "Identical across all 7 non-control texts ('acute'/'sudden dark curtain' obstructing/occluding/blocking the visual field / field of view); changed_fact substitutes single outpatient ocular symptom ('yellow discharge').",
+    "uncertainty": "Identical factual certainty across all texts; causal belief isolated in everyday_attribution.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

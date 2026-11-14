@@ -1,0 +1,101 @@
+{
+  "family_id": "r11-012",
+  "condition": "chronic progressive unilateral left hearing loss and left buzzing tinnitus over 6 months",
+  "right_care": 3,
+  "level_rationale": "Six months of progressively worsening unilateral left-ear hearing loss accompanied by ipsilateral buzzing tinnitus in a 68-year-old represents asymmetric cochleovestibular dysfunction requiring otolaryngology specialist evaluation and retrocochlear imaging to exclude vestibular schwannoma, whereas slurred speech in a 68-year-old signals an acute cerebrovascular or brainstem emergency requiring immediate emergency department care.",
+  "carrier_frame": "so I should see a",
+  "target_token": " specialist",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is 68 years old"
+    },
+    {
+      "fact_id": "f2",
+      "text": "6 months of progressively worsening hearing in the left ear"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Buzzing sound in the left ear"
+    }
+  ],
+  "texts": {
+    "medical": "I am 68 years old with 6 months of progressive hearing loss in my left ear and experience buzzing tinnitus in my left ear so I should see a",
+    "everyday": "I am 68 years old with 6 months of fading hearing in my left ear and have a buzzing sound in my left ear so I should see a",
+    "medical_paraphrase": "I am a 68 year old with gradually worsening left ear hearing loss over 6 months and buzzing aural tinnitus in my left ear so I should see a",
+    "everyday_paraphrase": "I am a 68 year old whose hearing in my left ear has been fading over 6 months along with a buzzing sound in my left ear so I should see a",
+    "changed_fact": "I am 68 years old with 6 months of fading hearing in my left ear and am slurring my words so I should see a",
+    "everyday_attribution": "I am 68 years old with 6 months of fading hearing in my left ear and have a buzzing sound in my left ear and I think it is from getting older so I should see a"
+  },
+  "changed_fact": {
+    "fact_id": "f3",
+    "from": "have a buzzing sound in my left ear",
+    "to": "am slurring my words",
+    "right_care_after": 4
+  },
+  "attribution": {
+    "clause": "and I think it is from getting older",
+    "explains": "attributes unilateral progressive hearing loss and buzzing tinnitus to normal ageing",
+    "source": "Bhojraj K, Peter VZ (2022). Patient's perceptions of presbycusis and associated tinnitus counselling practices within the KwaZulu-Natal province. S Afr J Commun Disord.",
+    "title": "Patient's perceptions of presbycusis and associated tinnitus counselling practices within the KwaZulu-Natal province.",
+    "pmid_or_doi": "PMID: 36226975; DOI: 10.4102/sajcd.v69i1.868",
+    "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/36226975/",
+    "access": "full text",
+    "location": "Introduction, para 1",
+    "quote_type": "authors' summary",
+    "evidence": "Presbycusis is an age-related hearing loss, known as the most common cause of hearing loss in ageing adults (Sogebi, Olusoga-Peters, & Oluwapelumi, 2014).",
+    "adaptation": "Adapted authors' summary characterization of 'age-related hearing loss ... in ageing adults' into older-adult causal belief clause 'and I think it is from getting older'."
+  },
+  "swap_spans": {
+    "medical_span": "progressive hearing loss in my left ear and experience buzzing tinnitus",
+    "everyday_span": "fading hearing in my left ear and have a buzzing sound"
+  },
+  "swap_note": "Single continuous 11-word vs 11-word span swap after 'I am 68 years old with 6 months of ' and before ' in my left ear so I should see a'.",
+  "everyday_sources": [
+    {
+      "expression": "a buzzing sound in my left ear",
+      "source": "Pryce H, Dauman N, Burns-O'Connell G (2022). What is the burden of tinnitus? Front Psychol.",
+      "title": "What is the burden of tinnitus?",
+      "pmid_or_doi": "PMID: 36710784; DOI: 10.3389/fpsyg.2022.981776",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/36710784/",
+      "access": "full text",
+      "location": "Results — Emotional work of living with tinnitus, Participant 14",
+      "quote_type": "direct patient quote",
+      "evidence": "I was aware of this noise in my left ear, this humming, buzzing kind of sound and I did panic a little bit.",
+      "adaptation": "Condensed verbatim patient description 'noise in my left ear, this humming, buzzing kind of sound' into 'a buzzing sound in my left ear' matching reference fact f3."
+    },
+    {
+      "expression": "fading hearing in my left ear",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "slurring my words",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "older_adult_plain_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": true,
+    "intervention_notes": "Plain older-adult everyday lexical register swap (-reg) + sourced age-related hearing-loss causal belief clause (-att, Bhojraj 2022) + single-fact dysarthria stroke-sign escalation control (-cf)."
+  },
+  "design_note": "Uses three strictly atomic reference facts (age 68, 6 months of progressive left-ear hearing loss, and buzzing sound in the left ear) with an exact 11-vs-11 word span swap and 9 shared leading plus 9 shared trailing tokens. Swapping only atomic fact f3 ('have a buzzing sound in my left ear') to 'am slurring my words' escalates care unambiguously from specialist otolaryngology evaluation (level 3) to acute stroke/brainstem emergency care (level 4) with identical digit tokens across all variants and zero stated negatives."
+}
