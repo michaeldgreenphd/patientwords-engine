@@ -138,3 +138,21 @@ If many controls use a few stock phrases, a response to the controls would tell 
 - prefer a measured-value or same-symptom change under rule A, because those differ from family to family by their nature.
 
 Do not rewrite batches 01 and 02 for this.
+
+## After batch 03 (commit 70861405f), reviewed 2026-11-14
+
+Accepted, with no corrections.
+
+- **Batch 02 follow-up.** The level concerns for r11-039 and r11-040 were added, and intake accepts the file.
+- **Gates.** G2 and G3 reproduce exactly: 60 pairs, 0 errors, 10 number warnings on measured-value controls, which are expected.
+- **Citations.** All 17 PubMed rows and all 4 Wiktionary rows verify.
+- **Rule A.** Every control stays inside its case. Good examples:
+  - r11-051: the groin lump "stays soft and flattens right back in whenever I lie down";
+  - r11-052: 39 C becomes 37 C;
+  - r11-065: 154 over 96 becomes 118 over 74;
+  - r11-069: oximeter 95 becomes 79 percent.
+- **Rule D.** No control reuses the new value of an earlier family.
+- **Level concerns.** `@level` recorded concerns again (r11-049, -055, -056, -060, -063, -067), at the standard asked for.
+- **Other rules.** No stated negatives. Composition matches SPEC section 3. Nothing outside `round11_20261114/` changed.
+
+Continue with batch 04 under rules A to D.
