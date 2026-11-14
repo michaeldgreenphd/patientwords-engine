@@ -36,12 +36,12 @@
 
 - `r11-011-cf` (`changed_fact_control`): `number: the everyday span drops ['3']` — Expected single-fact control difference (`SPEC.md` §2 & §5.5): `changed_fact` replaces `f3` (`"wash my hands over and over for 3 hours"` -> `"carry hand sanitizer"`, `right_care_after=1`); unlike `register_swap`, the 2-word length rule applies only to `medical` vs `everyday`.
 - `r11-014-cf` (`changed_fact_control`): `number: the everyday span adds ['40']` — Expected single-fact control difference (`SPEC.md` §2 & §5.5): `changed_fact` replaces `f4` (`"with joint swelling"` -> `"and a 40 C fever"`, `right_care_after=4`); unlike `register_swap`, the 2-word length rule applies only to `medical` vs `everyday`.
-- `r11-016-cf` (`changed_fact_control`): `number: the everyday span adds ['2']` — Expected single-fact control difference (`SPEC.md` §2 & §5.5): `changed_fact` replaces `f3` (`"still have thick white vaginal discharge"` -> `"have fainted 2 times"`, `right_care_after=4`); unlike `register_swap`, the 2-word length rule applies only to `medical` vs `everyday`.
+- `r11-015-cf` (`changed_fact_control`): `number: the everyday span adds ['40']` — Expected single-fact control difference (`SPEC.md` §2 & §5.5): `changed_fact` replaces `f3` (`"with honey colored crusts on those sores"` -> `"and got a 40 C fever"`, `right_care_after=4`); unlike `register_swap`, the 2-word length rule applies only to `medical` vs `everyday`.
 
 ## 4. Source Fit and Unsourced Expressions
 
-- **Cited expressions (`source_fit.json`):** `42` total — `same`: `39` (`92.9%`), `adjacent`: `3`, `different`: `0` (target `>= 50%` `same`: `MET`).
-- **Unsourced expressions/attributions (`"source": "none"`):** `52` items across `24` families (full table in `sources.md`).
+- **Cited expressions (`source_fit.json`):** `37` total — `same`: `34` (`91.9%`), `adjacent`: `3`, `different`: `0` (target `>= 50%` `same`: `MET`).
+- **Unsourced expressions/attributions (`"source": "none"`):** `57` items across `24` families (full table in `sources.md`).
 
 ## 5. Stated Negatives (`<= 3` per batch)
 
@@ -49,5 +49,5 @@
 
 ## 6. Self-Reported Concerns (`concerns_selfreported.json`)
 
-- **Total non-blocking auditor notes recorded for human reviewers:** `24` (`level_disputed`: 1, `other`: 3, `source_fit`: 5, `wording`: 15)
+- **Total non-blocking auditor notes recorded for human reviewers:** `21` (`control_level_disputed`: 2, `level_disputed`: 1, `source_fit`: 5, `wording`: 13)
 - All concerns remain open (`pending_clinical_review`, `pending_patient_language_review`, or `open`) for human disposition.

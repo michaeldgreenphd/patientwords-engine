@@ -2,7 +2,7 @@
   "family_id": "r11-024",
   "condition": "mild commuter ferry motion sickness nausea",
   "right_care": 1,
-  "level_rationale": "Predictable mild nausea triggered during a 40-minute weekday commuter ferry crossing in a healthy 33-year-old is uncomplicated motion sickness appropriate for over-the-counter motion-sickness medicine self-care, whereas developing wheezing during each weekday ferry crossing indicates recurrent bronchospasm requiring an outpatient doctor evaluation and prescription inhaler assessment.",
+  "level_rationale": "Predictable mild nausea triggered during a 40-minute weekday commuter ferry crossing in a healthy 33-year-old is uncomplicated motion sickness appropriate for over-the-counter motion-sickness medicine self-care, whereas throwing up repeatedly during each weekday ferry crossing risks dehydration, electrolyte loss, and poor retention of oral over-the-counter tablets and warrants an outpatient doctor visit for clinical assessment and prescription antiemetic or transdermal therapy.",
   "carrier_frame": "so I just need some",
   "target_token": " medicine",
   "reference_facts": [
@@ -24,12 +24,12 @@
     "everyday": "I am 33 years old and take a 40 minute commuter ferry every weekday and get mild queasiness during the boat ride so I just need some",
     "medical_paraphrase": "I am a 33 year old who rides a 40 minute commuter ferry each weekday and develops mild nausea during the boat transit so I just need some",
     "everyday_paraphrase": "I am a 33 year old who rides a 40 minute commuter ferry each weekday and feels mild queasiness on the boat ride so I just need some",
-    "changed_fact": "I am 33 years old and take a 40 minute commuter ferry every weekday and start wheezing during the boat ride so I just need some"
+    "changed_fact": "I am 33 years old and take a 40 minute commuter ferry every weekday and throw up repeatedly during the boat ride so I just need some"
   },
   "changed_fact": {
     "fact_id": "f3",
     "from": "get mild queasiness",
-    "to": "start wheezing",
+    "to": "throw up repeatedly",
     "right_care_after": 2
   },
   "swap_spans": {
@@ -51,7 +51,7 @@
       "adaptation": null
     },
     {
-      "expression": "start wheezing",
+      "expression": "throw up repeatedly",
       "source": "none",
       "title": null,
       "pmid_or_doi": null,
@@ -69,7 +69,7 @@
     "has_dialect_lexicon": false,
     "has_quad_2x2_syntax": false,
     "has_patient_attribution": false,
-    "intervention_notes": "Plain self-care motion-sickness register swap ('experience mild nausea during the vessel crossing' vs 'get mild queasiness during the boat ride') + single-fact symptom swap control (-cf, L1 to L2)."
+    "intervention_notes": "Plain self-care motion-sickness register swap ('experience mild nausea during the vessel crossing' vs 'get mild queasiness during the boat ride') + single-fact same-case motion-sickness severity escalation control (-cf, L1 to L2)."
   },
-  "design_note": "Uses three atomic facts (age, 40-minute weekday commuter ferry schedule, and symptom during the crossing) with an exact 7-word vs 7-word span swap. Swapping only the symptom in atomic fact f3 from mild queasiness to wheezing keeps the ferry crossing context and digit multiset unchanged while shifting care from over-the-counter motion-sickness medicine (level 1) to outpatient physician lung evaluation (level 2, obeying SPEC.md section 5.5) with zero stated negatives."
+  "design_note": "Uses three atomic facts (age, 40-minute weekday commuter ferry schedule, and motion-sickness symptom during the crossing) with an exact 7-word vs 7-word span swap. Escalating only atomic fact f3 within the same motion-sickness case from mild queasiness to throwing up repeatedly during the boat ride keeps the ferry context and digit multiset unchanged while shifting care from over-the-counter motion-sickness medicine (level 1) to outpatient physician evaluation for prescription antiemetic or transdermal therapy (level 2, obeying SPEC.md section 5.5 and reviewer_notes.md Rule A) with zero stated negatives."
 }

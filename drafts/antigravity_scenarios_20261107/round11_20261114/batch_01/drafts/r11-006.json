@@ -2,7 +2,7 @@
   "family_id": "r11-006",
   "condition": "suspected acute pulmonary embolism after long-haul flight presenting with hemoptysis",
   "right_care": 4,
-  "level_rationale": "New-onset coughing up blood today in a 31-year-old woman on oral contraceptives the day after a 12-hour flight indicates suspected acute pulmonary embolism requiring immediate emergency hospital evaluation, whereas isolated blood in the urine today leaves no cardiopulmonary or thromboembolic red flags and warrants outpatient clinic urinalysis and urine culture.",
+  "level_rationale": "New-onset coughing up blood today in a 31-year-old woman on oral contraceptives the day after a 12-hour flight indicates suspected acute pulmonary embolism requiring immediate emergency hospital evaluation, whereas coughing up yellow phlegm today without hemoptysis, dyspnea, or chest pain points to an uncomplicated respiratory infection warranting non-emergent outpatient clinic evaluation.",
   "carrier_frame": "so I need to go to the",
   "target_token": " hospital",
   "reference_facts": [
@@ -28,13 +28,13 @@
     "everyday": "I'm a 31 year old woman who took a 12 hour flight yesterday while taking birth control pills and started coughing up blood today so I need to go to the",
     "medical_paraphrase": "I'm a 31 year old female who completed a 12 hour flight yesterday on oral contraceptive pills and developed new onset hemoptysis today so I need to go to the",
     "everyday_paraphrase": "I'm a 31 year old woman who flew on a 12 hour flight yesterday while on birth control pills and began coughing up blood today so I need to go to the",
-    "changed_fact": "I'm a 31 year old woman who took a 12 hour flight yesterday while taking birth control pills and saw blood in my urine today so I need to go to the",
+    "changed_fact": "I'm a 31 year old woman who took a 12 hour flight yesterday while taking birth control pills and started coughing up yellow phlegm today so I need to go to the",
     "everyday_attribution": "I'm a 31 year old woman who took a 12 hour flight yesterday while taking birth control pills and started coughing up blood today and I think it is from dry air so I need to go to the"
   },
   "changed_fact": {
     "fact_id": "f4",
     "from": "started coughing up blood",
-    "to": "saw blood in my urine",
+    "to": "started coughing up yellow phlegm",
     "right_care_after": 2
   },
   "attribution": {
@@ -81,7 +81,7 @@
       "adaptation": null
     },
     {
-      "expression": "blood in my urine",
+      "expression": "coughing up yellow phlegm",
       "source": "none",
       "title": null,
       "pmid_or_doi": null,
@@ -99,7 +99,7 @@
     "has_dialect_lexicon": false,
     "has_quad_2x2_syntax": false,
     "has_patient_attribution": true,
-    "intervention_notes": "Plain adult everyday lexical register swap (-reg) + causal belief-addition clause (-att) + single-symptom uncomplicated gross hematuria outpatient clinic control (-cf)."
+    "intervention_notes": "Plain adult everyday lexical register swap (-reg) + causal belief-addition clause (-att) + same-symptom purulent sputum outpatient clinic control (-cf)."
   },
-  "design_note": "Uses four strictly atomic reference facts (31-year-old woman, 12-hour flight yesterday, birth control pill use, and coughing up blood today) with a 1-word span difference (8 vs 9 words) and 8 shared trailing tokens ('today so I need to go to the'). Swapping only f4 from coughing up blood to seeing blood in urine shifts care from emergency hospital PE evaluation (level 4) to outpatient clinic urinalysis and culture (level 2) without triggering DVT or cardiopulmonary red flags."
+  "design_note": "Uses four strictly atomic reference facts (31-year-old woman, 12-hour flight yesterday, birth control pill use, and coughing up blood today) with a 1-word span difference (8 vs 9 words) and 8 shared trailing tokens ('today so I need to go to the'). Swapping only f4 from coughing up blood to coughing up yellow phlegm changes sputum character within the same post-flight cough presentation while shifting care from emergency hospital PE evaluation (level 4) to outpatient clinic respiratory evaluation (level 2)."
 }
