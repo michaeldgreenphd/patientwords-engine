@@ -1,0 +1,59 @@
+{
+  "family_id": "r11-057",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is a 38 year old woman with dark brown skin",
+      "Used tight hair braiding for 4 years",
+      "Developed an expanding smooth hairless patch on the vertex scalp over 6 months"
+    ],
+    "everyday": [
+      "Speaker is a 38 year old woman with dark brown skin",
+      "Wore tight braids for 4 years",
+      "Got a widening smooth bald patch on the crown over 6 months"
+    ],
+    "medical_paraphrase": [
+      "Speaker is a 38 year old woman with dark brown skin",
+      "Maintained tight hair braiding for 4 years",
+      "Noted an expanding smooth hairless patch at the vertex scalp over 6 months"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is a 38 year old woman with dark brown skin",
+      "Kept hair in tight braids for 4 years",
+      "Has a smooth bald patch growing wider on the crown over 6 months"
+    ],
+    "changed_fact": [
+      "Speaker is a 38 year old woman with dark brown skin",
+      "Wore tight braids for 4 years",
+      "Noticed mild dry white flaking on the scalp over 6 months"
+    ],
+    "everyday_attribution": [
+      "Speaker is a 38 year old woman with dark brown skin",
+      "Wore tight braids for 4 years",
+      "Got a widening smooth bald patch on the crown over 6 months",
+      "Causal belief only (no new clinical fact): thinks it is stress"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 38 year old woman with dark brown skin, f2: wore tight braided hairstyles for 4 years, f3: developed a widening smooth bald patch on the crown of the scalp over 6 months) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only the scalp finding in f3 ('got a widening smooth bald patch on my crown' -> 'noticed mild dry white flaking on my scalp') over the same 6 month period with zero added facts or stranded history.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday; inserted clause ('and I think it's stress') states a causal belief only and adds no clinical fact."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 5 non-control texts ('vertex scalp' = 'crown'); changed_fact remains on the scalp ('on my scalp') without adding any unstated anatomical subsite.",
+    "timing": "Identical across all 6 texts ('for 4 years'; 'over 6 months').",
+    "count_and_numbers": "Identical across all 6 texts ('38' years old, '4' years, '6' months); no ambiguous quantities.",
+    "severity_and_quality": "Identical across all 5 non-control texts ('tight hair braiding'/'tight braids', 'expanding smooth hairless patch'/'widening smooth bald patch'); changed_fact substitutes single benign scalp finding ('mild dry white flaking').",
+    "uncertainty": "Identical factual certainty across all texts; causal belief isolated in everyday_attribution.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

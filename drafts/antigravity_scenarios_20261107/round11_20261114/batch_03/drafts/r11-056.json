@@ -1,0 +1,103 @@
+{
+  "family_id": "r11-056",
+  "condition": "chipped lower left porcelain dental bridge with a sharp rough edge scraping the lateral tongue for 3 days",
+  "right_care": 3,
+  "level_rationale": "A chipped lower left porcelain fixed dental bridge leaving a sharp rough edge that repeatedly scrapes the lateral border of the tongue during chewing for 3 days requires dentist evaluation for prosthetic smoothing, repair, or replacement before traumatic mucosal breakdown worsens, whereas that sharp rough edge slicing a deep heavily bleeding gash into the left side of the tongue during chewing represents an acute hemorrhagic lingual laceration requiring immediate emergency department hemostasis, airway-swelling assessment, and deep tongue suturing.",
+  "carrier_frame": "so I should see a",
+  "target_token": " dentist",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Lower left porcelain dental bridge chipped 3 days ago"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Left a sharp rough edge on the bridge"
+    },
+    {
+      "fact_id": "f3",
+      "text": "The sharp edge scrapes the left side of the tongue during chewing"
+    }
+  ],
+  "texts": {
+    "medical": "My lower left porcelain fixed dental prosthesis sustained a fracture 3 days ago creating a sharp rough margin that abrades my left lateral tongue during mastication so I should see a",
+    "everyday": "My lower left porcelain dental bridge chipped 3 days ago and left a sharp rough edge that scrapes the left side of my tongue when I chew so I should see a",
+    "medical_paraphrase": "I had a fracture of my lower left porcelain fixed dental prosthesis 3 days ago leaving a sharp rough margin abrading my left lateral tongue during mastication so I should see a",
+    "everyday_paraphrase": "I chipped my lower left porcelain dental bridge 3 days ago and it has a sharp rough edge scraping the left side of my tongue whenever I chew so I should see a",
+    "changed_fact": "My lower left porcelain dental bridge chipped 3 days ago and left a sharp rough edge that sliced a deep heavily bleeding gash into the left side of my tongue when I chewed so I should see a",
+    "everyday_attribution": "My lower left porcelain dental bridge chipped 3 days ago and left a sharp rough edge that scrapes the left side of my tongue when I chew and I think I bit something hard so I should see a",
+    "quad_b": "My lower left porcelain fixed dental prosthesis fractured 3 days ago and left a sharp rough margin that abrades my left lateral tongue when I masticate so I should see a",
+    "quad_c": "My lower left porcelain dental bridge had a chip 3 days ago creating a sharp rough edge that scrapes the left side of my tongue during chewing so I should see a"
+  },
+  "changed_fact": {
+    "fact_id": "f3",
+    "from": "scrapes the left side of my tongue when I chew",
+    "to": "sliced a deep heavily bleeding gash into the left side of my tongue when I chewed",
+    "right_care_after": 4
+  },
+  "attribution": {
+    "clause": "and I think I bit something hard",
+    "explains": "attributes the chipped porcelain dental bridge to biting down on a hard object",
+    "source": "none",
+    "title": null,
+    "pmid_or_doi": null,
+    "inspected_url": null,
+    "access": null,
+    "location": null,
+    "quote_type": "none",
+    "evidence": null,
+    "adaptation": null
+  },
+  "swap_spans": {
+    "medical_span": "fixed dental prosthesis sustained a fracture 3 days ago creating a sharp rough margin that abrades my left lateral tongue during mastication",
+    "everyday_span": "dental bridge chipped 3 days ago and left a sharp rough edge that scrapes the left side of my tongue when I chew"
+  },
+  "swap_note": "Single continuous 22-word vs 23-word span swap after 'My lower left porcelain ' and before ' so I should see a'.",
+  "everyday_sources": [
+    {
+      "expression": "sharp rough edge",
+      "source": "Persson Kylén J, Björns S, Hägglin C, Grönbeck-Lindén I, Piper L, Wårdh I (2024). Decisional needs for older adults, home health care nurses and dental hygienists during team-based oral health assessments in ordinary home settings - a qualitative study. BMC Geriatr.",
+      "title": "Decisional needs for older adults, home health care nurses and dental hygienists during team-based oral health assessments in ordinary home settings - a qualitative study.",
+      "pmid_or_doi": "PMID: 39313790; DOI: 10.1186/s12877-024-05367-6",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/39313790/",
+      "access": "full text",
+      "location": "Results — Background information, Patient 14 Team D quote",
+      "quote_type": "direct patient quote",
+      "evidence": "But the one, on the other side here I feel that it is a little rough underneath.",
+      "adaptation": "Adapted older dental-bridge patient description 'feel that it is a little rough' to general adult chipped-bridge phrase 'sharp rough edge' matching reference fact f2."
+    },
+    {
+      "expression": "scrapes the left side of my tongue when I chew",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "sliced a deep heavily bleeding gash into the left side of my tongue when I chewed",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "adult_patient_plain_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": true,
+    "has_patient_attribution": true,
+    "intervention_notes": "Plain adult everyday lexical register swap (-reg) + 2x2 syntax-by-vocabulary crossing (quad_b, quad_c) + unsourced hard-bite causal belief clause (-att) + single-fact lateral tongue hemorrhagic laceration escalation control (-cf)."
+  },
+  "design_note": "Uses three strictly atomic reference facts (lower left porcelain bridge chipped 3 days ago, sharp rough edge on the bridge, and scraping of the left lateral tongue during chewing) with a 1-word span difference (22 vs 23 words), orthogonal 2x2 syntax-by-vocabulary crossing, and identical digit multisets across all 8 variants. Under reviewer_notes Rules A and D, escalating only f3 on the exact same left lateral tongue site during chewing from superficial scraping to slicing a deep heavily bleeding gash keeps every prior fact coherent without adding a new site or event while shifting care cleanly from dentist repair (level 3) to emergency department hemorrhage and laceration management (level 4)."
+}

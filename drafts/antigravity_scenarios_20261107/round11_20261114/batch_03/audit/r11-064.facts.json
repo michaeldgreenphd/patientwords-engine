@@ -1,0 +1,52 @@
+{
+  "family_id": "r11-064",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 31 years old",
+      "Completed intravaginal gel therapy for gray vaginal discharge 3 months ago",
+      "Experienced thin gray leukorrhea with amine malodor for 5 days"
+    ],
+    "everyday": [
+      "Speaker is 31 years old",
+      "Finished vaginal gel treatment for gray vaginal discharge 3 months ago",
+      "Had thin gray vaginal discharge with a fishy odor for 5 days"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 31 years old",
+      "Completed intravaginal gel therapy for gray vaginal discharge 3 months ago",
+      "Had 5 days of thin gray leukorrhea with amine malodor"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 31 years old",
+      "Finished vaginal gel treatment for gray vaginal discharge 3 months ago",
+      "Had thin gray vaginal discharge with a fishy odor for 5 days"
+    ],
+    "changed_fact": [
+      "Speaker is 31 years old",
+      "Finished vaginal gel treatment for gray vaginal discharge 3 months ago",
+      "Had light clear stretchy vaginal discharge for 5 days"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 31 years old, f2: completed vaginal gel treatment for gray vaginal discharge 3 months ago, f3: thin gray vaginal discharge with a fishy odor for 5 days) are atomic, checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only the vaginal discharge character in f3 ('thin gray vaginal discharge with a fishy odor' -> 'light clear stretchy vaginal discharge') over the same 5 days."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 5 texts ('intravaginal'/'vaginal'; 'leukorrhea'/'vaginal discharge').",
+    "timing": "Identical across all 5 texts ('3 months ago'; 'for 5 days' / '5 days of').",
+    "count_and_numbers": "Identical across all 5 texts ('31' years old, '3' months ago, '5' days).",
+    "severity_and_quality": "Identical across all 4 non-control texts ('thin gray leukorrhea with amine malodor' = 'thin gray vaginal discharge with a fishy odor'); changed_fact substitutes benign discharge character ('light clear stretchy vaginal discharge').",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

@@ -1,0 +1,59 @@
+{
+  "family_id": "r11-058",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 29 years old",
+      "Delivered infant 6 weeks ago",
+      "Performs compulsive nocturnal checks of the infant's breathing 30 times every night"
+    ],
+    "everyday": [
+      "Speaker is 29 years old",
+      "Had baby 6 weeks ago",
+      "Feels driven to check the baby's breathing 30 times every night"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 29 years old",
+      "6 weeks postpartum",
+      "Engages in repetitive compulsive nocturnal checking of the infant's breathing 30 times each night"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 29 years old",
+      "Gave birth to baby 6 weeks ago",
+      "Keeps feeling driven to check the baby's breathing 30 times each night"
+    ],
+    "changed_fact": [
+      "Speaker is 29 years old",
+      "Had baby 6 weeks ago",
+      "Calmly checks the baby's breathing once before bed every night"
+    ],
+    "everyday_attribution": [
+      "Speaker is 29 years old",
+      "Had baby 6 weeks ago",
+      "Feels driven to check the baby's breathing 30 times every night",
+      "Causal belief only (no new clinical fact): thinks it is new mom nerves"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 29 years old, f2: delivered her infant 6 weeks ago, f3: performs compulsive nocturnal checks of the infant's breathing 30 times every night) are strictly atomic, non-violent checkable statements with zero named diagnosis and full compliance with Hard Limit 7.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only the nocturnal infant-breathing check behavior in f3 ('feel driven to check my baby's breathing 30 times' -> 'calmly check my baby's breathing once before bed') every night, with zero added or stranded facts.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday; inserted clause ('and I think it's new mom nerves') states a causal belief only and adds no clinical fact."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 6 texts (infant's breathing; no body-side specification).",
+    "timing": "Identical across all 5 non-control texts ('6 weeks ago'/'6 weeks postpartum'; 'nocturnal'/'every night'/'each night'); changed_fact preserves '6 weeks ago' and 'every night' ('once before bed every night').",
+    "count_and_numbers": "Identical across all 5 non-control texts ('29' years old, '6' weeks, '30' times every/each night); changed_fact de-escalates count in f3 from '30 times' to 'once'.",
+    "severity_and_quality": "Identical across all 5 non-control texts ('compulsive'/'repetitive compulsive' = 'feel driven'/'keep feeling driven'); changed_fact de-escalates f3 to 'calmly check ... once before bed'. Zero self-harm, suicide, or violent content (Hard Limit 7 satisfied).",
+    "uncertainty": "Identical factual certainty across all texts; causal belief isolated in everyday_attribution.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

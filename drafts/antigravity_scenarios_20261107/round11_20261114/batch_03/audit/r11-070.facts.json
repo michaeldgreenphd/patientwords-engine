@@ -1,0 +1,57 @@
+{
+  "family_id": "r11-070",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 36 years old",
+      "Has had cloudy foul smelling urine for 3 days",
+      "Has had a dull ache in the right flank for 3 days",
+      "Had mild nausea after breakfast today"
+    ],
+    "everyday": [
+      "Speaker is 36 years old",
+      "Has had cloudy foul smelling urine for 3 days",
+      "Has had a dull misery in the right side for 3 days",
+      "Had mild nausea after breakfast today"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 36 years old",
+      "3 days of turbid malodorous urine",
+      "3 days of dull right flank pain",
+      "Mild nausea following breakfast today"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 36 years old",
+      "3 days of cloudy foul smelling pee",
+      "3 days of a dull misery in the right side",
+      "Mild queasiness after breakfast today"
+    ],
+    "changed_fact": [
+      "Speaker is 36 years old",
+      "Has had cloudy foul smelling urine for 3 days",
+      "Has had a dull misery in the right side for 3 days",
+      "Vomiting every sip of water for 10 hours"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 4 reference_facts (f1: 36 years old, f2: cloudy foul smelling urine for 3 days, f3: dull ache in the right flank for 3 days, f4: mild nausea after breakfast today) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday": "Matches f1, f2, f3, and f4 exactly; core dialect entry 'a misery in my chest (or side, or back)' ('a bodily ache or pain') instantiated in first person ('a dull misery in my right side') matches 'a dull ache in my right flank'.",
+    "medical_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, f3, and f4 exactly and retains the core dialect form 'a dull misery in my right side'.",
+    "changed_fact": "Matches f1, f2, and f3 identically to everyday and escalates only the gastrointestinal symptom in f4 ('mild nausea after breakfast today' -> 'vomiting every sip of water for 10 hours') within the same urinary/right-flank presentation."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 5 texts ('right flank' = 'my right side'; urinary tract).",
+    "timing": "Identical 'for 3 days' / '3 days of' across all 5 texts; 'after/following breakfast today' across all 4 non-control texts, escalated in f4 to 'for 10 hours' in changed_fact.",
+    "count_and_numbers": "Identical ('36' years old, '3' days) across all 4 non-control texts; changed_fact substitutes '10 hours' in f4.",
+    "severity_and_quality": "Identical across all 4 non-control texts ('cloudy foul smelling urine'/'turbid malodorous urine', 'dull ache'/'dull right flank pain'/'dull misery', 'mild nausea'/'mild queasiness'); changed_fact escalates f4 to 'vomiting every sip of water for 10 hours'.",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

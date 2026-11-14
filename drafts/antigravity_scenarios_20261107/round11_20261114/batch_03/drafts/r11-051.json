@@ -1,0 +1,101 @@
+{
+  "family_id": "r11-051",
+  "condition": "acutely incarcerated right inguinal mass presenting with sudden induration and severe pain in an older adult man",
+  "right_care": 4,
+  "level_rationale": "Sudden induration and severe pain today in a pre-existing 3-month right groin lump in a 68-year-old man indicates suspected acute inguinal incarceration or strangulation requiring immediate emergency department surgical evaluation to prevent bowel ischemia, whereas that same 3-month right groin lump staying soft and flattening back in whenever lying down describes an uncomplicated reducible groin hernia warranting non-emergent outpatient physician evaluation.",
+  "carrier_frame": "so I need to go to the",
+  "target_token": " ER",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is a 68 year old man"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Has had a small lump in his right groin for 3 months"
+    },
+    {
+      "fact_id": "f3",
+      "text": "The right groin lump suddenly turned hard and severely painful today"
+    }
+  ],
+  "texts": {
+    "medical": "I'm a 68 year old man with a small right inguinal mass for 3 months that became acutely indurated and severely painful today so I need to go to the",
+    "everyday": "I'm a 68 year old man with a small lump in my right groin for 3 months that suddenly turned hard and severely painful today so I need to go to the",
+    "medical_paraphrase": "I'm a 68 year old male who has had a small right inguinal mass for 3 months that abruptly became indurated and severely painful today so I need to go to the",
+    "everyday_paraphrase": "I'm a 68 year old man who has had a small lump in my right groin for 3 months that all at once got hard and severely painful today so I need to go to the",
+    "changed_fact": "I'm a 68 year old man with a small lump in my right groin for 3 months that stays soft and flattens right back in whenever I lie down so I need to go to the",
+    "everyday_attribution": "I'm a 68 year old man with a small lump in my right groin for 3 months that suddenly turned hard and severely painful today and I think it is trapped gas so I need to go to the"
+  },
+  "changed_fact": {
+    "fact_id": "f3",
+    "from": "suddenly turned hard and severely painful today",
+    "to": "stays soft and flattens right back in whenever I lie down",
+    "right_care_after": 2
+  },
+  "attribution": {
+    "clause": "and I think it is trapped gas",
+    "explains": "attributes sudden hardening and severe pain in a chronic right groin lump to benign intestinal gas",
+    "source": "none",
+    "title": null,
+    "pmid_or_doi": null,
+    "inspected_url": null,
+    "access": null,
+    "location": null,
+    "quote_type": "none",
+    "evidence": null,
+    "adaptation": null
+  },
+  "swap_spans": {
+    "medical_span": "right inguinal mass for 3 months that became acutely indurated",
+    "everyday_span": "lump in my right groin for 3 months that suddenly turned hard"
+  },
+  "swap_note": "Single continuous 10-word vs 12-word span swap after 'I'm a 68 year old man with a small ' and before ' and severely painful today so I need to go to the'.",
+  "everyday_sources": [
+    {
+      "expression": "lump in my right groin",
+      "source": "Abbas AA, Smith OA, Mierzwinski M, MacLeod T, Chitsabesan P, Chintapatla S (2025). \"I just can't do that anymore\": a qualitative exploration of symptoms and function in patients living with abdominal wall hernia (AWH). Hernia.",
+      "title": "\"I just can't do that anymore\": a qualitative exploration of symptoms and function in patients living with abdominal wall hernia (AWH).",
+      "pmid_or_doi": "PMID: 41085757; DOI: 10.1007/s10029-025-03489-3",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/41085757/",
+      "access": "full text",
+      "location": "Results — Subordinate theme one: management of pain, para 1 (Eric, age 78)",
+      "quote_type": "direct patient quote",
+      "evidence": "I can go for several days with no pain, just the lump, but then occasionally, I don’t know what it is, I can’t relate it to food or diet, but something seems to set it off and it becomes tender and quite painful, and I just have to sort of sit it out.",
+      "adaptation": "Adapted older male hernia patient's everyday term 'the lump' (and painful flare description) into first-person anatomical phrase 'lump in my right groin' matching reference fact f2 without naming hernia."
+    },
+    {
+      "expression": "suddenly turned hard and severely painful",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "stays soft and flattens right back in whenever I lie down",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "older_adult_plain_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": true,
+    "intervention_notes": "Plain older-adult everyday lexical register swap (-reg) + causal belief-addition clause (-att) + same-lump positive reducibility clinic control (-cf)."
+  },
+  "design_note": "Uses three strictly atomic reference facts (68-year-old man, 3-month small right groin lump, and sudden hardening with severe pain today) with a 2-word span difference (10 vs 12 words), zero diagnosis labels ('hernia' omitted), and 11 shared trailing tokens ('and severely painful today so I need to go to the'). Under Rule A first choice, changing only the physical property of that exact 3-month groin lump from acute hardening and severe pain today to staying soft and flattening back in when lying down shifts right care cleanly from ER (level 4) to generalist outpatient evaluation (level 2) with zero stated negatives."
+}

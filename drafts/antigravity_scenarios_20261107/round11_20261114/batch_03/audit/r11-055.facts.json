@@ -1,0 +1,71 @@
+{
+  "family_id": "r11-055",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is a 44 year old woman",
+      "4 months of tight shiny skin on the hand digits",
+      "White blue and red discoloration of those hand digits in cold air"
+    ],
+    "everyday": [
+      "Speaker is a 44 year old woman",
+      "Finger skin got tight and shiny over 4 months",
+      "Fingers turn white blue and red in cold air"
+    ],
+    "medical_paraphrase": [
+      "Speaker is a 44 year old woman",
+      "Developed tight shiny skin on the hand digits over 4 months",
+      "White blue and red discoloration of those hand digits upon cold air exposure"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is a 44 year old woman",
+      "Skin on the fingers has turned tight and shiny over 4 months",
+      "Fingers go white blue and red in cold air"
+    ],
+    "changed_fact": [
+      "Speaker is a 44 year old woman",
+      "Finger skin got tight and shiny over 4 months",
+      "Fingers turned black at room temperature"
+    ],
+    "everyday_attribution": [
+      "Speaker is a 44 year old woman",
+      "Finger skin got tight and shiny over 4 months",
+      "Fingers turn white blue and red in cold air",
+      "Causal belief only (no new clinical fact): thinks it is poor circulation"
+    ],
+    "quad_b": [
+      "Speaker is a 44 year old woman",
+      "Skin on the hand digits became tight and shiny over 4 months",
+      "Those hand digits develop white blue and red discoloration in cold air"
+    ],
+    "quad_c": [
+      "Speaker is a 44 year old woman",
+      "4 months of tight shiny finger skin",
+      "Fingers turning white blue and red in cold air"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 44 year old woman, f2: skin on the fingers has become tight and shiny over 4 months, f3: fingers turn white blue and red in cold air) are checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly ('hand digits' / 'those digits' unambiguously denotes fingers).",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly ('hand digits' / 'those digits' unambiguously denotes fingers).",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and escalates only finger vascular color/ischemia in f3 ('my fingers turn white blue and red in cold air' -> 'my fingers turned black at room temperature') on the exact same 'my fingers' subject without adding laterality or specific digit locations.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday; inserted clause ('and I think it's poor circulation') states a causal belief only and adds no clinical fact.",
+    "quad_b": "Matches f1, f2, and f3 exactly ('hand digits' / 'those digits' unambiguously denotes fingers).",
+    "quad_c": "Matches f1, f2, and f3 exactly."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 8 texts ('hand digits'/'those digits' = 'fingers'/'finger skin'; no laterality).",
+    "timing": "Identical 4 month duration across all 8 texts.",
+    "count_and_numbers": "Identical ('44' year old, '4' months) across all 8 texts.",
+    "severity_and_quality": "Identical across all 7 non-control texts ('tight and shiny', 'white blue and red' in cold air); changed_fact escalates f3 on the same fingers to 'turned black at room temperature'.",
+    "uncertainty": "Identical factual certainty across all texts; causal belief isolated in everyday_attribution.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added body locations, adjectives, or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

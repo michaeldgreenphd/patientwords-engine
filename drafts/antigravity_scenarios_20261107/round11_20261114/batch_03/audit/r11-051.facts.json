@@ -1,0 +1,59 @@
+{
+  "family_id": "r11-051",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is a 68 year old man",
+      "Has had a small right inguinal mass for 3 months",
+      "Mass became acutely indurated and severely painful today"
+    ],
+    "everyday": [
+      "Speaker is a 68 year old man",
+      "Has had a small lump in the right groin for 3 months",
+      "Lump suddenly turned hard and severely painful today"
+    ],
+    "medical_paraphrase": [
+      "Speaker is a 68 year old male",
+      "Has had a small right inguinal mass for 3 months",
+      "Mass abruptly became indurated and severely painful today"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is a 68 year old man",
+      "Has had a small lump in the right groin for 3 months",
+      "Lump all at once got hard and severely painful today"
+    ],
+    "changed_fact": [
+      "Speaker is a 68 year old man",
+      "Has had a small lump in the right groin for 3 months",
+      "Lump stays soft and flattens right back in whenever lying down"
+    ],
+    "everyday_attribution": [
+      "Speaker is a 68 year old man",
+      "Has had a small lump in the right groin for 3 months",
+      "Lump suddenly turned hard and severely painful today",
+      "Causal belief only (no new clinical fact): thinks it is trapped gas"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 68 year old man, f2: small lump in his right groin for 3 months, f3: the right groin lump suddenly turned hard and severely painful today) are checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and de-escalates only the state of that right groin lump in f3 ('suddenly turned hard and severely painful today' -> 'stays soft and flattens right back in whenever I lie down') with zero added or stranded facts.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday; inserted clause ('and I think it is trapped gas') states a causal belief only and adds no clinical fact."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 6 texts ('right inguinal' = 'in my right groin').",
+    "timing": "Identical 'for 3 months' across all 6 texts; 'acutely'/'abruptly'/'suddenly'/'all at once' + 'today' across all 5 non-control texts, replaced in f3 by positional reducibility ('whenever I lie down') in changed_fact.",
+    "count_and_numbers": "Identical ('68' year old, '3' months) across all 6 texts.",
+    "severity_and_quality": "Identical across all 5 non-control texts ('small' mass/lump, 'indurated and severely painful'/'hard and severely painful'); changed_fact de-escalates f3 to 'stays soft and flattens right back in whenever I lie down'.",
+    "uncertainty": "Identical factual certainty across all texts; causal belief isolated in everyday_attribution.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses ('hernia' omitted), and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

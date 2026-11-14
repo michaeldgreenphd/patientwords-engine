@@ -1,0 +1,91 @@
+{
+  "family_id": "r11-066",
+  "condition": "persistent dry tickly cough 3 weeks after starting lisinopril tablet",
+  "right_care": 2,
+  "level_rationale": "Two weeks of daily dry cough with a throat tickle today beginning shortly after starting a daily lisinopril tablet 3 weeks ago in a 69-year-old adult represents subacute ACE-inhibitor-associated cough requiring non-emergent outpatient clinic medication review and switching rather than unguided stopping or emergency department care, whereas acute rapid tongue swelling today in a patient taking daily lisinopril with 2 weeks of bradykinin cough signals life-threatening ACE-inhibitor lingual angioedema requiring immediate ER airway management.",
+  "carrier_frame": "so I need to go to the",
+  "target_token": " clinic",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is 69 years old"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Started taking a daily lisinopril tablet 3 weeks ago"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Dry cough every day for 2 weeks"
+    },
+    {
+      "fact_id": "f4",
+      "text": "Tickling sensation in the throat today"
+    }
+  ],
+  "texts": {
+    "medical": "I am 69 and initiated a daily lisinopril tablet 3 weeks ago and have experienced a nonproductive cough every day for 2 weeks with a pharyngeal tickling sensation today so I need to go to the",
+    "everyday": "I am 69 and started a daily lisinopril tablet 3 weeks ago and have had a dry cough every day for 2 weeks with a tickle in my throat today so I need to go to the",
+    "medical_paraphrase": "I am 69 years old and began taking a daily lisinopril tablet 3 weeks ago followed by 2 weeks of daily nonproductive cough with pharyngeal tickling today so I need to go to the",
+    "everyday_paraphrase": "I am 69 and began taking a daily lisinopril tablet 3 weeks ago and for 2 weeks have had a daily dry cough with a tickle in my throat today so I need to go to the",
+    "changed_fact": "I am 69 and started a daily lisinopril tablet 3 weeks ago and have had a dry cough every day for 2 weeks and my tongue swelled up fast today so I need to go to the"
+  },
+  "changed_fact": {
+    "fact_id": "f4",
+    "from": "with a tickle in my throat",
+    "to": "and my tongue swelled up fast",
+    "right_care_after": 4
+  },
+  "swap_spans": {
+    "medical_span": "initiated a daily lisinopril tablet 3 weeks ago and have experienced a nonproductive cough every day for 2 weeks with a pharyngeal tickling sensation",
+    "everyday_span": "started a daily lisinopril tablet 3 weeks ago and have had a dry cough every day for 2 weeks with a tickle in my throat"
+  },
+  "swap_note": "Single continuous 24-word vs 25-word span swap after 'I am 69 and ' and before ' today so I need to go to the'.",
+  "everyday_sources": [
+    {
+      "expression": "dry cough",
+      "source": "Jiang T, Yu Z, Zhang L, et al. (2026). Research on daily medication and drug efficacy evaluation for chronic diseases based on natural language processing (NLP). Frontiers in Public Health.",
+      "title": "Research on daily medication and drug efficacy evaluation for chronic diseases based on natural language processing (NLP).",
+      "pmid_or_doi": "PMID: 41948013; DOI: 10.3389/fpubh.2026.1780308",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/41948013/",
+      "access": "abstract only",
+      "location": "Abstract",
+      "quote_type": "authors' summary",
+      "evidence": "The analysis revealed that common side effects of Lisinopril included dry cough (38%), dizziness (28%), and fatigue (22%), with nearly half of users experiencing these issues-particularly among older adults and long-term users.",
+      "adaptation": null
+    },
+    {
+      "expression": "a tickle in my throat",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "my tongue swelled up fast",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "older_adult_plain_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": false,
+    "intervention_notes": "Plain older-adult everyday lexical register swap (-reg) + single-fact lisinopril lingual angioedema escalation control (-cf, L2 to L4)."
+  },
+  "design_note": "Four atomic reference facts cover age 69, starting a daily lisinopril tablet 3 weeks ago, 2 weeks of daily dry cough, and a throat tickle today without naming hypertension or angioedema, with a 1-word span difference (24 vs 25 words) and identical digit multisets across all 5 variants. Under reviewer_notes Rule A and Rule D, replacing f4 ('with a tickle in my throat') with 'and my tongue swelled up fast' stays strictly within the same ACE-inhibitor bradykinin adverse-effect case while escalating care unambiguously from outpatient clinic medication switch (level 2) to ER airway management (level 4) with zero stated negatives."
+}

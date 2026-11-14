@@ -1,0 +1,71 @@
+{
+  "family_id": "r11-056",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Lower left porcelain fixed dental prosthesis sustained a fracture 3 days ago",
+      "Fracture created a sharp rough margin",
+      "Sharp margin abrades the left lateral tongue during mastication"
+    ],
+    "everyday": [
+      "Lower left porcelain dental bridge chipped 3 days ago",
+      "Left a sharp rough edge",
+      "Sharp edge scrapes the left side of the tongue when chewing"
+    ],
+    "medical_paraphrase": [
+      "Had a fracture of the lower left porcelain fixed dental prosthesis 3 days ago",
+      "Left a sharp rough margin",
+      "Sharp margin abrades the left lateral tongue during mastication"
+    ],
+    "everyday_paraphrase": [
+      "Chipped lower left porcelain dental bridge 3 days ago",
+      "Bridge has a sharp rough edge",
+      "Sharp edge scrapes the left side of the tongue whenever chewing"
+    ],
+    "changed_fact": [
+      "Lower left porcelain dental bridge chipped 3 days ago",
+      "Left a sharp rough edge",
+      "Sharp edge sliced a deep heavily bleeding gash into the left side of the tongue when chewing"
+    ],
+    "everyday_attribution": [
+      "Lower left porcelain dental bridge chipped 3 days ago",
+      "Left a sharp rough edge",
+      "Sharp edge scrapes the left side of the tongue when chewing",
+      "Causal belief only (no new clinical fact): thinks speaker bit something hard"
+    ],
+    "quad_b": [
+      "Lower left porcelain fixed dental prosthesis fractured 3 days ago",
+      "Left a sharp rough margin",
+      "Sharp margin abrades the left lateral tongue when masticating"
+    ],
+    "quad_c": [
+      "Lower left porcelain dental bridge had a chip 3 days ago",
+      "Created a sharp rough edge",
+      "Sharp edge scrapes the left side of the tongue during chewing"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: lower left porcelain dental bridge chipped 3 days ago, f2: left a sharp rough edge on the bridge, f3: the sharp edge scrapes the left side of the tongue during chewing) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and escalates only the injury caused by that sharp rough edge on the left side of the tongue during chewing in f3 ('scrapes the left side of my tongue when I chew' -> 'sliced a deep heavily bleeding gash into the left side of my tongue when I chewed') with zero added locations or extra events.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday; inserted clause ('and I think I bit something hard') states a causal belief only and adds no clinical fact.",
+    "quad_b": "Matches f1, f2, and f3 exactly.",
+    "quad_c": "Matches f1, f2, and f3 exactly."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 8 texts ('lower left' porcelain prosthesis/bridge; 'left lateral tongue' = 'left side of my tongue').",
+    "timing": "Identical across all 8 texts ('3 days ago'; 'during mastication'/'when I chew'/'whenever I chew'/'when I chewed').",
+    "count_and_numbers": "Identical ('3' days ago) across all 8 texts.",
+    "severity_and_quality": "Identical across all 7 non-control texts ('sharp rough margin/edge', 'abrades'/'scrapes'); changed_fact escalates the lateral tongue contact injury in f3 to 'sliced a deep heavily bleeding gash into the left side of my tongue'.",
+    "uncertainty": "Identical factual certainty across all texts; causal belief isolated in everyday_attribution.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added locations or extra events across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

@@ -1,0 +1,57 @@
+{
+  "family_id": "r11-068",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 20 years old",
+      "Bumped heads playing basketball 2 hours ago",
+      "Lost consciousness for 2 minutes right on the court",
+      "Has a mild dull forehead headache now"
+    ],
+    "everyday": [
+      "Speaker is 20 years old",
+      "Bumped heads playing basketball 2 hours ago",
+      "Blacked out for 2 minutes right on the court",
+      "Has a mild dull forehead headache now"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 20 years old",
+      "Collided heads during basketball 2 hours ago",
+      "Had a 2 minute loss of consciousness immediately on the court",
+      "Has mild dull frontal cephalalgia now"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 20 years old",
+      "Clashed heads during basketball 2 hours ago",
+      "Blacked out right on the court for 2 minutes",
+      "Now has a mild dull ache in the forehead"
+    ],
+    "changed_fact": [
+      "Speaker is 20 years old",
+      "Bumped heads playing basketball 2 hours ago",
+      "Felt briefly lightheaded for 5 seconds right on the court",
+      "Has a mild dull forehead headache now"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 4 reference_facts (f1: 20 years old, f2: collided heads while playing basketball 2 hours ago, f3: lost consciousness for 2 minutes right on the court, f4: mild dull forehead headache now) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday": "Matches f1, f2, f3, and f4 exactly; core dialect entry 'blackout / blacked out' ('lost consciousness') matches 'lost consciousness' with zero alcohol context.",
+    "medical_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, f3, and f4 exactly and retains the core dialect form 'blacked out'.",
+    "changed_fact": "Matches f1, f2, and f4 identically to everyday and de-escalates only the immediate post-collision neurological symptom in f3 ('blacked out for 2 minutes' -> 'felt briefly lightheaded for 5 seconds') right on the court."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 5 texts ('heads'; 'forehead'/'frontal').",
+    "timing": "Identical across all 4 non-control texts ('2 hours ago', 'for 2 minutes'/'2 minute' right/immediately on the court, 'now'); changed_fact substitutes 'for 5 seconds' in f3.",
+    "count_and_numbers": "Identical ('20' years old, '2' hours ago, '2' minutes) across all 4 non-control texts; changed_fact substitutes '5 seconds' in f3.",
+    "severity_and_quality": "Identical across all 4 non-control texts ('bumped/collided/clashed heads', 'lost consciousness'/'blacked out', 'mild dull forehead headache'/'mild dull frontal cephalalgia'); changed_fact de-escalates f3 to 'felt briefly lightheaded for 5 seconds'.",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses ('concussion' omitted), and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

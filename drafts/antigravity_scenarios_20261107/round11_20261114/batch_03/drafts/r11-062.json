@@ -1,0 +1,105 @@
+{
+  "family_id": "r11-062",
+  "condition": "benign prostatic enlargement slow urinary stream hesitancy and waking 4 times nightly",
+  "right_care": 2,
+  "level_rationale": "Four months of a weak urinary stream accompanied by urinary hesitancy and waking 4 times nightly to urinate in a 67-year-old man indicates chronic lower urinary tract outflow symptoms warranting non-emergent outpatient general-physician evaluation rather than home self-care or emergency department treatment, whereas developing a painful full bladder while passing only drops of urine for 14 hours on top of 4 months of obstructive voiding symptoms indicates acute painful urinary retention requiring immediate ER bladder decompression.",
+  "carrier_frame": "so I should see a",
+  "target_token": " doctor",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is a 67 year old man"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Weak urinary stream for 4 months"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Trouble starting urination"
+    },
+    {
+      "fact_id": "f4",
+      "text": "Wakes 4 times each night to urinate"
+    }
+  ],
+  "texts": {
+    "medical": "I am a 67 year old man and for 4 months have experienced decreased force of my urinary stream accompanied by urinary hesitancy and experience nocturia 4 times nightly so I should see a",
+    "everyday": "I am a 67 year old man and for 4 months have had a weak urinary stream with trouble starting to pee and wake 4 times a night to pee so I should see a",
+    "medical_paraphrase": "I am a 67 year old man who has had decreased force of my urinary stream for 4 months along with urinary hesitancy and nocturia 4 times each night so I should see a",
+    "everyday_paraphrase": "I am a 67 year old man and my urinary stream has been weak for 4 months with trouble starting to pee and I wake up 4 times a night to pee so I should see a",
+    "changed_fact": "I am a 67 year old man and for 4 months have had a weak urinary stream with trouble starting to pee and have a painful full bladder passing only drops for 14 hours so I should see a",
+    "quad_b": "I am a 67 year old man and for 4 months have had decreased force of my urinary stream with urinary hesitancy and have nocturia 4 times nightly so I should see a",
+    "quad_c": "I am a 67 year old man and for 4 months have experienced a weak urinary stream accompanied by trouble starting to pee and wake 4 times a night to pee so I should see a"
+  },
+  "changed_fact": {
+    "fact_id": "f4",
+    "from": "wake 4 times a night to pee",
+    "to": "have a painful full bladder passing only drops for 14 hours",
+    "right_care_after": 4
+  },
+  "swap_spans": {
+    "medical_span": "experienced decreased force of my urinary stream accompanied by urinary hesitancy and experience nocturia 4 times nightly",
+    "everyday_span": "had a weak urinary stream with trouble starting to pee and wake 4 times a night to pee"
+  },
+  "swap_note": "Single continuous 17-word vs 18-word span swap after 'I am a 67 year old man and for 4 months have ' and before ' so I should see a'.",
+  "everyday_sources": [
+    {
+      "expression": "weak urinary stream",
+      "source": "Tomioka S, Matsukawa Y, Majima T, et al. (2026). Voiding posture as an associated factor of postmicturition dribble: insights from a nationwide epidemiological survey in Japanese men. World Journal of Urology.",
+      "title": "Voiding posture as an associated factor of postmicturition dribble: insights from a nationwide epidemiological survey in Japanese men.",
+      "pmid_or_doi": "PMID: 42550239; DOI: 10.1007/s00345-026-06662-0",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/42550239/",
+      "access": "abstract only",
+      "location": "Abstract",
+      "quote_type": "authors' summary",
+      "evidence": "In the overall cohort, erectile dysfunction (adjusted odds ratio [OR]: 1.35, 95% confidence interval [CI]: 1.04-1.76) and frailty (adjusted OR: 1.75, 95% CI: 1.11-2.75) were independently associated with PMD, together with LUTS-related factors including overactive bladder, weak urinary stream, intermittent urinary stream, and abdominal straining at the end of voiding.",
+      "adaptation": null
+    },
+    {
+      "expression": "trouble starting to pee",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "wake 4 times a night to pee",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "have a painful full bladder passing only drops for 14 hours",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "older_adult_plain_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": true,
+    "has_patient_attribution": false,
+    "intervention_notes": "Plain older-adult everyday lexical register swap (-reg) + 2x2 syntax-by-vocabulary crossing (quad_b, quad_c) + single-fact acute painful urinary retention escalation control (-cf, L2 to L4)."
+  },
+  "design_note": "Four atomic reference facts state age 67 and male sex, 4 months of weak urinary stream, difficulty initiating urination, and waking 4 times nightly to urinate without naming prostatic hyperplasia, with a 1-word span difference (17 vs 18 words) and clean 2x2 syntax-by-vocabulary crossing. Under reviewer_notes Rule A and Rule D, replacing f4 ('wake 4 times a night to pee') with positive wording for acute painful urinary retention ('have a painful full bladder passing only drops for 14 hours') stays inside the same obstructive voiding case and escalates care unambiguously from outpatient physician evaluation (level 2) to ER catheterization (level 4) with zero stated negatives."
+}

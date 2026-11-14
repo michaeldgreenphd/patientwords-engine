@@ -1,0 +1,57 @@
+{
+  "family_id": "r11-069",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is a 68 year old retired carpenter",
+      "Still becomes dyspneic walking 1 block after 6 months",
+      "Completed 8 weeks on doctor's inhaler",
+      "Finger oximeter reads 95 percent while sitting"
+    ],
+    "everyday": [
+      "Speaker is a 68 year old retired carpenter",
+      "Still gets short winded walking 1 block after 6 months",
+      "Completed 8 weeks on doctor's inhaler",
+      "Finger oximeter reads 95 percent while sitting"
+    ],
+    "medical_paraphrase": [
+      "Speaker is a 68 year old retired carpenter",
+      "Persistent dyspnea walking 1 block at 6 months",
+      "Despite 8 weeks of a physician prescribed inhaler",
+      "Seated pulse oximetry reads 95 percent"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is a 68 year old retired from carpentry",
+      "Still short winded walking 1 block after 6 months",
+      "Even after 8 weeks on doctor's inhaler",
+      "Finger oximeter is at 95 percent while sitting"
+    ],
+    "changed_fact": [
+      "Speaker is a 68 year old retired carpenter",
+      "Still gets short winded walking 1 block after 6 months",
+      "Completed 8 weeks on doctor's inhaler",
+      "Finger oximeter reads 79 percent while sitting"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 4 reference_facts (f1: 68 year old retired carpenter, f2: still becomes short of breath walking 1 block after 6 months, f3: completed 8 weeks on a doctor prescribed inhaler, f4: finger oximeter reads 95 percent while sitting) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday": "Matches f1, f2, f3, and f4 exactly; core dialect entry 'short winded' ('short of breath', unhyphenated) matches 'dyspneic'.",
+    "medical_paraphrase": "Matches f1, f2, f3, and f4 ('seated pulse oximetry reads 95 percent' states the same seated SpO2 measurement without repeating 'my finger').",
+    "everyday_paraphrase": "Matches f1, f2, f3, and f4 exactly and retains the core dialect form 'short winded'.",
+    "changed_fact": "Matches f1, f2, and f3 identically to everyday and changes only the single measured pulse-oximetry percentage in f4 ('reads 95 percent' -> 'reads 79 percent') while sitting."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 5 texts ('my finger oximeter' in 4 texts; 'seated pulse oximetry' in medical_paraphrase).",
+    "timing": "Identical across all 5 texts ('after/at 6 months', '8 weeks', 'sitting'/'seated').",
+    "count_and_numbers": "Identical ('68' years old, '1' block, '6' months, '8' weeks, '95' percent) across all 4 non-control texts; changed_fact substitutes '79' percent in f4.",
+    "severity_and_quality": "Identical across all 4 non-control texts ('becomes dyspneic'/'persistent dyspnea' = 'gets/still short winded' walking 1 block); changed_fact escalates hypoxemia in f4 ('79 percent').",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped clinical facts, zero named diagnoses, and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

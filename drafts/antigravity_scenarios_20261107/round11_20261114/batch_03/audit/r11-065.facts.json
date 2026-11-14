@@ -1,0 +1,52 @@
+{
+  "family_id": "r11-065",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 52 years old",
+      "Recorded brachial sphygmomanometer measurements of blood pressure every morning at home for 2 weeks",
+      "Measurements remain around 154 over 96"
+    ],
+    "everyday": [
+      "Speaker is 52 years old",
+      "Checked blood pressure with an arm cuff every morning at home for 2 weeks",
+      "Blood pressure stays around 154 over 96"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 52 years old",
+      "Measured blood pressure using a brachial sphygmomanometer at home each morning for 2 weeks",
+      "Readings remain around 154 over 96"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 52 years old",
+      "Taken blood pressure using an arm cuff every morning at home for 2 weeks",
+      "Blood pressure has stayed around 154 over 96"
+    ],
+    "changed_fact": [
+      "Speaker is 52 years old",
+      "Checked blood pressure with an arm cuff every morning at home for 2 weeks",
+      "Blood pressure stays around 118 over 74"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 52 years old, f2: measured morning upper-arm blood pressure at home every day for 2 weeks, f3: readings have stayed around 154 over 96) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only the single measured blood pressure reading in f3 ('154 over 96' -> '118 over 74') with zero added or stranded facts."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 5 texts ('brachial' = 'arm cuff'; no laterality).",
+    "timing": "Identical across all 5 texts ('every morning'/'each morning', 'at home', 'for 2 weeks').",
+    "count_and_numbers": "Identical ('52' years old, '2' weeks, '154 over 96') across all 4 non-control texts; changed_fact substitutes '118 over 74' in f3.",
+    "severity_and_quality": "Identical across all 4 non-control texts ('remain/stays/stayed around 154 over 96'); changed_fact substitutes normal reading ('118 over 74').",
+    "uncertainty": "Identical factual certainty ('around') across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

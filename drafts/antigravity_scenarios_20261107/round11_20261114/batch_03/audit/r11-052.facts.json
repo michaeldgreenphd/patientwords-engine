@@ -1,0 +1,59 @@
+{
+  "family_id": "r11-052",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Right lumbar flank ached for 2 days",
+      "Voided gritty urinary gravel yesterday",
+      "Recorded a 39 C temperature today"
+    ],
+    "everyday": [
+      "Lower back and right side ached for 2 days",
+      "Peed out gritty sand yesterday",
+      "Measured a 39 C temperature today"
+    ],
+    "medical_paraphrase": [
+      "Had right lumbar flank aching for 2 days",
+      "Passed gritty urinary gravel yesterday",
+      "Documented a 39 C body temperature today"
+    ],
+    "everyday_paraphrase": [
+      "Had an ache in the lower back and right side for 2 days",
+      "Passed gritty sand in pee yesterday",
+      "Measured a 39 C temperature today"
+    ],
+    "changed_fact": [
+      "Lower back and right side ached for 2 days",
+      "Peed out gritty sand yesterday",
+      "Measured a 37 C temperature today"
+    ],
+    "everyday_attribution": [
+      "Lower back and right side ached for 2 days",
+      "Peed out gritty sand yesterday",
+      "Measured a 39 C temperature today",
+      "Causal belief only (no new clinical fact): thinks speaker pulled their back"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: speaker's lower back and right flank have ached for 2 days, f2: passed gritty urinary gravel yesterday, f3: body temperature measured 39 C today) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly ('right lumbar flank' = lower back and right flank).",
+    "everyday": "Matches f1, f2, and f3 exactly ('lower back and right side').",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only the single measured temperature value in f3 ('39 C' -> '37 C') today.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday; inserted clause ('and I think I pulled my back') states a causal belief only and adds no clinical fact."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 6 texts ('right lumbar flank' = 'lower back and right side'; urinary voiding).",
+    "timing": "Identical across all 6 texts ('for 2 days', 'yesterday', 'today').",
+    "count_and_numbers": "Identical ('2' days, '39' C) across all 5 non-control texts; changed_fact substitutes '37' C in f3.",
+    "severity_and_quality": "Identical across all 5 non-control texts ('ached'/'aching'/'an ache', 'gritty urinary gravel'/'gritty sand', '39 C'); changed_fact substitutes afebrile '37 C'.",
+    "uncertainty": "Identical factual certainty across all texts; causal belief isolated in everyday_attribution.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses ('urolithiasis' and 'pyelonephritis' omitted), and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

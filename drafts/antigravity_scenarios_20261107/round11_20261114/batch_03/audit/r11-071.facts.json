@@ -1,0 +1,57 @@
+{
+  "family_id": "r11-071",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 29 years old",
+      "Got 1 mosquito bite on the right calf camping by a lake 2 days ago",
+      "Left a 2 cm erythematous papule today",
+      "Papule has mild pruritus"
+    ],
+    "everyday": [
+      "Speaker is 29 years old",
+      "Got 1 mosquito bite on the right calf camping by a lake 2 days ago",
+      "Left a 2 cm red bump today",
+      "Bump itches mildly"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 29 years old",
+      "Received 1 mosquito bite on the right calf while camping by a lake 2 days ago",
+      "Resulted in a 2 cm erythematous papule today",
+      "Papule is mildly pruritic"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 29 years old",
+      "Got 1 mosquito bite on the right calf while camping near a lake 2 days ago",
+      "Now has a 2 cm red bump today",
+      "Bump is mildly itchy"
+    ],
+    "changed_fact": [
+      "Speaker is 29 years old",
+      "Got 1 mosquito bite on the right calf camping by a lake 2 days ago",
+      "Left a 2 cm red bump today",
+      "Bump throbs with sharp pain"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 4 reference_facts (f1: 29 years old, f2: got 1 mosquito bite on the right calf while camping by a lake 2 days ago, f3: has a 2 cm red bump at the bite site today, f4: the bump is mildly itchy) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday": "Matches f1, f2, f3, and f4 exactly.",
+    "medical_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "changed_fact": "Matches f1, f2, and f3 identically to everyday and escalates only the local sensory quality of the bump in f4 ('that itches mildly' -> 'that throbs with sharp pain') with zero added or stranded facts."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 5 texts ('on my right calf').",
+    "timing": "Identical across all 5 texts ('2 days ago'; 'today').",
+    "count_and_numbers": "Identical across all 5 texts ('29' years old, '1' mosquito bite, '2' days ago, '2' cm).",
+    "severity_and_quality": "Identical across all 4 non-control texts ('2 cm erythematous papule'/'2 cm red bump', 'mild pruritus'/'mildly pruritic'/'itches mildly'/'mildly itchy'); changed_fact escalates f4 to 'throbs with sharp pain'.",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, zero dialect forms, and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

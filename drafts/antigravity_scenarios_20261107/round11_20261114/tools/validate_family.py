@@ -333,6 +333,41 @@ def normalize_space(text: str) -> str:
     return " ".join(text.strip().lower().split())
 
 
+_CF_LEADING_FILLER_RE = re.compile(
+    r"^(?:(?:and|with|now|just|only|still|got|have|had|has|get|gets|started|saw|noticed|feel|feels|is|are|a|an|the|my|his|her|that|those)\s+)+",
+    re.IGNORECASE,
+)
+
+# Stock control phrases already used in batches 01-02 (Rule D, reviewer_notes.md:
+# do not repeat in batches 03-06; do not rewrite batches 01-02).
+RULE_D_BANNED_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    ("40 C fever (r11-014, r11-015, r11-039)", re.compile(r"\b40(?:\.0)?\s*c\b", re.IGNORECASE)),
+    ("swelling behind ... ear (r11-012, r11-040)", re.compile(r"\bswelling\s+behind\b.*\bear\b", re.IGNORECASE)),
+    ("turning blue (r11-017, r11-041)", re.compile(r"\bturning\s+blue\b", re.IGNORECASE)),
+    ("yellow pus (r11-023, r11-047, r11-048)", re.compile(r"\byellow\s+pus\b", re.IGNORECASE)),
+    ("pus on ... tonsils (r11-026)", re.compile(r"\bpus\s+on\b.*\btonsils?\b", re.IGNORECASE)),
+    ("yellow phlegm (r11-006)", re.compile(r"\byellow\s+phlegm\b", re.IGNORECASE)),
+    ("double vision / seeing double (r11-018, r11-022)", re.compile(r"\b(?:double\s+vision|seeing\s+double)\b", re.IGNORECASE)),
+    ("gasping for breath/air (r11-037)", re.compile(r"\bgasping\s+for\s+(?:breath|air)\b", re.IGNORECASE)),
+    ("throw up repeatedly (r11-024)", re.compile(r"\bthrow(?:ing)?\s+up\s+repeatedly\b", re.IGNORECASE)),
+    ("falling to the floor (r11-044)", re.compile(r"\bfalling\s+to\s+the\s+floor\b", re.IGNORECASE)),
+)
+
+
+def is_rule_d_applicable(fid: str) -> bool:
+    """Rule D applies to batches 03 to 06 (r11-049..r11-144 and r11-b03..06-rep*)."""
+    m_num = re.match(r"^r11-(\d{3})$", fid)
+    if m_num:
+        return int(m_num.group(1)) >= 49
+    return bool(re.match(r"^r11-b0[3-6]-rep[1-6]$", fid))
+
+
+def normalize_cf_to_core(text: str) -> str:
+    norm = normalize_space(text)
+    stripped = _CF_LEADING_FILLER_RE.sub("", norm).strip()
+    return stripped or norm
+
+
 def extract_numbers(text: str) -> list[str]:
     return re.findall(r"\b\d+(?:\.\d+)?\b", text)
 
@@ -371,6 +406,7 @@ def load_reference_data(
         normalize_space(c): "SPEC.md_prior_list" for c in SPEC_PRIOR_SHORT_CONDITIONS
     }
     prior_texts: dict[str, str] = {}
+    prior_r11_cf_to: dict[str, str] = {}
 
     prior_files: list[tuple[str, Path]] = [
         ("r9", r9_path),
@@ -397,6 +433,12 @@ def load_reference_data(
                 for tname, tval in texts.items():
                     if isinstance(tval, str) and tval.strip():
                         prior_texts[normalize_space(tval)] = f"{label}:{fid}.{tname}"
+            if label.startswith("r11_"):
+                cf_obj = fam.get("changed_fact")
+                if isinstance(cf_obj, dict) and isinstance(cf_obj.get("to"), str) and cf_obj["to"].strip():
+                    cf_to_str = cf_obj["to"]
+                    prior_r11_cf_to[normalize_space(cf_to_str)] = f"{label}:{fid} ({cf_to_str!r})"
+                    prior_r11_cf_to[normalize_cf_to_core(cf_to_str)] = f"{label}:{fid} ({cf_to_str!r})"
 
     return {
         "core_lexicon": core_entries,
@@ -406,6 +448,7 @@ def load_reference_data(
         "plan_by_id": plan_by_id,
         "prior_conditions": prior_conditions,
         "prior_texts": prior_texts,
+        "prior_r11_cf_to": prior_r11_cf_to,
     }
 
 
@@ -945,6 +988,22 @@ def validate_family_dict(
                     cf_suffix == " " + carrier or cf_suffix.endswith(" " + carrier)
                 ):
                     errors.append(f"{fid_str}: changed_fact.from overlaps carrier_frame")
+            if is_rule_d_applicable(fid_str):
+                prior_cf_map = ref.get("prior_r11_cf_to", {})
+                norm_cf = normalize_space(cf_to)
+                core_cf = normalize_cf_to_core(cf_to)
+                hit_prior = prior_cf_map.get(norm_cf) or prior_cf_map.get(core_cf)
+                if hit_prior:
+                    errors.append(
+                        f"{fid_str}: Rule D violation — changed_fact.to {cf_to!r} repeats wording already used in "
+                        f"Round 11 ({hit_prior})"
+                    )
+                for pat_label, pat_re in RULE_D_BANNED_PATTERNS:
+                    if pat_re.search(cf_to):
+                        errors.append(
+                            f"{fid_str}: Rule D violation — changed_fact.to {cf_to!r} reuses stock control wording "
+                            f"from earlier Round 11 batches ({pat_label})"
+                        )
         if type(rc_after) is not int or rc_after not in {1, 2, 3, 4}:
             errors.append(f"{fid_str}: changed_fact.right_care_after must be int in {{1, 2, 3, 4}}, got {rc_after!r}")
         elif type(rc) is int:
@@ -1157,6 +1216,7 @@ def validate_batch_collection(
     seen_ids: set[str] = set()
     seen_conditions: dict[str, str] = {}
     seen_texts: dict[str, str] = {}
+    seen_cf_to: dict[str, str] = {}
     stated_neg_ids: list[str] = []
     collected_source_fit_rows: list[dict[str, Any]] = []
 
@@ -1181,6 +1241,19 @@ def validate_batch_collection(
                 )
             else:
                 seen_conditions[nc] = fid
+
+        if is_rule_d_applicable(fid):
+            cf_obj = fam.get("changed_fact")
+            if isinstance(cf_obj, dict) and isinstance(cf_obj.get("to"), str) and cf_obj["to"].strip():
+                cf_to_str = cf_obj["to"]
+                for key_cf in {normalize_space(cf_to_str), normalize_cf_to_core(cf_to_str)}:
+                    if key_cf in seen_cf_to and seen_cf_to[key_cf].split(" ")[0] != fid:
+                        all_errors.append(
+                            f"{fid}: Rule D violation — changed_fact.to {cf_to_str!r} duplicates "
+                            f"{seen_cf_to[key_cf]} within this batch"
+                        )
+                    else:
+                        seen_cf_to[key_cf] = f"{fid} ({cf_to_str!r})"
 
         texts = fam.get("texts")
         if isinstance(texts, dict):

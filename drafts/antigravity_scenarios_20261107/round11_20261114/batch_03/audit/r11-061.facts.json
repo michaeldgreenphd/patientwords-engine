@@ -1,0 +1,64 @@
+{
+  "family_id": "r11-061",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 46 years old",
+      "Developed coin shaped erythematous plaques on both shins 3 weeks ago",
+      "Plaques remain dry and pruritic despite applying bland emollient lotion daily"
+    ],
+    "everyday": [
+      "Speaker is 46 years old",
+      "Noticed coin shaped red patches on both shins 3 weeks ago",
+      "Patches stayed dry and itchy despite putting on plain lotion daily"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 46 years old",
+      "Developed coin shaped erythematous plaques on both shins 3 weeks ago",
+      "Plaques remain dry and pruritic despite daily application of bland emollient lotion"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 46 years old",
+      "Got coin shaped red patches on both shins 3 weeks ago",
+      "Patches have stayed dry and itchy despite putting plain lotion on daily"
+    ],
+    "changed_fact": [
+      "Speaker is 46 years old",
+      "Noticed coin shaped red patches on both shins 3 weeks ago",
+      "Patches cleared up completely after putting on plain lotion daily"
+    ],
+    "quad_b": [
+      "Speaker is 46 years old",
+      "Developed coin shaped erythematous plaques on both shins 3 weeks ago",
+      "Plaques stayed dry and pruritic despite putting on bland emollient lotion daily"
+    ],
+    "quad_c": [
+      "Speaker is 46 years old",
+      "Noticed coin shaped red patches on both shins 3 weeks ago",
+      "Patches remain dry and itchy despite applying plain lotion daily"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 46 years old, f2: developed coin shaped red patches on both shins 3 weeks ago, f3: patches have stayed dry and itchy despite applying plain moisturizing lotion daily) are atomic, checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only the response of the shin patches to daily plain lotion in f3 ('that stayed dry and itchy despite' -> 'that cleared up completely after') with zero added or stranded facts.",
+    "quad_b": "Matches f1, f2, and f3 exactly.",
+    "quad_c": "Matches f1, f2, and f3 exactly."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 7 texts ('on both shins').",
+    "timing": "Identical across all 7 texts ('3 weeks ago'; 'daily').",
+    "count_and_numbers": "Identical across all 7 texts ('46' years old, '3' weeks ago).",
+    "severity_and_quality": "Identical across all 6 non-control texts ('coin shaped erythematous plaques'/'coin shaped red patches', 'dry and pruritic'/'dry and itchy', 'bland emollient lotion'/'plain lotion'); changed_fact resolves f3 ('cleared up completely after').",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

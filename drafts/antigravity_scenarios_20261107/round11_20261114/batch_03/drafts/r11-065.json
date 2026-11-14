@@ -1,0 +1,87 @@
+{
+  "family_id": "r11-065",
+  "condition": "repeated home blood pressure readings around 154 over 96 without symptoms",
+  "right_care": 2,
+  "level_rationale": "Repeated morning upper-arm blood pressure readings staying around 154 over 96 mmHg at home every day for 2 weeks in a 52-year-old adult represent sustained stage-2 home blood pressure elevation requiring non-emergent outpatient general-physician evaluation and antihypertensive management rather than home self-care alone or emergency department care, whereas repeated morning home readings staying around 118 over 74 mmHg for 2 weeks reflect normal adult blood pressure needing only routine healthy self-care.",
+  "carrier_frame": "so I should see a",
+  "target_token": " doctor",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is 52 years old"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Measured morning upper-arm blood pressure at home every day for 2 weeks"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Readings have stayed around 154 over 96"
+    }
+  ],
+  "texts": {
+    "medical": "I am 52 years old and have recorded brachial sphygmomanometer measurements of my blood pressure every morning at home for 2 weeks that remain around 154 over 96 so I should see a",
+    "everyday": "I am 52 years old and have checked my blood pressure with an arm cuff every morning at home for 2 weeks and it stays around 154 over 96 so I should see a",
+    "medical_paraphrase": "I am a 52 year old who has measured my blood pressure using a brachial sphygmomanometer at home each morning for 2 weeks with readings remaining around 154 over 96 so I should see a",
+    "everyday_paraphrase": "I am 52 years old and every morning at home for 2 weeks I have taken my blood pressure using an arm cuff and it has stayed around 154 over 96 so I should see a",
+    "changed_fact": "I am 52 years old and have checked my blood pressure with an arm cuff every morning at home for 2 weeks and it stays around 118 over 74 so I should see a"
+  },
+  "changed_fact": {
+    "fact_id": "f3",
+    "from": "154 over 96",
+    "to": "118 over 74",
+    "right_care_after": 1
+  },
+  "swap_spans": {
+    "medical_span": "recorded brachial sphygmomanometer measurements of my blood pressure every morning at home for 2 weeks that remain",
+    "everyday_span": "checked my blood pressure with an arm cuff every morning at home for 2 weeks and it stays"
+  },
+  "swap_note": "Single continuous 17-word vs 18-word span swap after 'I am 52 years old and have ' and before ' around 154 over 96 so I should see a'.",
+  "everyday_sources": [
+    {
+      "expression": "checked my blood pressure with an arm cuff",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "stays around 154 over 96",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "118 over 74",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "adult_patient_plain_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": false,
+    "intervention_notes": "Plain adult everyday lexical register swap (-reg) + single measured-value blood pressure de-escalation control (-cf, L2 to L1)."
+  },
+  "design_note": "Three atomic positive reference facts cover age 52, daily morning home upper-arm blood pressure monitoring for 2 weeks, and sustained readings around 154 over 96 without naming hypertension or stating 'without symptoms', with a 1-word span difference (17 vs 18 words) and natural unstacked patient phrasing. Under reviewer_notes Rule A first choice and Rule D, changing only the single measured blood pressure reading in f3 from '154 over 96' to normal '118 over 74' shifts care unambiguously from outpatient physician evaluation (level 2) to routine self-care (level 1) without bundling extra symptoms."
+}

@@ -38,3 +38,20 @@
 - `2026-11-14T15:46:11Z`: batch_02: All 24 families (r11-025..r11-048) passed G4-G8 (0 dropped); dispatching @builder for Gate G1 assembly.
 - `2026-11-14T15:51:13Z`: batch_02: Gates G1, G2 (60 pairs, 0 errors, 6 Rule-A numeric-control warnings explained in self_check.md), and G3 (intake status=intake, 0 errors vs r9+r10+r11_b01; concerns_selfreported_check 0 errors, 12 open concerns) passed; 24/24 families passed G1-G8, 0 dropped, same_share=14/21 (66.7%), 0 stated negatives (~52 min elapsed across coordinator + 10 swarm workers).
 - `2026-11-14T17:37:18Z`: reviewer_notes.md (fece726a): Accepted batch_01 corrections (7fc15b68); added r11-012-c2 and r11-016-c1 (control_level_disputed) and restored r11-004-c1, r11-004-c2, r11-005-c1 as withdrawn in batch_01/concerns_selfreported.json (intake check: 0 errors, 3 closed, 23 open); adopted standing rule never to delete concern records.
+- `2026-11-14T18:12:50Z`: Pulled reviewer_notes.md (8ac69414: batch_02 accepted); added r11-039-c1 and r11-040-c2 to batch_02/concerns_selfreported.json (verified intake 0 errors, 14 open concerns); added Rule D validator to tools/validate_family.py; dispatching all 4 authors on batch_03 (r11-049..r11-072).
+- `2026-11-14T18:31:29Z`: Wave 1 (batch_03 r11-055..r11-060 from @author-l3) validated and dispatched to all 5 auditors (G4-G8).
+- `2026-11-14T18:33:00Z`: Drafted and validated batch_03 r11-061..r11-066 (@author-l2); queued for Wave 2 audit.
+- `2026-11-14T18:38:07Z`: Wave 2 (batch_03 r11-061..r11-072 from @author-l2 and @author-flag) validated (0 errors, 0 warnings) and starting G5/G6/G8 audit.
+- `2026-11-14T18:43:00Z`: Wave 1 passed G4-G8: r11-057, r11-058, r11-059, r11-060.
+- `2026-11-14T18:43:02Z`: Wave 1 consolidated return (returned_count=1) to @author-l3 on r11-055 and r11-056 (G4 fact-parity fixes).
+- `2026-11-14T18:43:47Z`: Wave 3 (batch_03 r11-049..r11-054 from @author-l4) validated across all 24 batch_03 drafts (0 errors, 0 warnings) and starting G5/G8 audit.
+- `2026-11-14T18:48:37Z`: Wave 1 revised drafts r11-055 and r11-056 validated across batch_03 (0 errors, 0 warnings); dispatching full G4-G8 re-audit.
+- `2026-11-14T18:49:32Z`: Wave 2 passed G4-G8: r11-062, r11-063, r11-064, r11-066, r11-067, r11-068, r11-069, r11-070, r11-071, r11-072.
+- `2026-11-14T18:49:34Z`: Wave 2 consolidated return (returned_count=1) to @author-l2 on r11-061 (G7 Rule B) and r11-065 (G5 Rule C noun-stacking).
+- `2026-11-14T18:52:06Z`: Wave 2 revised drafts r11-061 and r11-065 validated across batch_03 (0 errors, 0 warnings); dispatching full G4-G8 re-audit.
+- `2026-11-14T18:55:36Z`: Passed G4-G8: Wave 3 (r11-049, r11-050, r11-051, r11-053, r11-054) and Wave 1 rev (r11-055, r11-056).
+- `2026-11-14T18:55:38Z`: Wave 3 consolidated return (returned_count=1) to @author-l4 on r11-052 (G5 Rule C wording).
+- `2026-11-14T18:57:31Z`: Wave 2 rev passed G4-G8: r11-061, r11-065 (23/24 batch_03 families now passed).
+- `2026-11-14T18:57:54Z`: Wave 3 revised draft r11-052 validated across batch_03 (0 errors, 0 warnings); dispatching full G4-G8 re-audit.
+- `2026-11-14T19:00:52Z`: Wave 3 rev passed G4-G8: r11-052. All 24/24 batch_03 families passed G4-G8 (0 dropped, 0 stated negatives); dispatching @builder for Gate G1.
+- `2026-11-14T19:12:28Z`: Batch 03 passed Gates G1, G2 (60 pairs, 0 errors, 10 -cf number-warning candidates), and G3 (intake 0 errors against r9, r10, r11_b01, r11_b02; concerns_selfreported_check 0 errors, 10 open concerns).

@@ -1,0 +1,57 @@
+{
+  "family_id": "r11-063",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker's 6 year old daughter",
+      "Experienced perianal pruritus every night for 1 week",
+      "Pruritus awakens her from sleep",
+      "Has erythematous perianal excoriations today"
+    ],
+    "everyday": [
+      "Speaker's 6 year old daughter",
+      "Had anal itching every night for 1 week",
+      "Itching wakes her from sleep",
+      "Has red scratch marks around her bottom today"
+    ],
+    "medical_paraphrase": [
+      "Speaker's 6 year old daughter",
+      "1 week of nightly perianal pruritus",
+      "Pruritus awakens her from sleep",
+      "Has erythematous perianal excoriations today"
+    ],
+    "everyday_paraphrase": [
+      "Speaker's 6 year old daughter",
+      "Anal itching every night for 1 week",
+      "Waking from sleep every night because of the anal itching",
+      "Has red scratch marks around her bottom today"
+    ],
+    "changed_fact": [
+      "Speaker's 6 year old daughter",
+      "Had anal itching every night for 1 week",
+      "Itching wakes her from sleep",
+      "Has painful dark red tissue bulging from her bottom today"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 4 reference_facts (f1: speaker's 6 year old daughter, f2: anal itching every night for 1 week, f3: itching wakes her from sleep each night, f4: red scratch marks around her bottom today) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday": "Matches f1, f2, f3, and f4 exactly.",
+    "medical_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "changed_fact": "Matches f1, f2, and f3 identically to everyday and changes only the perianal finding in f4 ('red scratch marks around her bottom' -> 'painful dark red tissue bulging from her bottom') with identical 'today' timing and zero added facts."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 5 texts ('perianal' = 'anal' / 'around/from her bottom').",
+    "timing": "Identical across all 5 texts ('every night'/'nightly' for '1 week'; 'today').",
+    "count_and_numbers": "Identical across all 5 texts ('6' year old, '1' week); no ambiguous quantities.",
+    "severity_and_quality": "Identical across all 4 non-control texts ('perianal pruritus'/'anal itching', 'awakens/wakes her from sleep', 'erythematous perianal excoriations'/'red scratch marks around her bottom'); changed_fact escalates f4 to 'painful dark red tissue bulging from her bottom'.",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

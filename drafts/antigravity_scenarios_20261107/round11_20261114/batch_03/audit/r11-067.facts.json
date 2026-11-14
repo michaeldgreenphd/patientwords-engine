@@ -1,0 +1,57 @@
+{
+  "family_id": "r11-067",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 51 years old",
+      "Had thyroid surgery 3 days ago",
+      "Has redness spreading 1 cm around the neck incision today",
+      "Suddenly has severe difficulty breathing when lying flat tonight"
+    ],
+    "everyday": [
+      "Speaker is 51 years old",
+      "Had thyroid surgery 3 days ago",
+      "Has redness spreading 1 cm around the neck incision today",
+      "Suddenly feels like smothering when lying flat tonight"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 51 years old",
+      "Underwent thyroid surgery 3 days ago",
+      "Developed erythema spreading 1 cm around the neck incision today",
+      "Abruptly experienced severe dyspnea while lying flat tonight"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 51 years old",
+      "Had thyroid surgery 3 days ago",
+      "Saw redness spreading 1 cm around the neck incision today",
+      "Suddenly feels like smothering when lying flat tonight"
+    ],
+    "changed_fact": [
+      "Speaker is 51 years old",
+      "Had thyroid surgery 3 days ago",
+      "Has redness spreading 1 cm around the neck incision today",
+      "Feels mild stitch pulling when swallowing tonight"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 4 reference_facts (f1: 51 years old, f2: had thyroid surgery 3 days ago, f3: redness spreading 1 cm around the neck incision today, f4: suddenly developed severe difficulty breathing when lying flat tonight) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday": "Matches f1, f2, f3, and f4 exactly; core dialect entry 'smothering / I'm smothering' ('cannot get enough air') matches 'severe difficulty breathing'.",
+    "medical_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, f3, and f4 exactly and retains the core dialect form 'feel like I'm smothering'.",
+    "changed_fact": "Matches f1, f2, and f3 identically to everyday and replaces only f4 ('suddenly feel like I'm smothering lying flat' -> 'feel mild stitch pulling when swallowing') with identical 'tonight' timing within the same post-thyroidectomy neck wound case."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 5 texts ('thyroid', 'around my neck incision').",
+    "timing": "Identical across all 5 texts ('3 days ago'; 'today'; 'tonight'; 'suddenly'/'abruptly' in f4 across all 4 non-control texts).",
+    "count_and_numbers": "Identical across all 5 texts ('51' years old, '3' days ago, '1' cm).",
+    "severity_and_quality": "Identical across all 4 non-control texts ('redness'/'erythema' spreading 1 cm, 'severe difficulty breathing'/'severe dyspnea'/'feel like I'm smothering' lying flat); changed_fact de-escalates f4 to 'mild stitch pulling when swallowing'.",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

@@ -1,0 +1,59 @@
+{
+  "family_id": "r11-054",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is a 29 year old woman",
+      "At 34 weeks gestation",
+      "Acutely developed heavy dark red vaginal hemorrhage today"
+    ],
+    "everyday": [
+      "Speaker is a 29 year old woman",
+      "Is 34 weeks pregnant",
+      "Suddenly started heavy dark red vaginal bleeding today"
+    ],
+    "medical_paraphrase": [
+      "Speaker is a 29 year old female",
+      "At 34 weeks of gestation",
+      "Experienced abrupt onset heavy dark red vaginal hemorrhage today"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is a 29 year old woman",
+      "Is 34 weeks along in pregnancy",
+      "All at once started heavy dark red bleeding from the vagina today"
+    ],
+    "changed_fact": [
+      "Speaker is a 29 year old woman",
+      "Is 34 weeks pregnant",
+      "Noticed new pink stretch marks across the lower belly this week"
+    ],
+    "everyday_attribution": [
+      "Speaker is a 29 year old woman",
+      "Is 34 weeks pregnant",
+      "Suddenly started heavy dark red vaginal bleeding today",
+      "Causal belief only (no new clinical fact): thinks it is her mucus plug"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 29 year old woman, f2: 34 weeks pregnant, f3: suddenly started heavy dark red vaginal bleeding today) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and replaces only f3 ('suddenly started heavy dark red vaginal bleeding today' -> 'noticed new pink stretch marks across my lower belly this week') within the same 34-week third-trimester pregnancy context.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday; inserted clause ('and I think it is my mucus plug') states a causal belief only and adds no clinical fact."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 5 non-control texts ('vaginal hemorrhage'/'vaginal bleeding'/'bleeding from my vagina'); changed_fact substitutes gravid abdominal skin ('across my lower belly') in f3.",
+    "timing": "Identical '34 weeks' gestation across all 6 texts; 'acutely'/'abrupt onset'/'suddenly'/'all at once' + 'today' across all 5 non-control texts, substituted with 'this week' in changed_fact.",
+    "count_and_numbers": "Identical ('29' year old, '34' weeks) across all 6 texts.",
+    "severity_and_quality": "Identical across all 5 non-control texts ('heavy dark red' vaginal hemorrhage/bleeding); changed_fact substitutes physiological gravid skin finding ('new pink stretch marks across my lower belly').",
+    "uncertainty": "Identical factual certainty across all texts; causal belief isolated in everyday_attribution.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses ('abruption' and 'previa' omitted), and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

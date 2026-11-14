@@ -1,0 +1,105 @@
+{
+  "family_id": "r11-070",
+  "condition": "subacute dull right flank misery with cloudy foul smelling urine and mild post meal nausea",
+  "right_care": 2,
+  "level_rationale": "Three days of cloudy foul-smelling urine and a dull right flank ache in a 36-year-old adult with only mild nausea after breakfast today points to a subacute urinary tract infection needing an outpatient clinic urinalysis, culture, and oral antibiotics rather than over-the-counter self-care, whereas vomiting every sip of water for 10 hours alongside 3 days of cloudy foul-smelling urine and right flank pain prevents oral hydration and oral antibiotic therapy, requiring immediate Emergency Department intravenous fluids and parenteral antibiotics.",
+  "carrier_frame": "so I need to go to the",
+  "target_token": " clinic",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is 36 years old"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Has had cloudy foul smelling urine for 3 days"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Has had a dull ache in the right flank for 3 days"
+    },
+    {
+      "fact_id": "f4",
+      "text": "Had mild nausea after breakfast today"
+    }
+  ],
+  "texts": {
+    "medical": "I am 36 years old and have had cloudy foul smelling urine and a dull ache in my right flank for 3 days plus mild nausea after breakfast today so I need to go to the",
+    "everyday": "I am 36 years old and have had cloudy foul smelling urine and a dull misery in my right side for 3 days plus mild nausea after breakfast today so I need to go to the",
+    "medical_paraphrase": "I am a 36 year old with 3 days of turbid malodorous urine and dull right flank pain accompanied by mild nausea following breakfast today so I need to go to the",
+    "everyday_paraphrase": "I'm a 36 year old with 3 days of cloudy foul smelling pee and a dull misery in my right side along with mild queasiness after breakfast today so I need to go to the",
+    "changed_fact": "I am 36 years old and have had cloudy foul smelling urine and a dull misery in my right side for 3 days plus vomiting every sip of water for 10 hours so I need to go to the"
+  },
+  "changed_fact": {
+    "fact_id": "f4",
+    "from": "mild nausea after breakfast today",
+    "to": "vomiting every sip of water for 10 hours",
+    "right_care_after": 4
+  },
+  "swap_spans": {
+    "medical_span": "ache in my right flank",
+    "everyday_span": "misery in my right side"
+  },
+  "swap_note": "Single continuous 5-word vs 5-word span swap after 'I am 36 years old and have had cloudy foul smelling urine and a dull ' and before ' for 3 days plus mild nausea after breakfast today so I need to go to the'.",
+  "everyday_sources": [
+    {
+      "expression": "a dull misery in my right side",
+      "source": "Wiktionary contributors (verified 2026-11-14; matches dialect_lexicon_20261109.json). Entry 'misery'. Wiktionary, The Free Dictionary.",
+      "title": "Entry 'misery'",
+      "pmid_or_doi": "https://en.wiktionary.org/wiki/misery",
+      "inspected_url": "https://en.wiktionary.org/wiki/misery",
+      "access": "full text",
+      "location": "English — Noun, sense 2",
+      "quote_type": "dictionary definition",
+      "evidence": "# {{lb|en|US|and|UK|dialects}} A [[bodily]] [[ache]] or [[pain]].",
+      "adaptation": "Instantiated US and UK dialect noun 'misery' ('A bodily ache or pain') with side location in 'a dull misery in my right side' matching core entry 'a misery in my chest (or side, or back)' in dialect_lexicon_20261109.json; Wiktionary entry attests lexical sense only."
+    },
+    {
+      "expression": "cloudy foul smelling pee",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "mild queasiness",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "vomiting every sip of water for 10 hours",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "us_or_uk_dialect_english_patient",
+  "lexicon_entries": [
+    "a misery in my chest (or side, or back)"
+  ],
+  "protocol_flags": {
+    "has_dialect_lexicon": true,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": false,
+    "intervention_notes": "US and UK dialect lexicon swap ('ache in my right flank' vs 'misery in my right side', retained in everyday_paraphrase) + single-fact gastrointestinal fluid-tolerance severity escalation control (-cf, mild post-breakfast nausea to 10 hours of vomiting every sip of water, L2 to L4)."
+  },
+  "design_note": "Uses four strictly atomic facts (age 36, 3 days of cloudy foul-smelling urine, 3 days of dull right-flank pain, and mild nausea after breakfast today) with an exact 5-word vs 5-word continuous span swap and zero stated negatives. Escalating only fact f4 along the same gastrointestinal dimension from 'mild nausea after breakfast today' to 'vomiting every sip of water for 10 hours' keeps the exact urinary-flank presentation intact while crossing the unambiguous hospital admission threshold (complete inability to retain oral fluids or oral antibiotics, level 4) with unique wording under Rules A and D."
+}

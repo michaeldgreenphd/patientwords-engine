@@ -1,0 +1,57 @@
+{
+  "family_id": "r11-066",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 69 years old",
+      "Initiated a daily lisinopril tablet 3 weeks ago",
+      "Experienced a nonproductive cough every day for 2 weeks",
+      "Has a pharyngeal tickling sensation today"
+    ],
+    "everyday": [
+      "Speaker is 69 years old",
+      "Started a daily lisinopril tablet 3 weeks ago",
+      "Had a dry cough every day for 2 weeks",
+      "Has a tickle in the throat today"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 69 years old",
+      "Began taking a daily lisinopril tablet 3 weeks ago",
+      "2 weeks of daily nonproductive cough",
+      "Has pharyngeal tickling today"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 69 years old",
+      "Began taking a daily lisinopril tablet 3 weeks ago",
+      "Had a daily dry cough for 2 weeks",
+      "Has a tickle in the throat today"
+    ],
+    "changed_fact": [
+      "Speaker is 69 years old",
+      "Started a daily lisinopril tablet 3 weeks ago",
+      "Had a dry cough every day for 2 weeks",
+      "Tongue swelled up fast today"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 4 reference_facts (f1: 69 years old, f2: started taking a daily lisinopril tablet 3 weeks ago, f3: dry cough every day for 2 weeks, f4: tickling sensation in the throat today) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday": "Matches f1, f2, f3, and f4 exactly.",
+    "medical_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "changed_fact": "Matches f1, f2, and f3 identically to everyday and replaces only f4 ('with a tickle in my throat' -> 'and my tongue swelled up fast') with identical 'today' timing within the same lisinopril upper-airway adverse-effect case."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 4 non-control texts ('pharyngeal' = 'in my throat'); changed_fact substitutes 'my tongue' within the same oral/upper-airway lisinopril reaction context.",
+    "timing": "Identical across all 5 texts ('daily' tablet '3 weeks ago'; 'every day'/'daily' cough 'for 2 weeks'/'2 weeks of'; 'today').",
+    "count_and_numbers": "Identical across all 5 texts ('69' years old, '3' weeks ago, '2' weeks); no ambiguous quantities.",
+    "severity_and_quality": "Identical across all 4 non-control texts ('nonproductive cough'/'dry cough', 'pharyngeal tickling (sensation)'/'tickle in my throat'); changed_fact escalates f4 to 'my tongue swelled up fast'.",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

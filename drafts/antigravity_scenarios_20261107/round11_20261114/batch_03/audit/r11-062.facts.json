@@ -1,0 +1,71 @@
+{
+  "family_id": "r11-062",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is a 67 year old man",
+      "Decreased force of urinary stream for 4 months",
+      "Urinary hesitancy",
+      "Nocturia 4 times nightly"
+    ],
+    "everyday": [
+      "Speaker is a 67 year old man",
+      "Weak urinary stream for 4 months",
+      "Trouble starting to pee",
+      "Wakes 4 times a night to pee"
+    ],
+    "medical_paraphrase": [
+      "Speaker is a 67 year old man",
+      "Decreased force of urinary stream for 4 months",
+      "Urinary hesitancy",
+      "Nocturia 4 times each night"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is a 67 year old man",
+      "Urinary stream has been weak for 4 months",
+      "Trouble starting to pee",
+      "Wakes up 4 times a night to pee"
+    ],
+    "changed_fact": [
+      "Speaker is a 67 year old man",
+      "Weak urinary stream for 4 months",
+      "Trouble starting to pee",
+      "Has a painful full bladder passing only drops for 14 hours"
+    ],
+    "quad_b": [
+      "Speaker is a 67 year old man",
+      "Decreased force of urinary stream for 4 months",
+      "Urinary hesitancy",
+      "Nocturia 4 times nightly"
+    ],
+    "quad_c": [
+      "Speaker is a 67 year old man",
+      "Weak urinary stream for 4 months",
+      "Trouble starting to pee",
+      "Wakes 4 times a night to pee"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 4 reference_facts (f1: 67 year old man, f2: weak urinary stream for 4 months, f3: trouble starting urination, f4: wakes 4 times each night to urinate) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday": "Matches f1, f2, f3, and f4 exactly.",
+    "medical_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "changed_fact": "Matches f1, f2, and f3 identically to everyday and escalates only voiding status in f4 ('wake 4 times a night to pee' -> 'have a painful full bladder passing only drops for 14 hours') within the same obstructive lower-urinary-tract case.",
+    "quad_b": "Matches f1, f2, f3, and f4 exactly.",
+    "quad_c": "Matches f1, f2, f3, and f4 exactly."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 7 texts (lower urinary tract / bladder voiding; no body-side specification).",
+    "timing": "Identical '4 months' duration and 'nightly'/'a night'/'each night' across all 6 non-control texts; changed_fact substitutes acute 'for 14 hours' obstruction in f4.",
+    "count_and_numbers": "Identical ('67' years old, '4' months, '4' times nightly) across all 6 non-control texts; changed_fact substitutes '14 hours' in f4.",
+    "severity_and_quality": "Identical across all 6 non-control texts ('decreased force of my urinary stream'/'weak urinary stream', 'urinary hesitancy'/'trouble starting to pee', 'nocturia 4 times nightly'/'wake 4 times a night to pee'); changed_fact escalates f4 to 'painful full bladder passing only drops for 14 hours'.",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added adjectives or facts across the 6 non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

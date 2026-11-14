@@ -1,0 +1,59 @@
+{
+  "family_id": "r11-059",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 25 years old",
+      "Attended routine pelvic smear examinations over 2 years",
+      "Experiences involuntary painful vaginal muscle spasms preventing speculum insertion"
+    ],
+    "everyday": [
+      "Speaker is 25 years old",
+      "At routine smear exams over 2 years",
+      "Vaginal muscles tighten in painful spasms that block the exam"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 25 years old",
+      "Across 2 years of routine pelvic smear examinations",
+      "Has had involuntary painful vaginal muscular spasms blocking speculum insertion"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 25 years old",
+      "Over 2 years of routine smear exams",
+      "Vaginal muscles keep tightening in painful spasms and stopping the exam"
+    ],
+    "changed_fact": [
+      "Speaker is 25 years old",
+      "At routine smear exams over 2 years",
+      "Feels brief mild pressure for 5 seconds during the exam"
+    ],
+    "everyday_attribution": [
+      "Speaker is 25 years old",
+      "At routine smear exams over 2 years",
+      "Vaginal muscles tighten in painful spasms that block the exam",
+      "Causal belief only (no new clinical fact): thinks she is just too tense"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 25 years old, f2: attended routine pelvic smear examinations over 2 years, f3: involuntary painful vaginal muscle spasms tighten and prevent the examination) are checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and de-escalates only the exam sensation/response in f3 ('my vaginal muscles tighten in painful spasms that block the exam' -> 'I feel brief mild pressure for 5 seconds during the exam') within the same routine smear exam context.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday; inserted clause ('and I think I'm just too tense') states a causal belief only and adds no clinical fact."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 5 non-control texts ('vaginal muscle/muscular' at 'pelvic smear examinations' / 'smear exams'); changed_fact stays within the same routine smear exam.",
+    "timing": "Identical 'over 2 years' / 'across 2 years' across all 6 texts; changed_fact specifies brief 5 second mild exam pressure.",
+    "count_and_numbers": "Identical ('25' years old, '2' years) across all 5 non-control texts; changed_fact de-escalates f3 to '5 seconds' of brief mild pressure.",
+    "severity_and_quality": "Identical across all 5 non-control texts ('involuntary painful vaginal muscle spasms preventing speculum insertion' = 'vaginal muscles tighten in painful spasms that block/stopping the exam'); changed_fact de-escalates f3 to 'brief mild pressure for 5 seconds during the exam'.",
+    "uncertainty": "Identical factual certainty across all texts; causal belief isolated in everyday_attribution.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

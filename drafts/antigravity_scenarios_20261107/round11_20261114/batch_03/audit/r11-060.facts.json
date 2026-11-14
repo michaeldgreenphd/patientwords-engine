@@ -1,0 +1,65 @@
+{
+  "family_id": "r11-060",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 24 years old",
+      "Has had abdominal cramping over 8 weeks",
+      "Had a 6 kg weight loss over 8 weeks",
+      "Passes 5 loose bloody stools daily"
+    ],
+    "everyday": [
+      "Speaker is 24 years old",
+      "Has had stomach cramps over 8 weeks",
+      "Lost 6 kg over 8 weeks",
+      "Passes loose bloody stools 5 times a day"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 24 years old",
+      "8 weeks of abdominal cramping",
+      "6 kg of weight loss over 8 weeks",
+      "Passing loose bloody stools 5 times daily"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 24 years old",
+      "Got stomach cramps over the past 8 weeks",
+      "Lost 6 kg over the past 8 weeks",
+      "Passing loose bloody stools 5 times every day"
+    ],
+    "changed_fact": [
+      "Speaker is 24 years old",
+      "Has had stomach cramps over 8 weeks",
+      "Lost 6 kg over 8 weeks",
+      "Passed large maroon blood clots into the toilet 4 times this hour"
+    ],
+    "everyday_attribution": [
+      "Speaker is 24 years old",
+      "Has had stomach cramps over 8 weeks",
+      "Lost 6 kg over 8 weeks",
+      "Passes loose bloody stools 5 times a day",
+      "Causal belief only (no new clinical fact): thinks it is stress at work"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 4 reference_facts (f1: 24 years old, f2: abdominal or stomach cramps for 8 weeks, f3: lost 6 kg over those 8 weeks, f4: passes loose bloody stools 5 times daily) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday": "Matches f1, f2, f3, and f4 exactly.",
+    "medical_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "changed_fact": "Matches f1, f2, and f3 identically to everyday and escalates only the bowel bleeding/output in f4 ('pass loose bloody stools 5 times a day' -> 'passed large maroon blood clots into the toilet 4 times this hour') within the same gastrointestinal case.",
+    "everyday_attribution": "Matches f1, f2, f3, and f4 identically to everyday; inserted clause ('and I think it's stress at work') states a causal belief only and adds no clinical fact."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 6 texts ('abdominal'/'stomach'; lower GI stool/blood passage).",
+    "timing": "Identical '8 weeks' duration for cramps and weight loss across all 6 texts; 'daily'/'a day'/'every day' across all 5 non-control texts, escalated in f4 to 'this hour' in changed_fact.",
+    "count_and_numbers": "Identical ('24' years old, '6' kg, '8' weeks, '5' times daily) across all 5 non-control texts; changed_fact escalates f4 to '4 times this hour'.",
+    "severity_and_quality": "Identical across all 5 non-control texts ('abdominal cramping'/'stomach cramps', '6 kg weight loss'/'lost 6 kg', 'loose bloody stools'); changed_fact escalates f4 to acute brisk bleeding ('large maroon blood clots ... 4 times this hour').",
+    "uncertainty": "Identical factual certainty across all texts; causal belief isolated in everyday_attribution.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

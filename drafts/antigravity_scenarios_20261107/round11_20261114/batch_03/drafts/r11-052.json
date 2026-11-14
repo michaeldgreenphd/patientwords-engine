@@ -1,0 +1,89 @@
+{
+  "family_id": "r11-052",
+  "condition": "suspected febrile infected urolithiasis presenting with right lumbar flank aching urinary gravel passage and 39 C fever",
+  "right_care": 4,
+  "level_rationale": "A 39 C fever today in an adult with 2 days of right lumbar-flank aching after passing gritty urinary gravel yesterday indicates suspected infected urolithiasis or obstructive pyelonephritis with urosepsis risk requiring immediate emergency hospital intravenous antibiotics, cultures, and urgent imaging, whereas an afebrile 37 C temperature today with a 2-day lower-back and right-side ache after passing gritty sand yesterday warrants routine outpatient physician stone follow-up and urinalysis.",
+  "carrier_frame": "so I need to go to the",
+  "target_token": " hospital",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker's lower back and right flank have ached for 2 days"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Passed gritty urinary gravel yesterday"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Body temperature measured 39 C today"
+    }
+  ],
+  "texts": {
+    "medical": "My right lumbar flank ached for 2 days and I voided gritty urinary gravel yesterday and recorded a 39 C temperature today so I need to go to the",
+    "everyday": "My lower back and right side ached for 2 days and I peed out gritty sand yesterday and measured a 39 C temperature today so I need to go to the",
+    "medical_paraphrase": "I had right lumbar flank aching for 2 days and passed gritty urinary gravel yesterday and documented a 39 C body temperature today so I need to go to the",
+    "everyday_paraphrase": "I had an ache in my lower back and right side for 2 days and passed gritty sand in my pee yesterday and measured a 39 C temperature today so I need to go to the",
+    "changed_fact": "My lower back and right side ached for 2 days and I peed out gritty sand yesterday and measured a 37 C temperature today so I need to go to the",
+    "everyday_attribution": "My lower back and right side ached for 2 days and I peed out gritty sand yesterday and measured a 39 C temperature today and I think I pulled my back so I need to go to the"
+  },
+  "changed_fact": {
+    "fact_id": "f3",
+    "from": "39 C",
+    "to": "37 C",
+    "right_care_after": 2
+  },
+  "attribution": {
+    "clause": "and I think I pulled my back",
+    "explains": "attributes febrile lower-back and right-side aching after passing urinary gravel to a benign back muscle strain",
+    "source": "none",
+    "title": null,
+    "pmid_or_doi": null,
+    "inspected_url": null,
+    "access": null,
+    "location": null,
+    "quote_type": "none",
+    "evidence": null,
+    "adaptation": null
+  },
+  "swap_spans": {
+    "medical_span": "right lumbar flank ached for 2 days and I voided gritty urinary gravel yesterday and recorded",
+    "everyday_span": "lower back and right side ached for 2 days and I peed out gritty sand yesterday and measured"
+  },
+  "swap_note": "Single continuous 16-word vs 18-word span swap after 'My ' and before ' a 39 C temperature today so I need to go to the'.",
+  "everyday_sources": [
+    {
+      "expression": "peed out gritty sand",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "My lower back and right side ached",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "adult_patient_plain_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": true,
+    "intervention_notes": "Plain adult everyday lexical register swap (-reg) + causal belief-addition clause (-att) + Rule A first-choice single measured-temperature control (-cf)."
+  },
+  "design_note": "Uses three strictly atomic reference facts (2-day lower-back and right-flank ache, passing gritty urinary gravel yesterday, and measured 39 C temperature today) with a 2-word span difference (16 vs 18 words) and 12 shared trailing tokens ('a 39 C temperature today so I need to go to the'). Under Rule A first choice and Rule D, changing only the measured temperature in f3 from '39 C' to '37 C' keeps the exact same urinary-gravel case while shifting care cleanly from emergency hospital sepsis management (level 4) to routine outpatient physician stone follow-up (level 2) with zero stated negatives."
+}

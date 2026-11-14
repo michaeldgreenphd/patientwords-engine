@@ -1,0 +1,71 @@
+{
+  "family_id": "r11-049",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is a 24 year old woman",
+      "Initiated oral hydroxyurea 3 weeks ago",
+      "Developed acute severe chest and costal pain today"
+    ],
+    "everyday": [
+      "Speaker is a 24 year old woman",
+      "Started hydroxyurea pills 3 weeks ago",
+      "Got sudden severe pain in the chest and ribs today"
+    ],
+    "medical_paraphrase": [
+      "Speaker is a 24 year old female",
+      "Began oral hydroxyurea 3 weeks ago",
+      "Experienced sudden onset severe chest and costal pain today"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is a 24 year old woman",
+      "Began taking hydroxyurea pills 3 weeks ago",
+      "Started having sudden severe pain in the chest and ribs today"
+    ],
+    "changed_fact": [
+      "Speaker is a 24 year old woman",
+      "Started hydroxyurea pills 3 weeks ago",
+      "Had mild nausea after the morning pill for 5 days"
+    ],
+    "everyday_attribution": [
+      "Speaker is a 24 year old woman",
+      "Started hydroxyurea pills 3 weeks ago",
+      "Got sudden severe pain in the chest and ribs today",
+      "Causal belief only (no new clinical fact): thinks it is acid reflux"
+    ],
+    "quad_b": [
+      "Speaker is a 24 year old woman",
+      "Started oral hydroxyurea 3 weeks ago",
+      "Got acute severe chest and costal pain today"
+    ],
+    "quad_c": [
+      "Speaker is a 24 year old woman",
+      "Initiated hydroxyurea pills 3 weeks ago",
+      "Developed sudden severe pain in the chest and ribs today"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 24 year old woman, f2: started taking oral hydroxyurea 3 weeks ago, f3: developed sudden severe pain in her chest and ribs today) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and replaces only f3 ('got sudden severe pain in my chest and ribs today' -> 'had mild nausea after my morning pill for 5 days') within the same 3-week oral hydroxyurea context.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday; inserted clause ('and I think it is acid reflux') states a causal belief only and adds no clinical fact.",
+    "quad_b": "Matches f1, f2, and f3 exactly.",
+    "quad_c": "Matches f1, f2, and f3 exactly."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 7 non-control texts ('chest and costal' = 'chest and ribs').",
+    "timing": "Identical '3 weeks ago' across all 8 texts; 'today' across all 7 non-control texts, substituted with 'after my morning pill for 5 days' in changed_fact.",
+    "count_and_numbers": "Identical ('24' year old, '3' weeks ago) across all 7 non-control texts; changed_fact substitutes '5 days' in f3.",
+    "severity_and_quality": "Identical across all 7 non-control texts ('acute/sudden (onset) severe' chest and costal/rib pain); changed_fact substitutes 'mild nausea after my morning pill for 5 days'.",
+    "uncertainty": "Identical factual certainty across all texts; causal belief isolated in everyday_attribution.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses ('sickle cell' and 'acute chest syndrome' omitted), and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

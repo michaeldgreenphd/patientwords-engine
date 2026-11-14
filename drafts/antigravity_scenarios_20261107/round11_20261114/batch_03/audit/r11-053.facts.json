@@ -1,0 +1,59 @@
+{
+  "family_id": "r11-053",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 20 years old",
+      "Competes on a collegiate rowing team",
+      "Developed acute severe dyspnea while seated at rest today"
+    ],
+    "everyday": [
+      "Speaker is 20 years old",
+      "Rows on a college crew team",
+      "Got sudden severe shortness of breath sitting still today"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 20 years old",
+      "Participates on a university rowing team",
+      "Experienced abrupt severe resting dyspnea while seated today"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 20 years old",
+      "Rows for college crew team",
+      "All at once got severely short of breath while sitting still today"
+    ],
+    "changed_fact": [
+      "Speaker is 20 years old",
+      "Rows on a college crew team",
+      "Keeps getting mild shortness of breath during hard sprints this month"
+    ],
+    "everyday_attribution": [
+      "Speaker is 20 years old",
+      "Rows on a college crew team",
+      "Got sudden severe shortness of breath sitting still today",
+      "Causal belief only (no new clinical fact): thinks it is seasonal allergies"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 20 years old, f2: rows on a college crew team, f3: developed sudden severe shortness of breath while sitting still at rest today) are checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and de-escalates only the shortness-of-breath symptom in f3 ('got sudden severe shortness of breath sitting still today' -> 'keep getting mild shortness of breath during hard sprints this month') within the same collegiate rowing context.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday; inserted clause ('and I think it is seasonal allergies') states a causal belief only and adds no clinical fact."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 6 texts (respiratory shortness of breath / dyspnea; no body-side specification).",
+    "timing": "Identical ('acute'/'abrupt'/'sudden'/'all at once' + 'today') across all 5 non-control texts; changed_fact substitutes 'during hard sprints this month' in f3.",
+    "count_and_numbers": "Identical ('20' years old) across all 6 texts.",
+    "severity_and_quality": "Identical across all 5 non-control texts ('severe dyspnea while seated (at rest)' = 'severe(ly) shortness of breath / short of breath (while) sitting still'); changed_fact de-escalates f3 to 'mild shortness of breath during hard sprints'.",
+    "uncertainty": "Identical factual certainty across all texts; causal belief isolated in everyday_attribution.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses ('pneumothorax' omitted), and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}
