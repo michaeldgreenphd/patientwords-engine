@@ -1,0 +1,614 @@
+{
+  "mode": "2panel",
+  "backend": "logits",
+  "graph_model": "llama-3.2-3b",
+  "source_set": null,
+  "generation_params": {},
+  "start_index": 1,
+  "pairs_requested": 5,
+  "completed": true,
+  "screen_targets": null,
+  "inference": {
+    "method": "logits",
+    "hf_id": "meta-llama/Llama-3.2-3B",
+    "dtype": "bfloat16",
+    "revision": "13afe5124825b4f3751f836b40dafda64c1ed062",
+    "revision_pinned": "13afe5124825b4f3751f836b40dafda64c1ed062",
+    "environment": {
+      "python": "3.11.18",
+      "platform": "Linux-7.0.0-1019-azure-x86_64-with-glibc2.43",
+      "engine_sha": "9a3a2aaaa788",
+      "runner_image": "20261111.196.1",
+      "torch": "2.13.0+cpu",
+      "transformers": "5.14.1",
+      "accelerate": "1.14.0"
+    }
+  },
+  "results": [
+    {
+      "index": 1,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "He's having a stroke and he can't lift his arm at work, so his coworkers called an",
+        "patient": "One side of his face is drooping and he can't lift his arm at work, so his coworkers called an"
+      },
+      "target_token": "Output \" ambulance\"",
+      "probabilities": {
+        "clinical": 0.9495,
+        "patient": 0.9706
+      },
+      "language_penalty": 0.0211,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ambulance\"",
+            0.9495
+          ],
+          [
+            "Output \" E\"",
+            0.0153
+          ],
+          [
+            "Output \" emergency\"",
+            0.0093
+          ],
+          [
+            "Output \" EMS\"",
+            0.0068
+          ],
+          [
+            "Output \" Uber\"",
+            0.0021
+          ],
+          [
+            "Output \" \"\"",
+            0.0012
+          ],
+          [
+            "Output \" ER\"",
+            0.0008
+          ],
+          [
+            "Output \" Amb\"",
+            0.0007
+          ],
+          [
+            "Output \" amb\"",
+            0.0007
+          ],
+          [
+            "Output \" AM\"",
+            0.0006
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ambulance\"",
+            0.9706
+          ],
+          [
+            "Output \" emergency\"",
+            0.0095
+          ],
+          [
+            "Output \" E\"",
+            0.0058
+          ],
+          [
+            "Output \" Uber\"",
+            0.0017
+          ],
+          [
+            "Output \" EMS\"",
+            0.0015
+          ],
+          [
+            "Output \" occupational\"",
+            0.0008
+          ],
+          [
+            "Output \" eye\"",
+            0.0007
+          ],
+          [
+            "Output \" amb\"",
+            0.0007
+          ],
+          [
+            "Output \" ER\"",
+            0.0004
+          ],
+          [
+            "Output \" urgent\"",
+            0.0004
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "ambulance": "ambulance. He",
+          "E": "EMT to",
+          "emergency": "emergency meeting to",
+          "EMS": "EMS ambulance to"
+        },
+        "patient": {
+          "ambulance": "ambulance. He",
+          "emergency": "emergency meeting to",
+          "E": "EMT to",
+          "Uber": "Uber to take"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 2,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I'm having a stroke and I can't get the words out right during the meeting, so I need to see a",
+        "patient": "My vision's gone blurry in one eye and I can't get the words out right during the meeting, so I need to see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.1537,
+        "patient": 0.6935
+      },
+      "language_penalty": 0.5398,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.1537
+          ],
+          [
+            "Output \" picture\"",
+            0.0414
+          ],
+          [
+            "Output \" list\"",
+            0.0303
+          ],
+          [
+            "Output \" note\"",
+            0.0236
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.0184
+          ],
+          [
+            "Output \" speech\"",
+            0.0162
+          ],
+          [
+            "Output \" specialist\"",
+            0.0162
+          ],
+          [
+            "Output \" copy\"",
+            0.0152
+          ],
+          [
+            "Output \" transcript\"",
+            0.0152
+          ],
+          [
+            "Output \" diagram\"",
+            0.0152
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.6935
+          ],
+          [
+            "Output \" specialist\"",
+            0.1366
+          ],
+          [
+            "Output \" doc\"",
+            0.0209
+          ],
+          [
+            "Output \" neuro\"",
+            0.0185
+          ],
+          [
+            "Output \" vision\"",
+            0.0072
+          ],
+          [
+            "Output \" new\"",
+            0.0072
+          ],
+          [
+            "Output \" good\"",
+            0.0064
+          ],
+          [
+            "Output \" physician\"",
+            0.006
+          ],
+          [
+            "Output \" professional\"",
+            0.006
+          ],
+          [
+            "Output \" medical\"",
+            0.0032
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. I",
+          "picture": "picture of the",
+          "list": "list of the",
+          "note": "note taker"
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "specialist": "specialist. I",
+          "doc": "doc. I",
+          "neuro": "neurologist"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 3,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "She went into anaphylaxis right after the shellfish at dinner, so dad rushed her to the",
+        "patient": "Her face swelled up and she started wheezing right after the shellfish at dinner, so dad rushed her to the"
+      },
+      "target_token": "Output \" hospital\"",
+      "probabilities": {
+        "clinical": 0.2927,
+        "patient": 0.3462
+      },
+      "language_penalty": 0.0535,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ER\"",
+            0.4259
+          ],
+          [
+            "Output \" hospital\"",
+            0.2927
+          ],
+          [
+            "Output \" emergency\"",
+            0.1383
+          ],
+          [
+            "Output \" nearest\"",
+            0.0212
+          ],
+          [
+            "Output \" doctor\"",
+            0.0155
+          ],
+          [
+            "Output \" E\"",
+            0.0107
+          ],
+          [
+            "Output \" local\"",
+            0.01
+          ],
+          [
+            "Output \" closest\"",
+            0.0094
+          ],
+          [
+            "Output \" ED\"",
+            0.0088
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0073
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.3462
+          ],
+          [
+            "Output \" ER\"",
+            0.238
+          ],
+          [
+            "Output \" emergency\"",
+            0.21
+          ],
+          [
+            "Output \" doctor\"",
+            0.0602
+          ],
+          [
+            "Output \" nearest\"",
+            0.0322
+          ],
+          [
+            "Output \" local\"",
+            0.0162
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0092
+          ],
+          [
+            "Output \" closest\"",
+            0.0087
+          ],
+          [
+            "Output \" clinic\"",
+            0.0072
+          ],
+          [
+            "Output \" E\"",
+            0.006
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "ER": "ER. She",
+          "hospital": "hospital. She",
+          "emergency": "emergency room.",
+          "nearest": "nearest hospital."
+        },
+        "patient": {
+          "hospital": "hospital. She",
+          "ER": "ER. She",
+          "emergency": "emergency room.",
+          "doctor": "doctor. The"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 4,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I'm having a heart attack halfway through my workout, so I need to call my",
+        "patient": "My chest is crushing and my arm's gone numb halfway through my workout, so I need to call my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.2269,
+        "patient": 0.0511
+      },
+      "language_penalty": -0.1758,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.2269
+          ],
+          [
+            "Output \" wife\"",
+            0.156
+          ],
+          [
+            "Output \" husband\"",
+            0.0737
+          ],
+          [
+            "Output \" mom\"",
+            0.0394
+          ],
+          [
+            "Output \" friend\"",
+            0.0327
+          ],
+          [
+            "Output \" girlfriend\"",
+            0.0289
+          ],
+          [
+            "Output \" trainer\"",
+            0.0289
+          ],
+          [
+            "Output \" cardi\"",
+            0.0239
+          ],
+          [
+            "Output \" dad\"",
+            0.0198
+          ],
+          [
+            "Output \" boyfriend\"",
+            0.0175
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" trainer\"",
+            0.19
+          ],
+          [
+            "Output \" friend\"",
+            0.0792
+          ],
+          [
+            "Output \" doctor\"",
+            0.0511
+          ],
+          [
+            "Output \" coach\"",
+            0.0374
+          ],
+          [
+            "Output \" wife\"",
+            0.0291
+          ],
+          [
+            "Output \" husband\"",
+            0.0291
+          ],
+          [
+            "Output \" personal\"",
+            0.0291
+          ],
+          [
+            "Output \" mom\"",
+            0.0291
+          ],
+          [
+            "Output \" sister\"",
+            0.0257
+          ],
+          [
+            "Output \" workout\"",
+            0.0257
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. I",
+          "wife": "wife and tell",
+          "husband": "husband and tell",
+          "mom": "mom. I"
+        },
+        "patient": {
+          "trainer": "trainer and tell",
+          "friend": "friend and tell",
+          "doctor": "doctor. I",
+          "coach": "coach and tell"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 5,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I'm going septic after the cut got infected, so my wife is driving me to the",
+        "patient": "My fever's spiking and I feel foggy and shivery after the cut got infected, so my wife is driving me to the"
+      },
+      "target_token": "Output \" hospital\"",
+      "probabilities": {
+        "clinical": 0.2851,
+        "patient": 0.1369
+      },
+      "language_penalty": -0.1482,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.2851
+          ],
+          [
+            "Output \" ER\"",
+            0.0926
+          ],
+          [
+            "Output \" emergency\"",
+            0.0677
+          ],
+          [
+            "Output \" clinic\"",
+            0.0561
+          ],
+          [
+            "Output \" doctor\"",
+            0.0527
+          ],
+          [
+            "Output \" vet\"",
+            0.0411
+          ],
+          [
+            "Output \" VA\"",
+            0.0182
+          ],
+          [
+            "Output \" airport\"",
+            0.0171
+          ],
+          [
+            "Output \" local\"",
+            0.0125
+          ],
+          [
+            "Output \" nearest\"",
+            0.0111
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ER\"",
+            0.1758
+          ],
+          [
+            "Output \" hospital\"",
+            0.1369
+          ],
+          [
+            "Output \" doctor\"",
+            0.1369
+          ],
+          [
+            "Output \" emergency\"",
+            0.1066
+          ],
+          [
+            "Output \" clinic\"",
+            0.0647
+          ],
+          [
+            "Output \" urgent\"",
+            0.0473
+          ],
+          [
+            "Output \" pharmacy\"",
+            0.027
+          ],
+          [
+            "Output \" Urg\"",
+            0.0185
+          ],
+          [
+            "Output \" doc\"",
+            0.0163
+          ],
+          [
+            "Output \" walk\"",
+            0.0154
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital. I",
+          "ER": "ER. I",
+          "emergency": "emergency room.",
+          "clinic": "clinic. I"
+        },
+        "patient": {
+          "ER": "ER. I",
+          "hospital": "hospital. I",
+          "doctor": "doctor's office",
+          "emergency": "emergency room."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    }
+  ]
+}
