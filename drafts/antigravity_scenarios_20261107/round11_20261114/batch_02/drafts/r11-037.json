@@ -1,0 +1,121 @@
+{
+  "family_id": "r11-037",
+  "condition": "subacute new onset frequent urination and excessive thirst in overweight adult",
+  "right_care": 2,
+  "level_rationale": "Three weeks of new-onset frequent urination and excessive thirst with fatigue today in an overweight 48-year-old adult points to subacute new-onset hyperglycemia requiring prompt outpatient general-physician evaluation and blood glucose testing rather than home self-care or emergency department care, whereas developing gasping breathing today on top of 3 weeks of polyuria and polydipsia signals acute metabolic acidosis or hyperglycemic crisis requiring immediate ER care.",
+  "carrier_frame": "so I should see a",
+  "target_token": " doctor",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is 48 years old"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Speaker is overweight"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Frequent urination for 3 weeks"
+    },
+    {
+      "fact_id": "f4",
+      "text": "Excessive thirst for 3 weeks"
+    },
+    {
+      "fact_id": "f5",
+      "text": "Has felt tired today"
+    }
+  ],
+  "texts": {
+    "medical": "I am 48 years old and overweight and have experienced urinary frequency accompanied by polydipsia for 3 weeks and have been fatigued today so I should see a",
+    "everyday": "I am 48 years old and overweight and have had frequent urination with excessive thirst for 3 weeks and have felt tired today so I should see a",
+    "medical_paraphrase": "I am an overweight 48 year old who has experienced 3 weeks of urinary frequency along with polydipsia and has been fatigued today so I should see a",
+    "everyday_paraphrase": "I am 48 years old and overweight and for 3 weeks I have been peeing often with excessive thirst and have felt tired today so I should see a",
+    "changed_fact": "I am 48 years old and overweight and have had frequent urination with excessive thirst for 3 weeks and started gasping for breath today so I should see a",
+    "quad_b": "I am 48 years old and overweight and have had urinary frequency with polydipsia for 3 weeks and have felt fatigued today so I should see a",
+    "quad_c": "I am 48 years old and overweight and have experienced frequent urination accompanied by excessive thirst for 3 weeks and have been tired today so I should see a"
+  },
+  "changed_fact": {
+    "fact_id": "f5",
+    "from": "have felt tired",
+    "to": "started gasping for breath",
+    "right_care_after": 4
+  },
+  "swap_spans": {
+    "medical_span": "have experienced urinary frequency accompanied by polydipsia for 3 weeks and have been fatigued",
+    "everyday_span": "have had frequent urination with excessive thirst for 3 weeks and have felt tired"
+  },
+  "swap_note": "Single continuous 14-word vs 14-word span swap after 'I am 48 years old and overweight and ' and before ' today so I should see a'.",
+  "everyday_sources": [
+    {
+      "expression": "frequent urination",
+      "source": "Shareef I, Akbar U, Usmani M, et al. (2026). A Comparative Analysis of Clinical Features of Type 2 Diabetes Mellitus With Respect to Dyslipidemia: A Cross-Sectional Study. Cureus.",
+      "title": "A Comparative Analysis of Clinical Features of Type 2 Diabetes Mellitus With Respect to Dyslipidemia: A Cross-Sectional Study.",
+      "pmid_or_doi": "PMID: 41669583; DOI: 10.7759/cureus.101239",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/41669583/",
+      "access": "abstract only",
+      "location": "Abstract",
+      "quote_type": "authors' summary",
+      "evidence": "Clinical symptoms were more prevalent among dyslipidemic patients, including frequent urination (99 (58.2%) vs 46 (27.1%), p < 0.001), visual impairment (104 (61.2%) vs 72 (42.4%), p = 0.001), and blurred vision (78 (45.9%) vs 47 (27.6%), p < 0.001).",
+      "adaptation": null
+    },
+    {
+      "expression": "excessive thirst",
+      "source": "Bereda G (2024). COVID-19 is associated with high blood glucose levels: diabetic neuropathy during the SARS-CoV-2 pandemic: a case report. Annals of Medicine and Surgery.",
+      "title": "COVID-19 is associated with high blood glucose levels: diabetic neuropathy during the SARS-CoV-2 pandemic: a case report.",
+      "pmid_or_doi": "PMID: 39649935; DOI: 10.1097/MS9.0000000000000990",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/39649935/",
+      "access": "abstract only",
+      "location": "Abstract",
+      "quote_type": "authors' summary",
+      "evidence": "When she was admitted to the emergency room, she described a one-day history of shortness of breath, frequent urination, excessive thirst, hyperglycemia, excessive appetite, fever, headache, and dehydration.",
+      "adaptation": null
+    },
+    {
+      "expression": "felt tired",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "peeing often",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "started gasping for breath",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "adult_patient_plain_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": true,
+    "has_patient_attribution": false,
+    "intervention_notes": "Plain adult everyday lexical register swap (-reg) + 2x2 syntax-by-vocabulary crossing (quad_b, quad_c) + single-fact hyperglycemic air-hunger escalation control (-cf)."
+  },
+  "design_note": "Five strictly atomic reference facts cover age 48, overweight body habitus, 3 weeks of frequent urination, 3 weeks of excessive thirst, and feeling tired today, with an exact 14-vs-14 word span swap and 6 identical trailing tokens ('today so I should see a'). Replacing atomic fact f5 ('have felt tired') with 'started gasping for breath' stays inside the same new-onset hyperglycemic case and escalates care from outpatient physician evaluation (level 2) to acute metabolic crisis emergency care (level 4) with identical digit tokens and zero stated negatives."
+}

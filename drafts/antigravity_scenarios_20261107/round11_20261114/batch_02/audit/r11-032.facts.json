@@ -1,0 +1,71 @@
+{
+  "family_id": "r11-032",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "25 year history of daily cigarette smoking",
+      "Has had an adherent white mucosal plaque on the left lateral tongue for 6 weeks",
+      "The plaque is rough"
+    ],
+    "everyday": [
+      "Smoked cigarettes every day for 25 years",
+      "Has had a white patch stuck on the left side of the tongue for 6 weeks",
+      "The patch feels rough"
+    ],
+    "medical_paraphrase": [
+      "Has smoked cigarettes daily for 25 years",
+      "Noted an adherent white mucosal plaque on the left lateral tongue for 6 weeks",
+      "The plaque is rough"
+    ],
+    "everyday_paraphrase": [
+      "Has been smoking cigarettes every day for 25 years",
+      "Had a white patch stuck to the left side of the tongue for 6 weeks",
+      "The patch is rough"
+    ],
+    "changed_fact": [
+      "Smoked cigarettes every day for 25 years",
+      "Has had a white patch stuck on the left side of the tongue for 6 weeks",
+      "The patch is gushing bright red blood"
+    ],
+    "everyday_attribution": [
+      "Smoked cigarettes every day for 25 years",
+      "Has had a white patch stuck on the left side of the tongue for 6 weeks",
+      "The patch feels rough",
+      "Causal belief only (no new clinical fact): thinks they bit their tongue"
+    ],
+    "quad_b": [
+      "Smoked cigarettes daily for 25 years",
+      "Has had an adherent white mucosal plaque on the left lateral tongue for 6 weeks",
+      "The plaque is rough"
+    ],
+    "quad_c": [
+      "25 year history of smoking cigarettes every day",
+      "Has had a white patch stuck on the left side of the tongue for 6 weeks",
+      "The patch is rough"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: smoked cigarettes daily for 25 years, f2: adherent white patch on the left side of the tongue for 6 weeks, f3: the tongue lesion feels rough on the surface) are strictly atomic, single checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only f3 ('that feels rough' -> 'that is gushing bright red blood') on the same tongue patch with zero added facts.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday; inserted clause ('and I think I bit my tongue') states a causal belief only and adds no clinical fact.",
+    "quad_b": "Matches f1, f2, and f3 exactly.",
+    "quad_c": "Matches f1, f2, and f3 exactly."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 8 texts ('left lateral tongue' / 'left side of my tongue').",
+    "timing": "Identical across all 8 texts ('25 year'/'for 25 years' daily/every day; 'for 6 weeks').",
+    "count_and_numbers": "Identical across all 8 texts ('25' years; '6' weeks); no ambiguous quantities.",
+    "severity_and_quality": "Identical across all 7 non-control texts ('adherent'/'stuck' white mucosal plaque/patch; 'rough'); changed_fact substitutes brisk lingual bleeding ('gushing bright red blood').",
+    "uncertainty": "Identical factual certainty across all texts; causal belief isolated in everyday_attribution.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

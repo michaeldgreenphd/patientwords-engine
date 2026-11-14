@@ -1,0 +1,57 @@
+{
+  "family_id": "r11-040",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 71 years old",
+      "Used a cotton swab in the left ear 5 days ago",
+      "Has experienced left aural fullness since then",
+      "Ipsilateral decreased hearing acuity today"
+    ],
+    "everyday": [
+      "Speaker is 71 years old",
+      "Used a cotton swab in the left ear 5 days ago",
+      "Left ear has felt plugged since then",
+      "Muffled hearing in the left ear today"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 71 years old",
+      "Inserted a cotton swab into the left ear 5 days ago",
+      "Has had left sided aural fullness since then",
+      "Ipsilateral reduced hearing today"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 71 years old",
+      "Put a cotton swab in the left ear 5 days ago",
+      "Blocked left ear since then",
+      "Muffled hearing on the left side today"
+    ],
+    "changed_fact": [
+      "Speaker is 71 years old",
+      "Used a cotton swab in the left ear 5 days ago",
+      "Left ear has felt plugged since then",
+      "Painful swelling behind the left ear today"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 4 reference_facts (f1: 71 years old, f2: used a cotton swab in the left ear 5 days ago, f3: left ear has felt plugged since 5 days ago, f4: muffled hearing on the left side today) are strictly atomic, single checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday": "Matches f1, f2, f3, and f4 exactly.",
+    "medical_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3, and f4 exactly.",
+    "changed_fact": "Matches f1, f2, and f3 identically to everyday and changes only f4 ('with muffled hearing there' -> 'with painful swelling behind that ear') at the same left ear with identical 'today' timing and zero added facts."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical left-ear laterality across all 5 texts ('my left ear', 'ipsilateral'/'there'/'on that side'/'behind that ear').",
+    "timing": "Identical across all 5 texts ('5 days ago', 'since then', 'today').",
+    "count_and_numbers": "Identical across all 5 texts ('71' years old; '5' days ago); no ambiguous quantities.",
+    "severity_and_quality": "Identical across all 4 non-control texts (cotton swab insertion; 'aural fullness'/'plugged'/'blocked'; 'decreased hearing acuity'/'reduced hearing'/'muffled hearing'); changed_fact substitutes ipsilateral postauricular swelling ('painful swelling behind that ear').",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

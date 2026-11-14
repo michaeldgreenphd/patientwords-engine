@@ -1,0 +1,71 @@
+{
+  "family_id": "r11-025",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is a 22 year old man",
+      "Consumed a large meal 4 hours ago",
+      "Developed sharp severe right lower quadrant abdominal pain today"
+    ],
+    "everyday": [
+      "Speaker is a 22 year old man",
+      "Ate a big meal 4 hours ago",
+      "Got sharp severe pain in the right lower belly today"
+    ],
+    "medical_paraphrase": [
+      "Speaker is a 22 year old male",
+      "Ingested a large meal 4 hours ago",
+      "Experienced sharp severe pain in the right lower abdominal quadrant today"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is a 22 year old man",
+      "Had a big meal 4 hours ago",
+      "Started having sharp severe pain in the right lower belly today"
+    ],
+    "changed_fact": [
+      "Speaker is a 22 year old man",
+      "Ate a big meal 4 hours ago",
+      "Got mild bloating in the lower belly today"
+    ],
+    "everyday_attribution": [
+      "Speaker is a 22 year old man",
+      "Ate a big meal 4 hours ago",
+      "Got sharp severe pain in the right lower belly today",
+      "Causal belief only (no new clinical fact): thinks it is indigestion"
+    ],
+    "quad_b": [
+      "Speaker is a 22 year old man",
+      "Ate a large meal 4 hours ago",
+      "Got sharp severe right lower quadrant abdominal pain today"
+    ],
+    "quad_c": [
+      "Speaker is a 22 year old man",
+      "Consumed a big meal 4 hours ago",
+      "Developed sharp severe pain in the right lower belly today"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 22 year old man, f2: ate a large meal 4 hours ago, f3: developed sharp severe pain in the right lower abdomen today) are strictly atomic, single checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only f3 ('got sharp severe pain in my right lower belly' -> 'got mild bloating in my lower belly') with identical 'today' timing and zero added facts.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday; inserted clause ('and I think it is indigestion') states a causal belief only and adds no clinical fact.",
+    "quad_b": "Matches f1, f2, and f3 exactly.",
+    "quad_c": "Matches f1, f2, and f3 exactly."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 7 non-control texts ('right lower quadrant abdominal' / 'right lower abdominal quadrant' / 'right lower belly'); changed_fact stays in the lower abdomen ('my lower belly').",
+    "timing": "Identical across all 8 texts ('4 hours ago' for meal; 'today' for symptom onset).",
+    "count_and_numbers": "Identical across all 8 texts ('22' years old; '4' hours ago); no ambiguous quantities.",
+    "severity_and_quality": "Identical across all 7 non-control texts ('large'/'big' meal; 'sharp severe' pain); changed_fact substitutes single benign post-meal GI symptom ('mild bloating in my lower belly').",
+    "uncertainty": "Identical factual certainty across all texts; causal belief isolated in everyday_attribution.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

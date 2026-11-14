@@ -1,0 +1,78 @@
+{
+  "family_id": "r11-037",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 48 years old",
+      "Speaker is overweight",
+      "Has experienced urinary frequency for 3 weeks",
+      "Has experienced polydipsia for 3 weeks",
+      "Has been fatigued today"
+    ],
+    "everyday": [
+      "Speaker is 48 years old",
+      "Speaker is overweight",
+      "Has had frequent urination for 3 weeks",
+      "Has had excessive thirst for 3 weeks",
+      "Has felt tired today"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 48 years old",
+      "Speaker is overweight",
+      "Has experienced 3 weeks of urinary frequency",
+      "Has experienced 3 weeks of polydipsia",
+      "Has been fatigued today"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 48 years old",
+      "Speaker is overweight",
+      "Has been peeing often for 3 weeks",
+      "Has had excessive thirst for 3 weeks",
+      "Has felt tired today"
+    ],
+    "changed_fact": [
+      "Speaker is 48 years old",
+      "Speaker is overweight",
+      "Has had frequent urination for 3 weeks",
+      "Has had excessive thirst for 3 weeks",
+      "Started gasping for breath today"
+    ],
+    "quad_b": [
+      "Speaker is 48 years old",
+      "Speaker is overweight",
+      "Has had urinary frequency for 3 weeks",
+      "Has had polydipsia for 3 weeks",
+      "Has felt fatigued today"
+    ],
+    "quad_c": [
+      "Speaker is 48 years old",
+      "Speaker is overweight",
+      "Has experienced frequent urination for 3 weeks",
+      "Has experienced excessive thirst for 3 weeks",
+      "Has been tired today"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 5 reference_facts (f1: 48 years old, f2: overweight, f3: frequent urination for 3 weeks, f4: excessive thirst for 3 weeks, f5: has felt tired today) are strictly atomic, single checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, f4, and f5 exactly.",
+    "everyday": "Matches f1, f2, f3, f4, and f5 exactly.",
+    "medical_paraphrase": "Matches f1, f2, f3, f4, and f5 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, f3, f4, and f5 exactly.",
+    "changed_fact": "Matches f1, f2, f3, and f4 identically to everyday and changes only f5 ('have felt tired' -> 'started gasping for breath') with identical 'today' timing and zero added facts.",
+    "quad_b": "Matches f1, f2, f3, f4, and f5 exactly.",
+    "quad_c": "Matches f1, f2, f3, f4, and f5 exactly."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 7 texts (systemic/urinary symptoms; no laterality).",
+    "timing": "Identical across all 7 texts ('for 3 weeks' / '3 weeks of' for urinary frequency and thirst; 'today' for f5).",
+    "count_and_numbers": "Identical across all 7 texts ('48' years old; '3' weeks); no ambiguous quantities.",
+    "severity_and_quality": "Identical across all 6 non-control texts ('overweight', 'urinary frequency'/'frequent urination'/'peeing often', 'polydipsia'/'excessive thirst', 'fatigued'/'tired'); changed_fact substitutes single acute air-hunger red flag ('started gasping for breath').",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

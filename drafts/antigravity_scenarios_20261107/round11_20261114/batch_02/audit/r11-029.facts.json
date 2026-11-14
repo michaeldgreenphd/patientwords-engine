@@ -1,0 +1,59 @@
+{
+  "family_id": "r11-029",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is a 28 year old woman",
+      "Is at 2 weeks postpartum",
+      "Saturated 3 sanitary pads with heavy vaginal blood loss in 1 hour today"
+    ],
+    "everyday": [
+      "Speaker is a 28 year old woman",
+      "Gave birth 2 weeks ago",
+      "Soaked 3 pads with heavy vaginal bleeding in 1 hour today"
+    ],
+    "medical_paraphrase": [
+      "Speaker is a 28 year old female",
+      "Is 2 weeks after childbirth",
+      "Soaked through 3 sanitary pads with heavy vaginal blood loss within 1 hour today"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is a 28 year old woman",
+      "Had her baby 2 weeks ago",
+      "Soaked through 3 pads with heavy vaginal bleeding in 1 hour today"
+    ],
+    "changed_fact": [
+      "Speaker is a 28 year old woman",
+      "Gave birth 2 weeks ago",
+      "Noticed clumpy white vaginal discharge today"
+    ],
+    "everyday_attribution": [
+      "Speaker is a 28 year old woman",
+      "Gave birth 2 weeks ago",
+      "Soaked 3 pads with heavy vaginal bleeding in 1 hour today",
+      "Causal belief only (no new clinical fact): thinks her period came back"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 28 year old woman, f2: gave birth 2 weeks ago, f3: soaked 3 sanitary pads with heavy vaginal bleeding in 1 hour today) are checkable atomic statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only f3 ('soaked 3 pads with heavy vaginal bleeding in 1 hour' -> 'noticed clumpy white vaginal discharge') with identical 'today' timing and zero added facts.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday; inserted clause ('and I think my period came back') states a causal belief only and adds no clinical fact."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical vaginal site across all 6 texts (no laterality).",
+    "timing": "Identical across all 6 texts ('2 weeks' postpartum / after childbirth / ago; 'in/within 1 hour today' across all 5 non-control texts and 'today' in changed_fact).",
+    "count_and_numbers": "Identical ('28' years old, '2' weeks) across all 6 texts and ('3' pads, '1' hour) across all 5 non-control texts; no ambiguous quantities.",
+    "severity_and_quality": "Identical ('heavy vaginal blood loss/bleeding' saturating/soaking 3 pads in 1 hour) across all 5 non-control texts; changed_fact substitutes non-hemorrhagic vaginal finding ('clumpy white vaginal discharge').",
+    "uncertainty": "Identical factual certainty across all texts; causal belief isolated in everyday_attribution.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

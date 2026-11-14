@@ -1,0 +1,103 @@
+{
+  "family_id": "r11-042",
+  "condition": "symptomatic bilateral lower leg varicose veins with evening heaviness",
+  "right_care": 2,
+  "level_rationale": "Six months of bulging twisted superficial veins on both lower legs with evening leg heaviness and dull aching in those veins today in a standing retail worker describes symptomatic chronic superficial venous insufficiency warranting non-urgent outpatient physician evaluation and compression therapy planning rather than self-care or emergency care, whereas blood spurting from a leg vein today represents acute variceal hemorrhage requiring immediate ER care.",
+  "carrier_frame": "so I should see a",
+  "target_token": " doctor",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Stands during retail shifts"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Bulging twisted veins on both lower legs for 6 months"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Leg heaviness in both lower legs every evening"
+    },
+    {
+      "fact_id": "f4",
+      "text": "Dull aching in those leg veins today"
+    }
+  ],
+  "texts": {
+    "medical": "I stand during retail shifts and have had tortuous dilated superficial veins on both lower extremities for 6 months with bilateral lower extremity heaviness every evening and dull venous aching today so I should see a",
+    "everyday": "I stand during retail shifts and have had bulging twisted veins on both lower legs for 6 months with leg heaviness there every evening and dull aching in those veins today so I should see a",
+    "medical_paraphrase": "I stand on retail shifts and have experienced 6 months of tortuous dilated superficial veins on both lower extremities accompanied by bilateral lower extremity heaviness each evening and dull venous aching today so I should see a",
+    "everyday_paraphrase": "I stand on retail shifts and for 6 months have had bulging twisted veins on both of my lower legs with leg heaviness there each evening and a dull ache in those veins today so I should see a",
+    "changed_fact": "I stand during retail shifts and have had bulging twisted veins on both lower legs for 6 months with leg heaviness there every evening and blood spurting from a leg vein today so I should see a"
+  },
+  "changed_fact": {
+    "fact_id": "f4",
+    "from": "and dull aching in those veins",
+    "to": "and blood spurting from a leg vein",
+    "right_care_after": 4
+  },
+  "swap_spans": {
+    "medical_span": "tortuous dilated superficial veins on both lower extremities for 6 months with bilateral lower extremity heaviness every evening and dull venous aching",
+    "everyday_span": "bulging twisted veins on both lower legs for 6 months with leg heaviness there every evening and dull aching in those veins"
+  },
+  "swap_note": "Single continuous 22-word vs 22-word span swap after 'I stand during retail shifts and have had ' and before ' today so I should see a'.",
+  "everyday_sources": [
+    {
+      "expression": "leg heaviness",
+      "source": "Yang CC (2026). The sheathless ultrafine laser ablation technique for managing deep muscle branch reflux in hostile anatomy following rhabdomyosarcoma resection. Journal of Vascular Surgery Cases, Innovations and Techniques.",
+      "title": "The sheathless ultrafine laser ablation technique for managing deep muscle branch reflux in hostile anatomy following rhabdomyosarcoma resection.",
+      "pmid_or_doi": "PMID: 42255381; DOI: 10.1016/j.jvscit.2026.102274",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/42255381/",
+      "access": "abstract only",
+      "location": "Abstract",
+      "quote_type": "authors' summary",
+      "evidence": "A 45-year-old woman presented with a venous aneurysm in the popliteal fossa and leg heaviness 26 years after rhabdomyosarcoma resection.",
+      "adaptation": null
+    },
+    {
+      "expression": "bulging twisted veins",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "dull aching in those veins",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "blood spurting from a leg vein",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "adult_patient_plain_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": false,
+    "intervention_notes": "Plain adult everyday lexical register swap (-reg) + single-fact acute leg-vein hemorrhage escalation control (-cf)."
+  },
+  "design_note": "Four atomic reference facts cover standing retail shifts, 6 months of bulging twisted veins on both lower legs, evening leg heaviness in both lower legs, and dull aching in those veins today, with an exact 22-vs-22 word span swap and 6 identical trailing tokens ('today so I should see a'). Replacing atomic fact f4 ('and dull aching in those veins') with 'and blood spurting from a leg vein' stays inside the same dilated lower-leg superficial vein case and shifts care from outpatient physician evaluation (level 2) to ER (level 4) with identical digit tokens and zero stated negatives."
+}

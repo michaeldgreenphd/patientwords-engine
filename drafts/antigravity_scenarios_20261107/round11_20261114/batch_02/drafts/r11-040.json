@@ -1,0 +1,91 @@
+{
+  "family_id": "r11-040",
+  "condition": "cerumen earwax impaction causing muffled single ear hearing after cotton bud use",
+  "right_care": 2,
+  "level_rationale": "Five days of unilateral left ear plugging with muffled left-sided hearing today after cotton-swab insertion in a 71-year-old adult requires non-urgent outpatient clinic otoscopy and safe cerumen or foreign-body removal rather than blind home self-care or emergency care, whereas developing painful swelling behind that same left ear signals suspected acute mastoiditis requiring immediate ER imaging and intravenous antibiotics.",
+  "carrier_frame": "so I need to go to the",
+  "target_token": " clinic",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is 71 years old"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Used a cotton swab in the left ear 5 days ago"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Left ear has felt plugged since 5 days ago"
+    },
+    {
+      "fact_id": "f4",
+      "text": "Muffled hearing on the left side today"
+    }
+  ],
+  "texts": {
+    "medical": "I am 71 years old and used a cotton swab in my left ear 5 days ago and have experienced left aural fullness since then with ipsilateral decreased hearing acuity today so I need to go to the",
+    "everyday": "I am 71 years old and used a cotton swab in my left ear 5 days ago and my left ear has felt plugged since then with muffled hearing there today so I need to go to the",
+    "medical_paraphrase": "I am 71 years old and inserted a cotton swab into my left ear 5 days ago and have had left sided aural fullness since then with ipsilateral reduced hearing today so I need to go to the",
+    "everyday_paraphrase": "I am 71 years old and put a cotton swab in my left ear 5 days ago with a blocked left ear since then and muffled hearing on that side today so I need to go to the",
+    "changed_fact": "I am 71 years old and used a cotton swab in my left ear 5 days ago and my left ear has felt plugged since then with painful swelling behind that ear today so I need to go to the"
+  },
+  "changed_fact": {
+    "fact_id": "f4",
+    "from": "with muffled hearing there",
+    "to": "with painful swelling behind that ear",
+    "right_care_after": 4
+  },
+  "swap_spans": {
+    "medical_span": "have experienced left aural fullness since then with ipsilateral decreased hearing acuity",
+    "everyday_span": "my left ear has felt plugged since then with muffled hearing there"
+  },
+  "swap_note": "Single continuous 12-word vs 12-word span swap after 'I am 71 years old and used a cotton swab in my left ear 5 days ago and ' and before ' today so I need to go to the'.",
+  "everyday_sources": [
+    {
+      "expression": "muffled hearing",
+      "source": "Ahmed MH, Oddie-Okeke C, Alnawasrah A (2025). Intermittent muffled hearing as a precursor to Bow Hunter's syndrome: A diagnostic consideration for family physicians, ENT, and stroke specialists. Journal of Family Medicine and Primary Care.",
+      "title": "Intermittent muffled hearing as a precursor to Bow Hunter's syndrome: A diagnostic consideration for family physicians, ENT, and stroke specialists.",
+      "pmid_or_doi": "PMID: 41403536; DOI: 10.4103/jfmpc.jfmpc_787_25",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/41403536/",
+      "access": "abstract only",
+      "location": "Abstract",
+      "quote_type": "authors' summary",
+      "evidence": "Two months prior to admission, her general practitioner referred her to ear, nose, and throat (ENT) for intermittent muffled hearing in the left ear.",
+      "adaptation": null
+    },
+    {
+      "expression": "my left ear has felt plugged",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "painful swelling behind that ear",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "older_adult_plain_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": false,
+    "intervention_notes": "Plain older-adult everyday lexical register swap (-reg) + single-fact ipsilateral postauricular swelling escalation control (-cf)."
+  },
+  "design_note": "Four atomic reference facts state age 71, cotton-swab insertion in the left ear 5 days ago, left ear plugging since then, and muffled left-sided hearing today, with an exact 12-vs-12 word span swap and 8 identical trailing tokens ('today so I need to go to the'). Replacing atomic fact f4 ('with muffled hearing there') at the same left ear with 'with painful swelling behind that ear' escalates care within the same otologic case from outpatient clinic (level 2) to ER for suspected acute mastoiditis (level 4) with identical digit tokens and zero stated negatives."
+}

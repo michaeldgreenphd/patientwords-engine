@@ -1,0 +1,93 @@
+{
+  "family_id": "r11-045",
+  "condition": "mild postural lightheadedness on standing after antihypertensive dose increase",
+  "right_care": 2,
+  "level_rationale": "Feeling lightheaded upon standing 1 week after an antihypertensive dose increase with a mildly low-normal standing blood pressure of 106 over 66 today represents uncomplicated medication-related orthostatic lightheadedness warranting an outpatient doctor visit for dose review, whereas a standing blood pressure of 68 over 40 today indicates profound acute drug-induced hypotension requiring immediate ER evaluation.",
+  "carrier_frame": "so I should see a",
+  "target_token": " doctor",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is 71 years old"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Had blood pressure medication dose increased 1 week ago"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Feels lightheaded when standing up"
+    },
+    {
+      "fact_id": "f4",
+      "text": "Standing blood pressure is 106 over 66 today"
+    }
+  ],
+  "texts": {
+    "medical": "I am 71 years old and had my antihypertensive medication dose increased 1 week ago and feel lightheaded when standing up and my standing blood pressure is 106 over 66 today so I should see a",
+    "everyday": "I am 71 years old and had my blood pressure pill dose raised 1 week ago and feel swimmy headed when standing up and my standing blood pressure is 106 over 66 today so I should see a",
+    "medical_paraphrase": "I am a 71 year old who began a higher antihypertensive drug dose 1 week ago and gets lightheaded on standing and my standing blood pressure reads 106 over 66 today so I should see a",
+    "everyday_paraphrase": "I am a 71 year old who began a higher blood pressure pill dose 1 week ago and my head feels swimmy on standing and my standing blood pressure reads 106 over 66 today so I should see a",
+    "changed_fact": "I am 71 years old and had my blood pressure pill dose raised 1 week ago and feel swimmy headed when standing up and my standing blood pressure is 68 over 40 today so I should see a"
+  },
+  "changed_fact": {
+    "fact_id": "f4",
+    "from": "is 106 over 66",
+    "to": "is 68 over 40",
+    "right_care_after": 4
+  },
+  "swap_spans": {
+    "medical_span": "antihypertensive medication dose increased 1 week ago and feel lightheaded",
+    "everyday_span": "blood pressure pill dose raised 1 week ago and feel swimmy headed"
+  },
+  "swap_note": "Single continuous 10-word vs 12-word span swap after 'I am 71 years old and had my ' and before ' when standing up and my standing blood pressure is 106 over 66 today so I should see a'.",
+  "everyday_sources": [
+    {
+      "expression": "swimmy headed",
+      "source": "Wiktionary contributors (verified 2026-11-14; matches dialect_lexicon_20261109.json). Entry 'swimmy'. Wiktionary, The Free Dictionary.",
+      "title": "Entry 'swimmy'",
+      "pmid_or_doi": "https://en.wiktionary.org/wiki/swimmy",
+      "inspected_url": "https://en.wiktionary.org/wiki/swimmy",
+      "access": "full text",
+      "location": "English — Adjective, sense 1",
+      "quote_type": "dictionary definition",
+      "evidence": "# [[dizzy|Dizzy]]; swirling or moving as if seen in a [[daze]].",
+      "adaptation": "Combined adjective lemma 'swimmy' (dizzy) into unhyphenated compound 'swimmy headed' per dialect_lexicon_20261109.json typing note; Wiktionary entry attests lexical sense only and does not establish demographic or community usage."
+    },
+    {
+      "expression": "my head feels swimmy",
+      "source": "Wiktionary contributors (verified 2026-11-14; matches dialect_lexicon_20261109.json). Entry 'swimmy'. Wiktionary, The Free Dictionary.",
+      "title": "Entry 'swimmy'",
+      "pmid_or_doi": "https://en.wiktionary.org/wiki/swimmy",
+      "inspected_url": "https://en.wiktionary.org/wiki/swimmy",
+      "access": "full text",
+      "location": "English — Adjective, sense 1",
+      "quote_type": "dictionary definition",
+      "evidence": "# [[dizzy|Dizzy]]; swirling or moving as if seen in a [[daze]].",
+      "adaptation": "Used adjective lemma 'swimmy' (dizzy) in first-person clause 'my head feels swimmy' matching lexicon entry 'swimmy headed / my head feels swimmy'; Wiktionary entry attests lexical sense only and does not establish demographic or community usage."
+    },
+    {
+      "expression": "blood pressure pill",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "colloquial_dialect_older_adult",
+  "lexicon_entries": [
+    "swimmy headed / my head feels swimmy"
+  ],
+  "protocol_flags": {
+    "has_dialect_lexicon": true,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": false,
+    "intervention_notes": "Colloquial dialect lexicon swap ('lightheaded' vs 'swimmy headed', with 'my head feels swimmy' in everyday_paraphrase) + single-fact measured standing blood pressure escalation control (-cf, L2 to L4)."
+  },
+  "design_note": "Uses four atomic facts (age 71, blood pressure pill dose increase 1 week ago, postural lightheadedness when standing up, and standing blood pressure 106 over 66 today) with a 10-word vs 12-word continuous span swap and 18 identical trailing tokens. Changing only the measured standing blood pressure value in atomic fact f4 from '106 over 66' to '68 over 40' obeys reviewer_notes.md Rule A first choice while shifting care from outpatient prescribing physician dose review (level 2) to acute hypotensive emergency care (level 4) with zero stated negatives."
+}

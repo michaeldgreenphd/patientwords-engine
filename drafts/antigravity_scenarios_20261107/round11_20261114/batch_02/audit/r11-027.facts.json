@@ -1,0 +1,65 @@
+{
+  "family_id": "r11-027",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is a 71 year old man",
+      "Smoked cigarettes for 30 years",
+      "Has exertional left calf claudication",
+      "Developed acute left pedal coldness today"
+    ],
+    "everyday": [
+      "Speaker is a 71 year old man",
+      "Smoked cigarettes for 30 years",
+      "Has left calf cramps when walking",
+      "Left foot suddenly turned cold today"
+    ],
+    "medical_paraphrase": [
+      "Speaker is a 71 year old male",
+      "Has a 30 year cigarette smoking history",
+      "Has walking induced left calf claudication",
+      "Experienced abrupt coldness of the left foot today"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is a 71 year old man",
+      "Has smoked cigarettes for 30 years",
+      "Gets left calf cramps while walking",
+      "Left foot went cold suddenly today"
+    ],
+    "changed_fact": [
+      "Speaker is a 71 year old man",
+      "Smoked cigarettes for 30 years",
+      "Has left calf cramps when walking",
+      "Those cramps eased with rest today"
+    ],
+    "everyday_attribution": [
+      "Speaker is a 71 year old man",
+      "Smoked cigarettes for 30 years",
+      "Has left calf cramps when walking",
+      "Left foot suddenly turned cold today",
+      "Causal belief only (no new clinical fact): thinks it is cold air"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 4 reference_facts (f1: 71 year old man, f2: smoked cigarettes for 30 years, f3: gets cramping pain in the left calf when walking, f4: left foot suddenly turned cold today) are strictly atomic, single checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday": "Matches f1, f2, f3, and f4 exactly.",
+    "medical_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "changed_fact": "Matches f1, f2, and f3 identically to everyday and changes only f4 ('my left foot suddenly turned cold' -> 'those cramps eased with rest') with identical 'today' timing and zero added facts.",
+    "everyday_attribution": "Matches f1, f2, f3, and f4 identically to everyday; inserted clause ('and I think it is cold air') states a causal belief only and adds no clinical fact."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical left-limb laterality across all 6 texts ('left calf' across all 6; 'left pedal' / 'left foot' across all 5 non-control texts).",
+    "timing": "Identical across all 6 texts ('for 30 years' / '30 year' smoking history; 'when/while walking' / exertional claudication; 'today' for f4).",
+    "count_and_numbers": "Identical across all 6 texts ('71' years old; '30' years); no ambiguous quantities.",
+    "severity_and_quality": "Identical across all 5 non-control texts (walking-induced left calf claudication/cramps; 'acute'/'abrupt'/'suddenly' cold left foot); changed_fact substitutes rest-relief feature of stable claudication ('those cramps eased with rest').",
+    "uncertainty": "Identical factual certainty across all texts; causal belief isolated in everyday_attribution.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

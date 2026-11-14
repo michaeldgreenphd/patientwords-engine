@@ -1,0 +1,59 @@
+{
+  "family_id": "r11-035",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is a 70 year old man",
+      "Speaker's wife died 16 months ago",
+      "Still experiences persistent severe grief impairing daily functioning"
+    ],
+    "everyday": [
+      "Speaker is a 70 year old man",
+      "Speaker's wife died 16 months ago",
+      "Still feels constant intense grief that affects daily life"
+    ],
+    "medical_paraphrase": [
+      "Speaker is a 70 year old widower (man)",
+      "Speaker's wife died 16 months ago",
+      "Continues to have persistent severe grief impairing daily functioning"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is a 70 year old man",
+      "Speaker's wife passed away 16 months ago",
+      "Still has constant intense grief disrupting daily life"
+    ],
+    "changed_fact": [
+      "Speaker is a 70 year old man",
+      "Speaker's wife died 16 months ago",
+      "Gets brief mild moments of missing her during daily life"
+    ],
+    "everyday_attribution": [
+      "Speaker is a 70 year old man",
+      "Speaker's wife died 16 months ago",
+      "Still feels constant intense grief that affects daily life",
+      "Causal belief only (no new clinical fact): thinks it is from living alone"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 70 year old man, f2: wife died 16 months ago, f3: still experiences persistent severe or intense grief that impairs daily life) are checkable atomic statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly ('widower' entails male spouse).",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only bereavement severity/impairment in f3 ('still feel constant intense grief that affects my daily life' -> 'get brief mild moments of missing her during my daily life') with zero added facts.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday; inserted clause ('and I think it is from living alone') states a causal belief only and adds no clinical fact."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 6 texts (no laterality).",
+    "timing": "Identical across all 6 texts ('16 months ago'; ongoing 'still'/'continue to' in non-control texts).",
+    "count_and_numbers": "Identical across all 6 texts ('70' year old; '16' months ago); no ambiguous quantities.",
+    "severity_and_quality": "Identical across all 5 non-control texts ('persistent severe'/'constant intense' grief impairing/affecting/disrupting daily functioning/life); changed_fact reduces grief severity to 'brief mild moments of missing her during my daily life'.",
+    "uncertainty": "Identical factual certainty across all texts; causal belief isolated in everyday_attribution.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

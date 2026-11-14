@@ -1,0 +1,103 @@
+{
+  "family_id": "r11-039",
+  "condition": "tinea corporis expanding scaly ring shaped plaque on torso refractory to hydrocortisone",
+  "right_care": 2,
+  "level_rationale": "An itchy ring-shaped red patch on the chest that has expanded for 3 weeks despite topical hydrocortisone cream and has a scaly border today in a gym-mat user describes a localized superficial skin plaque failing over-the-counter steroid therapy and requiring outpatient clinic evaluation for targeted antifungal treatment, whereas a spreading steroid-treated chest skin lesion accompanied by a 40 C fever today signals acute invasive bacterial skin infection requiring immediate ER care.",
+  "carrier_frame": "so I need to go to the",
+  "target_token": " clinic",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Uses shared gym mats"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Itchy ring shaped red patch on the chest expanding for 3 weeks"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Continued expanding despite hydrocortisone cream"
+    },
+    {
+      "fact_id": "f4",
+      "text": "Edge of the chest patch is scaly today"
+    }
+  ],
+  "texts": {
+    "medical": "I use shared gym mats and have had a pruritic annular erythematous plaque on my chest expanding for 3 weeks despite hydrocortisone cream with a desquamating border today so I need to go to the",
+    "everyday": "I use shared gym mats and have had an itchy ring shaped red patch on my chest spreading for 3 weeks despite hydrocortisone cream and its edge is scaly today so I need to go to the",
+    "medical_paraphrase": "I use shared mats at the gym and have experienced 3 weeks of an expanding pruritic annular erythematous chest plaque despite hydrocortisone cream with peripheral desquamation today so I need to go to the",
+    "everyday_paraphrase": "I use shared mats at the gym and an itchy ring shaped red spot on my chest has spread wider for 3 weeks despite hydrocortisone cream and has a scaly edge today so I need to go to the",
+    "changed_fact": "I use shared gym mats and have had an itchy ring shaped red patch on my chest spreading for 3 weeks despite hydrocortisone cream and got a 40 C fever today so I need to go to the"
+  },
+  "changed_fact": {
+    "fact_id": "f4",
+    "from": "and its edge is scaly",
+    "to": "and got a 40 C fever",
+    "right_care_after": 4
+  },
+  "swap_spans": {
+    "medical_span": "a pruritic annular erythematous plaque on my chest expanding for 3 weeks despite hydrocortisone cream with a desquamating border",
+    "everyday_span": "an itchy ring shaped red patch on my chest spreading for 3 weeks despite hydrocortisone cream and its edge is scaly"
+  },
+  "swap_note": "Single continuous 19-word vs 21-word span swap after 'I use shared gym mats and have had ' and before ' today so I need to go to the'.",
+  "everyday_sources": [
+    {
+      "expression": "itchy",
+      "source": "Ankad BS, Nikam BP, Dhananjaya S (2025). Incidental Detection of Bowen's Disease in a Patient Presenting With Dermatophytosis: A Case Report of Two Distinct Back Lesions. Cureus.",
+      "title": "Incidental Detection of Bowen's Disease in a Patient Presenting With Dermatophytosis: A Case Report of Two Distinct Back Lesions.",
+      "pmid_or_doi": "PMID: 41404217; DOI: 10.7759/cureus.96810",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/41404217/",
+      "access": "abstract only",
+      "location": "Abstract",
+      "quote_type": "authors' summary",
+      "evidence": "A 60-year-old man presented with itchy, scaly lesions on the upper back, clinically consistent with tinea corporis.",
+      "adaptation": null
+    },
+    {
+      "expression": "ring shaped red patch",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "its edge is scaly",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "a 40 C fever",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "adult_patient_plain_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": false,
+    "intervention_notes": "Plain adult everyday lexical register swap (-reg) + single-fact high-fever systemic skin-infection escalation control (-cf)."
+  },
+  "design_note": "Four atomic reference facts cover shared gym-mat exposure, a 3-week expanding itchy ring-shaped red chest patch, persistence despite hydrocortisone cream, and a scaly border today, with a 2-word span difference (19 vs 21 words) and 8 identical trailing tokens ('today so I need to go to the'). Replacing atomic fact f4 ('and its edge is scaly') with 'and got a 40 C fever' stays inside the same spreading steroid-treated chest skin lesion case and shifts care from outpatient clinic (level 2) to ER (level 4) with zero stated negatives."
+}

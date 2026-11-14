@@ -1,0 +1,57 @@
+{
+  "family_id": "r11-046",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Patient is the speaker's 14 year old daughter",
+      "Had 3 brief episodes of dizziness over 2 weeks",
+      "Episodes occurred while standing motionless in warm school assemblies",
+      "Resting heart rate is 78 beats per minute today"
+    ],
+    "everyday": [
+      "Patient is the speaker's 14 year old daughter",
+      "Had 3 brief dizzy spells over 2 weeks",
+      "Episodes occurred while standing still in warm school assemblies",
+      "Resting pulse is 78 beats a minute today"
+    ],
+    "medical_paraphrase": [
+      "Patient is the speaker's 14 year old daughter",
+      "Experienced 3 short dizziness episodes across 2 weeks",
+      "Episodes occurred while standing motionless at warm school assemblies",
+      "Resting heart rate is 78 beats per minute today"
+    ],
+    "everyday_paraphrase": [
+      "Patient is the speaker's 14 year old daughter",
+      "Has had 3 short dizzy spells in 2 weeks",
+      "Episodes occurred while standing still at warm school assemblies",
+      "Resting pulse is 78 beats a minute today"
+    ],
+    "changed_fact": [
+      "Patient is the speaker's 14 year old daughter",
+      "Had 3 brief dizzy spells over 2 weeks",
+      "Episodes occurred while standing still in warm school assemblies",
+      "Resting pulse is 210 beats a minute today"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 4 reference_facts (f1: speaker's 14 year old daughter, f2: 3 brief episodes of dizziness over 2 weeks, f3: occurred while standing still in warm school assemblies, f4: resting heart rate is 78 beats per minute today) are strictly atomic, single checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday": "Matches f1, f2, f3, and f4 exactly; core dialect entry 'dizzy spells' ('spell (a shaking spell, a fainting spell, a dizzy spell)') has documented clinical meaning 'an episode: ... dizziness'.",
+    "medical_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, f3, and f4 exactly and retains the core dialect form 'dizzy spells'.",
+    "changed_fact": "Matches f1, f2, and f3 identically to everyday and changes only the measured resting heart rate in f4 ('is 78 beats a minute' -> 'is 210 beats a minute') with identical 'today' timing and zero added facts."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 5 texts (no laterality).",
+    "timing": "Identical across all 5 texts ('3 brief/short' episodes 'over/across/in 2 weeks', 'while standing motionless/still in/at warm school assemblies', 'today').",
+    "count_and_numbers": "Identical ('14' year old, '3' episodes/spells, '2' weeks) across all 5 texts and ('78' beats per/a minute) across all 4 non-control texts; changed_fact substitutes measured resting rate ('210' beats a minute).",
+    "severity_and_quality": "Identical across all 4 non-control texts ('brief'/'short' dizziness episodes / dizzy spells; standing motionless/still in warm school assemblies; resting HR/pulse 78 bpm).",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

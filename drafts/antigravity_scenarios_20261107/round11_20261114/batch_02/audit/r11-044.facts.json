@@ -1,0 +1,57 @@
+{
+  "family_id": "r11-044",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 67 years old",
+      "Completed 6 weeks of prescribed balance exercises",
+      "Still has brief episodes of rotational vertigo 2 times a week",
+      "Has mild gait unsteadiness today"
+    ],
+    "everyday": [
+      "Speaker is 67 years old",
+      "Completed 6 weeks of prescribed balance exercises",
+      "Still gets brief funny turns (episodes) where the head spins 2 times a week",
+      "Feels mildly unsteady walking today"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 67 years old",
+      "Finished 6 weeks of prescribed balance therapy",
+      "Continues to have short rotational vertigo attacks 2 times per week",
+      "Has mild walking unsteadiness today"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 67 years old",
+      "Finished 6 weeks of prescribed balance exercises",
+      "Keeps having short funny turns (episodes) where the head spins 2 times per week",
+      "Feels mildly unsteady walking today"
+    ],
+    "changed_fact": [
+      "Speaker is 67 years old",
+      "Completed 6 weeks of prescribed balance exercises",
+      "Still gets brief funny turns (episodes) where the head spins 2 times a week",
+      "Keeps falling to the floor today"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 4 reference_facts (f1: 67 years old, f2: completed 6 weeks of prescribed balance exercises, f3: continues to have brief episodes of rotational vertigo 2 times a week, f4: has mild walking unsteadiness today) are strictly atomic, single checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday": "Matches f1, f2, f3, and f4 exactly; core dialect entry 'funny turns' ('a funny turn' = brief episode / period of giddiness) paired with 'where my head spins' matches 'episodes of rotational vertigo'.",
+    "medical_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, f3, and f4 exactly and retains the core dialect form 'funny turns'.",
+    "changed_fact": "Matches f1, f2, and f3 identically to everyday and changes only balance-impairment severity in f4 ('feel mildly unsteady walking' -> 'keep falling to the floor') with identical 'today' timing and zero added facts."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 5 texts (vestibular/gait symptoms; no laterality).",
+    "timing": "Identical across all 5 texts ('6 weeks' completed, 'brief'/'short', '2 times a/per week', 'today').",
+    "count_and_numbers": "Identical across all 5 texts ('67' years old, '6' weeks, '2' times a/per week); no ambiguous quantities.",
+    "severity_and_quality": "Identical across all 4 non-control texts ('brief'/'short' episodes/attacks/funny turns of rotational vertigo / where head spins; 'mild' gait/walking unsteadiness); changed_fact escalates balance impairment in f4 to 'keep falling to the floor'.",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

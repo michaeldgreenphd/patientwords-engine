@@ -1,0 +1,93 @@
+{
+  "family_id": "r11-046",
+  "condition": "recurrent adolescent orthostatic dizzy spells during warm morning school assemblies",
+  "right_care": 2,
+  "level_rationale": "Three brief episodes of dizziness over 2 weeks triggered by standing still in warm morning school assemblies in a 14-year-old girl whose resting heart rate is a normal 78 beats per minute today fits situational orthostatic presyncope warranting an outpatient clinic visit for physical examination and baseline ECG, whereas a resting pulse of 210 beats per minute today in the same adolescent indicates acute paroxysmal supraventricular tachyarrhythmia requiring immediate ER care.",
+  "carrier_frame": "so I need to go to the",
+  "target_token": " clinic",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Patient is the speaker's 14 year old daughter"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Had 3 brief episodes of dizziness over 2 weeks"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Episodes occurred while standing still in warm school assemblies"
+    },
+    {
+      "fact_id": "f4",
+      "text": "Resting heart rate is 78 beats per minute today"
+    }
+  ],
+  "texts": {
+    "medical": "My 14 year old daughter had 3 brief episodes of dizziness over 2 weeks while standing motionless in warm school assemblies and her resting heart rate is 78 beats per minute today so I need to go to the",
+    "everyday": "My 14 year old daughter had 3 brief dizzy spells over 2 weeks while standing still in warm school assemblies and her resting pulse is 78 beats a minute today so I need to go to the",
+    "medical_paraphrase": "My 14 year old daughter experienced 3 short dizziness episodes across 2 weeks while standing motionless at warm school assemblies and has a resting heart rate of 78 beats per minute today so I need to go to the",
+    "everyday_paraphrase": "My 14 year old daughter has had 3 short dizzy spells in 2 weeks while standing still at warm school assemblies and has a resting pulse of 78 beats a minute today so I need to go to the",
+    "changed_fact": "My 14 year old daughter had 3 brief dizzy spells over 2 weeks while standing still in warm school assemblies and her resting pulse is 210 beats a minute today so I need to go to the"
+  },
+  "changed_fact": {
+    "fact_id": "f4",
+    "from": "is 78 beats a minute",
+    "to": "is 210 beats a minute",
+    "right_care_after": 4
+  },
+  "swap_spans": {
+    "medical_span": "episodes of dizziness over 2 weeks while standing motionless in warm school assemblies and her resting heart rate is 78 beats per minute",
+    "everyday_span": "dizzy spells over 2 weeks while standing still in warm school assemblies and her resting pulse is 78 beats a minute"
+  },
+  "swap_note": "Single continuous 23-word vs 21-word span swap after 'My 14 year old daughter had 3 brief ' and before ' today so I need to go to the'.",
+  "everyday_sources": [
+    {
+      "expression": "dizzy spells",
+      "source": "Al-Ghamdi BS, Fagir N, Alnahdi F, Alhamami A, Baali M, Alghamdi S, Alruwaili N, De Vol E (2024). Yield of Tilt Table Test in Diagnosing Syncope in Patients With Suspected Neurally Mediated Syncope. Cardiology Research.",
+      "title": "Yield of Tilt Table Test in Diagnosing Syncope in Patients With Suspected Neurally Mediated Syncope.",
+      "pmid_or_doi": "PMID: 39698010; DOI: 10.14740/cr1701",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/39698010/",
+      "access": "abstract only",
+      "location": "Abstract — Results, sentence 2",
+      "quote_type": "authors' summary",
+      "evidence": "The main clinical manifestations were recurrent syncope in 259 patients (60.8%), a single syncopal episode in 60 (14.1%), and pre-syncope or dizzy spells without loss of consciousness in 171(25.1%).",
+      "adaptation": null
+    },
+    {
+      "expression": "standing still",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "resting pulse",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "us_colloquial_parent_carer",
+  "lexicon_entries": [
+    "spell (a shaking spell, a fainting spell, a dizzy spell)"
+  ],
+  "protocol_flags": {
+    "has_dialect_lexicon": true,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": false,
+    "intervention_notes": "US colloquial lexicon swap ('episodes of dizziness' vs 'dizzy spells', retained in everyday_paraphrase) + single-fact measured resting heart rate tachyarrhythmia escalation control (-cf, L2 to L4)."
+  },
+  "design_note": "Uses four atomic facts (14-year-old daughter, 3 brief dizziness episodes over 2 weeks, standing still in warm school assemblies, and resting heart rate 78 beats per minute today) with a 23-word vs 21-word continuous span swap. Escalating only the measured resting heart rate in atomic fact f4 from 78 to 210 beats per minute obeys reviewer_notes.md Rule A first choice inside the same adolescent presyncope case while shifting care from outpatient clinic evaluation (level 2) to immediate emergency arrhythmia management (level 4) with zero stated negatives."
+}

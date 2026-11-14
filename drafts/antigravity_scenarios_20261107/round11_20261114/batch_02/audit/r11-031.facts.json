@@ -1,0 +1,71 @@
+{
+  "family_id": "r11-031",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 66 years old with dark brown skin",
+      "Underwent a routine optometric eye examination yesterday",
+      "Intraocular pressure measured 28 mmHg in both eyes"
+    ],
+    "everyday": [
+      "Speaker is 66 years old with dark brown skin",
+      "Had a routine eye test at the optometrist yesterday",
+      "Eye pressure measured 28 mmHg in both eyes"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 66 years old with dark brown skin",
+      "Completed a routine optometric eye examination yesterday",
+      "Bilateral intraocular pressure measured 28 mmHg"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 66 years old with dark brown skin",
+      "Went to the optometrist yesterday for a routine eye check",
+      "Pressure in both eyes measured 28 mmHg"
+    ],
+    "changed_fact": [
+      "Speaker is 66 years old with dark brown skin",
+      "Had a routine eye test at the optometrist yesterday",
+      "Eye pressure measured 15 mmHg in both eyes"
+    ],
+    "everyday_attribution": [
+      "Speaker is 66 years old with dark brown skin",
+      "Had a routine eye test at the optometrist yesterday",
+      "Eye pressure measured 28 mmHg in both eyes",
+      "Causal belief only (no new clinical fact): thinks it is eye strain"
+    ],
+    "quad_b": [
+      "Speaker is 66 years old with dark brown skin",
+      "Had a routine optometric eye examination yesterday",
+      "Intraocular pressure measured 28 mmHg in both eyes"
+    ],
+    "quad_c": [
+      "Speaker is 66 years old with dark brown skin",
+      "Underwent a routine eye test at the optometrist yesterday",
+      "Eye pressure measured 28 mmHg in both eyes"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 66 years old with dark brown skin, f2: had a routine optometry eye examination yesterday, f3: eye or intraocular pressure measured 28 mmHg in both eyes) are checkable atomic statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only the measured pressure value in f3 ('28 mmHg' -> '15 mmHg') in both eyes with zero added facts.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday; inserted clause ('and I think it is eye strain') states a causal belief only and adds no clinical fact.",
+    "quad_b": "Matches f1, f2, and f3 exactly.",
+    "quad_c": "Matches f1, f2, and f3 exactly."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical bilateral eye location across all 8 texts ('in both eyes' / 'bilateral').",
+    "timing": "Identical across all 8 texts ('yesterday').",
+    "count_and_numbers": "Identical ('66' years old) across all 8 texts and ('28 mmHg') across all 7 non-control texts; changed_fact substitutes normal reading ('15 mmHg').",
+    "severity_and_quality": "Identical across all 7 non-control texts ('dark brown skin', 'routine optometric eye examination'/'routine eye test/check at the optometrist', '28 mmHg').",
+    "uncertainty": "Identical factual certainty across all texts; causal belief isolated in everyday_attribution.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

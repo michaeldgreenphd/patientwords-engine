@@ -1,0 +1,57 @@
+{
+  "family_id": "r11-045",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 71 years old",
+      "Had antihypertensive medication dose increased 1 week ago",
+      "Feels lightheaded when standing up",
+      "Standing blood pressure is 106 over 66 today"
+    ],
+    "everyday": [
+      "Speaker is 71 years old",
+      "Had blood pressure pill dose raised 1 week ago",
+      "Feels swimmy headed (dizzy/lightheaded) when standing up",
+      "Standing blood pressure is 106 over 66 today"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 71 years old",
+      "Began a higher antihypertensive drug dose 1 week ago",
+      "Gets lightheaded on standing",
+      "Standing blood pressure reads 106 over 66 today"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 71 years old",
+      "Began a higher blood pressure pill dose 1 week ago",
+      "Head feels swimmy (dizzy/lightheaded) on standing",
+      "Standing blood pressure reads 106 over 66 today"
+    ],
+    "changed_fact": [
+      "Speaker is 71 years old",
+      "Had blood pressure pill dose raised 1 week ago",
+      "Feels swimmy headed (dizzy/lightheaded) when standing up",
+      "Standing blood pressure is 68 over 40 today"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 4 reference_facts (f1: 71 years old, f2: had blood pressure medication dose increased 1 week ago, f3: feels lightheaded when standing up, f4: standing blood pressure is 106 over 66 today) are strictly atomic, single checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday": "Matches f1, f2, f3, and f4 exactly; core dialect entry 'swimmy headed' has documented clinical meaning 'dizzy, lightheaded'.",
+    "medical_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, f3, and f4 exactly and retains the core dialect entry 'my head feels swimmy'.",
+    "changed_fact": "Matches f1, f2, and f3 identically to everyday and changes only the measured standing blood pressure in f4 ('is 106 over 66' -> 'is 68 over 40') with identical 'today' timing and zero added facts."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 5 texts (postural lightheadedness / standing blood pressure; no laterality).",
+    "timing": "Identical across all 5 texts ('1 week ago', 'when standing up'/'on standing', 'today').",
+    "count_and_numbers": "Identical ('71' years old, '1' week ago) across all 5 texts and ('106 over 66') across all 4 non-control texts; changed_fact substitutes measured BP ('68 over 40').",
+    "severity_and_quality": "Identical across all 4 non-control texts (higher blood pressure medication dose; postural lightheadedness / swimmy headed; standing BP 106 over 66).",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

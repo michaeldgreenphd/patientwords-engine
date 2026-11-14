@@ -1,0 +1,57 @@
+{
+  "family_id": "r11-042",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Stands during retail shifts",
+      "Has had tortuous dilated superficial veins on both lower extremities for 6 months",
+      "Has bilateral lower extremity heaviness every evening",
+      "Has dull venous aching today"
+    ],
+    "everyday": [
+      "Stands during retail shifts",
+      "Has had bulging twisted veins on both lower legs for 6 months",
+      "Has leg heaviness in both lower legs every evening",
+      "Has dull aching in those veins today"
+    ],
+    "medical_paraphrase": [
+      "Stands on retail shifts",
+      "Has experienced 6 months of tortuous dilated superficial veins on both lower extremities",
+      "Has bilateral lower extremity heaviness each evening",
+      "Has dull venous aching today"
+    ],
+    "everyday_paraphrase": [
+      "Stands on retail shifts",
+      "For 6 months has had bulging twisted veins on both lower legs",
+      "Has leg heaviness in both lower legs each evening",
+      "Has a dull ache in those veins today"
+    ],
+    "changed_fact": [
+      "Stands during retail shifts",
+      "Has had bulging twisted veins on both lower legs for 6 months",
+      "Has leg heaviness in both lower legs every evening",
+      "Has blood spurting from a leg vein today"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 4 reference_facts (f1: stands during retail shifts, f2: bulging twisted veins on both lower legs for 6 months, f3: leg heaviness in both lower legs every evening, f4: dull aching in those leg veins today) are strictly atomic, single checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday": "Matches f1, f2, f3, and f4 exactly.",
+    "medical_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "changed_fact": "Matches f1, f2, and f3 identically to everyday and changes only f4 ('and dull aching in those veins' -> 'and blood spurting from a leg vein') with identical 'today' timing and zero added facts."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical bilateral lower-extremity/lower-leg vein location across all 4 non-control texts ('both lower extremities' / 'both lower legs', 'venous' / 'in those veins'); changed_fact stays on a lower-leg vein ('from a leg vein').",
+    "timing": "Identical across all 5 texts ('during/on retail shifts', 'for 6 months'/'6 months of', 'every/each evening', 'today').",
+    "count_and_numbers": "Identical across all 5 texts ('6' months); no ambiguous quantities.",
+    "severity_and_quality": "Identical across all 4 non-control texts ('tortuous dilated superficial veins'/'bulging twisted veins', 'heaviness', 'dull' venous aching); changed_fact substitutes acute variceal bleeding ('blood spurting from a leg vein').",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

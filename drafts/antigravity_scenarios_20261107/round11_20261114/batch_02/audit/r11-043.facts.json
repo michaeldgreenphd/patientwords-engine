@@ -1,0 +1,52 @@
+{
+  "family_id": "r11-043",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 66 years old",
+      "Started daily cholesterol medicine 3 weeks ago",
+      "Developed sudden tearing pain in the back between the scapulae today"
+    ],
+    "everyday": [
+      "Speaker is 66 years old",
+      "Started daily cholesterol medicine 3 weeks ago",
+      "Got a sudden tearing misery (pain) in the back between the shoulder blades today"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 66 years old",
+      "Began daily cholesterol medicine 3 weeks ago",
+      "Had abrupt onset tearing pain in the back between the scapulae today"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 66 years old",
+      "Began taking daily cholesterol medicine 3 weeks ago",
+      "Felt a sudden tearing misery (pain) in the back between the shoulder blades today"
+    ],
+    "changed_fact": [
+      "Speaker is 66 years old",
+      "Started daily cholesterol medicine 3 weeks ago",
+      "Got mild muscle soreness in the back between the shoulder blades today"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 66 years old, f2: started daily cholesterol medicine 3 weeks ago, f3: developed sudden tearing pain in the back between the shoulder blades today) are strictly atomic, single checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly; dialect core entry 'a misery in my ... back' has documented clinical meaning 'pain'.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly and retains the core dialect form 'misery in my back'.",
+    "changed_fact": "Matches f1 and f2 identically to everyday, preserves 'in my back between my shoulder blades today', and changes only f3 ('got a sudden tearing misery' -> 'got mild muscle soreness') with zero added facts."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 5 texts ('in my back between my scapulae' / 'in my back between my shoulder blades').",
+    "timing": "Identical across all 5 texts ('daily', '3 weeks ago', 'today', with 'sudden'/'abrupt onset' across all 4 non-control texts).",
+    "count_and_numbers": "Identical across all 5 texts ('66' years old; '3' weeks ago); no ambiguous quantities.",
+    "severity_and_quality": "Identical across all 4 non-control texts ('sudden'/'abrupt onset' + 'tearing' pain/misery); changed_fact substitutes single medication-review symptom ('mild muscle soreness') at the same interscapular site.",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

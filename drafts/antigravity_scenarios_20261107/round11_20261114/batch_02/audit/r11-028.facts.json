@@ -1,0 +1,59 @@
+{
+  "family_id": "r11-028",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Patient is the speaker's 11 month old son",
+      "Entered group childcare last month",
+      "Passed stool containing dark red bloody mucus today"
+    ],
+    "everyday": [
+      "Patient is the speaker's 11 month old son",
+      "Started daycare last month",
+      "Passed poop with dark red bloody mucus today"
+    ],
+    "medical_paraphrase": [
+      "Patient is the speaker's 11 month old infant son",
+      "Began group childcare last month",
+      "Evacuated feces mixed with dark red bloody mucus today"
+    ],
+    "everyday_paraphrase": [
+      "Patient is the speaker's 11 month old baby son",
+      "Began going to daycare last month",
+      "Had poop mixed with dark red bloody mucus today"
+    ],
+    "changed_fact": [
+      "Patient is the speaker's 11 month old son",
+      "Started daycare last month",
+      "Passed poop with tiny white moving worms today"
+    ],
+    "everyday_attribution": [
+      "Patient is the speaker's 11 month old son",
+      "Started daycare last month",
+      "Passed poop with dark red bloody mucus today",
+      "Causal belief only (no new clinical fact): thinks it is a stomach bug"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: speaker's 11 month old son, f2: started daycare last month, f3: passed stool containing dark red bloody mucus today) are strictly atomic, single checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only f3 ('passed poop with dark red bloody mucus' -> 'passed poop with tiny white moving worms') with identical 'today' timing and zero added facts.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday; inserted clause ('and I think it is a stomach bug') states a causal belief only and adds no clinical fact."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 6 texts (passed stool; no laterality).",
+    "timing": "Identical across all 6 texts ('last month' for childcare/daycare entry; 'today' for stool passage).",
+    "count_and_numbers": "Identical across all 6 texts ('11' month old); no ambiguous quantities.",
+    "severity_and_quality": "Identical across all 5 non-control texts ('group childcare'/'daycare'; stool/poop/feces with 'dark red bloody mucus'); changed_fact substitutes single pediatric stool finding ('poop with tiny white moving worms').",
+    "uncertainty": "Identical factual certainty across all texts; causal belief isolated in everyday_attribution.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

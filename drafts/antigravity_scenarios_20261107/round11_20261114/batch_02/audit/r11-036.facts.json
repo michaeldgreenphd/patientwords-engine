@@ -1,0 +1,59 @@
+{
+  "family_id": "r11-036",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 29 years old",
+      "Has used ibuprofen during menses for 12 months",
+      "Still experiences severe cyclical pelvic pain confining her to bed every month"
+    ],
+    "everyday": [
+      "Speaker is 29 years old",
+      "Has taken ibuprofen during periods for 12 months",
+      "Still gets severe pelvic pain keeping her in bed every month"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 29 years old",
+      "Has taken ibuprofen during menses for 12 months",
+      "Continues to have severe monthly pelvic pain that confines her to bed every month"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 29 years old",
+      "Has used ibuprofen during periods for 12 months",
+      "Keeps having severe pelvic pain that leaves her stuck in bed every month"
+    ],
+    "changed_fact": [
+      "Speaker is 29 years old",
+      "Has taken ibuprofen during periods for 12 months",
+      "Only gets mild cramps every month"
+    ],
+    "everyday_attribution": [
+      "Speaker is 29 years old",
+      "Has taken ibuprofen during periods for 12 months",
+      "Still gets severe pelvic pain keeping her in bed every month",
+      "Causal belief only (no new clinical fact): thinks she just has really bad periods"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 29 years old, f2: used ibuprofen during monthly menstrual periods for 12 months, f3: still has severe pelvic pain confining her to bed every month) are checkable atomic statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday, preserves 'every month', and changes only menstrual pain severity in f3 ('still get severe pelvic pain keeping me in bed' -> 'only get mild cramps') with zero added facts.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday; inserted clause ('and I think I just have really bad periods') states a causal normalization belief only and adds no clinical fact."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical pelvic/menstrual location across all 6 texts.",
+    "timing": "Identical across all 6 texts ('during menses/my periods for 12 months'; 'every month').",
+    "count_and_numbers": "Identical across all 6 texts ('29' years old; '12' months); no ambiguous quantities.",
+    "severity_and_quality": "Identical across all 5 non-control texts ('severe' pelvic pain confining/keeping/leaving in bed every month); changed_fact reduces pain severity to 'only get mild cramps'.",
+    "uncertainty": "Identical factual certainty across all texts; causal belief isolated in everyday_attribution.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

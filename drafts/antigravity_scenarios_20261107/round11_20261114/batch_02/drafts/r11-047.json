@@ -1,0 +1,87 @@
+{
+  "family_id": "r11-047",
+  "condition": "small clear fluid friction blister on posterior heel from stiff walking shoes",
+  "right_care": 1,
+  "level_rationale": "A small 1 cm friction blister on the back of the right heel filled with clear fluid the day after walking 5 miles in stiff new walking shoes is an uncomplicated minor skin blister appropriate for over-the-counter protective ointment self-care, whereas cloudy yellow pus draining from the same heel blister indicates localized secondary bacterial wound infection requiring an outpatient doctor visit.",
+  "carrier_frame": "so I just need some",
+  "target_token": " ointment",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Walked 5 miles in stiff new walking shoes yesterday"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Developed a 1 cm friction blister on the back of the right heel"
+    },
+    {
+      "fact_id": "f3",
+      "text": "The blister contains clear fluid today"
+    }
+  ],
+  "texts": {
+    "medical": "I walked 5 miles in stiff new walking shoes yesterday and developed a 1 cm friction bulla on my posterior right heel containing clear serous fluid today so I just need some",
+    "everyday": "I walked 5 miles in stiff new walking shoes yesterday and got a 1 cm friction blister on the back of my right heel filled with clear fluid today so I just need some",
+    "medical_paraphrase": "I walked 5 miles wearing stiff new walking shoes yesterday and formed a 1 cm epidermal friction bulla over my posterior right heel filled with clear serous fluid today so I just need some",
+    "everyday_paraphrase": "I walked 5 miles wearing stiff new walking shoes yesterday and got a 1 cm skin friction blister on the back of my right heel full of clear fluid today so I just need some",
+    "changed_fact": "I walked 5 miles in stiff new walking shoes yesterday and got a 1 cm friction blister on the back of my right heel draining cloudy yellow pus today so I just need some"
+  },
+  "changed_fact": {
+    "fact_id": "f3",
+    "from": "filled with clear fluid",
+    "to": "draining cloudy yellow pus",
+    "right_care_after": 2
+  },
+  "swap_spans": {
+    "medical_span": "developed a 1 cm friction bulla on my posterior right heel containing clear serous fluid",
+    "everyday_span": "got a 1 cm friction blister on the back of my right heel filled with clear fluid"
+  },
+  "swap_note": "Single continuous 15-word vs 17-word span swap after 'I walked 5 miles in stiff new walking shoes yesterday and ' and before ' today so I just need some'.",
+  "everyday_sources": [
+    {
+      "expression": "friction blister",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "filled with clear fluid",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "draining cloudy yellow pus",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "plain_self_care_everyday_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": false,
+    "intervention_notes": "Plain self-care dermatologic register swap ('friction bulla on my posterior right heel containing clear serous fluid' vs 'friction blister on the back of my right heel filled with clear fluid') + single-fact blister-exudate escalation control (-cf, L1 to L2)."
+  },
+  "design_note": "Uses three atomic facts (5-mile walk in stiff new walking shoes yesterday, 1 cm right posterior heel blister, and clear blister fluid today) with a 15-word vs 17-word continuous span swap and 6 identical trailing tokens. Swapping only atomic fact f3 from 'filled with clear fluid' to 'draining cloudy yellow pus' keeps every surrounding fact coherent while shifting care one step from over-the-counter protective ointment self-care (level 1) to outpatient physician wound care (level 2, obeying SPEC.md section 5.5 and reviewer_notes.md Rule A) with zero stated negatives."
+}

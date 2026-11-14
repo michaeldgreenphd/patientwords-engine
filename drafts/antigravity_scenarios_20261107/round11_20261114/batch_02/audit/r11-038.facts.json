@@ -1,0 +1,71 @@
+{
+  "family_id": "r11-038",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 26 years old",
+      "Works at an office desk",
+      "Daily bilateral palmar perspiration for 6 weeks",
+      "Perspiration saturates office documents"
+    ],
+    "everyday": [
+      "Speaker is 26 years old",
+      "Works at an office desk",
+      "Daily sweating on both palms for 6 weeks",
+      "Sweating soaks work papers"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 26 years old",
+      "Works at an office desk",
+      "6 weeks of daily bilateral palmar perspiration",
+      "Perspiration drenches office documents"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 26 years old",
+      "Works at an office desk",
+      "Both palms have sweated every day for 6 weeks",
+      "Sweat soaked work papers"
+    ],
+    "changed_fact": [
+      "Speaker is 26 years old",
+      "Works at an office desk",
+      "Daily sweating on both palms for 6 weeks",
+      "Sweating leaves palms slightly damp"
+    ],
+    "quad_b": [
+      "Speaker is 26 years old",
+      "Works at an office desk",
+      "Daily bilateral palmar perspiration for 6 weeks",
+      "Perspiration saturates office documents"
+    ],
+    "quad_c": [
+      "Speaker is 26 years old",
+      "Works at an office desk",
+      "Daily sweating on both palms for 6 weeks",
+      "Sweating soaks work papers"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 4 reference_facts (f1: 26 years old, f2: works at an office desk, f3: daily sweating on both palms for 6 weeks, f4: sweat from both palms soaks work papers) are strictly atomic, single checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday": "Matches f1, f2, f3, and f4 exactly.",
+    "medical_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "changed_fact": "Matches f1, f2, and f3 identically to everyday and changes only f4 ('that soaks my work papers' -> 'that leaves them slightly damp') with identical 'for 6 weeks' duration and zero added facts.",
+    "quad_b": "Matches f1, f2, f3, and f4 exactly.",
+    "quad_c": "Matches f1, f2, f3, and f4 exactly."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical bilateral palmar location across all 7 texts ('bilateral palmar' / 'on both palms' / 'both of my palms').",
+    "timing": "Identical across all 7 texts ('daily' / 'every day'; 'for 6 weeks' / '6 weeks of').",
+    "count_and_numbers": "Identical across all 7 texts ('26' years old; '6' weeks); no ambiguous quantities.",
+    "severity_and_quality": "Identical across all 6 non-control texts ('saturating'/'drenching'/'saturates' office documents = 'soaks'/'soaked'/'soaking' work papers); changed_fact reduces sweat severity in f4 to 'leaves them slightly damp'.",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

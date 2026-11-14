@@ -1,0 +1,93 @@
+{
+  "family_id": "r11-038",
+  "condition": "subacute severe bilateral palmar hyperhidrosis drenching work papers daily",
+  "right_care": 2,
+  "level_rationale": "Six weeks of daily bilateral palmar sweating severe enough to soak office work papers in a 26-year-old causes significant daily occupational impairment requiring an outpatient general-physician visit for evaluation and prescription antiperspirant therapy, whereas mild daily palmar moisture for 6 weeks that only leaves the palms slightly damp without functional impairment or systemic signs is appropriate for over-the-counter antiperspirant self-care.",
+  "carrier_frame": "so I should see a",
+  "target_token": " doctor",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is 26 years old"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Works at an office desk"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Daily sweating on both palms for 6 weeks"
+    },
+    {
+      "fact_id": "f4",
+      "text": "Sweat from both palms soaks work papers"
+    }
+  ],
+  "texts": {
+    "medical": "I am 26 years old and work at an office desk and have experienced daily bilateral palmar perspiration saturating my office documents for 6 weeks so I should see a",
+    "everyday": "I am 26 years old and work at an office desk and have had daily sweating on both palms that soaks my work papers for 6 weeks so I should see a",
+    "medical_paraphrase": "I am a 26 year old working at an office desk who has had 6 weeks of daily bilateral palmar perspiration drenching my office documents so I should see a",
+    "everyday_paraphrase": "I am 26 years old working at an office desk and both of my palms have sweated every day for 6 weeks and soaked my work papers so I should see a",
+    "changed_fact": "I am 26 years old and work at an office desk and have had daily sweating on both palms that leaves them slightly damp for 6 weeks so I should see a",
+    "quad_b": "I am 26 years old and work at an office desk and have had daily bilateral palmar perspiration that saturates my office documents for 6 weeks so I should see a",
+    "quad_c": "I am 26 years old and work at an office desk and have experienced daily sweating on both palms soaking my work papers for 6 weeks so I should see a"
+  },
+  "changed_fact": {
+    "fact_id": "f4",
+    "from": "that soaks my work papers",
+    "to": "that leaves them slightly damp",
+    "right_care_after": 1
+  },
+  "swap_spans": {
+    "medical_span": "have experienced daily bilateral palmar perspiration saturating my office documents",
+    "everyday_span": "have had daily sweating on both palms that soaks my work papers"
+  },
+  "swap_note": "Single continuous 10-word vs 12-word span swap after 'I am 26 years old and work at an office desk and ' and before ' for 6 weeks so I should see a'.",
+  "everyday_sources": [
+    {
+      "expression": "daily sweating on both palms",
+      "source": "Yan M, Chao S, Yu L, et al. (2026). Living Through Sweat: A Qualitative Study of the Pre-Surgical Decision-Making Trajectory in Patients with Palmar Hyperhidrosis. Patient Preference and Adherence.",
+      "title": "Living Through Sweat: A Qualitative Study of the Pre-Surgical Decision-Making Trajectory in Patients with Palmar Hyperhidrosis.",
+      "pmid_or_doi": "PMID: 42109704; DOI: 10.2147/PPA.S589191",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/42109704/",
+      "access": "abstract only",
+      "location": "Abstract",
+      "quote_type": "authors' summary",
+      "evidence": "First, patients initially normalized excessive hand sweating as a personal difference or familial trait, but gradually developed disease awareness as symptoms persisted and intensified.",
+      "adaptation": "Adapted 'excessive hand sweating' to 'daily sweating on both palms' while placing the severity separately in reference fact f4 ('that soaks my work papers')."
+    },
+    {
+      "expression": "soaks my work papers",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "leaves them slightly damp",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "adult_patient_plain_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": true,
+    "has_patient_attribution": false,
+    "intervention_notes": "Plain adult everyday lexical register swap (-reg) + 2x2 syntax-by-vocabulary crossing (quad_b, quad_c) + single-fact palmar sweat severity de-escalation control (-cf, L2 to L1)."
+  },
+  "design_note": "Four atomic reference facts state age 26, working at an office desk, daily bilateral palmar sweating for 6 weeks, and soaking of work papers, with a 2-word span difference (10 vs 12 words) and 8 identical trailing tokens ('for 6 weeks so I should see a'). Varying only the severity of the same palmar sweating in atomic fact f4 from 'that soaks my work papers' to 'that leaves them slightly damp' keeps every other fact coherent and shifts care from outpatient physician evaluation (level 2) to over-the-counter antiperspirant self-care (level 1) with zero stated negatives."
+}

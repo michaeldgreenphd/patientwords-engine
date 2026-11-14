@@ -1,0 +1,103 @@
+{
+  "family_id": "r11-026",
+  "condition": "suspected acute bacterial meningitis presenting with high fever and acute nuchal rigidity",
+  "right_care": 4,
+  "level_rationale": "A 39 C fever today followed by sudden neck stiffness tonight in a 20-year-old college student indicates suspected acute bacterial meningitis requiring immediate emergency hospital evaluation, lumbar puncture, and empiric intravenous antibiotics, whereas a 39 C fever today with white pus on the tonsils tonight and no meningeal signs points to acute exudative pharyngitis warranting generalist outpatient clinic strep testing.",
+  "carrier_frame": "so I need to go to the",
+  "target_token": " hospital",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is a 20 year old college student"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Developed a 39 C fever today"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Developed sudden neck stiffness tonight"
+    }
+  ],
+  "texts": {
+    "medical": "I am a 20 year old college student who developed pyrexia of 39 C today and experienced acute nuchal rigidity tonight so I need to go to the",
+    "everyday": "I am a 20 year old college student who got a 39 C fever today and got a sudden stiff neck tonight so I need to go to the",
+    "medical_paraphrase": "I am a 20 year old university student who developed a 39 C febrile illness today and noticed abrupt cervical nuchal rigidity tonight so I need to go to the",
+    "everyday_paraphrase": "I am a 20 year old college student who came down with a 39 C fever today and started having a sudden stiff neck tonight so I need to go to the",
+    "changed_fact": "I am a 20 year old college student who got a 39 C fever today and saw white pus on my tonsils tonight so I need to go to the",
+    "everyday_attribution": "I am a 20 year old college student who got a 39 C fever today and got a sudden stiff neck tonight and I think it is the flu so I need to go to the",
+    "quad_b": "I am a 20 year old college student who got pyrexia of 39 C today and got acute nuchal rigidity tonight so I need to go to the",
+    "quad_c": "I am a 20 year old college student who developed a 39 C fever today and experienced a sudden stiff neck tonight so I need to go to the"
+  },
+  "changed_fact": {
+    "fact_id": "f3",
+    "from": "got a sudden stiff neck",
+    "to": "saw white pus on my tonsils",
+    "right_care_after": 2
+  },
+  "attribution": {
+    "clause": "and I think it is the flu",
+    "explains": "attributes high fever and sudden neck stiffness to uncomplicated influenza",
+    "source": "none",
+    "title": null,
+    "pmid_or_doi": null,
+    "inspected_url": null,
+    "access": null,
+    "location": null,
+    "quote_type": "none",
+    "evidence": null,
+    "adaptation": null
+  },
+  "swap_spans": {
+    "medical_span": "developed pyrexia of 39 C today and experienced acute nuchal rigidity",
+    "everyday_span": "got a 39 C fever today and got a sudden stiff neck"
+  },
+  "swap_note": "Single continuous 11-word vs 12-word span swap after 'I am a 20 year old college student who ' and before ' tonight so I need to go to the'.",
+  "everyday_sources": [
+    {
+      "expression": "a sudden stiff neck",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "a 39 C fever",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "white pus on my tonsils",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "adult_patient_plain_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": true,
+    "has_patient_attribution": true,
+    "intervention_notes": "Plain young-adult everyday lexical register swap (-reg) + 2x2 verb-frame by clinical/everyday terminology crossing (quad_b, quad_c) + causal belief-addition clause (-att) + same-case febrile tonsillar exudate clinic control (-cf)."
+  },
+  "design_note": "Uses three strictly atomic reference facts (20-year-old college student, 39 C fever today, and sudden neck stiffness tonight) with a 1-word span difference (11 vs 12 words) and 8 shared trailing tokens ('tonight so I need to go to the'). Swapping only f3 from a sudden stiff neck to white pus on the tonsils stays inside the same acute febrile head-and-neck presentation while shifting care from emergency hospital evaluation (level 4) to generalist outpatient clinic strep evaluation (level 2) with zero stated negatives."
+}

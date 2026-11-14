@@ -1,0 +1,59 @@
+{
+  "family_id": "r11-034",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Has had sustained attention deficits since childhood",
+      "Has taken daily primary care attention pharmacotherapy for 8 weeks",
+      "Still experiences difficulty keeping up with occupational tasks"
+    ],
+    "everyday": [
+      "Has had trouble staying focused since childhood",
+      "Has taken daily focus medicine from family doctor for 8 weeks",
+      "Still has trouble keeping up with work tasks"
+    ],
+    "medical_paraphrase": [
+      "Has experienced childhood onset sustained attention deficits",
+      "Has been taking daily primary care attention pharmacotherapy for 8 weeks",
+      "Still has difficulty keeping up with occupational tasks"
+    ],
+    "everyday_paraphrase": [
+      "Has struggled to stay focused since childhood",
+      "Has been taking daily focus medicine from family doctor for 8 weeks",
+      "Still falls behind on work tasks"
+    ],
+    "changed_fact": [
+      "Has had trouble staying focused since childhood",
+      "Has taken daily focus medicine from family doctor for 8 weeks",
+      "Now has a resting heart rate of 180 beats a minute"
+    ],
+    "everyday_attribution": [
+      "Has had trouble staying focused since childhood",
+      "Has taken daily focus medicine from family doctor for 8 weeks",
+      "Still has trouble keeping up with work tasks",
+      "Causal belief only (no new clinical fact): thinks they are lazy"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: trouble staying focused or sustained attention deficits since childhood, f2: daily attention or focus medication from primary care for 8 weeks, f3: still has difficulty keeping up with tasks at work) are strictly atomic, single checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only f3 ('still have trouble keeping up with work tasks' -> 'now have a resting heart rate of 180 beats a minute') with zero added facts.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday; inserted clause ('and I think I'm lazy') states a causal belief only and adds no clinical fact."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 6 texts (no laterality).",
+    "timing": "Identical across all 6 texts ('since childhood'/'since I was a child'/'childhood onset', 'daily ... for 8 weeks', ongoing 'still' in non-control texts and 'now' in changed_fact).",
+    "count_and_numbers": "Identical ('8' weeks) across all 6 texts; changed_fact states unambiguous measured resting heart rate ('180 beats a minute').",
+    "severity_and_quality": "Identical across all 5 non-control texts ('sustained attention deficits'/'trouble staying focused', 'primary care attention pharmacotherapy'/'focus medicine from my family doctor', difficulty keeping up with occupational/work tasks).",
+    "uncertainty": "Identical factual certainty across all texts; causal belief isolated in everyday_attribution.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

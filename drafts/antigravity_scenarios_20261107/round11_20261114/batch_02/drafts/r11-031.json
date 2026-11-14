@@ -1,0 +1,91 @@
+{
+  "family_id": "r11-031",
+  "condition": "elevated bilateral intraocular pressure of 28 mmHg detected at a routine optometry examination",
+  "right_care": 3,
+  "level_rationale": "An intraocular pressure reading of 28 mmHg in both eyes discovered at a routine optometry visit in a 66-year-old with dark brown skin exceeds the normal physiological ceiling and represents high-risk ocular hypertension requiring ophthalmology specialist evaluation for pachymetry, gonioscopy, optic nerve imaging, and pressure-lowering therapy, whereas a normal eye pressure reading of 15 mmHg in both eyes at a routine optometrist eye test requires no clinical follow-up beyond routine self-care.",
+  "carrier_frame": "so I should see a",
+  "target_token": " specialist",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is 66 years old with dark brown skin"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Had a routine optometry eye examination yesterday"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Eye or intraocular pressure measured 28 mmHg in both eyes"
+    }
+  ],
+  "texts": {
+    "medical": "I am 66 with dark brown skin and underwent a routine optometric eye examination yesterday in which my intraocular pressure measured 28 mmHg in both eyes so I should see a",
+    "everyday": "I am 66 with dark brown skin and had a routine eye test at the optometrist yesterday and my eye pressure measured 28 mmHg in both eyes so I should see a",
+    "medical_paraphrase": "I am 66 years old with dark brown skin and completed a routine optometric eye examination yesterday showing bilateral intraocular pressure of 28 mmHg so I should see a",
+    "everyday_paraphrase": "I am 66 years old with dark brown skin and went to the optometrist yesterday for a routine eye check where the pressure in both eyes measured 28 mmHg so I should see a",
+    "changed_fact": "I am 66 with dark brown skin and had a routine eye test at the optometrist yesterday and my eye pressure measured 15 mmHg in both eyes so I should see a",
+    "everyday_attribution": "I am 66 with dark brown skin and had a routine eye test at the optometrist yesterday and my eye pressure measured 28 mmHg in both eyes and I think it is eye strain so I should see a",
+    "quad_b": "I am 66 with dark brown skin and had a routine optometric eye examination yesterday and my intraocular pressure measured 28 mmHg in both eyes so I should see a",
+    "quad_c": "I am 66 with dark brown skin and underwent a routine eye test at the optometrist yesterday in which my eye pressure measured 28 mmHg in both eyes so I should see a"
+  },
+  "changed_fact": {
+    "fact_id": "f3",
+    "from": "28 mmHg",
+    "to": "15 mmHg",
+    "right_care_after": 1
+  },
+  "attribution": {
+    "clause": "and I think it is eye strain",
+    "explains": "attributes elevated eye pressure measured at a routine optometrist exam to temporary eye strain",
+    "source": "none",
+    "title": null,
+    "pmid_or_doi": null,
+    "inspected_url": null,
+    "access": null,
+    "location": null,
+    "quote_type": "none",
+    "evidence": null,
+    "adaptation": null
+  },
+  "swap_spans": {
+    "medical_span": "underwent a routine optometric eye examination yesterday in which my intraocular pressure",
+    "everyday_span": "had a routine eye test at the optometrist yesterday and my eye pressure"
+  },
+  "swap_note": "Single continuous 12-word vs 13-word span swap after 'I am 66 with dark brown skin and ' and before ' measured 28 mmHg in both eyes so I should see a'.",
+  "everyday_sources": [
+    {
+      "expression": "my eye pressure",
+      "source": "Ibanga AA, Meribe N, Ekpenyong BN, Ahaiwe KE, Nkanga ED, Nkanga DG, et al. (2025). Lived experiences and coping strategies of people living with Glaucoma in Nigeria: A qualitative study. PLoS One.",
+      "title": "Lived experiences and coping strategies of people living with Glaucoma in Nigeria: A qualitative study.",
+      "pmid_or_doi": "PMID: 40522998; DOI: 10.1371/journal.pone.0325258",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/40522998/",
+      "access": "full text",
+      "location": "Results — Emerging themes — Theme 2: Impact on everyday life, quote G03",
+      "quote_type": "direct patient quote",
+      "evidence": "So that inconvenience of having to wake up at a particular time to put the eye drop at night so that your eye pressure does not deteriorate is quite discomforting.",
+      "adaptation": "Adapted verbatim adult patient phrase 'your eye pressure' to first-person 'my eye pressure' matching reference fact f3."
+    },
+    {
+      "expression": "a routine eye test at the optometrist",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "older_adult_plain_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": true,
+    "has_patient_attribution": true,
+    "intervention_notes": "Plain older-adult darker-skin everyday lexical register swap (-reg) + 2x2 syntax-by-vocabulary crossing (quad_b, quad_c) + unsourced eye-strain causal belief clause (-att) + single-fact measured pressure value control (-cf)."
+  },
+  "design_note": "Uses three strictly atomic reference facts (age 66 with dark brown skin, routine optometry exam yesterday, and bilateral pressure of 28 mmHg) with a 12-vs-13 word span swap, orthogonal 2x2 syntax-by-vocabulary crossing, and 11 shared trailing tokens. Under reviewer_notes Rule A first choice, changing only the measured pressure value in fact f3 from '28 mmHg' to '15 mmHg' keeps the exact same routine optometry examination while shifting right care cleanly from ophthalmology specialist evaluation (level 3) to level 1 with zero residual red flags and zero stated negatives."
+}

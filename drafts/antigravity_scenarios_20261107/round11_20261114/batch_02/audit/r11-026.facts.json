@@ -1,0 +1,71 @@
+{
+  "family_id": "r11-026",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is a 20 year old college student",
+      "Developed pyrexia of 39 C today",
+      "Experienced acute nuchal rigidity tonight"
+    ],
+    "everyday": [
+      "Speaker is a 20 year old college student",
+      "Got a 39 C fever today",
+      "Got a sudden stiff neck tonight"
+    ],
+    "medical_paraphrase": [
+      "Speaker is a 20 year old university student",
+      "Developed a 39 C febrile illness today",
+      "Noticed abrupt cervical nuchal rigidity tonight"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is a 20 year old college student",
+      "Came down with a 39 C fever today",
+      "Started having a sudden stiff neck tonight"
+    ],
+    "changed_fact": [
+      "Speaker is a 20 year old college student",
+      "Got a 39 C fever today",
+      "Saw white pus on the tonsils tonight"
+    ],
+    "everyday_attribution": [
+      "Speaker is a 20 year old college student",
+      "Got a 39 C fever today",
+      "Got a sudden stiff neck tonight",
+      "Causal belief only (no new clinical fact): thinks it is the flu"
+    ],
+    "quad_b": [
+      "Speaker is a 20 year old college student",
+      "Got pyrexia of 39 C today",
+      "Got acute nuchal rigidity tonight"
+    ],
+    "quad_c": [
+      "Speaker is a 20 year old college student",
+      "Developed a 39 C fever today",
+      "Experienced a sudden stiff neck tonight"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 20 year old college student, f2: developed a 39 C fever today, f3: developed sudden neck stiffness tonight) are strictly atomic, single checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only f3 ('got a sudden stiff neck' -> 'saw white pus on my tonsils') with identical 'tonight' timing and zero added facts.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday; inserted clause ('and I think it is the flu') states a causal belief only and adds no clinical fact.",
+    "quad_b": "Matches f1, f2, and f3 exactly.",
+    "quad_c": "Matches f1, f2, and f3 exactly."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 7 non-control texts ('nuchal' / 'cervical nuchal' / 'neck'); changed_fact substitutes oropharyngeal finding ('my tonsils') within the febrile head-and-neck presentation.",
+    "timing": "Identical across all 8 texts ('today' for 39 C fever; 'tonight' for f3 symptom).",
+    "count_and_numbers": "Identical across all 8 texts ('20' years old; '39 C' temperature); no ambiguous quantities.",
+    "severity_and_quality": "Identical across all 7 non-control texts ('39 C' pyrexia/fever; 'acute'/'abrupt'/'sudden' nuchal rigidity / stiff neck); changed_fact substitutes single tonsillar exudate finding ('white pus on my tonsils').",
+    "uncertainty": "Identical factual certainty across all texts; causal belief isolated in everyday_attribution.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

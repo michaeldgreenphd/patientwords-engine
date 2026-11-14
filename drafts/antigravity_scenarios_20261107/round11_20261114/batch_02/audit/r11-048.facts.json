@@ -1,0 +1,57 @@
+{
+  "family_id": "r11-048",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 36 years old",
+      "Worked outdoors in humid summer heat for 6 hours yesterday",
+      "Developed small erythematous papules across the posterior neck today",
+      "The papules are mildly pruritic"
+    ],
+    "everyday": [
+      "Speaker is 36 years old",
+      "Worked outdoors in humid summer heat for 6 hours yesterday",
+      "Got small red bumps across the back of the neck today",
+      "The bumps feel mildly itchy"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 36 years old",
+      "Worked outside in humid summer heat for 6 hours yesterday",
+      "Formed small erythematous papules over the posterior neck today",
+      "The papules are mildly pruritic"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 36 years old",
+      "Worked outside in humid summer heat for 6 hours yesterday",
+      "Got small red bumps over the back of the neck today",
+      "The bumps are mildly itchy"
+    ],
+    "changed_fact": [
+      "Speaker is 36 years old",
+      "Worked outdoors in humid summer heat for 6 hours yesterday",
+      "Got small red bumps across the back of the neck today",
+      "The bumps are oozing yellow pus"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 4 reference_facts (f1: 36 years old, f2: worked outdoors in humid summer heat for 6 hours yesterday, f3: developed small red bumps across the back of the neck today, f4: the bumps are mildly itchy) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday": "Matches f1, f2, f3, and f4 exactly.",
+    "medical_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "changed_fact": "Matches f1, f2, and f3 identically to everyday and changes only f4 ('feel mildly itchy' -> 'are oozing yellow pus') on the same posterior-neck bumps with zero added facts."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 5 texts ('across/over my posterior neck' / 'across/over the back of my neck').",
+    "timing": "Identical across all 5 texts ('for 6 hours yesterday'; 'today').",
+    "count_and_numbers": "Identical across all 5 texts ('36' years old; '6' hours); no ambiguous quantities.",
+    "severity_and_quality": "Identical across all 4 non-control texts ('small erythematous papules'/'small red bumps', 'mildly pruritic'/'mildly itchy'); changed_fact substitutes purulent exudate ('oozing yellow pus') in f4.",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

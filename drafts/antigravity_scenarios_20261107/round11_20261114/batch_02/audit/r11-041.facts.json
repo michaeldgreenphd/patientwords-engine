@@ -1,0 +1,66 @@
+{
+  "family_id": "r11-041",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Sustained a right ankle inversion injury 10 days ago",
+      "Still ambulates slowly despite home cryotherapy",
+      "Has lateral right ankle pain when ambulating",
+      "Has mild right lateral malleolar edema today"
+    ],
+    "everyday": [
+      "Rolled right ankle inward 10 days ago",
+      "Still walks slowly despite home icing",
+      "Has outer right ankle pain when walking",
+      "Outer right ankle is mildly swollen today"
+    ],
+    "medical_paraphrase": [
+      "Suffered an inversion injury of the right ankle 10 days ago",
+      "Continues to ambulate slowly despite home cryotherapy",
+      "Has lateral right ankle pain when ambulating",
+      "Has mild right lateral malleolar edema today"
+    ],
+    "everyday_paraphrase": [
+      "Twisted right ankle inward 10 days ago",
+      "Still walks slowly despite icing at home",
+      "Has pain on the outside of the right ankle when walking",
+      "Has mild swelling on the outside of the right ankle today"
+    ],
+    "changed_fact": [
+      "Rolled right ankle inward 10 days ago",
+      "Still walks slowly despite home icing",
+      "Has outer right ankle pain when walking",
+      "Right foot is turning blue today"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 4 reference_facts (f1: rolled right ankle inward 10 days ago, f2: still walks slowly despite home icing, f3: outer right ankle pain when walking, f4: outer side of right ankle is mildly swollen today) are atomic checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday": "Matches f1, f2, f3, and f4 exactly.",
+    "medical_paraphrase": "Matches f1, f2, f3, and f4 (note 'despite home cryotherapy and mild right lateral malleolar edema today' attaches pragmatically under 'with ... and', entailing mild edema today).",
+    "everyday_paraphrase": "Matches f1, f2, f3, and f4 (note 'despite icing at home and mild swelling there today' attaches pragmatically under 'with ... and', entailing mild outer-ankle swelling today).",
+    "changed_fact": "Matches f1, f2, and f3 identically to everyday and changes only f4 ('and my outer right ankle is mildly swollen' -> 'and my right foot is turning blue') on the same injured right limb with identical 'today' timing and zero added facts."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 4 non-control texts ('right ankle', 'lateral right ankle'/'right lateral malleolar'/'outer right ankle'/'outside of my right ankle'); changed_fact stays on the same injured distal right limb ('my right foot').",
+    "timing": "Identical across all 5 texts ('10 days ago', ongoing 'still'/'continue to', 'today').",
+    "count_and_numbers": "Identical across all 5 texts ('10' days ago); no ambiguous quantities.",
+    "severity_and_quality": "Identical across all 4 non-control texts (inversion / inward roll/twist, slow walking despite icing/cryotherapy, lateral/outer pain, 'mild' edema/swelling); changed_fact substitutes distal limb cyanosis ('my right foot is turning blue').",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped or added facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [
+    {
+      "kind": "other",
+      "applies_to": [
+        "med_para",
+        "lay_para"
+      ],
+      "note": "Without punctuation, 'despite home cryotherapy and mild right lateral malleolar edema today' / 'despite icing at home and mild swelling there today' allows a surface attachment of 'mild ... edema/swelling' to 'despite' rather than 'with', though both parses entail that mild outer right ankle swelling is present today."
+    }
+  ],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

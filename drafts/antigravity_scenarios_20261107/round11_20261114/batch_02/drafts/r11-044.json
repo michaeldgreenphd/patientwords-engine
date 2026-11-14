@@ -1,0 +1,105 @@
+{
+  "family_id": "r11-044",
+  "condition": "recurrent episodic rotational vertigo with mild gait unsteadiness refractory to balance exercises",
+  "right_care": 3,
+  "level_rationale": "Continuing to experience twice-weekly brief episodes of rotational vertigo along with mild walking unsteadiness today after completing 6 weeks of prescribed balance exercises in a 67-year-old indicates a refractory vestibular balance disorder warranting outpatient specialist evaluation, whereas repeatedly falling to the floor today in the same balance case signals acute severe ataxia or a posterior-circulation stroke emergency requiring immediate ER care.",
+  "carrier_frame": "so I should see a",
+  "target_token": " specialist",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is 67 years old"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Completed 6 weeks of prescribed balance exercises"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Continues to have brief episodes of rotational vertigo 2 times a week"
+    },
+    {
+      "fact_id": "f4",
+      "text": "Has mild walking unsteadiness today"
+    }
+  ],
+  "texts": {
+    "medical": "I am 67 years old and completed 6 weeks of prescribed balance exercises and still have brief episodes of rotational vertigo 2 times a week and have mild gait unsteadiness today so I should see a",
+    "everyday": "I am 67 years old and completed 6 weeks of prescribed balance exercises and still get brief funny turns where my head spins 2 times a week and feel mildly unsteady walking today so I should see a",
+    "medical_paraphrase": "I am a 67 year old who finished 6 weeks of prescribed balance therapy and continues to have short rotational vertigo attacks 2 times per week with mild walking unsteadiness today so I should see a",
+    "everyday_paraphrase": "I am a 67 year old who finished 6 weeks of prescribed balance exercises and keeps having short funny turns where my head spins 2 times per week and feels mildly unsteady walking today so I should see a",
+    "changed_fact": "I am 67 years old and completed 6 weeks of prescribed balance exercises and still get brief funny turns where my head spins 2 times a week and keep falling to the floor today so I should see a"
+  },
+  "changed_fact": {
+    "fact_id": "f4",
+    "from": "feel mildly unsteady walking",
+    "to": "keep falling to the floor",
+    "right_care_after": 4
+  },
+  "swap_spans": {
+    "medical_span": "have brief episodes of rotational vertigo 2 times a week and have mild gait unsteadiness",
+    "everyday_span": "get brief funny turns where my head spins 2 times a week and feel mildly unsteady walking"
+  },
+  "swap_note": "Single continuous 15-word vs 17-word span swap after 'I am 67 years old and completed 6 weeks of prescribed balance exercises and still ' and before ' today so I should see a'.",
+  "everyday_sources": [
+    {
+      "expression": "funny turns",
+      "source": "Omar R (2015). Faints, fits and funny turns for the physician. Clinical Medicine (London, England).",
+      "title": "Faints, fits and funny turns for the physician.",
+      "pmid_or_doi": "PMID: 26621945; DOI: 10.7861/clinmedicine.15-6-557",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/26621945/",
+      "access": "abstract only",
+      "location": "Abstract, sentence 5",
+      "quote_type": "authors' summary",
+      "evidence": "This conference was held with the aim of demystifying the dizzy patient by providing physicians with a practical approach to the assessment and management of dizziness, imbalance and 'funny turns'.",
+      "adaptation": null
+    },
+    {
+      "expression": "where my head spins",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "feel mildly unsteady walking",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "keep falling to the floor",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "australian_or_british_english_older_adult",
+  "lexicon_entries": [
+    "a funny turn"
+  ],
+  "protocol_flags": {
+    "has_dialect_lexicon": true,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": false,
+    "intervention_notes": "Commonwealth/Australian dialect lexicon swap ('episodes of rotational vertigo' vs 'funny turns where my head spins', retained naturally in everyday_paraphrase) + single-fact same-case balance-severity escalation control (-cf, L3 to L4)."
+  },
+  "design_note": "Uses four atomic facts (age 67, completed 6 weeks of prescribed balance exercises, ongoing twice-weekly brief episodes of rotational vertigo, and mild walking unsteadiness today) with a 15-word vs 17-word continuous span swap that keeps 'funny turns' unstacked in natural patient phrasing ('brief funny turns where my head spins'). Escalating only the balance-impairment severity in atomic fact f4 from 'feel mildly unsteady walking' to 'keep falling to the floor' stays strictly inside the same vestibular-balance case so the 6 weeks of prescribed balance exercises remain directly motivated aloud under reviewer_notes.md Rule A while shifting care from outpatient specialist evaluation (level 3) to acute emergency care (level 4) with zero stated negatives."
+}

@@ -1,0 +1,52 @@
+{
+  "family_id": "r11-047",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Walked 5 miles in stiff new walking shoes yesterday",
+      "Developed a 1 cm friction bulla on the posterior right heel",
+      "Bulla contains clear serous fluid today"
+    ],
+    "everyday": [
+      "Walked 5 miles in stiff new walking shoes yesterday",
+      "Got a 1 cm friction blister on the back of the right heel",
+      "Blister is filled with clear fluid today"
+    ],
+    "medical_paraphrase": [
+      "Walked 5 miles wearing stiff new walking shoes yesterday",
+      "Formed a 1 cm epidermal friction bulla over the posterior right heel",
+      "Bulla is filled with clear serous fluid today"
+    ],
+    "everyday_paraphrase": [
+      "Walked 5 miles wearing stiff new walking shoes yesterday",
+      "Got a 1 cm skin friction blister on the back of the right heel",
+      "Blister is full of clear fluid today"
+    ],
+    "changed_fact": [
+      "Walked 5 miles in stiff new walking shoes yesterday",
+      "Got a 1 cm friction blister on the back of the right heel",
+      "Blister is draining cloudy yellow pus today"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: walked 5 miles in stiff new walking shoes yesterday, f2: developed a 1 cm friction blister on the back of the right heel, f3: the blister contains clear fluid today) are strictly atomic, single checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only f3 ('filled with clear fluid' -> 'draining cloudy yellow pus') with identical 'today' timing and zero added facts."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 5 texts ('posterior right heel' / 'back of my right heel').",
+    "timing": "Identical across all 5 texts ('yesterday' for 5-mile walk; 'today' for blister fluid appearance).",
+    "count_and_numbers": "Identical across all 5 texts ('5' miles; '1 cm'); no ambiguous quantities.",
+    "severity_and_quality": "Identical across all 4 non-control texts ('stiff new walking shoes', '1 cm' friction bulla/blister, 'clear serous fluid'/'clear fluid'); changed_fact substitutes purulent blister exudate ('draining cloudy yellow pus').",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

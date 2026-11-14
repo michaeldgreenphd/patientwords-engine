@@ -1,0 +1,57 @@
+{
+  "family_id": "r11-039",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Uses shared gym mats",
+      "Pruritic annular erythematous plaque on chest expanding for 3 weeks",
+      "Continued expanding despite hydrocortisone cream",
+      "Has a desquamating border today"
+    ],
+    "everyday": [
+      "Uses shared gym mats",
+      "Itchy ring shaped red patch on chest spreading for 3 weeks",
+      "Continued spreading despite hydrocortisone cream",
+      "Edge of the patch is scaly today"
+    ],
+    "medical_paraphrase": [
+      "Uses shared mats at the gym",
+      "3 weeks of an expanding pruritic annular erythematous chest plaque",
+      "Continued expanding despite hydrocortisone cream",
+      "Has peripheral desquamation today"
+    ],
+    "everyday_paraphrase": [
+      "Uses shared mats at the gym",
+      "Itchy ring shaped red spot on chest has spread wider for 3 weeks",
+      "Continued spreading despite hydrocortisone cream",
+      "Has a scaly edge today"
+    ],
+    "changed_fact": [
+      "Uses shared gym mats",
+      "Itchy ring shaped red patch on chest spreading for 3 weeks",
+      "Continued spreading despite hydrocortisone cream",
+      "Got a 40 C fever today"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 4 reference_facts (f1: uses shared gym mats, f2: itchy ring shaped red patch on the chest expanding for 3 weeks, f3: continued expanding despite hydrocortisone cream, f4: edge of the chest patch is scaly today) are checkable atomic statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday": "Matches f1, f2, f3, and f4 exactly.",
+    "medical_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "changed_fact": "Matches f1, f2, and f3 identically to everyday and changes only f4 ('and its edge is scaly' -> 'and got a 40 C fever') with identical 'today' timing and zero added facts."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical chest location across all 5 texts ('on my chest' / 'chest plaque'), with border/edge/peripheral scaling on that patch in all 4 non-control texts.",
+    "timing": "Identical across all 5 texts ('for 3 weeks' / '3 weeks of'; 'today').",
+    "count_and_numbers": "Identical ('3' weeks) across all 5 texts; changed_fact states unambiguous measured temperature ('40 C').",
+    "severity_and_quality": "Identical across all 4 non-control texts ('pruritic'/'itchy', 'annular'/'ring shaped', 'erythematous'/'red', 'expanding'/'spreading', refractory to hydrocortisone cream, 'desquamating border'/'peripheral desquamation'/'scaly edge').",
+    "uncertainty": "Identical factual certainty across all texts.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

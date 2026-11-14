@@ -1,0 +1,59 @@
+{
+  "family_id": "r11-030",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is a 34 year old man",
+      "Fractured a mandibular molar 4 days ago",
+      "Developed rapidly progressive indurated submandibular swelling today"
+    ],
+    "everyday": [
+      "Speaker is a 34 year old man",
+      "Cracked a lower molar 4 days ago",
+      "Got fast spreading hard swelling under the jaw today"
+    ],
+    "medical_paraphrase": [
+      "Speaker is a 34 year old male",
+      "Sustained a mandibular molar fracture 4 days ago",
+      "Experienced rapidly expanding indurated swelling in the submandibular region today"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is a 34 year old man",
+      "Cracked a bottom molar 4 days ago",
+      "Started getting fast spreading hard swelling under the jaw today"
+    ],
+    "changed_fact": [
+      "Speaker is a 34 year old man",
+      "Cracked a lower molar 4 days ago",
+      "Feels a sharp rough edge on that tooth today"
+    ],
+    "everyday_attribution": [
+      "Speaker is a 34 year old man",
+      "Cracked a lower molar 4 days ago",
+      "Got fast spreading hard swelling under the jaw today",
+      "Causal belief only (no new clinical fact): thinks it is a swollen gland"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 34 year old man, f2: cracked a lower molar 4 days ago, f3: developed fast spreading hard swelling under the jaw today) are strictly atomic, single checkable statements matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly.",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only f3 ('got fast spreading hard swelling under my jaw' -> 'feel a sharp rough edge on that tooth') with identical 'today' timing and zero added facts.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday; inserted clause ('and I think it is a swollen gland') states a causal belief only and adds no clinical fact."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 6 texts ('mandibular'/'lower'/'bottom' molar; 'submandibular'/'under my jaw' across all 5 non-control texts; 'on that tooth' in changed_fact).",
+    "timing": "Identical across all 6 texts ('4 days ago' for molar fracture; 'today' for current symptom).",
+    "count_and_numbers": "Identical across all 6 texts ('34' years old; '4' days ago); no ambiguous quantities.",
+    "severity_and_quality": "Identical across all 5 non-control texts ('rapidly progressive/expanding' = 'fast spreading', 'indurated' = 'hard' swelling); changed_fact substitutes single localized dental finding ('a sharp rough edge on that tooth').",
+    "uncertainty": "Identical factual certainty across all texts; causal belief isolated in everyday_attribution.",
+    "dropped_or_added_facts": "Zero dropped facts and zero added adjectives or facts across all variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}
