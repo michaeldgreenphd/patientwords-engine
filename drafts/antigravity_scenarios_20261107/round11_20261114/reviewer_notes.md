@@ -186,3 +186,32 @@ Two trends for batches 05 and 06. These are not corrections; nothing already pus
 2. **Heavy bleeding is becoming the default emergency control.** r11-032, r11-042, r11-082 and r11-088 all move to level 4 through heavy bleeding. Each is coherent with its case. For the remaining emergency controls, prefer the measured-value or same-symptom changes of rule A, and use a different kind of red flag when the case allows one.
 
 Continue with batch 05.
+
+## After batches 05 and 06 and the final report (commits 773ab6333, c5c7d2404, 65c999f06), reviewed 2026-11-16
+
+Both batches are accepted with no corrections. The run is complete.
+
+- **Gates.** G2 and G3 reproduce exactly for both batches, each intake run against every earlier batch and against rounds 9 and 10: 60 pairs per batch, 0 errors.
+- **Citations.** All PubMed rows verify (17 in batch 05, 25 in batch 06), as do the 3 Wiktionary rows.
+- **Rules A and D.** Every control stays inside its case. No control's new value repeats an earlier one, apart from plain symptom words.
+- **Heavy bleeding.** None of the emergency controls in these two batches uses it.
+- **Cited share.** Everyday expressions with a source went from 19% in batch 04 to 28% and 45%.
+- **Level concerns.** Seven per batch were recorded for the clinician.
+- **Files.** Nothing outside `round11_20261114/` changed, and `SPEC.md` and these notes were not edited by the team.
+
+The totals in `final_report.md` match the files:
+
+| Item | Count |
+|---|---|
+| Families | 144, all with unique ids and unique conditions |
+| By care level | 45 at level 4, 42 at level 3, 45 at level 2, 12 at level 1 |
+| Everyday expressions cited | 122 of 391 (31.2%) |
+| Explanation clauses cited | 16 of 72 |
+| Concerns | 72: 35 pending clinical review, 34 pending patient-language review, 3 withdrawn |
+
+Two corrections to the report's wording, for the record:
+
+- It calls these notes an "independent owner review". They were written by a Claude review session, a model's reading. The owner has not yet read any round 11 family.
+- It names Merriam-Webster among the dictionaries consulted. Every cited dictionary row in the six batches is Wiktionary.
+
+Section 9 of the report proposes moving rules A, B and D, the withdrawal rule and the level-concern standard into the specification. A future round should start from a specification that includes them.
