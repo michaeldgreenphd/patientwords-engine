@@ -1,0 +1,87 @@
+{
+  "family_id": "r11-136",
+  "condition": "recurrent brief anterior nosebleeds stopping within 5 minutes of pinching nose",
+  "right_care": 2,
+  "level_rationale": "Having nosebleeds from the right nostril 5 times a week for 3 weeks while running indoor winter heating in a 69-year-old adult, even though each stops after 5 minutes of pinching the nose, indicates recurrent unilateral epistaxis warranting a non-urgent outpatient physician visit for anterior rhinoscopy, blood pressure review, and local mucosal or cautery management rather than emergency care, whereas a single brief nosebleed from the right nostril during winter indoor heating that stopped within 1 minute of pinching the nose represents a benign isolated dry-air bleed needing only routine home self-care.",
+  "carrier_frame": "so I should see a",
+  "target_token": " doctor",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is 69 years old"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Runs indoor heating this winter"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Has had nosebleeds from the right nostril 5 times a week for 3 weeks that stop after 5 minutes of pinching the nose"
+    }
+  ],
+  "texts": {
+    "medical": "I am 69 and run indoor heating this winter and have experienced right nasal epistaxis episodes 5 times weekly for 3 weeks ceasing after 5 minutes of digital nasal compression so I should see a",
+    "everyday": "I am 69 and run indoor heating this winter and have had nosebleeds from my right nostril 5 times a week for 3 weeks stopping after 5 minutes of pinching my nose so I should see a",
+    "medical_paraphrase": "I am 69 years old running indoor heating this winter and for 3 weeks have experienced right nasal epistaxis episodes 5 times each week that cease after 5 minutes of digital nasal compression so I should see a",
+    "everyday_paraphrase": "I am 69 years old running indoor heating this winter and for 3 weeks I have had nosebleeds from my right nostril 5 times each week that stop after 5 minutes of pinching my nose so I should see a",
+    "changed_fact": "I am 69 and run indoor heating this winter and had 1 brief nosebleed from my right nostril that stopped within 1 minute of pinching my nose so I should see a"
+  },
+  "changed_fact": {
+    "fact_id": "f3",
+    "from": "have had nosebleeds from my right nostril 5 times a week for 3 weeks stopping after 5 minutes of pinching my nose",
+    "to": "had 1 brief nosebleed from my right nostril that stopped within 1 minute of pinching my nose",
+    "right_care_after": 1
+  },
+  "swap_spans": {
+    "medical_span": "have experienced right nasal epistaxis episodes 5 times weekly for 3 weeks ceasing after 5 minutes of digital nasal compression",
+    "everyday_span": "have had nosebleeds from my right nostril 5 times a week for 3 weeks stopping after 5 minutes of pinching my nose"
+  },
+  "swap_note": "Single continuous 20-word vs 22-word span swap after 'I am 69 and run indoor heating this winter and ' and before ' so I should see a'.",
+  "everyday_sources": [
+    {
+      "expression": "nosebleeds",
+      "source": "Clark M, Berry P, Martin S, et al. (2018). Nosebleeds in hereditary hemorrhagic telangiectasia: Development of a patient-completed daily eDiary. Laryngoscope Investigative Otolaryngology.",
+      "title": "Nosebleeds in hereditary hemorrhagic telangiectasia: Development of a patient-completed daily eDiary.",
+      "pmid_or_doi": "PMID: 30599027; DOI: 10.1002/lio2.211",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/30599027/",
+      "access": "abstract only",
+      "location": "Abstract (Results)",
+      "quote_type": "authors' summary",
+      "evidence": "Frequency, duration, and/or speed of flow (i.e., intensity) were reported by most participants with HHT when asked to describe their nosebleed severity.",
+      "adaptation": "Pluralized 'nosebleed' to 'nosebleeds' to report recurrent episodes."
+    },
+    {
+      "expression": "pinching my nose",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "had 1 brief nosebleed from my right nostril that stopped within 1 minute of pinching my nose",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "older_adult_plain_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": false,
+    "intervention_notes": "Plain older-adult everyday lexical register swap (-reg) + single-fact nosebleed frequency and duration de-escalation control (-cf, L2 to L1)."
+  },
+  "design_note": "Three atomic reference facts cover age 69, winter indoor heating, and right-nostril nosebleeds 5 times a week for 3 weeks stopping after 5 minutes of pinching the nose, with a 2-word span difference (20 vs 22 words). Following reviewer_notes Trend 2 (avoiding heavy-bleeding emergency controls) and Rule A first choice, de-escalating only the nosebleed frequency and duration in f3 to 1 brief right-nostril nosebleed stopping within 1 minute of pinching stays inside the winter indoor-heating case and shifts care cleanly from doctor evaluation (level 2) to routine self-care (level 1)."
+}

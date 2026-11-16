@@ -1,0 +1,91 @@
+{
+  "family_id": "r11-121",
+  "condition": "acute mesenteric ischemia presenting with abrupt severe diffuse abdominal pain in an older adult taking daily diltiazem for a longstanding irregular heartbeat",
+  "right_care": 4,
+  "level_rationale": "Abrupt-onset severe pain across the entire abdomen starting 1 hour ago in a 75-year-old adult taking daily diltiazem for a longstanding irregular heartbeat raises high suspicion for cardioembolic acute mesenteric ischemia requiring immediate emergency hospital computed tomography angiography and vascular or surgical intervention, whereas passing hard dry stools twice over the past 7 days on daily diltiazem reflects subacute calcium-channel-blocker constipation warranting a routine outpatient physician visit.",
+  "carrier_frame": "so I need to go to the",
+  "target_token": " hospital",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is 75 years old"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Takes daily diltiazem for a longstanding irregular heartbeat"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Suddenly developed severe pain across the entire abdomen 1 hour ago"
+    }
+  ],
+  "texts": {
+    "medical": "I'm 75 and receive daily diltiazem for a longstanding irregular cardiac rhythm and experienced abrupt severe diffuse abdominal pain 1 hour ago so I need to go to the",
+    "everyday": "I'm 75 and take daily diltiazem for a longtime irregular heartbeat and got sudden severe pain all across my belly 1 hour ago so I need to go to the",
+    "medical_paraphrase": "I am 75 years old and am on daily diltiazem for a longstanding irregular cardiac rhythm and developed abrupt severe diffuse abdominal pain 1 hour ago so I need to go to the",
+    "everyday_paraphrase": "I am 75 years old and take daily diltiazem for a longtime irregular heartbeat and suddenly got severe pain all across my belly 1 hour ago so I need to go to the",
+    "changed_fact": "I'm 75 and take daily diltiazem for a longtime irregular heartbeat and have passed hard dry stools 2 times over the past 7 days so I need to go to the",
+    "everyday_attribution": "I'm 75 and take daily diltiazem for a longtime irregular heartbeat and got sudden severe pain all across my belly 1 hour ago and I think it's spoiled soup so I need to go to the",
+    "quad_b": "I'm 75 and take daily diltiazem for a longstanding irregular cardiac rhythm and got abrupt severe diffuse abdominal pain 1 hour ago so I need to go to the",
+    "quad_c": "I'm 75 and receive daily diltiazem for a longtime irregular heartbeat and experienced sudden severe pain all across my belly 1 hour ago so I need to go to the"
+  },
+  "changed_fact": {
+    "fact_id": "f3",
+    "from": "got sudden severe pain all across my belly 1 hour ago",
+    "to": "have passed hard dry stools 2 times over the past 7 days",
+    "right_care_after": 2
+  },
+  "attribution": {
+    "clause": "and I think it's spoiled soup",
+    "explains": "attributes sudden severe diffuse belly pain to eating spoiled soup",
+    "source": "none",
+    "title": null,
+    "pmid_or_doi": null,
+    "inspected_url": null,
+    "access": null,
+    "location": null,
+    "quote_type": "none",
+    "evidence": null,
+    "adaptation": null
+  },
+  "swap_spans": {
+    "medical_span": "receive daily diltiazem for a longstanding irregular cardiac rhythm and experienced abrupt severe diffuse abdominal pain",
+    "everyday_span": "take daily diltiazem for a longtime irregular heartbeat and got sudden severe pain all across my belly"
+  },
+  "swap_note": "Single continuous 16-word vs 17-word span swap after 'I'm 75 and ' and before ' 1 hour ago so I need to go to the'.",
+  "everyday_sources": [
+    {
+      "expression": "irregular heartbeat",
+      "source": "Apenteng PN, Nanton V, Lobban T, Lilford R (2025). The patient path to diagnosis of atrial fibrillation: a qualitative study in primary care. BJGP Open.",
+      "title": "The patient path to diagnosis of atrial fibrillation: a qualitative study in primary care.",
+      "pmid_or_doi": "PMID: 40164489; DOI: 10.3399/BJGPO.2025.0006",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/40164489/",
+      "access": "full text",
+      "location": "Results — Lack of awareness, para 2",
+      "quote_type": "authors' summary",
+      "evidence": "There was also a lack of awareness of the significance of an irregular pulse, for example, one patient had observed their blood pressure monitor flash ‘irregular heartbeat’ for a couple of years without taking action.",
+      "adaptation": null
+    },
+    {
+      "expression": "sudden severe pain all across my belly",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "older_adult_plain_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": true,
+    "has_patient_attribution": true,
+    "intervention_notes": "Plain older-adult lexical register swap (-reg) + 2x2 syntactic-frame by clinical/everyday lexical crossing (quad_b, quad_c) + causal belief-addition clause (-att) + diltiazem-associated subacute constipation outpatient control (-cf)."
+  },
+  "design_note": "Uses three strictly atomic reference facts (age 75, chronic daily diltiazem for a longstanding irregular heartbeat, and abrupt severe diffuse abdominal pain 1 hour ago) with finite clause coordination ('and receive' / 'and take'), a 1-word span difference (16 vs 17 words), 10 shared trailing tokens, and zero diagnosis labels. Specifying a longstanding rate-controlled irregular heartbeat on daily diltiazem prevents stranding new-onset arrhythmia while anchoring the Rule A control (passing hard dry stools twice over 7 days, a classic diltiazem gastrointestinal side effect shifting level 4 hospital care to level 2 routine doctor care) with zero stated negatives."
+}

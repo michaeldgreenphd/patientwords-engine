@@ -1,0 +1,87 @@
+{
+  "family_id": "r11-138",
+  "condition": "benign nocturnal calf muscle cramps waking older adult 3 nights a week",
+  "right_care": 2,
+  "level_rationale": "Waking from sleep 3 nights a week for 2 months with painful leg cramps in both calves in a 70-year-old adult who walks each afternoon indicates recurrent sleep-disrupting nocturnal calf cramps warranting an outpatient clinic visit for clinical examination, medication and electrolyte review, and targeted stretching guidance rather than unguided self-care alone or emergency care, whereas waking from sleep 1 time 3 weeks ago with a 20-second cramp in both calves represents a benign isolated nocturnal cramp needing only routine home self-care.",
+  "carrier_frame": "so I need to go to the",
+  "target_token": " clinic",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is 70 years old"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Walks each afternoon"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Has woken from sleep 3 nights a week for 2 months with painful leg cramps in both calves"
+    }
+  ],
+  "texts": {
+    "medical": "I am 70 years old and ambulate each afternoon and have awakened from sleep 3 nights weekly for 2 months with painful bilateral gastrocnemius muscle spasms so I need to go to the",
+    "everyday": "I am 70 years old and walk each afternoon and have woken from sleep 3 nights a week for 2 months with painful leg cramps in both calves so I need to go to the",
+    "medical_paraphrase": "I am a 70 year old who ambulates each afternoon and for 2 months has awakened from sleep 3 nights each week with painful bilateral gastrocnemius muscle spasms so I need to go to the",
+    "everyday_paraphrase": "I am 70 years old and walk every afternoon and for 2 months painful leg cramps in both calves have woken me from sleep 3 nights each week so I need to go to the",
+    "changed_fact": "I am 70 years old and walk each afternoon and woke from sleep 1 time 3 weeks ago with a 20 second cramp in both calves so I need to go to the"
+  },
+  "changed_fact": {
+    "fact_id": "f3",
+    "from": "have woken from sleep 3 nights a week for 2 months with painful leg cramps in both calves",
+    "to": "woke from sleep 1 time 3 weeks ago with a 20 second cramp in both calves",
+    "right_care_after": 1
+  },
+  "swap_spans": {
+    "medical_span": "ambulate each afternoon and have awakened from sleep 3 nights weekly for 2 months with painful bilateral gastrocnemius muscle spasms",
+    "everyday_span": "walk each afternoon and have woken from sleep 3 nights a week for 2 months with painful leg cramps in both calves"
+  },
+  "swap_note": "Single continuous 20-word vs 22-word span swap after 'I am 70 years old and ' and before ' so I need to go to the'.",
+  "everyday_sources": [
+    {
+      "expression": "leg cramps",
+      "source": "Sebo P, Haller DM, Kaiser C, et al. (2022). Health-related quality of life associated with nocturnal leg cramps in primary care: a mixed methods study. Family Practice.",
+      "title": "Health-related quality of life associated with nocturnal leg cramps in primary care: a mixed methods study.",
+      "pmid_or_doi": "PMID: 34278417; DOI: 10.1093/fampra/cmab082",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/34278417/",
+      "access": "abstract only",
+      "location": "Abstract (Methods)",
+      "quote_type": "authors' summary",
+      "evidence": "The study included primary care patients (>50 years) who reported suffering from nocturnal leg cramps (2016-2017).",
+      "adaptation": null
+    },
+    {
+      "expression": "woken from sleep 3 nights a week",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "woke from sleep 1 time 3 weeks ago with a 20 second cramp in both calves",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "older_adult_plain_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": false,
+    "intervention_notes": "Plain older-adult everyday lexical register swap (-reg) + single-fact nocturnal calf cramp frequency and duration de-escalation control (-cf, L2 to L1)."
+  },
+  "design_note": "Three atomic reference facts cover age 70, afternoon walking, and waking from sleep 3 nights a week for 2 months with painful leg cramps in both calves, with a 2-word span difference (20 vs 22 words). Overriding plan.json's multi-symptom acute ischemic foot bundle under Rule A first choice, Rule D, and G4 site parity, reducing f3 at the exact same nocturnal both-calves context to waking 1 time 3 weeks ago with a 20-second cramp shifts care cleanly from clinic (level 2) to routine self-care (level 1)."
+}

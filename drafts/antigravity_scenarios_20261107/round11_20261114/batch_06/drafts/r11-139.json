@@ -1,0 +1,69 @@
+{
+  "family_id": "r11-139",
+  "condition": "suspected ruptured abdominal aortic widening with acute syncopal blackout in older adult",
+  "right_care": 4,
+  "level_rationale": "Having a sudden syncopal blackout 15 minutes ago in a 70-year-old adult with a physician-monitored 4 cm widening of the abdominal aorta raises immediate concern for acute aortic rupture and hemodynamic collapse requiring emergency hospital evaluation and surgical readiness, whereas recording an elevated home blood pressure cuff reading of 156 over 94 this morning in that same monitored patient with no syncope warrants an outpatient doctor visit to tighten blood pressure control.",
+  "carrier_frame": "so I need to go to the",
+  "target_token": " hospital",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is 70 years old"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Doctor monitors a 4 cm widening in the main belly artery"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Checks blood pressure on a home cuff"
+    },
+    {
+      "fact_id": "f4",
+      "text": "Had a sudden blackout 15 minutes ago"
+    }
+  ],
+  "texts": {
+    "medical": "I'm 70 and my doctor monitors a 4 cm widening in my main belly artery while I check a home blood pressure cuff and 15 minutes ago I had sudden syncope so I need to go to the",
+    "everyday": "I'm 70 and my doctor monitors a 4 cm widening in my main belly artery while I check a home blood pressure cuff and 15 minutes ago I had a sudden blackout so I need to go to the",
+    "medical_paraphrase": "I am a 70 year old with a physician monitored 4 cm dilation of my abdominal aorta who checks a home blood pressure cuff and 15 minutes ago I had sudden syncope so I need to go to the",
+    "everyday_paraphrase": "I am 70 and check a home blood pressure cuff while my doctor watches a 4 cm widening in my main belly artery and I suddenly blacked out 15 minutes ago so I need to go to the",
+    "changed_fact": "I'm 70 and my doctor monitors a 4 cm widening in my main belly artery while I check a home blood pressure cuff and that cuff read 156 over 94 this morning so I need to go to the"
+  },
+  "changed_fact": {
+    "fact_id": "f4",
+    "from": "15 minutes ago I had a sudden blackout",
+    "to": "that cuff read 156 over 94 this morning",
+    "right_care_after": 2
+  },
+  "swap_spans": {
+    "medical_span": "sudden syncope",
+    "everyday_span": "a sudden blackout"
+  },
+  "swap_note": "Single continuous 2-word vs 3-word span swap after 'I\\'m 70 and my doctor monitors a 4 cm widening in my main belly artery while I check a home blood pressure cuff and 15 minutes ago I had ' and before ' so I need to go to the'.",
+  "everyday_sources": [
+    {
+      "expression": "blackout",
+      "source": "Davis TL, Freemon FR (1990). Electroencephalography should not be routine in the evaluation of syncope in adults. Archives of Internal Medicine.",
+      "title": "Electroencephalography should not be routine in the evaluation of syncope in adults.",
+      "pmid_or_doi": "PMID: 2222088",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/2222088/",
+      "access": "abstract only",
+      "location": "Abstract, sentence 4",
+      "quote_type": "authors' summary",
+      "evidence": "Twenty-six patients were referred for other complaints similar to syncope (ie, blackouts, loss of consciousness, falling out, passing out, and fainting).",
+      "adaptation": "Singularized plural 'blackouts' to 'blackout' for a single acute syncopal episode in an older adult patient."
+    }
+  ],
+  "equity_dimension": "colloquial_syncope_blackout_emergency_wording",
+  "lexicon_entries": [
+    "blackout / blacked out"
+  ],
+  "protocol_flags": {
+    "has_dialect_lexicon": true,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": false,
+    "intervention_notes": "Colloquial core lexicon syncope swap ('sudden syncope' vs 'a sudden blackout', with 'blacked out' in everyday_paraphrase) + single-fact aortic-surveillance emergency-to-outpatient BP control (-cf, acute blackout 15 minutes ago to home cuff reading 156 over 94 this morning, L4 to L2)."
+  },
+  "design_note": "Isolates the emergency rupture red flag to single fact f4 ('15 minutes ago I had a sudden blackout') in a 70-year-old whose doctor monitors a 4 cm abdominal aortic widening with home blood pressure monitoring, avoiding the banned diagnosis word 'aneurysm' and avoiding any intoxication reading. De-escalating f4 to an elevated home blood pressure reading ('that cuff read 156 over 94 this morning') stays inside the exact aortic-surveillance case with zero stranded red flags and zero stated negatives under Rules A and D."
+}

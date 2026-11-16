@@ -1,0 +1,69 @@
+{
+  "family_id": "r11-141",
+  "condition": "post tussive right chest wall pain 1 week after resolved cough",
+  "right_care": 2,
+  "level_rationale": "Having localized pain in the right side of the chest for 6 days after getting over a cough last week in a 44-year-old adult that aches reproducibly when pressing on the ribs warrants a scheduled primary-care doctor examination to assess the chest wall and rule out a cough-related rib injury, whereas having that right-sided chest pain suddenly become crushing while sitting still at rest is an acute cardiopulmonary emergency requiring immediate Emergency Department care.",
+  "carrier_frame": "so I should see a",
+  "target_token": " doctor",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is 44 years old"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Got over a cough last week"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Has had pain in the right side of the chest for 6 days"
+    },
+    {
+      "fact_id": "f4",
+      "text": "Pain aches when pressing on the ribs"
+    }
+  ],
+  "texts": {
+    "medical": "I'm 44 and got over a cough last week and for 6 days I've had pain in my right lateral chest wall and it aches when I press my ribs so I should see a",
+    "everyday": "I'm 44 and got over a cough last week and for 6 days I've had a misery in the right side of my chest and it aches when I press my ribs so I should see a",
+    "medical_paraphrase": "I am a 44 year old whose cough resolved last week and who has had 6 days of right lateral chest wall pain that aches on rib palpation so I should see a",
+    "everyday_paraphrase": "I am 44 and since getting over a cough last week I have had a misery in the right side of my chest for 6 days that aches when I press my ribs so I should see a",
+    "changed_fact": "I'm 44 and got over a cough last week and for 6 days I've had a misery in the right side of my chest and it just became crushing while sitting still so I should see a"
+  },
+  "changed_fact": {
+    "fact_id": "f4",
+    "from": "it aches when I press my ribs",
+    "to": "it just became crushing while sitting still",
+    "right_care_after": 4
+  },
+  "swap_spans": {
+    "medical_span": "pain in my right lateral chest wall",
+    "everyday_span": "a misery in the right side of my chest"
+  },
+  "swap_note": "Single continuous 7-word vs 9-word span swap after 'I\\'m 44 and got over a cough last week and for 6 days I\\'ve had ' and before ' and it aches when I press my ribs so I should see a'.",
+  "everyday_sources": [
+    {
+      "expression": "a misery in the right side of my chest",
+      "source": "Wiktionary contributors (verified 2026-11-14; matches dialect_lexicon_20261109.json). Entry 'misery'. Wiktionary, The Free Dictionary.",
+      "title": "Entry 'misery'",
+      "pmid_or_doi": "https://en.wiktionary.org/wiki/misery",
+      "inspected_url": "https://en.wiktionary.org/wiki/misery",
+      "access": "full text",
+      "location": "English — Noun, sense 2",
+      "quote_type": "dictionary definition",
+      "evidence": "# {{lb|en|US|and|UK|dialects}} A [[bodily]] [[ache]] or [[pain]].",
+      "adaptation": "Instantiated US and UK dialect noun 'misery' ('A bodily ache or pain') without pre-stacked symptom modifiers in 'a misery in the right side of my chest' matching core entry 'a misery in my chest (or side, or back)' in dialect_lexicon_20261109.json."
+    }
+  ],
+  "equity_dimension": "us_uk_dialect_misery_chest_wording",
+  "lexicon_entries": [
+    "a misery in my chest (or side, or back)"
+  ],
+  "protocol_flags": {
+    "has_dialect_lexicon": true,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": false,
+    "intervention_notes": "US/UK dialect core lexicon pain swap ('pain in my right lateral chest wall' vs 'a misery in the right side of my chest', retained in everyday_paraphrase and changed_fact without pre-stacked modifiers) + single-fact same-site chest-pain character escalation control (-cf, reproducible rib palpation ache to acute crushing resting chest pain, L2 to L4)."
+  },
+  "design_note": "Uses four strictly atomic facts (age 44, cough resolved last week, 6 days of pain in the right side of the chest, and reproducible ache when pressing the ribs) with clean unstacked idiom phrasing ('a misery in the right side of my chest' per Rule C). Replacing independent clause f4 ('it aches when I press my ribs' to 'it just became crushing while sitting still') keeps distribution fixed on that exact right-chest pain with zero unstated spatial spread (SPEC.md section 5.5), avoids banned 'gasping' wording, and shifts care from primary-care doctor evaluation (level 2) to Emergency Department care (level 4) with zero stated negatives under Rules A, C, and D."
+}

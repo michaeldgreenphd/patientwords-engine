@@ -85,3 +85,24 @@
 - `2026-11-14T21:35:02Z`: batch_05 wave 4b passed G4-G8: revised r11-112, r11-113, r11-116, r11-118. All 24/24 batch_05 families passed G4-G8 (0 dropped, 0 stated negatives, same_share 11/18 = 61.1%). Dispatching @builder for G1.
 - `2026-11-16T12:55:02Z`: batch_05 passed G1-G3 (60 pairs, 0 errors, 14 -cf number-warning candidates / 25 number warnings; G3 intake status=intake, 0 errors vs r9+r10+r11_b01..b04; concerns_selfreported 7 open, 0 errors).
 - `2026-11-16T12:58:08Z`: Pulled origin/draft/antigravity-scenarios-20261107 (94e7eed1) before committing batch_05 and read reviewer_notes.md 'After batch 04': batch_04 accepted with no corrections; checked both new trends against batch_05 (everyday_sources cited share already rebounded to 15/53 = 28.3% with 18 total cited and 61.1% same; 0/24 batch_05 controls use heavy bleeding) and will apply both trends proactively to batch_06.
+- `2026-11-16T13:03:32Z`: Pushed batch_05 (commit 773ab633). Ran git pull on draft branch (up to date at 773ab633) and ../pw-main (fast-forwarded to 5e2e1c8d). Starting final batch_06 (r11-121..r11-144) under Rules A-D plus both 'After batch 04' trends (higher everyday source coverage under Rule B, and avoiding heavy-bleeding emergency controls).
+- `2026-11-16T13:23:44Z`: batch_06 wave 1 drafts ready (r11-139..r11-144 from @author-flag); dispatching G4-G8 audits.
+- `2026-11-16T13:27:44Z`: batch_06 drafts r11-133..r11-138 ready from @author-l2 (0 errors, 0 warnings).
+- `2026-11-16T13:51:02Z`: batch_06 wave 1 passed G4-G8: r11-139, r11-140, r11-142, r11-143, r11-144 (5/24 passed; wave 1 cited=6/9=66.7%).
+- `2026-11-16T13:51:04Z`: batch_06 wave 1 returned (1st return, G4): r11-141 ('across my chest' widens unilateral 'right side of my chest').
+- `2026-11-16T13:51:06Z`: Resuming after machine restart: reviving @author-l3 and @author-l4, returning r11-141 to @author-flag, and dispatching batch_06 wave 2 audits (r11-133..r11-138).
+- `2026-11-16T15:32:22Z`: Reconnecting after laptop sleep: r11-141 rev ready; reviving @author-l3 (confirm r11-127..132), @author-l4 (write r11-121..126), @facts/@language/@sources (Wave 2 r11-133..138 + r11-141 rev), and @level/@adversary (r11-141 rev).
+- `2026-11-16T15:35:24Z`: batch_06 drafts r11-127..r11-132 confirmed ready by @author-l3.
+- `2026-11-16T15:38:45Z`: batch_06 drafts r11-121..r11-126 ready from @author-l4; all 24 batch_06 drafts validated (0 errors, 0 warnings).
+- `2026-11-16T15:38:47Z`: batch_06 dispatching wave 3 audits (r11-127..r11-132).
+- `2026-11-16T15:40:34Z`: batch_06 wave 2 + revised r11-141 passed G4-G8: 12/24 batch_06 families now passed (r11-133..r11-144; cited=14/27=51.9%, same=9/14=64.3%).
+- `2026-11-16T15:49:08Z`: batch_06 wave 3 passed G4-G8: r11-127, r11-131, r11-132 (15/24 passed).
+- `2026-11-16T15:49:11Z`: batch_06 wave 3 returned (1st return, G5 Rule C): r11-128 (quad_c 'showing swelling up'), r11-129 ('for 5 months ... brings' -> 'has brought'), r11-130 ('rolled stuck upward' -> 'rolled up and got stuck').
+- `2026-11-16T15:49:12Z`: batch_06 dispatching wave 4 audits (r11-121..r11-126).
+- `2026-11-16T15:55:11Z`: batch_06 revised r11-128..r11-130 ready from @author-l3 (0 errors, 0 warnings).
+- `2026-11-16T15:57:04Z`: batch_06 wave 4 passed G4-G8: r11-122, r11-123 (17/24 passed).
+- `2026-11-16T15:57:06Z`: batch_06 wave 4 returned (1st return): r11-121 (G5), r11-124 (G5), r11-125 (G5), r11-126 (G7 Rule B on attribution).
+- `2026-11-16T16:01:17Z`: batch_06 revised r11-121, r11-124, r11-125, r11-126 ready from @author-l4 (0 errors, 0 warnings); dispatching staggered final re-audits.
+- `2026-11-16T16:05:47Z`: batch_06 wave 5a passed G4-G8: revised r11-128, r11-129, r11-130 (20/24 passed; G5, G6, G8 now 24/24 complete).
+- `2026-11-16T16:10:58Z`: batch_06 final stage passed G4-G8: revised r11-121, r11-124, r11-125, r11-126. All 24/24 batch_06 families (and 144/144 Round 11 families) passed G4-G8 (0 dropped, 0 stated negatives, batch_06 cited=27 [42.9% of everyday_sources], same=16/27=59.3%). Dispatching @builder for G1.
+- `2026-11-16T16:43:53Z`: batch_06 passed G1-G3 (60 pairs, 0 errors, 11 -cf number-warning candidates / 19 number warnings; G3 intake status=intake, 0 errors vs r9+r10+r11_b01..b05; concerns_selfreported 7 open, 0 errors). All 144/144 Round 11 slots passed G1-G8 with 0 dropped.

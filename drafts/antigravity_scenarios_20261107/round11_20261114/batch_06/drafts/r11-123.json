@@ -1,0 +1,89 @@
+{
+  "family_id": "r11-123",
+  "condition": "suspected acute pediatric postseptal orbital infection presenting with unilateral anterior globe protrusion after 4 days of nasal congestion",
+  "right_care": 4,
+  "level_rationale": "Acute forward bulging of the right eye developing today after 4 days of nasal congestion in an 8-year-old child indicates suspected postseptal orbital infection or subperiosteal orbital abscess with optic nerve and cavernous sinus risk requiring immediate hospital computed tomography imaging, intravenous broad-spectrum antibiotics, and surgical consultation, whereas mild right eye watering when sneezing on day 4 of a stuffy nose reflects benign nasolacrimal congestion appropriate for home self-care.",
+  "carrier_frame": "so I need to go to the",
+  "target_token": " hospital",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker's son is 8 years old"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Has had nasal congestion for 4 days"
+    },
+    {
+      "fact_id": "f3",
+      "text": "His right eye started bulging forward today"
+    }
+  ],
+  "texts": {
+    "medical": "My 8 year old son has had nasal congestion for 4 days and today developed anterior protrusion of his right eye so I need to go to the",
+    "everyday": "My 8 year old son has had a stuffy nose for 4 days and today his right eye started bulging forward so I need to go to the",
+    "medical_paraphrase": "My 8 year old son experienced nasal congestion for 4 days and manifested anterior protrusion of his right eye today so I need to go to the",
+    "everyday_paraphrase": "My 8 year old son had a stuffy nose for 4 days and his right eye began bulging forward today so I need to go to the",
+    "changed_fact": "My 8 year old son has had a stuffy nose for 4 days and today his right eye watered mildly when he sneezed so I need to go to the",
+    "everyday_attribution": "My 8 year old son has had a stuffy nose for 4 days and today his right eye started bulging forward and I think a bug bit him so I need to go to the"
+  },
+  "changed_fact": {
+    "fact_id": "f3",
+    "from": "his right eye started bulging forward",
+    "to": "his right eye watered mildly when he sneezed",
+    "right_care_after": 1
+  },
+  "attribution": {
+    "clause": "and I think a bug bit him",
+    "explains": "attributes acute unilateral right eye protrusion in a child to an insect bite",
+    "source": "none",
+    "title": null,
+    "pmid_or_doi": null,
+    "inspected_url": null,
+    "access": null,
+    "location": null,
+    "quote_type": "none",
+    "evidence": null,
+    "adaptation": null
+  },
+  "swap_spans": {
+    "medical_span": "nasal congestion for 4 days and today developed anterior protrusion of his right eye",
+    "everyday_span": "a stuffy nose for 4 days and today his right eye started bulging forward"
+  },
+  "swap_note": "Single continuous 14-word vs 14-word span swap after 'My 8 year old son has had ' and before ' so I need to go to the'.",
+  "everyday_sources": [
+    {
+      "expression": "his right eye started bulging forward",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "his right eye watered mildly when he sneezed",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "parent_carer_plain_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": true,
+    "intervention_notes": "Plain parent-carer lexical register swap (-reg) + causal belief-addition clause (-att) + same-eye mild sneeze-tearing cold self-care control (-cf)."
+  },
+  "design_note": "Uses three strictly atomic reference facts (8-year-old son, 4 days of nasal congestion, and acute forward bulging of his right eye today) with an exact 14-word vs 14-word span swap and zero diagnosis labels ('cellulitis', 'rhinitis', and 'sinusitis' omitted from prompt texts). Keeping f2 as 4-day nasal congestion and keeping 'his right eye' identical in f3 avoids stranding fever or proptosis and adds zero new body sites when f3 shifts under Rule A and Rule D to mild right-eye watering on sneezing (level 4 hospital to level 1 home self-care) with zero stated negatives."
+}
