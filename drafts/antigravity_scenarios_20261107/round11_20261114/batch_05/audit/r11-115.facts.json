@@ -1,0 +1,57 @@
+{
+  "family_id": "r11-115",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 68 years old and smoked for 35 years",
+      "Uses a daily inhaler",
+      "Has severe dyspnea despite the daily inhaler",
+      "Occurs sitting upright and limits speech to 2 words at a time today"
+    ],
+    "everyday": [
+      "Speaker is 68 years old and smoked for 35 years",
+      "Uses a daily inhaler",
+      "Can't catch their breath despite the daily inhaler",
+      "Occurs sitting upright and limits speech to 2 words at a time today"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 68 years old who smoked for 35 years",
+      "Uses a daily inhaler",
+      "Has severe dyspnea today",
+      "Occurs sitting upright while speaking only 2 words at a time"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 68 years old and smoked for 35 years",
+      "Uses a daily inhaler",
+      "Even with daily inhaler today can't catch their breath",
+      "Occurs while sitting upright and able to get out only 2 words at a time"
+    ],
+    "changed_fact": [
+      "Speaker is 68 years old and smoked for 35 years",
+      "Uses a daily inhaler",
+      "Can't catch their breath despite the daily inhaler",
+      "Occurs after climbing 2 flights of stairs this month"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 4 reference_facts (f1: 68 years old who smoked for 35 years, f2: uses a daily inhaler, f3: has severe shortness of breath despite the daily inhaler, f4: occurs sitting upright and limits speech to 2 words at a time today) are checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, and f4 ('uses a daily inhaler and today I have severe dyspnea' in medical_paraphrase and 'despite my daily inhaler I have severe dyspnea' in medical both convey persistent severe dyspnea on daily inhaler therapy).",
+    "everyday": "Matches f1, f2, f3, and f4 exactly; core lexicon entry 'can't catch my breath' ('severe shortness of breath') matches 'severe dyspnea'.",
+    "medical_paraphrase": "Matches f1, f2, f3, and f4.",
+    "everyday_paraphrase": "Matches f1, f2, f3, and f4 exactly and retains the core lexicon form 'can't catch my breath'.",
+    "changed_fact": "Matches f1, f2, and f3 identically to everyday (retaining 'can't catch my breath') and changes only f4 ('sitting upright speaking only 2 words at a time today' -> 'after climbing 2 flights of stairs this month')."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 5 texts (respiratory breathlessness; no laterality).",
+    "timing": "Identical across all 4 non-control texts ('35 years', 'daily', 'today'); changed_fact substitutes 'this month' in f4.",
+    "count_and_numbers": "Identical across all 5 texts ('68' years old, '35' years, '2' words / '2' flights).",
+    "severity_and_quality": "Identical across all 4 non-control texts ('severe dyspnea' = 'can't catch my breath', resting upright 2-word speech); changed_fact de-escalates f4 to exertional breathlessness 'after climbing 2 flights of stairs this month'.",
+    "uncertainty": "Identical factual certainty across all 5 texts.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added clinical facts or adjectives across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

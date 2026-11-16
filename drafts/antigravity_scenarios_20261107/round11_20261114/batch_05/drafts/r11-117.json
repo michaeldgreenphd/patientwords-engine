@@ -1,0 +1,69 @@
+{
+  "family_id": "r11-117",
+  "condition": "refractory episodic unilateral ear roaring muffled hearing and swimmy headed dizziness despite primary care medication",
+  "right_care": 3,
+  "level_rationale": "Four months of recurrent brief swimmy-headed dizzy attacks accompanied by roaring and muffled hearing in the left ear in a 49-year-old adult that persist despite 6 weeks of doctor-prescribed medication warrant an outpatient otolaryngology or neurotology specialist referral for formal audiometric and vestibular evaluation, whereas developing acute slurred speech right now alongside swimmy-headed dizziness and unilateral ear roaring is a posterior-circulation stroke red flag requiring immediate Emergency Department stroke care.",
+  "carrier_frame": "so I should see a",
+  "target_token": " specialist",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is 49 years old"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Took medication prescribed by a doctor for 6 weeks"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Has had 4 months of brief dizzy attacks with roaring in the left ear"
+    },
+    {
+      "fact_id": "f4",
+      "text": "Hearing in the left ear gets muffled"
+    }
+  ],
+  "texts": {
+    "medical": "I'm 49 and despite 6 weeks on medicine from my doctor I've had 4 months of brief attacks of dizziness with roaring in my left ear and hearing in that ear gets muffled so I should see a",
+    "everyday": "I'm 49 and despite 6 weeks on medicine from my doctor I've had 4 months of brief swimmy headed attacks with roaring in my left ear and hearing in that ear gets muffled so I should see a",
+    "medical_paraphrase": "I am a 49 year old with 4 months of brief episodes of dizziness with roaring tinnitus in my left ear and muffled hearing in that ear despite 6 weeks on physician prescribed medication so I should see a",
+    "everyday_paraphrase": "I'm 49 and despite taking medicine from my doctor for 6 weeks my brief attacks where my head feels swimmy with roaring and muffled hearing in my left ear have lasted 4 months so I should see a",
+    "changed_fact": "I'm 49 and despite 6 weeks on medicine from my doctor I've had 4 months of brief swimmy headed attacks with roaring in my left ear and my speech just became slurred so I should see a"
+  },
+  "changed_fact": {
+    "fact_id": "f4",
+    "from": "hearing in that ear gets muffled",
+    "to": "my speech just became slurred",
+    "right_care_after": 4
+  },
+  "swap_spans": {
+    "medical_span": "attacks of dizziness",
+    "everyday_span": "swimmy headed attacks"
+  },
+  "swap_note": "Single continuous 3-word vs 3-word span swap after 'I\\'m 49 and despite 6 weeks on medicine from my doctor I\\'ve had 4 months of brief ' and before ' with roaring in my left ear and hearing in that ear gets muffled so I should see a'.",
+  "everyday_sources": [
+    {
+      "expression": "swimmy headed",
+      "source": "Wiktionary contributors (verified 2026-11-14; matches dialect_lexicon_20261109.json). Entry 'swimmy'. Wiktionary, The Free Dictionary.",
+      "title": "Entry 'swimmy'",
+      "pmid_or_doi": "https://en.wiktionary.org/wiki/swimmy",
+      "inspected_url": "https://en.wiktionary.org/wiki/swimmy",
+      "access": "full text",
+      "location": "English — Adjective, sense 1",
+      "quote_type": "dictionary definition",
+      "evidence": "# [[dizzy|Dizzy]]; swirling or moving as if seen in a [[daze]].",
+      "adaptation": "Combined adjective lemma 'swimmy' (dizzy) into unhyphenated compound 'swimmy headed' per dialect_lexicon_20261109.json typing note; Wiktionary entry attests lexical sense only and does not establish demographic or community usage."
+    }
+  ],
+  "equity_dimension": "colloquial_vestibular_referral_wording",
+  "lexicon_entries": [
+    "swimmy headed / my head feels swimmy"
+  ],
+  "protocol_flags": {
+    "has_dialect_lexicon": true,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": false,
+    "intervention_notes": "Colloquial core lexicon dizziness swap ('attacks of dizziness' vs 'swimmy headed attacks', with 'my head feels swimmy' in everyday_paraphrase and 'swimmy headed' retained in changed_fact) + single-fact otoneurologic-to-brainstem dysarthria escalation control (-cf, muffled left-ear hearing to acute slurred speech right now, L3 to L4)."
+  },
+  "design_note": "Uses four strictly atomic facts (age 49, 6 weeks of doctor-prescribed medication establishing failed primary-care treatment, 4 months of brief swimmy-headed attacks with roaring in the left ear, and muffled hearing in that ear) without naming Meniere disease. Separating f4 as an independent clause ('and hearing in that ear gets muffled' -> 'and my speech just became slurred') stays inside the exact otoneurologic case with zero timeframe collision, zero banned double-vision wording, and zero stated negatives under Rules A, C, and D."
+}

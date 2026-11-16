@@ -1,0 +1,65 @@
+{
+  "family_id": "r11-099",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 73 years old",
+      "Developed right knee arthralgia for 2 days",
+      "Developed right knee articular effusion for 2 days",
+      "Recorded a temperature of 103 F tonight"
+    ],
+    "everyday": [
+      "Speaker is 73 years old",
+      "Has had aching in the right knee for 2 days",
+      "Has had swelling in the right knee for 2 days",
+      "Thermometer read 103 F tonight"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 73 years old",
+      "Experienced right knee arthralgia for 2 days",
+      "Experienced right knee articular effusion for 2 days",
+      "Documented a 103 F temperature tonight"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 73 years old",
+      "Right knee has been aching for 2 days",
+      "Right knee has been swollen for 2 days",
+      "Thermometer showed 103 F tonight"
+    ],
+    "changed_fact": [
+      "Speaker is 73 years old",
+      "Has had aching in the right knee for 2 days",
+      "Has had swelling in the right knee for 2 days",
+      "Thermometer read 98 F tonight"
+    ],
+    "everyday_attribution": [
+      "Speaker is 73 years old",
+      "Has had aching in the right knee for 2 days",
+      "Has had swelling in the right knee for 2 days",
+      "Thermometer read 103 F tonight",
+      "Causal belief only (non-clinical): thinks it is from gardening"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 4 reference_facts (f1: 73 years old, f2: right knee joint aching for 2 days, f3: right knee joint swelling for 2 days, f4: body temperature measured 103 F tonight) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, and f4 exactly ('right knee arthralgia and articular effusion' = 'aching and swelling in my right knee').",
+    "everyday": "Matches f1, f2, f3, and f4 exactly.",
+    "medical_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday_attribution": "Matches f1, f2, f3, and f4 identically to everyday and appends only one causal belief clause ('and I think it's from gardening') with zero added clinical facts.",
+    "changed_fact": "Matches f1, f2, and f3 identically to everyday and changes only the measured thermometer temperature in f4 ('103 F' -> '98 F') tonight."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 6 texts ('right knee').",
+    "timing": "Identical across all 6 texts ('for 2 days' and 'tonight').",
+    "count_and_numbers": "Identical ('73' years old, '2' days, '103' F) across all 5 non-control texts; changed_fact substitutes '98' F in f4.",
+    "severity_and_quality": "Identical across all 5 non-control texts ('arthralgia' = 'aching', 'articular effusion' = 'swelling'/'swollen', '103 F'); changed_fact de-escalates f4 temperature to '98 F'.",
+    "uncertainty": "Factual clinical certainty is identical across all texts; everyday_attribution marks causal belief explicitly with 'I think'.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added clinical facts or adjectives across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

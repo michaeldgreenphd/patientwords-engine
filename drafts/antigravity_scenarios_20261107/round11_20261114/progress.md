@@ -68,3 +68,20 @@
 - `2026-11-14T20:30:58Z`: batch_04 wave 4 drafts ready (r11-073..r11-078 from @author-l4 + revised r11-088 from @author-l2); dispatching G4-G8 audits.
 - `2026-11-14T20:38:58Z`: batch_04 wave 4 passed G4-G8: r11-073..r11-078 and revised r11-088. All 24/24 batch_04 families passed G4-G8 (0 dropped, 0 stated negatives, same_share 9/14 = 64.3%). Dispatching @builder for G1.
 - `2026-11-14T20:41:26Z`: batch_04 passed G1-G3 (60 pairs, 0 errors, 12 -cf number-warning candidates / 19 number warnings; G3 intake status=intake, 0 errors vs r9+r10+r11_b01..b03; concerns_selfreported 8 open, 0 errors). Preparing commit + push.
+- `2026-11-14T20:46:05Z`: Pushed batch_04 (commit 275753b3). Ran git pull on draft branch and ../pw-main (both already up to date; no new reviewer_notes.md entries after 'After batch 03'). Starting batch_05 (r11-097..r11-120) under Rules A-D.
+- `2026-11-14T21:03:30Z`: batch_05 wave 1 drafts ready (r11-103..r11-108 from @author-l3); dispatching G4-G8 audits.
+- `2026-11-14T21:04:50Z`: batch_05 drafts r11-109..r11-114 ready from @author-l2 (0 errors, 0 warnings).
+- `2026-11-14T21:09:18Z`: batch_05 dispatching wave 2 audits (r11-109..r11-114).
+- `2026-11-14T21:10:14Z`: batch_05 drafts r11-115..r11-120 ready from @author-flag; dispatching combined wave 2 audits (r11-109..r11-120).
+- `2026-11-14T21:10:34Z`: batch_05 wave 1 passed G4-G8: r11-103..r11-108 (6/24 passed; wave 1 cited=9, same=7/9=77.8%).
+- `2026-11-14T21:10:36Z`: batch_05 drafts r11-097..r11-102 ready from @author-l4; all 24 batch_05 drafts validated.
+- `2026-11-14T21:17:00Z`: batch_05 wave 2 passed G4-G8: r11-097..r11-102, r11-109, r11-110 (14/24 passed).
+- `2026-11-14T21:17:02Z`: batch_05 wave 2 returned (1st return, G4+G5): r11-111.
+- `2026-11-14T21:19:23Z`: batch_05 revised r11-111 ready from @author-l2 (0 errors, 0 warnings); ready for full G4-G8 re-audit.
+- `2026-11-14T21:25:45Z`: batch_05 wave 3 passed G4-G8: r11-114, r11-115, r11-117, r11-119, r11-120 (19/24 passed).
+- `2026-11-14T21:25:47Z`: batch_05 wave 3 returned (1st return): r11-112 (G4 'progressive'), r11-113 (G4+G6 stranded cool bedroom + added cheeks/tea), r11-116 (G4+G6 breakroom vs oral temp + 98 F Rule D), r11-118 (G5 'shaky sweaty funny turn').
+- `2026-11-14T21:29:13Z`: batch_05 wave 4a passed G4-G8: revised r11-111 (20/24 passed).
+- `2026-11-14T21:29:15Z`: batch_05 revised r11-112, r11-113, r11-116, r11-118 ready; dispatching full G4-G8 re-audit (wave 4b).
+- `2026-11-14T21:35:02Z`: batch_05 wave 4b passed G4-G8: revised r11-112, r11-113, r11-116, r11-118. All 24/24 batch_05 families passed G4-G8 (0 dropped, 0 stated negatives, same_share 11/18 = 61.1%). Dispatching @builder for G1.
+- `2026-11-16T12:55:02Z`: batch_05 passed G1-G3 (60 pairs, 0 errors, 14 -cf number-warning candidates / 25 number warnings; G3 intake status=intake, 0 errors vs r9+r10+r11_b01..b04; concerns_selfreported 7 open, 0 errors).
+- `2026-11-16T12:58:08Z`: Pulled origin/draft/antigravity-scenarios-20261107 (94e7eed1) before committing batch_05 and read reviewer_notes.md 'After batch 04': batch_04 accepted with no corrections; checked both new trends against batch_05 (everyday_sources cited share already rebounded to 15/53 = 28.3% with 18 total cited and 61.1% same; 0/24 batch_05 controls use heavy bleeding) and will apply both trends proactively to batch_06.

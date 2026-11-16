@@ -1,0 +1,71 @@
+{
+  "family_id": "r11-097",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Patient is the speaker's 72 year old wife",
+      "Receives daily antihypertensive medication",
+      "Her speech articulation became abruptly dysarthric during breakfast 20 minutes ago"
+    ],
+    "everyday": [
+      "Patient is the speaker's 72 year old wife",
+      "Takes daily blood pressure pills",
+      "Her speech suddenly became slurred at breakfast 20 minutes ago"
+    ],
+    "medical_paraphrase": [
+      "Patient is the speaker's 72 year old wife",
+      "Is on daily antihypertensives",
+      "Developed abrupt onset dysarthria during breakfast 20 minutes ago"
+    ],
+    "everyday_paraphrase": [
+      "Patient is the speaker's 72 year old wife",
+      "Takes blood pressure pills every day",
+      "Her speech suddenly turned slurred at breakfast 20 minutes ago"
+    ],
+    "changed_fact": [
+      "Patient is the speaker's 72 year old wife",
+      "Takes daily blood pressure pills",
+      "Has forgotten scheduled appointment dates more often over 9 months"
+    ],
+    "everyday_attribution": [
+      "Patient is the speaker's 72 year old wife",
+      "Takes daily blood pressure pills",
+      "Her speech suddenly became slurred at breakfast 20 minutes ago",
+      "Causal belief only (non-clinical): thinks it is from waking up early"
+    ],
+    "quad_b": [
+      "Patient is the speaker's 72 year old wife",
+      "Takes daily antihypertensive medication",
+      "Her speech articulation suddenly became dysarthric at breakfast 20 minutes ago"
+    ],
+    "quad_c": [
+      "Patient is the speaker's 72 year old wife",
+      "Receives daily blood pressure pills",
+      "Her speech became suddenly slurred during breakfast 20 minutes ago"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: speaker's wife is 72 years old, f2: takes daily medication for high blood pressure, f3: her speech suddenly became slurred during breakfast 20 minutes ago) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly ('antihypertensive medication' = 'blood pressure pills'; 'speech articulation became abruptly dysarthric' = 'suddenly her speech became slurred').",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday and appends only one causal belief clause ('and I think it's from waking up early') with zero added clinical facts.",
+    "quad_b": "Matches f1, f2, and f3 exactly (everyday syntax with medical vocabulary).",
+    "quad_c": "Matches f1, f2, and f3 exactly (medical syntax with everyday vocabulary).",
+    "changed_fact": "Matches f1 and f2 identically to everyday and replaces only f3 ('suddenly her speech became slurred at breakfast 20 minutes ago' -> 'she has forgotten scheduled appointment dates more often over 9 months')."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 7 non-control texts (speech articulation / dysarthria; no unstated laterality); changed_fact replaces f3 with gradual cognitive memory change.",
+    "timing": "Identical across all 7 non-control texts ('daily'/'every day', 'abruptly'/'abrupt onset'/'suddenly', 'during/at breakfast 20 minutes ago'); changed_fact substitutes 'over 9 months' in f3.",
+    "count_and_numbers": "Identical ('72' years old, '20' minutes) across all 7 non-control texts; changed_fact substitutes '9' months in f3.",
+    "severity_and_quality": "Identical across all 7 non-control texts ('abruptly dysarthric'/'abrupt onset dysarthria' = 'suddenly ... slurred'); changed_fact de-escalates f3 to gradual appointment forgetting.",
+    "uncertainty": "Factual clinical certainty is identical across all texts; everyday_attribution marks causal belief explicitly with 'I think'.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added clinical facts or adjectives across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

@@ -1,0 +1,89 @@
+{
+  "family_id": "r11-109",
+  "condition": "uncomplicated infectious mononucleosis sore throat tender neck glands and 2 week fatigue",
+  "right_care": 2,
+  "level_rationale": "Two weeks of sore throat and tender swollen neck glands accompanied by afternoon tiredness every day in a 16-year-old adolescent points to an uncomplicated mononucleosis-like pharyngitis syndrome warranting an outpatient clinic visit for clinical examination, heterophile or streptococcal testing, and activity guidance rather than home self-care alone or emergency care, whereas newly developing a harsh squeaking sound on every breath in today in that same adolescent signals acute upper-airway stridor from pharyngeal or tonsillar swelling requiring immediate ER airway management.",
+  "carrier_frame": "so I need to go to the",
+  "target_token": " clinic",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker's 16 year old daughter"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Has had a sore throat and tender swollen neck glands for 2 weeks"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Feels worn out every afternoon"
+    }
+  ],
+  "texts": {
+    "medical": "My 16 year old daughter has experienced oropharyngeal pain and tender cervical lymphadenopathy over the past 2 weeks accompanied by marked afternoon fatigue so I need to go to the",
+    "everyday": "My 16 year old daughter has had a sore throat and tender swollen neck glands for 2 weeks and feels worn out every afternoon so I need to go to the",
+    "medical_paraphrase": "My 16 year old daughter has had 2 weeks of oropharyngeal pain with tender cervical lymphadenopathy along with marked fatigue each afternoon so I need to go to the",
+    "everyday_paraphrase": "My 16 year old daughter has had 2 weeks of a sore throat with tender swollen glands in her neck and she feels worn out every afternoon so I need to go to the",
+    "changed_fact": "My 16 year old daughter has had a sore throat and tender swollen neck glands for 2 weeks and she started making a harsh squeaking sound on every breath in today so I need to go to the",
+    "quad_b": "My 16 year old daughter has had oropharyngeal pain and tender cervical lymphadenopathy for 2 weeks and experiences marked afternoon fatigue so I need to go to the",
+    "quad_c": "My 16 year old daughter has experienced a sore throat and tender swollen neck glands over the past 2 weeks accompanied by feeling worn out every afternoon so I need to go to the"
+  },
+  "changed_fact": {
+    "fact_id": "f3",
+    "from": "and feels worn out every afternoon",
+    "to": "and she started making a harsh squeaking sound on every breath in today",
+    "right_care_after": 4
+  },
+  "swap_spans": {
+    "medical_span": "experienced oropharyngeal pain and tender cervical lymphadenopathy over the past 2 weeks accompanied by marked afternoon fatigue",
+    "everyday_span": "had a sore throat and tender swollen neck glands for 2 weeks and feels worn out every afternoon"
+  },
+  "swap_note": "Single continuous 17-word vs 18-word span swap after 'My 16 year old daughter has ' and before ' so I need to go to the'.",
+  "everyday_sources": [
+    {
+      "expression": "a sore throat and tender swollen neck glands",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "feels worn out every afternoon",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "started making a harsh squeaking sound on every breath in today",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "parent_carer_plain_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": true,
+    "has_patient_attribution": false,
+    "intervention_notes": "Plain parent-carer everyday lexical register swap (-reg) + 2x2 syntax-by-vocabulary crossing (quad_b, quad_c) + single-fact upper-airway stridor escalation control (-cf, L2 to L4)."
+  },
+  "design_note": "Three atomic reference facts cover a 16-year-old daughter, 2 weeks of sore throat and tender swollen neck glands, and feeling worn out every afternoon without naming mononucleosis or glandular fever, with a 1-word span difference (17 vs 18 words) and clean 2x2 syntax-by-vocabulary crossing. Overriding plan.json's two-symptom abdominal pain plus faintness bundle under Rules A and D, replacing f3 with a single same-throat inspiratory stridor sign ('and she started making a harsh squeaking sound on every breath in today') stays strictly inside the adolescent throat-and-neck swelling case and escalates care unambiguously from clinic (level 2) to ER airway care (level 4)."
+}

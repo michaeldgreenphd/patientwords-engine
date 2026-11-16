@@ -1,0 +1,64 @@
+{
+  "family_id": "r11-109",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Patient is the speaker's 16 year old daughter",
+      "Has experienced oropharyngeal pain and tender cervical lymphadenopathy over the past 2 weeks",
+      "Has marked afternoon fatigue"
+    ],
+    "everyday": [
+      "Patient is the speaker's 16 year old daughter",
+      "Has had a sore throat and tender swollen neck glands for 2 weeks",
+      "Feels worn out every afternoon"
+    ],
+    "medical_paraphrase": [
+      "Patient is the speaker's 16 year old daughter",
+      "Has had 2 weeks of oropharyngeal pain with tender cervical lymphadenopathy",
+      "Has marked fatigue each afternoon"
+    ],
+    "everyday_paraphrase": [
+      "Patient is the speaker's 16 year old daughter",
+      "Has had 2 weeks of a sore throat with tender swollen glands in her neck",
+      "Feels worn out every afternoon"
+    ],
+    "changed_fact": [
+      "Patient is the speaker's 16 year old daughter",
+      "Has had a sore throat and tender swollen neck glands for 2 weeks",
+      "Started making a harsh squeaking sound on every breath in today"
+    ],
+    "quad_b": [
+      "Patient is the speaker's 16 year old daughter",
+      "Has had oropharyngeal pain and tender cervical lymphadenopathy for 2 weeks",
+      "Experiences marked afternoon fatigue"
+    ],
+    "quad_c": [
+      "Patient is the speaker's 16 year old daughter",
+      "Has experienced a sore throat and tender swollen neck glands over the past 2 weeks",
+      "Feels worn out every afternoon"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: speaker's 16 year old daughter, f2: sore throat and tender swollen neck glands for 2 weeks, f3: feels worn out every afternoon) are checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly ('oropharyngeal pain and tender cervical lymphadenopathy' = 'sore throat and tender swollen neck glands'; 'marked afternoon fatigue' = 'feels worn out every afternoon').",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "quad_b": "Matches f1, f2, and f3 exactly (everyday syntax with medical vocabulary).",
+    "quad_c": "Matches f1, f2, and f3 exactly (medical syntax with everyday vocabulary).",
+    "changed_fact": "Matches f1 and f2 identically to everyday and replaces only f3 ('and feels worn out every afternoon' -> 'and she started making a harsh squeaking sound on every breath in today') within the same throat-and-neck swelling presentation."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 6 non-control texts ('oropharyngeal' = 'throat', 'cervical lymphadenopathy' = 'swollen neck glands'); changed_fact replaces systemic afternoon fatigue in f3 with upper-airway inspiratory stridor.",
+    "timing": "Identical across all 6 non-control texts ('over the past 2 weeks'/'for 2 weeks'/'2 weeks of', 'afternoon'/'each afternoon'/'every afternoon'); changed_fact substitutes 'today' in f3.",
+    "count_and_numbers": "Identical across all 7 texts ('16' year old, '2' weeks).",
+    "severity_and_quality": "Identical across all 6 non-control texts ('sore throat', 'tender', 'marked ... fatigue' = 'feels worn out'); changed_fact escalates f3 to 'a harsh squeaking sound on every breath in'.",
+    "uncertainty": "Identical factual certainty across all 7 texts.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added clinical facts or adjectives across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

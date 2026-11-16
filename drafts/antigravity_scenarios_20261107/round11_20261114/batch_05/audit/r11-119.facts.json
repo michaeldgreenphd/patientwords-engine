@@ -1,0 +1,57 @@
+{
+  "family_id": "r11-119",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 31 years old",
+      "2 days ago got a superficial 1 cm paper laceration",
+      "Located on the lateral aspect of the right index finger",
+      "Has mild tenderness to palpation"
+    ],
+    "everyday": [
+      "Speaker is 31 years old",
+      "2 days ago got a shallow 1 cm paper cut",
+      "Located on the side of the right index finger",
+      "Feels mildly sore when pressed"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 31 years old",
+      "Got a superficial 1 cm paper laceration 2 days ago",
+      "Located on the lateral aspect of the right index finger",
+      "Is mildly tender to palpation"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 31 years old",
+      "Got a shallow 1 cm paper cut 2 days ago",
+      "Located on the side of the right index finger",
+      "Feels mildly sore when pressed"
+    ],
+    "changed_fact": [
+      "Speaker is 31 years old",
+      "2 days ago got a shallow 1 cm paper cut",
+      "Located on the side of the right index finger",
+      "Is warm and swollen with bright red skin around it"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 4 reference_facts (f1: 31 years old, f2: got a shallow 1 cm paper cut 2 days ago, f3: cut is on the side of the right index finger, f4: cut feels mildly sore when pressed) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, and f4 exactly ('superficial 1 cm paper laceration' = 'shallow 1 cm paper cut'; 'lateral aspect of my right index finger' = 'side of my right index finger'; 'mild tenderness to palpation' = 'feels mildly sore when I press it').",
+    "everyday": "Matches f1, f2, f3, and f4 exactly.",
+    "medical_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "changed_fact": "Matches f1, f2, and f3 identically to everyday and changes only the local wound sign in f4 ('that feels mildly sore when I press it' -> 'that is warm and swollen with bright red skin around it') around that same cut."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 5 texts ('lateral aspect of my right index finger' = 'side of my right index finger', right index finger).",
+    "timing": "Identical across all 5 texts ('2 days ago' and current local state).",
+    "count_and_numbers": "Identical across all 5 texts ('31' years old, '2' days ago, '1' cm).",
+    "severity_and_quality": "Identical across all 4 non-control texts ('superficial' = 'shallow', 'mild tenderness to palpation' = 'mildly sore when I press it'); changed_fact escalates f4 to 'warm and swollen with bright red skin around it'.",
+    "uncertainty": "Identical factual certainty across all 5 texts.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added clinical facts or adjectives across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

@@ -1,0 +1,59 @@
+{
+  "family_id": "r11-100",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 38 years old",
+      "Takes morning and evening oral hydrocortisone",
+      "Experienced 6 episodes of emesis over 3 hours this morning"
+    ],
+    "everyday": [
+      "Speaker is 38 years old",
+      "Takes hydrocortisone pills morning and evening",
+      "Has thrown up 6 times in 3 hours this morning"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 38 years old",
+      "Is on morning and evening oral hydrocortisone tablets",
+      "Had 6 episodes of emesis during 3 hours this morning"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 38 years old",
+      "Takes hydrocortisone pills each morning and evening",
+      "Threw up 6 times over 3 hours this morning"
+    ],
+    "changed_fact": [
+      "Speaker is 38 years old",
+      "Takes hydrocortisone pills morning and evening",
+      "Has gained 12 pounds around the waist over 4 months"
+    ],
+    "everyday_attribution": [
+      "Speaker is 38 years old",
+      "Takes hydrocortisone pills morning and evening",
+      "Has thrown up 6 times in 3 hours this morning",
+      "Causal belief only (non-clinical): thinks it is something eaten last night"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 38 years old, f2: takes oral hydrocortisone every morning and evening, f3: has vomited 6 times over 3 hours this morning) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly ('oral hydrocortisone' = 'hydrocortisone pills'; '6 episodes of emesis over 3 hours' = 'thrown up 6 times in 3 hours').",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday and appends only one causal belief clause ('and I think it's something I ate last night') with zero added clinical facts.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and replaces only f3 ('have thrown up 6 times in 3 hours this morning' -> 'have gained 12 pounds around my waist over 4 months')."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 5 non-control texts (oral hydrocortisone maintenance and emesis; no laterality); changed_fact replaces f3 with central glucocorticoid weight gain ('around my waist').",
+    "timing": "Identical across all 5 non-control texts ('morning and evening', 'over/in/during 3 hours this morning'); changed_fact substitutes 'over 4 months' in f3.",
+    "count_and_numbers": "Identical ('38' years old, '6' episodes/times, '3' hours) across all 5 non-control texts; changed_fact substitutes '12' pounds and '4' months in f3.",
+    "severity_and_quality": "Identical across all 5 non-control texts ('6 episodes of emesis' = 'thrown up 6 times'); changed_fact de-escalates f3 to chronic 12-pound central weight gain.",
+    "uncertainty": "Factual clinical certainty is identical across all texts; everyday_attribution marks causal belief explicitly with 'I think'.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added clinical facts or adjectives across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

@@ -1,0 +1,57 @@
+{
+  "family_id": "r11-110",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker has a 4 month old baby and cares for the baby daily",
+      "Has experienced sharp pain over the radial aspect of the right wrist for 3 weeks provoked by lifting the infant"
+    ],
+    "everyday": [
+      "Speaker has a 4 month old baby and cares for the baby daily",
+      "Has had sharp pain along the thumb side of the right wrist for 3 weeks when picking up the baby"
+    ],
+    "medical_paraphrase": [
+      "Speaker has a 4 month old baby and cares for the baby every day",
+      "For 3 weeks has experienced sharp pain over the radial aspect of the right wrist provoked by lifting the infant"
+    ],
+    "everyday_paraphrase": [
+      "Speaker has a 4 month old baby and takes care of the baby every day",
+      "For 3 weeks the thumb side of the right wrist has hurt sharply when picking up the baby"
+    ],
+    "changed_fact": [
+      "Speaker has a 4 month old baby and cares for the baby daily",
+      "Felt a quick twinge along the thumb side of the right wrist that faded right away when picking up the baby once"
+    ],
+    "quad_b": [
+      "Speaker has a 4 month old baby and cares for the baby daily",
+      "Has had sharp pain over the radial aspect of the right wrist for 3 weeks when lifting the infant"
+    ],
+    "quad_c": [
+      "Speaker has a 4 month old baby and cares for the baby daily",
+      "Has experienced sharp pain along the thumb side of the right wrist for 3 weeks provoked by picking up the baby"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: speaker has a 4 month old baby, f2: cares for the baby daily, f3: sharp pain along the thumb side of the right wrist for 3 weeks when picking up the baby) are checkable statements with zero named diagnosis, matching the blind-extracted facts.",
+    "medical": "Matches f1, f2, and f3 exactly ('radial aspect of my right wrist' = 'thumb side of my right wrist'; 'provoked by lifting my infant' = 'when picking up my baby').",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly ('hurt sharply' = 'sharp pain').",
+    "quad_b": "Matches f1, f2, and f3 exactly (everyday syntax with medical vocabulary).",
+    "quad_c": "Matches f1, f2, and f3 exactly (medical syntax with everyday vocabulary).",
+    "changed_fact": "Matches f1 and f2 identically to everyday and de-escalates only f3 ('have had sharp pain along the thumb side of my right wrist for 3 weeks when picking up my baby' -> 'felt a quick twinge along the thumb side of my right wrist that faded right away when picking up my baby once') on the same thumb-side right wrist."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 7 texts ('radial aspect of my right wrist' = 'thumb side of my right wrist', right side).",
+    "timing": "Identical across all 6 non-control texts ('daily'/'every day', 'for 3 weeks', 'provoked by lifting my infant'/'when picking up my baby'); changed_fact modifies f3 to 'a quick twinge ... that faded right away when picking up my baby once'.",
+    "count_and_numbers": "Identical ('4' month old, '3' weeks) across all 6 non-control texts; changed_fact replaces the 3-week duration in f3.",
+    "severity_and_quality": "Identical across all 6 non-control texts ('sharp pain'/'hurt sharply'); changed_fact de-escalates f3 to 'a quick twinge ... that faded right away'.",
+    "uncertainty": "Identical factual certainty across all 7 texts.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added clinical facts or adjectives across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

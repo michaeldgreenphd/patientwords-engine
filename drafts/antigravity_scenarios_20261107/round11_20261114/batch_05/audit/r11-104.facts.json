@@ -1,0 +1,71 @@
+{
+  "family_id": "r11-104",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 72 years old",
+      "Has a 3 week history of an unstable maxillary complete prosthesis",
+      "Prosthesis produced a painful erosion on the mucosa of the palate"
+    ],
+    "everyday": [
+      "Speaker is 72 years old",
+      "Upper full denture has been loose for 3 weeks",
+      "Denture rubbed a painful raw sore on the roof of the mouth"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 72 years old",
+      "Reports 3 weeks of an unstable maxillary complete prosthesis",
+      "Prosthesis has produced a painful erosion on the mucosa of the palate"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 72 years old",
+      "Over 3 weeks upper full denture has stayed loose",
+      "Denture rubbed a painful raw sore on the roof of the mouth"
+    ],
+    "changed_fact": [
+      "Speaker is 72 years old",
+      "Upper full denture has been loose for 3 weeks",
+      "Denture lodged stuck across the back of the throat"
+    ],
+    "everyday_attribution": [
+      "Speaker is 72 years old",
+      "Upper full denture has been loose for 3 weeks",
+      "Denture rubbed a painful raw sore on the roof of the mouth",
+      "Causal belief only (non-clinical): thinks their gums shrank"
+    ],
+    "quad_b": [
+      "Speaker is 72 years old",
+      "Maxillary complete prosthesis has been unstable for 3 weeks",
+      "Produced a painful erosion on the mucosa of the palate"
+    ],
+    "quad_c": [
+      "Speaker is 72 years old",
+      "Has a 3 week history of a loose upper full denture",
+      "Rubbed a painful raw sore on the roof of the mouth"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 72 years old, f2: upper full denture has been loose for 3 weeks, f3: denture rubbed a painful raw sore on the roof of the mouth) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly ('unstable maxillary complete prosthesis' = 'loose upper full denture'; 'painful erosion on the mucosa of my palate' = 'painful raw sore on the roof of my mouth').",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday and appends only one causal belief clause ('and I think my gums shrank') with zero added clinical facts.",
+    "quad_b": "Matches f1, f2, and f3 exactly (everyday syntax with medical vocabulary).",
+    "quad_c": "Matches f1, f2, and f3 exactly (medical syntax with everyday vocabulary).",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only f3 ('rubbed a painful raw sore on the roof of my mouth' -> 'it lodged stuck across the back of my throat') on the same loose upper denture."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 7 non-control texts ('maxillary'/'upper' denture and 'mucosa of my palate'/'roof of my mouth'); changed_fact shifts the denture complication within the oral-pharyngeal tract to 'the back of my throat'.",
+    "timing": "Identical across all 8 texts ('3 week history'/'for 3 weeks'/'over 3 weeks').",
+    "count_and_numbers": "Identical across all 8 texts ('72' years old, '3' weeks).",
+    "severity_and_quality": "Identical across all 7 non-control texts ('unstable' = 'loose', 'painful erosion' = 'painful raw sore'); changed_fact escalates f3 to 'lodged stuck across the back of my throat'.",
+    "uncertainty": "Factual clinical certainty is identical across all texts; everyday_attribution marks causal belief explicitly with 'I think'.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added clinical facts or adjectives across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

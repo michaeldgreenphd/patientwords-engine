@@ -1,0 +1,71 @@
+{
+  "family_id": "r11-103",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is a 24 year old man with dark brown skin",
+      "Has a 6 month history on the dorsa of both hands",
+      "Has expanding smooth depigmented patches there"
+    ],
+    "everyday": [
+      "Speaker is a 24 year old man with dark brown skin",
+      "Duration on the backs of both hands is 6 months",
+      "Has had smooth chalk white patches spreading there"
+    ],
+    "medical_paraphrase": [
+      "Speaker is a 24 year old man with dark brown skin",
+      "Reports 6 months on the dorsa of both hands",
+      "Smooth depigmented patches are progressively expanding across them"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is a 24 year old man with dark brown skin",
+      "Duration across the backs of both hands is 6 months",
+      "Smooth chalk white patches have kept spreading across them"
+    ],
+    "changed_fact": [
+      "Speaker is a 24 year old man with dark brown skin",
+      "Duration on the backs of both hands is 6 months",
+      "Has had a slight even sun tan there"
+    ],
+    "everyday_attribution": [
+      "Speaker is a 24 year old man with dark brown skin",
+      "Duration on the backs of both hands is 6 months",
+      "Has had smooth chalk white patches spreading there",
+      "Causal belief only (non-clinical): thinks it is sun damage"
+    ],
+    "quad_b": [
+      "Speaker is a 24 year old man with dark brown skin",
+      "Duration on the dorsa of both hands is 6 months",
+      "Has had smooth depigmented patches expanding there"
+    ],
+    "quad_c": [
+      "Speaker is a 24 year old man with dark brown skin",
+      "Has a 6 month history on the backs of both hands",
+      "Has spreading smooth chalk white patches there"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 24 year old man with dark brown skin, f2: skin change on the backs of both hands over 6 months, f3: smooth chalk white patches of lost skin pigment have kept spreading) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly ('dorsa of both hands' = 'backs of both hands'; 'expanding smooth depigmented patches' = 'smooth chalk white patches spreading').",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday and appends only one causal belief clause ('and I think it's sun damage') with zero added clinical facts.",
+    "quad_b": "Matches f1, f2, and f3 exactly (everyday syntax with medical vocabulary).",
+    "quad_c": "Matches f1, f2, and f3 exactly (medical syntax with everyday vocabulary).",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only the dorsal-hand pigment finding in f3 ('smooth chalk white patches spreading' -> 'a slight even sun tan') on the backs of both hands for 6 months."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 8 texts ('dorsa of both hands' = 'backs of both hands', bilateral).",
+    "timing": "Identical across all 8 texts ('6 month history'/'for 6 months'/'over 6 months').",
+    "count_and_numbers": "Identical across all 8 texts ('24' years old, '6' months).",
+    "severity_and_quality": "Identical across all 7 non-control texts ('expanding/progressively expanding smooth depigmented patches' = 'spreading smooth chalk white patches'); changed_fact de-escalates f3 to 'a slight even sun tan'.",
+    "uncertainty": "Factual clinical certainty is identical across all texts; everyday_attribution marks causal belief explicitly with 'I think'.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added clinical facts or adjectives across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

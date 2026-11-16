@@ -1,0 +1,57 @@
+{
+  "family_id": "r11-120",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 38 years old",
+      "Flew home across 7 time zones",
+      "Has had nocturnal awakenings with full alertness at 3 am",
+      "Occurred for the past 2 nights"
+    ],
+    "everyday": [
+      "Speaker is 38 years old",
+      "Flew home across 7 time zones",
+      "Has woken up wide awake at 3 am",
+      "Occurred for the past 2 nights"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 38 years old",
+      "Flew home across 7 time zones",
+      "Experiences nocturnal awakenings with full alertness at 3 am",
+      "Occurred for the past 2 nights"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 38 years old",
+      "Flew home across 7 time zones",
+      "Keeps waking up wide awake at 3 am",
+      "Occurred for the past 2 nights"
+    ],
+    "changed_fact": [
+      "Speaker is 38 years old",
+      "Flew home across 7 time zones",
+      "Has woken up wide awake at 3 am",
+      "Occurred every night for 6 weeks"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 4 reference_facts (f1: 38 years old, f2: flew home across 7 time zones, f3: wakes up wide awake at 3 am, f4: occurred for the past 2 nights) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, and f4 exactly ('nocturnal awakenings with full alertness at 3 am' = 'woken up wide awake at 3 am').",
+    "everyday": "Matches f1, f2, f3, and f4 exactly.",
+    "medical_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "changed_fact": "Matches f1, f2, and f3 identically to everyday and changes only the duration in f4 ('for the past 2 nights' -> 'every night for 6 weeks')."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 5 texts (sleep maintenance / nocturnal awakening; no laterality).",
+    "timing": "Identical across all 4 non-control texts ('since/after flying home across 7 time zones', 'at 3 am', 'for the past 2 nights'); changed_fact escalates f4 duration to 'every night for 6 weeks'.",
+    "count_and_numbers": "Identical ('38' years old, '7' time zones, '3' am, '2' nights) across all 4 non-control texts; changed_fact substitutes '6' weeks in f4.",
+    "severity_and_quality": "Identical across all 4 non-control texts ('nocturnal awakenings with full alertness' = 'woken/waking up wide awake'); changed_fact escalates f4 persistence to 'every night for 6 weeks'.",
+    "uncertainty": "Identical factual certainty across all 5 texts.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added clinical facts or adjectives across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

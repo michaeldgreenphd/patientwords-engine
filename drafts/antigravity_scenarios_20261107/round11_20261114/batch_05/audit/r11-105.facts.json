@@ -1,0 +1,65 @@
+{
+  "family_id": "r11-105",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is a 29 year old woman",
+      "Had 7 kg weight loss in 3 months despite hyperphagia",
+      "Has bilateral hand tremor",
+      "Has a resting pulse of 108 beats per minute"
+    ],
+    "everyday": [
+      "Speaker is a 29 year old woman",
+      "Lost 7 kg in 3 months while eating big meals",
+      "Both hands are trembling",
+      "Has a resting pulse of 108 beats a minute"
+    ],
+    "medical_paraphrase": [
+      "Speaker is a 29 year old woman",
+      "Reports 7 kg weight loss over 3 months despite hyperphagia",
+      "Has bilateral hand tremor",
+      "Has a resting pulse of 108 beats per minute"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is a 29 year old woman",
+      "Dropped 7 kg over 3 months while eating big meals",
+      "Has trembling in both hands",
+      "Has a resting pulse of 108 beats a minute"
+    ],
+    "changed_fact": [
+      "Speaker is a 29 year old woman",
+      "Lost 7 kg in 3 months while eating big meals",
+      "Both hands are trembling",
+      "Has a resting pulse of 192 beats a minute"
+    ],
+    "everyday_attribution": [
+      "Speaker is a 29 year old woman",
+      "Lost 7 kg in 3 months while eating big meals",
+      "Both hands are trembling",
+      "Has a resting pulse of 108 beats a minute",
+      "Causal belief only (non-clinical): thinks it is stress"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 4 reference_facts (f1: 29 year old woman, f2: lost 7 kg in 3 months while eating large meals, f3: both hands keep trembling, f4: resting pulse is 108 beats per minute) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, and f4 exactly ('despite hyperphagia' = 'eating big meals'; 'bilateral hand tremor' = 'both hands trembling').",
+    "everyday": "Matches f1, f2, f3, and f4 exactly.",
+    "medical_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday_attribution": "Matches f1, f2, f3, and f4 identically to everyday and appends only one causal belief clause ('and I think it's stress') with zero added clinical facts.",
+    "changed_fact": "Matches f1, f2, and f3 identically to everyday and changes only the measured resting pulse rate in f4 ('108' -> '192') beats a minute."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 6 texts ('bilateral hand' = 'both hands').",
+    "timing": "Identical across all 6 texts ('in/over 3 months', 'resting', 'per/a minute').",
+    "count_and_numbers": "Identical ('29' years old, '7' kg, '3' months, '108' bpm) across all 5 non-control texts; changed_fact substitutes '192' bpm in f4.",
+    "severity_and_quality": "Identical across all 5 non-control texts ('7 kg weight loss ... despite hyperphagia' = 'lost/dropped 7 kg ... eating big meals', 'tremor' = 'trembling', '108'); changed_fact escalates f4 resting pulse to '192'.",
+    "uncertainty": "Factual clinical certainty is identical across all texts; everyday_attribution marks causal belief explicitly with 'I think'.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added clinical facts or adjectives across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

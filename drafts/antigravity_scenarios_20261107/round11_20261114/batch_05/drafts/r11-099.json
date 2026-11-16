@@ -1,0 +1,93 @@
+{
+  "family_id": "r11-099",
+  "condition": "suspected acute septic knee monoarthritis presenting with right knee aching joint swelling and 103 F fever",
+  "right_care": 4,
+  "level_rationale": "A 2-day history of right knee joint aching and swelling accompanied by a 103 F temperature tonight in a 73-year-old adult indicates suspected acute septic knee arthritis or bacteremia requiring immediate emergency hospital diagnostic arthrocentesis, blood cultures, and intravenous antibiotics, whereas the identical 2-day aching swollen right knee with an afebrile 98 F temperature tonight warrants outpatient physician joint evaluation.",
+  "carrier_frame": "so I need to go to the",
+  "target_token": " hospital",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is 73 years old"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Has had right knee joint aching for 2 days"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Has had right knee joint swelling for 2 days"
+    },
+    {
+      "fact_id": "f4",
+      "text": "Body temperature measured 103 F tonight"
+    }
+  ],
+  "texts": {
+    "medical": "I'm 73 and developed right knee arthralgia and articular effusion for 2 days and recorded a temperature of 103 F tonight so I need to go to the",
+    "everyday": "I'm 73 and have had aching and swelling in my right knee for 2 days and my thermometer read 103 F tonight so I need to go to the",
+    "medical_paraphrase": "I am 73 years old and experienced right knee arthralgia with articular effusion for 2 days and documented a 103 F temperature tonight so I need to go to the",
+    "everyday_paraphrase": "I am 73 years old and my right knee has been aching and swollen for 2 days and my thermometer showed 103 F tonight so I need to go to the",
+    "changed_fact": "I'm 73 and have had aching and swelling in my right knee for 2 days and my thermometer read 98 F tonight so I need to go to the",
+    "everyday_attribution": "I'm 73 and have had aching and swelling in my right knee for 2 days and my thermometer read 103 F tonight and I think it's from gardening so I need to go to the"
+  },
+  "changed_fact": {
+    "fact_id": "f4",
+    "from": "103 F",
+    "to": "98 F",
+    "right_care_after": 2
+  },
+  "attribution": {
+    "clause": "and I think it's from gardening",
+    "explains": "attributes febrile right knee aching and swelling to kneeling or exertion while gardening",
+    "source": "none",
+    "title": null,
+    "pmid_or_doi": null,
+    "inspected_url": null,
+    "access": null,
+    "location": null,
+    "quote_type": "none",
+    "evidence": null,
+    "adaptation": null
+  },
+  "swap_spans": {
+    "medical_span": "developed right knee arthralgia and articular effusion for 2 days and recorded a temperature of",
+    "everyday_span": "have had aching and swelling in my right knee for 2 days and my thermometer read"
+  },
+  "swap_note": "Single continuous 15-word vs 16-word span swap after 'I'm 73 and ' and before ' 103 F tonight so I need to go to the'.",
+  "everyday_sources": [
+    {
+      "expression": "aching and swelling in my right knee",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "my thermometer read",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "older_adult_plain_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": true,
+    "intervention_notes": "Plain older-adult lexical register swap (-reg) + causal belief-addition clause (-att) + Rule A first-choice single measured-temperature outpatient control (-cf)."
+  },
+  "design_note": "Uses four strictly atomic reference facts (age 73, 2-day right knee aching, 2-day right knee swelling, and measured 103 F temperature tonight) with a 1-word span difference (15 vs 16 words), 10 shared trailing tokens, and zero diagnosis labels ('arthritis', 'gout', and 'sepsis' omitted from prompt texts). Under Rule A first choice and Rule D, changing only the measured thermometer reading in f4 from '103 F' to '98 F' stays inside the exact same knee case while shifting right care cleanly from emergency hospital evaluation (level 4) to outpatient physician assessment (level 2) with zero stated negatives."
+}

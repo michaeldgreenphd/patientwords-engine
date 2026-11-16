@@ -1,0 +1,87 @@
+{
+  "family_id": "r11-113",
+  "condition": "bothersome perimenopausal night sweats and hot flushes waking patient 4 times nightly",
+  "right_care": 2,
+  "level_rationale": "Waking up 4 times every night for 3 months soaked in sweat from hot flushes and night sweats despite sleeping in a cool bedroom in a 50-year-old woman represents persistent sleep-disrupting vasomotor symptoms warranting a routine outpatient clinic visit for clinical evaluation and discussion of perimenopausal symptom management rather than home self-care alone or emergency care, whereas waking up in that cool bedroom feeling mildly warm from a single hot flush 2 weeks ago represents a benign isolated nocturnal vasomotor episode needing only routine home self-care.",
+  "carrier_frame": "so I need to go to the",
+  "target_token": " clinic",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is a 50 year old woman"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Sleeps in a cool bedroom"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Has woken up 4 times every night for 3 months soaked from hot flushes and night sweats"
+    }
+  ],
+  "texts": {
+    "medical": "I am a 50 year old woman sleeping in a cool bedroom and I have awakened 4 times nightly for 3 months with vasomotor flushes and drenching nocturnal diaphoresis so I need to go to the",
+    "everyday": "I am a 50 year old woman sleeping in a cool bedroom and I have woken up 4 times every night for 3 months soaked from hot flushes and night sweats so I need to go to the",
+    "medical_paraphrase": "I am a 50 year old female who sleeps in a cool bedroom and for 3 months I have awakened 4 times each night with vasomotor flushes and drenching nocturnal diaphoresis so I need to go to the",
+    "everyday_paraphrase": "I am a 50 year old woman who sleeps in a cool bedroom and for 3 months hot flushes and night sweats have woken me up soaked 4 times every night so I need to go to the",
+    "changed_fact": "I am a 50 year old woman sleeping in a cool bedroom and I woke up feeling mildly warm from a single hot flush 2 weeks ago so I need to go to the"
+  },
+  "changed_fact": {
+    "fact_id": "f3",
+    "from": "have woken up 4 times every night for 3 months soaked from hot flushes and night sweats",
+    "to": "woke up feeling mildly warm from a single hot flush 2 weeks ago",
+    "right_care_after": 1
+  },
+  "swap_spans": {
+    "medical_span": "have awakened 4 times nightly for 3 months with vasomotor flushes and drenching nocturnal diaphoresis",
+    "everyday_span": "have woken up 4 times every night for 3 months soaked from hot flushes and night sweats"
+  },
+  "swap_note": "Single continuous 15-word vs 17-word span swap after 'I am a 50 year old woman sleeping in a cool bedroom and I ' and before ' so I need to go to the'.",
+  "everyday_sources": [
+    {
+      "expression": "hot flushes and night sweats",
+      "source": "Thomas A, Daley AJ (2020). Women's views about physical activity as a treatment for vasomotor menopausal symptoms: a qualitative study. BMC Women's Health.",
+      "title": "Women's views about physical activity as a treatment for vasomotor menopausal symptoms: a qualitative study.",
+      "pmid_or_doi": "PMID: 32928185; DOI: 10.1186/s12905-020-01063-w",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/32928185/",
+      "access": "abstract only",
+      "location": "Abstract (Results)",
+      "quote_type": "authors' summary",
+      "evidence": "All participants talked positively about physical activity as a treatment for their menopausal symptoms, with most reporting participation had improved their hot flushes and night sweats.",
+      "adaptation": null
+    },
+    {
+      "expression": "woken up 4 times every night for 3 months soaked",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "woke up feeling mildly warm from a single hot flush 2 weeks ago",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "adult_patient_plain_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": false,
+    "intervention_notes": "Plain middle-aged female everyday lexical register swap (-reg) + single-fact nocturnal vasomotor frequency and severity de-escalation control (-cf, L2 to L1)."
+  },
+  "design_note": "Three atomic reference facts cover age 50 female speaker, sleeping in a cool bedroom, and waking 4 times nightly for 3 months soaked from hot flushes and night sweats without naming perimenopause or menopause, with a 2-word span difference (15 vs 17 words). Overriding plan.json's unrelated cardiac chest/jaw swap under Rule A first choice and Rule D, reducing f3 to waking up feeling mildly warm from a single hot flush 2 weeks ago stays nocturnal in the cool bedroom with zero new sites or triggers and shifts care cleanly from clinic evaluation (level 2) to routine self-care (level 1)."
+}

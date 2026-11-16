@@ -1,0 +1,59 @@
+{
+  "family_id": "r11-102",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 57 years old",
+      "Underwent surgical operation on the right clavicle 10 days ago",
+      "Abruptly developed thoracic pain upon inspiration while seated at rest today"
+    ],
+    "everyday": [
+      "Speaker is 57 years old",
+      "Had surgery on the right collarbone 10 days ago",
+      "Suddenly got a pain in the chest when breathing in while sitting still today"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 57 years old",
+      "Had a surgical operation on the right clavicle 10 days ago",
+      "Abruptly experienced inspiratory thoracic pain while sitting at rest today"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 57 years old",
+      "Had surgery on the right collarbone 10 days ago",
+      "Suddenly felt a pain in the chest breathing in while sitting still today"
+    ],
+    "changed_fact": [
+      "Speaker is 57 years old",
+      "Had surgery on the right collarbone 10 days ago",
+      "Feels mild itching along the dry healing scar over that collarbone today"
+    ],
+    "everyday_attribution": [
+      "Speaker is 57 years old",
+      "Had surgery on the right collarbone 10 days ago",
+      "Suddenly got a pain in the chest when breathing in while sitting still today",
+      "Causal belief only (non-clinical): thinks it is indigestion"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 57 years old, f2: had surgery on the right collarbone 10 days ago, f3: suddenly developed chest pain when breathing in while sitting at rest today) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly ('right clavicle' = 'right collarbone'; 'abruptly developed thoracic pain upon inspiration while seated at rest' = 'suddenly got a pain in the chest when breathing in while sitting still').",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday and appends only one causal belief clause ('and I think it's indigestion') with zero added clinical facts.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only f3 ('suddenly got a pain in the chest when breathing in while sitting still' -> 'feel mild itching along the dry healing scar over that collarbone') today on that right collarbone surgical site."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 5 non-control texts ('right clavicle' = 'right collarbone' and 'thoracic'/'chest'); changed_fact stays on 'that collarbone' surgical scar.",
+    "timing": "Identical across all 5 non-control texts ('10 days ago', 'abruptly'/'suddenly', 'today'); changed_fact preserves '10 days ago' and 'today'.",
+    "count_and_numbers": "Identical across all 6 texts ('57' years old, '10' days).",
+    "severity_and_quality": "Identical across all 5 non-control texts (sudden resting inspiratory chest/thoracic pain); changed_fact de-escalates f3 to 'mild itching along the dry healing scar'.",
+    "uncertainty": "Factual clinical certainty is identical across all texts; everyday_attribution marks causal belief explicitly with 'I think'.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added clinical facts or adjectives across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

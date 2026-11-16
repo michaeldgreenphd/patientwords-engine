@@ -1,0 +1,59 @@
+{
+  "family_id": "r11-101",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is a 76 year old man",
+      "Took oral decongestant tablets nightly for 4 nights",
+      "Developed complete inability to urinate for 18 hours"
+    ],
+    "everyday": [
+      "Speaker is a 76 year old man",
+      "Took decongestant pills every night for 4 nights",
+      "Has been unable to pee at all for 18 hours"
+    ],
+    "medical_paraphrase": [
+      "Speaker is a 76 year old male",
+      "Ingested oral decongestant tablets each night for 4 nights",
+      "Experienced complete inability to void urine for 18 hours"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is a 76 year old man",
+      "Took decongestant pills each night for 4 nights",
+      "Has been unable to pass any pee for 18 hours"
+    ],
+    "changed_fact": [
+      "Speaker is a 76 year old man",
+      "Took decongestant pills every night for 4 nights",
+      "Noticed his pee stream has been slower than usual"
+    ],
+    "everyday_attribution": [
+      "Speaker is a 76 year old man",
+      "Took decongestant pills every night for 4 nights",
+      "Has been unable to pee at all for 18 hours",
+      "Causal belief only (non-clinical): thinks it is hot weather"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 76 year old man, f2: took oral decongestant pills every night for 4 nights, f3: has been completely unable to urinate for 18 hours) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly ('oral decongestant tablets nightly' = 'decongestant pills every night'; 'complete inability to urinate' = 'unable to pee at all').",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday and appends only one causal belief clause ('and I think it's hot weather') with zero added clinical facts.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only voiding impairment severity in f3 ('have been unable to pee at all for 18 hours' -> 'noticed my pee stream has been slower than usual')."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 6 texts (urinary voiding after oral decongestant use; no laterality).",
+    "timing": "Identical across all 5 non-control texts ('nightly'/'every night'/'each night' for '4 nights', 'for 18 hours'); changed_fact modifies f3 to slower stream across the 4-night period.",
+    "count_and_numbers": "Identical ('76' years old, '4' nights, '18' hours) across all 5 non-control texts; changed_fact replaces the 18-hour anuria/retention clause in f3.",
+    "severity_and_quality": "Identical across all 5 non-control texts ('complete inability to urinate/void urine' = 'unable to pee at all / pass any pee'); changed_fact de-escalates f3 to 'pee stream has been slower than usual'.",
+    "uncertainty": "Factual clinical certainty is identical across all texts; everyday_attribution marks causal belief explicitly with 'I think'.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added clinical facts or adjectives across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

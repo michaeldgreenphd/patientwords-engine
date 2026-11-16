@@ -1,0 +1,69 @@
+{
+  "family_id": "r11-118",
+  "condition": "recurrent late afternoon shaky sweaty funny turns relieved by crackers needing blood glucose workup",
+  "right_care": 2,
+  "level_rationale": "Four recurrent late-afternoon episodes over 3 weeks of shaking and sweating that resolve after eating crackers in a 71-year-old adult represent a subacute postabsorptive symptomatic pattern requiring a scheduled primary-care doctor evaluation and laboratory glucose workup, whereas fainting in the kitchen today even after eating crackers indicates acute carbohydrate-refractory syncope in an older adult requiring immediate Emergency Department assessment and stabilization.",
+  "carrier_frame": "so I should see a",
+  "target_token": " doctor",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is 71 years old"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Has had 4 late afternoon episodes over 3 weeks"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Episodes involve shaking and sweating"
+    },
+    {
+      "fact_id": "f4",
+      "text": "Eating crackers relieves the episodes"
+    }
+  ],
+  "texts": {
+    "medical": "I am 71 years old and over 3 weeks I have had 4 late afternoon episodes of tremor and diaphoresis and eating crackers relieves them so I should see a",
+    "everyday": "I am 71 years old and over 3 weeks I have had 4 late afternoon funny turns with shaking and sweating and eating crackers relieves them so I should see a",
+    "medical_paraphrase": "I am a 71 year old with 4 late afternoon episodes of tremor and diaphoresis over the past 3 weeks that resolve after eating crackers so I should see a",
+    "everyday_paraphrase": "I'm 71 and 4 times in the past 3 weeks I've had a funny turn late in the afternoon with shaking and sweating and it settles when I eat crackers so I should see a",
+    "changed_fact": "I am 71 years old and over 3 weeks I have had 4 late afternoon funny turns with shaking and sweating and even after eating crackers today I fainted in the kitchen so I should see a"
+  },
+  "changed_fact": {
+    "fact_id": "f4",
+    "from": "eating crackers relieves them",
+    "to": "even after eating crackers today I fainted in the kitchen",
+    "right_care_after": 4
+  },
+  "swap_spans": {
+    "medical_span": "episodes of tremor and diaphoresis",
+    "everyday_span": "funny turns with shaking and sweating"
+  },
+  "swap_note": "Single continuous 5-word vs 6-word span swap after 'I am 71 years old and over 3 weeks I have had 4 late afternoon ' and before ' and eating crackers relieves them so I should see a'.",
+  "everyday_sources": [
+    {
+      "expression": "funny turns",
+      "source": "Kumar S, Melek M, Rohl P (2022). Case Report: Hypoglycemia Due to Metastatic Insulinoma in Insulin-Dependent Type 2 Diabetes Successfully Treated With 177 Lu-DOTATATE. Frontiers in Endocrinology.",
+      "title": "Case Report: Hypoglycemia Due to Metastatic Insulinoma in Insulin-Dependent Type 2 Diabetes Successfully Treated With 177 Lu-DOTATATE.",
+      "pmid_or_doi": "PMID: 35685218; DOI: 10.3389/fendo.2022.906012",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/35685218/",
+      "access": "full text",
+      "location": "Case Description, paragraph 1, sentence 2",
+      "quote_type": "authors' summary",
+      "evidence": "He had been experiencing recurrent “funny turns” (six episodes in the preceding 12 months) associated with hypoglycemia culminating in an episode of loss of consciousness necessitating hospitalization.",
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "australian_english_funny_turn_wording",
+  "lexicon_entries": [
+    "a funny turn"
+  ],
+  "protocol_flags": {
+    "has_dialect_lexicon": true,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": false,
+    "intervention_notes": "Australian English core lexicon swap ('episodes of tremor and diaphoresis' vs 'funny turns with shaking and sweating', with 'a funny turn' retained in everyday_paraphrase and 'funny turns' retained in changed_fact) + single-fact carbohydrate-response to refractory syncope escalation control (-cf, relieved by crackers to fainting in the kitchen today despite crackers, L2 to L4)."
+  },
+  "design_note": "Uses four strictly atomic facts (age 71, 4 late-afternoon episodes over 3 weeks, shaking and sweating, and relief after eating crackers) backed by an older-Australian endocrine report documenting recurrent hypoglycemic 'funny turns' relieved by carbohydrate intake. Replacing f4 ('eating crackers relieves them' to 'even after eating crackers today I fainted in the kitchen') keeps first-person active speech realistic while escalating inside the exact case from primary-care workup (level 2) to Emergency Department evaluation (level 4) with zero stated negatives."
+}

@@ -1,0 +1,103 @@
+{
+  "family_id": "r11-097",
+  "condition": "acute ischemic stroke presenting with abrupt onset dysarthria during breakfast in an older adult on daily antihypertensive medication",
+  "right_care": 4,
+  "level_rationale": "Sudden-onset slurred speech starting during breakfast 20 minutes ago in a 72-year-old woman on daily antihypertensive medication is a hyperacute focal neurological deficit within the thrombolytic window requiring immediate emergency department stroke activation and neuroimaging, whereas forgetting scheduled appointment dates more often over 9 months in the same 72-year-old woman on daily blood pressure pills has zero acute focal neurological red flags and warrants a routine outpatient primary-care evaluation.",
+  "carrier_frame": "so I need to go to the",
+  "target_token": " ER",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker's wife is 72 years old"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Takes daily medication for high blood pressure"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Her speech suddenly became slurred during breakfast 20 minutes ago"
+    }
+  ],
+  "texts": {
+    "medical": "My wife is 72 receiving daily antihypertensive medication and her speech articulation became abruptly dysarthric during breakfast 20 minutes ago so I need to go to the",
+    "everyday": "My wife is 72 taking daily blood pressure pills and suddenly her speech became slurred at breakfast 20 minutes ago so I need to go to the",
+    "medical_paraphrase": "My 72 year old wife is on daily antihypertensives and developed abrupt onset dysarthria during breakfast 20 minutes ago so I need to go to the",
+    "everyday_paraphrase": "My 72 year old wife takes blood pressure pills every day and her speech suddenly turned slurred at breakfast 20 minutes ago so I need to go to the",
+    "changed_fact": "My wife is 72 taking daily blood pressure pills and she has forgotten scheduled appointment dates more often over 9 months so I need to go to the",
+    "everyday_attribution": "My wife is 72 taking daily blood pressure pills and suddenly her speech became slurred at breakfast 20 minutes ago and I think it's from waking up early so I need to go to the",
+    "quad_b": "My wife is 72 taking daily antihypertensive medication and suddenly her speech articulation became dysarthric at breakfast 20 minutes ago so I need to go to the",
+    "quad_c": "My wife is 72 receiving daily blood pressure pills and her speech became suddenly slurred during breakfast 20 minutes ago so I need to go to the"
+  },
+  "changed_fact": {
+    "fact_id": "f3",
+    "from": "suddenly her speech became slurred at breakfast 20 minutes ago",
+    "to": "she has forgotten scheduled appointment dates more often over 9 months",
+    "right_care_after": 2
+  },
+  "attribution": {
+    "clause": "and I think it's from waking up early",
+    "explains": "attributes sudden-onset slurred speech at breakfast to early-morning tiredness",
+    "source": "none",
+    "title": null,
+    "pmid_or_doi": null,
+    "inspected_url": null,
+    "access": null,
+    "location": null,
+    "quote_type": "none",
+    "evidence": null,
+    "adaptation": null
+  },
+  "swap_spans": {
+    "medical_span": "receiving daily antihypertensive medication and her speech articulation became abruptly dysarthric during",
+    "everyday_span": "taking daily blood pressure pills and suddenly her speech became slurred at"
+  },
+  "swap_note": "Single continuous 12-word vs 12-word span swap after 'My wife is 72 ' and before ' breakfast 20 minutes ago so I need to go to the'.",
+  "everyday_sources": [
+    {
+      "expression": "her speech became slurred",
+      "source": "Norouzinezhad F, Sadooghiasl A, Mohammadi E, Kazemnejad A (2026). Experiences of family caregivers of older adults with stroke regarding caregiving competency: a qualitative study. International Journal of Qualitative Studies on Health and Well-being.",
+      "title": "Experiences of family caregivers of older adults with stroke regarding caregiving competency: a qualitative study.",
+      "pmid_or_doi": "PMID: 42981268; DOI: 10.1080/17482631.2026.2759356",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/42981268/",
+      "access": "full text",
+      "location": "Results — Preparedness and Knowledge Updating — Vigilance and follow-up of complications and acute problems, para 5 (Participant 10 quote)",
+      "quote_type": "direct patient quote",
+      "evidence": "Suddenly, she feels unwell, she becomes dizzy, or she herself says that she doesn’t feel well, her speech becomes slurred, for example, her hands become cold...",
+      "adaptation": "Past-tense inflection ('her speech became slurred') of the stroke family caregiver's verbatim phrase 'her speech becomes slurred' for an acute event 20 minutes ago."
+    },
+    {
+      "expression": "blood pressure pills",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "she has forgotten scheduled appointment dates more often over 9 months",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "adult_carer_plain_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": true,
+    "has_patient_attribution": true,
+    "intervention_notes": "Plain spouse-carer lexical register swap (-reg) + 2x2 syntactic-frame by clinical/everyday lexical crossing (quad_b, quad_c) + causal belief-addition clause (-att) + same-system chronic 9-month memory-change outpatient control (-cf)."
+  },
+  "design_note": "Uses three strictly atomic reference facts (72-year-old wife, daily antihypertensive medication, and abrupt-onset slurred speech during breakfast 20 minutes ago) with an exact 12-word vs 12-word span swap, 11 shared trailing tokens, and zero diagnosis labels ('stroke' omitted from prompt texts). Isolating the neurological deficit in f3 prevents stranding residual focal deficits when f3 shifts to gradual 9-month forgetting of scheduled appointment dates under Rule A and Rule D (level 4 ER to level 2 routine doctor visit) with zero stated negatives."
+}

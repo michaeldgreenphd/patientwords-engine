@@ -1,0 +1,69 @@
+{
+  "family_id": "r11-116",
+  "condition": "exertional hyperthermia on hot factory floor with heavy sweating dizzy spell and 105 F oral temperature",
+  "right_care": 4,
+  "level_rationale": "A 42-year-old factory worker who worked 4 hours on a hot factory floor today, sweated heavily, had a brief dizzy spell, and has an oral temperature of 105 F (40.6 C) has dangerous exertional hyperthermia at immediate risk of heatstroke organ injury requiring emergency hospital cooling and evaluation, whereas the exact same post-shift heavy sweating and brief transient dizzy spell with a normal 97 F oral temperature leaves no hyperthermia or neurologic red flag and is suitable for cool-room rest and oral fluid self-care.",
+  "carrier_frame": "so I need to go to the",
+  "target_token": " hospital",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker's 42 year old husband worked 4 hours on a hot factory floor today"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Sweated heavily during his shift"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Had a brief dizzy spell"
+    },
+    {
+      "fact_id": "f4",
+      "text": "Husband's oral temperature is 105 F"
+    }
+  ],
+  "texts": {
+    "medical": "My 42 year old husband worked 4 hours on a hot factory floor today and sweated heavily before having a brief episode of dizziness and his oral temperature is 105 F so I need to go to the",
+    "everyday": "My 42 year old husband worked 4 hours on a hot factory floor today and sweated heavily before having a brief dizzy spell and his oral temperature is 105 F so I need to go to the",
+    "medical_paraphrase": "My 42 year old husband experienced profuse diaphoresis and a brief episode of dizziness today after 4 hours of labor on a hot factory floor and his oral temperature is 105 F so I need to go to the",
+    "everyday_paraphrase": "My husband is 42 and after 4 hours working on a hot factory floor today with heavy sweating he had a brief dizzy spell and his temperature by mouth is 105 F so I need to go to the",
+    "changed_fact": "My 42 year old husband worked 4 hours on a hot factory floor today and sweated heavily before having a brief dizzy spell and his oral temperature is 97 F so I need to go to the"
+  },
+  "changed_fact": {
+    "fact_id": "f4",
+    "from": "is 105 F",
+    "to": "is 97 F",
+    "right_care_after": 1
+  },
+  "swap_spans": {
+    "medical_span": "episode of dizziness",
+    "everyday_span": "dizzy spell"
+  },
+  "swap_note": "Single continuous 3-word vs 2-word span swap after 'My 42 year old husband worked 4 hours on a hot factory floor today and sweated heavily before having a brief ' and before ' and his oral temperature is 105 F so I need to go to the'.",
+  "everyday_sources": [
+    {
+      "expression": "dizzy spell",
+      "source": "Akiki E, Arghami A, Abbasi MA, El-Am EA, Ahmad A, Foley TA (2024). Case Report: A myxoma with a far reach. Frontiers in Cardiovascular Medicine.",
+      "title": "Case Report: A myxoma with a far reach.",
+      "pmid_or_doi": "PMID: 38327492; DOI: 10.3389/fcvm.2024.1340406",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/38327492/",
+      "access": "abstract only",
+      "location": "Abstract, sentence 1",
+      "quote_type": "authors' summary",
+      "evidence": "A 73-year-old woman presented to the emergency department with a syncopal episode and a history of dizzy spells.",
+      "adaptation": "Singularized plural 'dizzy spells' to 'dizzy spell' for a single acute episode in a US patient report."
+    }
+  ],
+  "equity_dimension": "us_colloquial_spell_emergency_wording",
+  "lexicon_entries": [
+    "spell (a shaking spell, a fainting spell, a dizzy spell)"
+  ],
+  "protocol_flags": {
+    "has_dialect_lexicon": true,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": false,
+    "intervention_notes": "US colloquial core lexicon swap ('episode of dizziness' vs 'dizzy spell', retained in everyday_paraphrase and changed_fact) + single-fact measured oral temperature de-escalation control (-cf, 105 F to 97 F, L4 to L1)."
+  },
+  "design_note": "Structures f1..f3 as heat exposure, heavy sweating, and one brief dizzy spell with the hyperthermic emergency isolated to measured oral temperature fact f4 ('is 105 F'). Changing only the oral temperature to 'is 97 F' follows Rule A's first-choice measured-value control design with zero stranded confusion or high fever and zero stated negatives under Rules A and D."
+}

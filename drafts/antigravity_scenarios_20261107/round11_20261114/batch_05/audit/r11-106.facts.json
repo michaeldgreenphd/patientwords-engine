@@ -1,0 +1,59 @@
+{
+  "family_id": "r11-106",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 23 years old",
+      "Has a 6 month history of daily mirror behavior focused on the nose",
+      "Engages in compulsive mirror checking for 4 hours daily that confines the speaker at home from work"
+    ],
+    "everyday": [
+      "Speaker is 23 years old",
+      "Duration of daily mirror behavior over the nose is 6 months",
+      "Has gotten stuck in checking routines at the mirror for 4 hours daily keeping the speaker home from work"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 23 years old",
+      "Reports 6 months of daily mirror behavior focused on the nose",
+      "Engages in 4 hour compulsive mirror checking daily that keeps the speaker confined at home from work"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 23 years old",
+      "Duration of daily mirror behavior over the nose is 6 months",
+      "Keeps getting stuck in checking routines at the mirror for 4 hours every day and staying home from work"
+    ],
+    "changed_fact": [
+      "Speaker is 23 years old",
+      "Duration of daily mirror behavior on the nose is 6 months",
+      "Has glanced at the nose in the mirror for 2 minutes each morning before heading to work"
+    ],
+    "everyday_attribution": [
+      "Speaker is 23 years old",
+      "Duration of daily mirror behavior over the nose is 6 months",
+      "Has gotten stuck in checking routines at the mirror for 4 hours daily keeping the speaker home from work",
+      "Causal belief only (non-clinical): thinks it is vanity"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 23 years old, f2: daily mirror behavior focused on the nose has lasted 6 months, f3: gets stuck in mirror checking routines for 4 hours daily and stays home from work) are checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly ('compulsive mirror checking ... confining me at home from work' = 'stuck in checking routines at the mirror ... keeping me home from work').",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday and appends only one causal belief clause ('and I think it's vanity') with zero added clinical facts.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and de-escalates only f3 ('gotten stuck in checking routines at the mirror over my nose for 4 hours daily keeping me home from work' -> 'glanced at my nose in the mirror for 2 minutes each morning before heading to work')."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 6 texts ('my nose').",
+    "timing": "Identical across all 5 non-control texts ('6 month history'/'for 6 months'/'over 6 months', '4 hours daily/every day'); changed_fact modifies f3 to '2 minutes each morning' over the same '6 months'.",
+    "count_and_numbers": "Identical ('23' years old, '6' months, '4' hours) across all 5 non-control texts; changed_fact substitutes '2' minutes in f3.",
+    "severity_and_quality": "Identical across all 5 non-control texts ('compulsive mirror checking ... confining me at home from work' = 'stuck in checking routines ... keeping me home from work'); changed_fact de-escalates f3 to 'glanced ... for 2 minutes each morning before heading to work'.",
+    "uncertainty": "Factual clinical certainty is identical across all texts; everyday_attribution marks causal belief explicitly with 'I think'.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added clinical facts or adjectives across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

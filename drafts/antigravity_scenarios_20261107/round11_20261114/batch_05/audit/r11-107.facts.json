@@ -1,0 +1,65 @@
+{
+  "family_id": "r11-107",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 48 years old",
+      "Has experienced bedtime cognitive hyperarousal",
+      "Has a 2 hour sleep onset latency",
+      "Occurs every night for 5 months"
+    ],
+    "everyday": [
+      "Speaker is 48 years old",
+      "Keeps having racing thoughts at bedtime",
+      "Has taken 2 hours to fall asleep",
+      "Occurs every night for 5 months"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 48 years old",
+      "Reports bedtime cognitive hyperarousal",
+      "Has a 2 hour sleep onset latency",
+      "Occurs nightly over 5 months"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 48 years old",
+      "Keeps having racing thoughts when going to bed",
+      "Takes 2 hours to fall asleep",
+      "Occurs each night over 5 months"
+    ],
+    "changed_fact": [
+      "Speaker is 48 years old",
+      "Keeps having racing thoughts at bedtime",
+      "Has taken 2 hours to fall asleep",
+      "Occurred on the past 2 nights"
+    ],
+    "everyday_attribution": [
+      "Speaker is 48 years old",
+      "Keeps having racing thoughts at bedtime",
+      "Has taken 2 hours to fall asleep",
+      "Occurs every night for 5 months",
+      "Causal belief only (non-clinical): thinks it is work stress"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 4 reference_facts (f1: 48 years old, f2: keeps having racing thoughts at bedtime, f3: takes 2 hours to fall asleep, f4: has occurred every night for 5 months) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, and f4 exactly ('bedtime cognitive hyperarousal' = 'racing thoughts at bedtime'; '2 hour sleep onset latency' = 'taken 2 hours to fall asleep').",
+    "everyday": "Matches f1, f2, f3, and f4 exactly.",
+    "medical_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday_attribution": "Matches f1, f2, f3, and f4 identically to everyday and appends only one causal belief clause ('and I think it's work stress') with zero added clinical facts.",
+    "changed_fact": "Matches f1, f2, and f3 identically to everyday and changes only the duration in f4 ('every night for 5 months' -> 'on the past 2 nights')."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 6 texts (bedtime cognitive arousal and sleep initiation; no laterality).",
+    "timing": "Identical across all 5 non-control texts ('at bedtime'/'when going to bed', '2 hour'/'2 hours', 'every/each night'/'nightly' for/over '5 months'); changed_fact substitutes 'on the past 2 nights' in f4.",
+    "count_and_numbers": "Identical ('48' years old, '2' hours, '5' months) across all 5 non-control texts; changed_fact substitutes '2' nights in f4.",
+    "severity_and_quality": "Identical across all 5 non-control texts ('cognitive hyperarousal' = 'racing thoughts', '2 hour sleep onset latency' = '2 hours to fall asleep'); changed_fact shortens f4 duration to 'the past 2 nights'.",
+    "uncertainty": "Factual clinical certainty is identical across all texts; everyday_attribution marks causal belief explicitly with 'I think'.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added clinical facts or adjectives across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

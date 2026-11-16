@@ -1,0 +1,69 @@
+{
+  "family_id": "r11-115",
+  "condition": "acute severe dyspnea flare in older 35 year smoker unable to speak full sentences sitting upright",
+  "right_care": 4,
+  "level_rationale": "Acute resting severe shortness of breath today in a 68-year-old adult with a 35-year smoking history despite a daily maintenance inhaler, severe enough while sitting upright to limit speech to 2 words at a time, represents life-threatening acute respiratory failure risk requiring immediate Emergency Department care, whereas having shortness of breath over the past month only after climbing 2 flights of stairs despite the daily inhaler indicates stable subacute exertional worsening warranting an outpatient clinic visit for inhaler review.",
+  "carrier_frame": "so I need to go to the",
+  "target_token": " ER",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is 68 years old who smoked for 35 years"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Uses a daily inhaler"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Has severe shortness of breath despite the daily inhaler"
+    },
+    {
+      "fact_id": "f4",
+      "text": "Occurs sitting upright and limits speech to 2 words at a time today"
+    }
+  ],
+  "texts": {
+    "medical": "I am 68 years old and smoked for 35 years and despite my daily inhaler I have severe dyspnea sitting upright speaking only 2 words at a time today so I need to go to the",
+    "everyday": "I am 68 years old and smoked for 35 years and despite my daily inhaler I can't catch my breath sitting upright speaking only 2 words at a time today so I need to go to the",
+    "medical_paraphrase": "I am a 68 year old who smoked for 35 years and uses a daily inhaler and today I have severe dyspnea sitting upright while speaking only 2 words at a time so I need to go to the",
+    "everyday_paraphrase": "I'm 68 and smoked for 35 years and even with my daily inhaler today I can't catch my breath while sitting upright and can get out only 2 words at a time so I need to go to the",
+    "changed_fact": "I am 68 years old and smoked for 35 years and despite my daily inhaler I can't catch my breath after climbing 2 flights of stairs this month so I need to go to the"
+  },
+  "changed_fact": {
+    "fact_id": "f4",
+    "from": "sitting upright speaking only 2 words at a time today",
+    "to": "after climbing 2 flights of stairs this month",
+    "right_care_after": 2
+  },
+  "swap_spans": {
+    "medical_span": "have severe dyspnea",
+    "everyday_span": "can't catch my breath"
+  },
+  "swap_note": "Single continuous 3-word vs 4-word span swap after 'I am 68 years old and smoked for 35 years and despite my daily inhaler I ' and before ' sitting upright speaking only 2 words at a time today so I need to go to the'.",
+  "everyday_sources": [
+    {
+      "expression": "can't catch my breath",
+      "source": "Wang J, Ly L, Barson E, Smallwood N (2025). Perceived barriers and facilitators to managing psychological distress in COPD: The perspectives of patients and carers - a qualitative study using the theoretical domains framework (TDF). NPJ Primary Care Respiratory Medicine.",
+      "title": "Perceived barriers and facilitators to managing psychological distress in COPD: The perspectives of patients and carers - a qualitative study using the theoretical domains framework (TDF).",
+      "pmid_or_doi": "PMID: 40301387; DOI: 10.1038/s41533-025-00430-0",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/40301387/",
+      "access": "full text",
+      "location": "Results — Table 3 (Respiratory self-management, participant Cynthia, P13)",
+      "quote_type": "direct patient quote",
+      "evidence": "I have to stop all the time to take my puffer and if I can’t catch my breath I have to sit down.",
+      "adaptation": "Normalized typographic apostrophe in 'can’t catch my breath' to ASCII 'can't catch my breath'."
+    }
+  ],
+  "equity_dimension": "colloquial_respiratory_dyspnea_wording",
+  "lexicon_entries": [
+    "can't catch my breath"
+  ],
+  "protocol_flags": {
+    "has_dialect_lexicon": true,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": false,
+    "intervention_notes": "Core lexicon dyspnea swap ('have severe dyspnea' vs 'can't catch my breath', retained in everyday_paraphrase and changed_fact) + single-fact respiratory severity/context de-escalation control (-cf, sitting upright speaking only 2 words at a time today to after climbing 2 flights of stairs this month, L4 to L2)."
+  },
+  "design_note": "Uses four strictly atomic facts (age 68 with 35-year smoking history, daily inhaler use, severe dyspnea despite the daily inhaler, and resting upright two-word speech limitation today) without naming COPD. De-escalating only fact f4 ('sitting upright speaking only 2 words at a time today' to 'after climbing 2 flights of stairs this month') removes all resting respiratory red flags while keeping the 68-year-old smoker's daily-inhaler breathlessness coherent at outpatient clinic care (level 2) under Rules A and D with zero stated negatives."
+}

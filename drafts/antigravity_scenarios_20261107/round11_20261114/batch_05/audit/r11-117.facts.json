@@ -1,0 +1,57 @@
+{
+  "family_id": "r11-117",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 49 years old",
+      "Took medicine from their doctor for 6 weeks",
+      "Has had 4 months of brief attacks of dizziness with roaring in the left ear",
+      "Hearing in that left ear gets muffled"
+    ],
+    "everyday": [
+      "Speaker is 49 years old",
+      "Took medicine from their doctor for 6 weeks",
+      "Has had 4 months of brief swimmy headed attacks with roaring in the left ear",
+      "Hearing in that left ear gets muffled"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 49 years old",
+      "Took physician-prescribed medication for 6 weeks",
+      "Has had 4 months of brief episodes of dizziness with roaring tinnitus in the left ear",
+      "Has muffled hearing in that left ear"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 49 years old",
+      "Took medicine from their doctor for 6 weeks",
+      "Brief attacks where head feels swimmy with roaring in the left ear have lasted 4 months",
+      "Has muffled hearing in the left ear"
+    ],
+    "changed_fact": [
+      "Speaker is 49 years old",
+      "Took medicine from their doctor for 6 weeks",
+      "Has had 4 months of brief swimmy headed attacks with roaring in the left ear",
+      "Speech just became slurred"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 4 reference_facts (f1: 49 years old, f2: took medication prescribed by a doctor for 6 weeks, f3: has had 4 months of brief dizzy attacks with roaring in the left ear, f4: hearing in the left ear gets muffled) are checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, f3, and f4 exactly.",
+    "everyday": "Matches f1, f2, f3, and f4 exactly; core lexicon entry 'swimmy headed / my head feels swimmy' ('dizzy, lightheaded') matches 'dizziness'.",
+    "medical_paraphrase": "Matches f1, f2, f3, and f4 exactly ('roaring tinnitus in my left ear' = 'roaring in my left ear').",
+    "everyday_paraphrase": "Matches f1, f2, f3, and f4 exactly and retains the documented lexicon variant 'my head feels swimmy'.",
+    "changed_fact": "Matches f1, f2, and f3 identically to everyday (retaining 'swimmy headed') and replaces only f4 ('hearing in that ear gets muffled' -> 'my speech just became slurred')."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Identical across all 4 non-control texts ('my left ear'/'that ear'); changed_fact replaces left-ear muffled hearing in f4 with acute dysarthria ('my speech just became slurred').",
+    "timing": "Identical across all 4 non-control texts ('6 weeks', '4 months', 'brief'); changed_fact modifies f4 to acute onset ('just').",
+    "count_and_numbers": "Identical across all 5 texts ('49' years old, '6' weeks, '4' months).",
+    "severity_and_quality": "Identical across all 4 non-control texts ('attacks/episodes of dizziness' = 'swimmy headed attacks' / 'attacks where my head feels swimmy', 'roaring', 'muffled hearing'); changed_fact escalates f4 to 'speech just became slurred'.",
+    "uncertainty": "Identical factual certainty across all 5 texts.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added clinical facts or adjectives across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

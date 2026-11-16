@@ -1,0 +1,71 @@
+{
+  "family_id": "r11-098",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is 49 years old",
+      "Ingested a bolus of grilled steak 30 minutes ago",
+      "Every swallow of oral secretions regurgitates immediately"
+    ],
+    "everyday": [
+      "Speaker is 49 years old",
+      "Ate a bite of grilled steak 30 minutes ago",
+      "Every swallow of own spit comes straight back up"
+    ],
+    "medical_paraphrase": [
+      "Speaker is 49 years old",
+      "Ingested a grilled steak bolus 30 minutes ago",
+      "All swallowed oral secretions immediately regurgitate"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is 49 years old",
+      "Swallowed a bite of grilled steak 30 minutes ago",
+      "All own spit comes right back up whenever swallowing"
+    ],
+    "changed_fact": [
+      "Speaker is 49 years old",
+      "Ate a bite of grilled steak 30 minutes ago",
+      "Has had mild hiccups off and on"
+    ],
+    "everyday_attribution": [
+      "Speaker is 49 years old",
+      "Ate a bite of grilled steak 30 minutes ago",
+      "Every swallow of own spit comes straight back up",
+      "Causal belief only (non-clinical): thinks they chewed too fast"
+    ],
+    "quad_b": [
+      "Speaker is 49 years old",
+      "Ate a bolus of grilled steak 30 minutes ago",
+      "Every swallow of oral secretions comes straight back up"
+    ],
+    "quad_c": [
+      "Speaker is 49 years old",
+      "Ingested a bite of grilled steak 30 minutes ago",
+      "Every swallow of own spit regurgitates immediately"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 49 years old, f2: ate a piece of grilled steak 30 minutes ago, f3: every swallow of saliva immediately comes back up) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly ('bolus of grilled steak' = 'bite of grilled steak'; 'oral secretions regurgitates immediately' = 'own spit comes straight back up').",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday and appends only one causal belief clause ('and I think I chewed too fast') with zero added clinical facts.",
+    "quad_b": "Matches f1, f2, and f3 exactly (everyday syntax with medical vocabulary).",
+    "quad_c": "Matches f1, f2, and f3 exactly (medical syntax with everyday vocabulary).",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only f3 ('every swallow of my own spit comes straight back up' -> 'I have had mild hiccups off and on') after the grilled steak bite."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 8 texts (upper-GI swallowing / postprandial esophageal response; no laterality).",
+    "timing": "Identical across all 7 non-control texts ('30 minutes ago', 'every/all swallow', 'immediately'/'straight/right back up'); changed_fact modifies f3 to 'off and on' since eating 30 minutes ago.",
+    "count_and_numbers": "Identical across all 8 texts ('49' years old, '30' minutes).",
+    "severity_and_quality": "Identical across all 7 non-control texts (complete immediate regurgitation of swallowed saliva/spit); changed_fact de-escalates f3 to 'mild hiccups off and on'.",
+    "uncertainty": "Factual clinical certainty is identical across all texts; everyday_attribution marks causal belief explicitly with 'I think'.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added clinical facts or adjectives across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

@@ -1,0 +1,59 @@
+{
+  "family_id": "r11-108",
+  "auditor": "@facts",
+  "blind_extracted_facts_by_text": {
+    "medical": [
+      "Speaker is a 25 year old woman",
+      "Usually has regular 28 day menstrual cycles",
+      "Had her last menses start 7 months ago"
+    ],
+    "everyday": [
+      "Speaker is a 25 year old woman",
+      "Usually gets regular 28 day monthly periods",
+      "Last monthly period started 7 months ago"
+    ],
+    "medical_paraphrase": [
+      "Speaker is a 25 year old woman",
+      "Has usual regular 28 day menstrual cycles",
+      "Most recent menses commenced 7 months ago"
+    ],
+    "everyday_paraphrase": [
+      "Speaker is a 25 year old woman",
+      "Usually gets regular 28 day monthly periods",
+      "Last monthly period started 7 months ago"
+    ],
+    "changed_fact": [
+      "Speaker is a 25 year old woman",
+      "Usually gets regular 28 day monthly periods",
+      "Last monthly period started 29 days ago"
+    ],
+    "everyday_attribution": [
+      "Speaker is a 25 year old woman",
+      "Usually gets regular 28 day monthly periods",
+      "Last monthly period started 7 months ago",
+      "Causal belief only (non-clinical): thinks stress caused it"
+    ]
+  },
+  "comparison_against_reference_facts": {
+    "reference_facts_granularity": "PASS — All 3 reference_facts (f1: 25 year old woman, f2: usually has regular 28 day menstrual cycles, f3: last menstrual period started 7 months ago) are strictly atomic, single checkable statements with zero named diagnosis, matching the blind-extracted facts 1-to-1.",
+    "medical": "Matches f1, f2, and f3 exactly ('menstrual cycles' = 'monthly periods'; 'last menses start' = 'last monthly period started').",
+    "everyday": "Matches f1, f2, and f3 exactly.",
+    "medical_paraphrase": "Matches f1, f2, and f3 exactly ('most recent menses commenced' = 'last monthly period started').",
+    "everyday_paraphrase": "Matches f1, f2, and f3 exactly.",
+    "everyday_attribution": "Matches f1, f2, and f3 identically to everyday and appends only one causal belief clause ('and I think stress caused it') with zero added clinical facts.",
+    "changed_fact": "Matches f1 and f2 identically to everyday and changes only the interval since last period onset in f3 ('7 months ago' -> '29 days ago')."
+  },
+  "cross_text_comparison": {
+    "anatomical_location_and_side": "Consistent across all 6 texts (menstrual cycle history; no laterality).",
+    "timing": "Identical across all 5 non-control texts ('usually'/'usual', 'regular 28 day', '7 months ago'); changed_fact substitutes '29 days ago' in f3.",
+    "count_and_numbers": "Identical ('25' years old, '28' day, '7' months) across all 5 non-control texts; changed_fact substitutes '29' days in f3.",
+    "severity_and_quality": "Identical across all 5 non-control texts; changed_fact places f3 within normal menstrual cycle timing ('29 days ago').",
+    "uncertainty": "Factual clinical certainty is identical across all texts; everyday_attribution marks causal belief explicitly with 'I think'.",
+    "dropped_or_added_facts": "Zero dropped facts, zero named diagnoses, and zero added clinical facts or adjectives across all non-control variants."
+  },
+  "changed_fact_differs_in_declared_fact_only": true,
+  "concerns": [],
+  "verdict": "pass",
+  "gate": "G4",
+  "fault_text": null
+}

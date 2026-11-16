@@ -1,0 +1,89 @@
+{
+  "family_id": "r11-108",
+  "condition": "7 month interval since last menses in a 25 year old woman with previously regular 28 day menstrual cycles",
+  "right_care": 3,
+  "level_rationale": "Having the last menstrual period start 7 months ago in a 25-year-old woman who normally has regular 28-day menstrual cycles exceeds the 6-month diagnostic threshold for secondary amenorrhea and warrants gynecology or reproductive endocrinology specialist evaluation for ovarian, pituitary, and hypothalamic causes, whereas having the last monthly period start 29 days ago on a usual 28-day cycle lies well within normal 21-to-35-day menstrual variation requiring no medical evaluation.",
+  "carrier_frame": "so I should see a",
+  "target_token": " specialist",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is a 25 year old woman"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Usually has regular 28 day menstrual cycles"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Her last menstrual period started 7 months ago"
+    }
+  ],
+  "texts": {
+    "medical": "I'm a 25 year old woman who usually has regular 28 day menstrual cycles and had my last menses start 7 months ago so I should see a",
+    "everyday": "I'm a 25 year old woman who usually gets regular 28 day monthly periods and my last monthly period started 7 months ago so I should see a",
+    "medical_paraphrase": "I am a 25 year old woman with usual regular 28 day menstrual cycles whose most recent menses commenced 7 months ago so I should see a",
+    "everyday_paraphrase": "I am a 25 year old woman and I usually get regular 28 day monthly periods and my last monthly period started 7 months ago so I should see a",
+    "changed_fact": "I'm a 25 year old woman who usually gets regular 28 day monthly periods and my last monthly period started 29 days ago so I should see a",
+    "everyday_attribution": "I'm a 25 year old woman who usually gets regular 28 day monthly periods and my last monthly period started 7 months ago and I think stress caused it so I should see a"
+  },
+  "changed_fact": {
+    "fact_id": "f3",
+    "from": "7 months ago",
+    "to": "29 days ago",
+    "right_care_after": 1
+  },
+  "attribution": {
+    "clause": "and I think stress caused it",
+    "explains": "attributes a 7-month menstrual interval to emotional stress rather than an endocrine or ovarian condition",
+    "source": "Pargar F, Farjamfar M, Goli S, Rabiei Z, Motaghi Z (2026). Exploring the Experiences and Reproductive Health Needs of Young Women With Premature Ovarian Insufficiency: A Qualitative Content Analysis. Health Sci Rep.",
+    "title": "Exploring the Experiences and Reproductive Health Needs of Young Women With Premature Ovarian Insufficiency: A Qualitative Content Analysis.",
+    "pmid_or_doi": "PMID: 41527583; DOI: 10.1002/hsr2.71705",
+    "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/41527583/",
+    "access": "full text",
+    "location": "Discussion — Lack of Comprehensive Social Support, para 2",
+    "quote_type": "authors' summary",
+    "evidence": "For instance, some women believed stress caused their POI, a belief that is not supported by current scientific evidence.",
+    "adaptation": "Adapted qualitative report that young women with amenorrhea from premature ovarian insufficiency 'believed stress caused their POI' into present-tense belief clause 'and I think stress caused it'."
+  },
+  "swap_spans": {
+    "medical_span": "has regular 28 day menstrual cycles and had my last menses start",
+    "everyday_span": "gets regular 28 day monthly periods and my last monthly period started"
+  },
+  "swap_note": "Single continuous 12-word vs 12-word span swap after \"I'm a 25 year old woman who usually \" and before ' 7 months ago so I should see a'.",
+  "everyday_sources": [
+    {
+      "expression": "monthly period",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "29 days ago",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "adult_patient_plain_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": true,
+    "intervention_notes": "Plain young-adult female everyday lexical register swap (-reg) + sourced stress causal belief clause (-att, Pargar 2026) + single-fact menstrual interval de-escalation control (7 months ago -> 29 days ago, -cf)."
+  },
+  "design_note": "Uses three strictly atomic positive-wording reference facts (25-year-old woman, usual regular 28-day menstrual cycles, and last menstrual period starting 7 months ago) without naming amenorrhea or using any stated negative ('absent', 'missed', 'no', or 'negative'), with an exact 12-vs-12 word span swap. Under reviewer_notes Rules A and D, overriding plan.json's ectopic-fainting bundle to change only the elapsed interval in f3 from 7 months ago to 29 days ago shifts care cleanly inside the same menstrual cycle history from gynecology/endocrine specialist evaluation (level 3) to self-care (level 1)."
+}
