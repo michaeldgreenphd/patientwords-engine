@@ -106,3 +106,4 @@
 - `2026-11-16T16:05:47Z`: batch_06 wave 5a passed G4-G8: revised r11-128, r11-129, r11-130 (20/24 passed; G5, G6, G8 now 24/24 complete).
 - `2026-11-16T16:10:58Z`: batch_06 final stage passed G4-G8: revised r11-121, r11-124, r11-125, r11-126. All 24/24 batch_06 families (and 144/144 Round 11 families) passed G4-G8 (0 dropped, 0 stated negatives, batch_06 cited=27 [42.9% of everyday_sources], same=16/27=59.3%). Dispatching @builder for G1.
 - `2026-11-16T16:43:53Z`: batch_06 passed G1-G3 (60 pairs, 0 errors, 11 -cf number-warning candidates / 19 number warnings; G3 intake status=intake, 0 errors vs r9+r10+r11_b01..b05; concerns_selfreported 7 open, 0 errors). All 144/144 Round 11 slots passed G1-G8 with 0 dropped.
+- `2026-11-16T17:53:15Z`: Pushed batch_06 (commit c5c7d240), triggering SPEC.md section 9 Stop Rule 5 ('Batch 06 is pushed'). Wrote final_report.md covering all 144 draft families across batch_01..batch_06.
