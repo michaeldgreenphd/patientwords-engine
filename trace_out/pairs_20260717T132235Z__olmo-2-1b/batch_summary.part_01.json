@@ -1,0 +1,6464 @@
+{
+  "mode": "2panel",
+  "backend": "logits",
+  "graph_model": "olmo-2-1b",
+  "source_set": null,
+  "generation_params": {},
+  "start_index": 1,
+  "pairs_requested": 55,
+  "completed": true,
+  "screen_targets": null,
+  "inference": {
+    "method": "logits",
+    "hf_id": "allenai/OLMo-2-0425-1B",
+    "dtype": "bfloat16",
+    "revision": "a1847dff35000b4271fa70afc5db10fd29fedbdf",
+    "revision_pinned": "a1847dff35000b4271fa70afc5db10fd29fedbdf",
+    "environment": {
+      "python": "3.11.18",
+      "platform": "Linux-7.0.0-1016-aws-x86_64-with-glibc2.43",
+      "engine_sha": "bcc62878dccb",
+      "runner_image": "20261111.82.6",
+      "torch": "2.13.0+cpu",
+      "transformers": "5.14.1",
+      "accelerate": "1.14.0"
+    }
+  },
+  "results": [
+    {
+      "index": 1,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "She has dysuria, so her doctor prescribed a",
+        "patient": "She's been burning down there, so her doctor prescribed a"
+      },
+      "target_token": "Output \" antibiotic\"",
+      "probabilities": {
+        "clinical": 0.0027,
+        "patient": 0.0001
+      },
+      "language_penalty": -0.0026,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" course\"",
+            0.149
+          ],
+          [
+            "Output \" di\"",
+            0.0641
+          ],
+          [
+            "Output \" medication\"",
+            0.0565
+          ],
+          [
+            "Output \" dose\"",
+            0.0389
+          ],
+          [
+            "Output \" prescription\"",
+            0.0312
+          ],
+          [
+            "Output \" low\"",
+            0.0284
+          ],
+          [
+            "Output \" drug\"",
+            0.0267
+          ],
+          [
+            "Output \" \"",
+            0.0259
+          ],
+          [
+            "Output \" urinary\"",
+            0.0259
+          ],
+          [
+            "Output \" round\"",
+            0.0195
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" little\"",
+            0.0313
+          ],
+          [
+            "Output \" course\"",
+            0.0304
+          ],
+          [
+            "Output \" new\"",
+            0.0229
+          ],
+          [
+            "Output \" few\"",
+            0.0158
+          ],
+          [
+            "Output \" steroid\"",
+            0.0158
+          ],
+          [
+            "Output \" shot\"",
+            0.0148
+          ],
+          [
+            "Output \" drug\"",
+            0.0139
+          ],
+          [
+            "Output \" lot\"",
+            0.0139
+          ],
+          [
+            "Output \" pain\"",
+            0.0139
+          ],
+          [
+            "Output \" light\"",
+            0.0131
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "course": "course of antibiotics",
+          "di": "diuretic",
+          "medication": "medication that is",
+          "dose": "dose of antibiotics"
+        },
+        "patient": {
+          "little": "little bit of",
+          "course": "course of antibiotics",
+          "new": "new medication.",
+          "few": "few weeks of"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 2,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have diabetes, so I need to see an",
+        "patient": "My sugar levels are all over the map, so I need to see an"
+      },
+      "target_token": "Output \" end\"",
+      "probabilities": {
+        "clinical": 0.8481,
+        "patient": 0.9142
+      },
+      "language_penalty": 0.0661,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" end\"",
+            0.8481
+          ],
+          [
+            "Output \" eye\"",
+            0.0496
+          ],
+          [
+            "Output \" End\"",
+            0.0384
+          ],
+          [
+            "Output \" o\"",
+            0.0196
+          ],
+          [
+            "Output \"\u00a0\"",
+            0.0026
+          ],
+          [
+            "Output \" O\"",
+            0.0023
+          ],
+          [
+            "Output \" insulin\"",
+            0.0017
+          ],
+          [
+            "Output \" intern\"",
+            0.0017
+          ],
+          [
+            "Output \" opt\"",
+            0.0014
+          ],
+          [
+            "Output \"\n\"",
+            0.0011
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" end\"",
+            0.9142
+          ],
+          [
+            "Output \" End\"",
+            0.053
+          ],
+          [
+            "Output \" actual\"",
+            0.0029
+          ],
+          [
+            "Output \" eye\"",
+            0.0013
+          ],
+          [
+            "Output \"\u00a0\"",
+            0.0013
+          ],
+          [
+            "Output \" expert\"",
+            0.0012
+          ],
+          [
+            "Output \" o\"",
+            0.001
+          ],
+          [
+            "Output \" O\"",
+            0.0009
+          ],
+          [
+            "Output \" insulin\"",
+            0.0009
+          ],
+          [
+            "Output \" internal\"",
+            0.0009
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "end": "endocrinologist",
+          "eye": "eye doctor.",
+          "End": "Endocrinologist",
+          "o": "ophthalmologist"
+        },
+        "patient": {
+          "end": "endocrinologist",
+          "End": "Endocrinologist",
+          "actual": "actual doctor.",
+          "eye": "eye doctor."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 3,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have kidney stones, so I've been drinking more",
+        "patient": "I think my pipes are clogged, so I've been drinking more"
+      },
+      "target_token": "Output \" water\"",
+      "probabilities": {
+        "clinical": 0.8324,
+        "patient": 0.409
+      },
+      "language_penalty": -0.4234,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" water\"",
+            0.8324
+          ],
+          [
+            "Output \" fluids\"",
+            0.0455
+          ],
+          [
+            "Output \" than\"",
+            0.0149
+          ],
+          [
+            "Output \" and\"",
+            0.0099
+          ],
+          [
+            "Output \" liquids\"",
+            0.0088
+          ],
+          [
+            "Output \" fluid\"",
+            0.0067
+          ],
+          [
+            "Output \".\"",
+            0.0055
+          ],
+          [
+            "Output \",\"",
+            0.0049
+          ],
+          [
+            "Output \" liquid\"",
+            0.0029
+          ],
+          [
+            "Output \" lemon\"",
+            0.0029
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" water\"",
+            0.409
+          ],
+          [
+            "Output \" hot\"",
+            0.0757
+          ],
+          [
+            "Output \" coffee\"",
+            0.0668
+          ],
+          [
+            "Output \" tea\"",
+            0.0608
+          ],
+          [
+            "Output \" and\"",
+            0.0325
+          ],
+          [
+            "Output \".\"",
+            0.027
+          ],
+          [
+            "Output \" than\"",
+            0.021
+          ],
+          [
+            "Output \" to\"",
+            0.0154
+          ],
+          [
+            "Output \" wine\"",
+            0.0131
+          ],
+          [
+            "Output \",\"",
+            0.0093
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "water": "water. I",
+          "fluids": "fluids. I",
+          "than": "than usual.",
+          "and": "and more water"
+        },
+        "patient": {
+          "water": "water. I",
+          "hot": "hot water.",
+          "coffee": "coffee. I",
+          "tea": "tea. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 4,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have menorrhagia, so I should take some",
+        "patient": "My monthly visitor is way heavier than usual, so I should take some"
+      },
+      "target_token": "Output \" iron\"",
+      "probabilities": {
+        "clinical": 0.0911,
+        "patient": 0.0075
+      },
+      "language_penalty": -0.0836,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" iron\"",
+            0.0911
+          ],
+          [
+            "Output \" time\"",
+            0.0305
+          ],
+          [
+            "Output \" sort\"",
+            0.0278
+          ],
+          [
+            "Output \" kind\"",
+            0.0278
+          ],
+          [
+            "Output \" pills\"",
+            0.0245
+          ],
+          [
+            "Output \" of\"",
+            0.0245
+          ],
+          [
+            "Output \" medicine\"",
+            0.023
+          ],
+          [
+            "Output \" prog\"",
+            0.0197
+          ],
+          [
+            "Output \" medication\"",
+            0.0197
+          ],
+          [
+            "Output \" estrogen\"",
+            0.0174
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" time\"",
+            0.0786
+          ],
+          [
+            "Output \" extra\"",
+            0.0652
+          ],
+          [
+            "Output \" precautions\"",
+            0.0508
+          ],
+          [
+            "Output \" medicine\"",
+            0.0383
+          ],
+          [
+            "Output \" of\"",
+            0.0318
+          ],
+          [
+            "Output \" antibiotics\"",
+            0.028
+          ],
+          [
+            "Output \" action\"",
+            0.024
+          ],
+          [
+            "Output \" ib\"",
+            0.0225
+          ],
+          [
+            "Output \" weight\"",
+            0.0175
+          ],
+          [
+            "Output \" aspir\"",
+            0.017
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "iron": "iron supplements,",
+          "time": "time to think",
+          "sort": "sort of iron",
+          "kind": "kind of medication"
+        },
+        "patient": {
+          "time": "time to rest",
+          "extra": "extra precautions.",
+          "precautions": "precautions. I",
+          "medicine": "medicine. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 5,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have amenorrhea, so my doctor wants me to take an",
+        "patient": "I've been missing my period, so my doctor wants me to take an"
+      },
+      "target_token": "Output \" ultrasound\"",
+      "probabilities": {
+        "clinical": 0.0098,
+        "patient": 0.2354
+      },
+      "language_penalty": 0.2256,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" estrogen\"",
+            0.4861
+          ],
+          [
+            "Output \" iron\"",
+            0.0819
+          ],
+          [
+            "Output \" I\"",
+            0.0679
+          ],
+          [
+            "Output \" oral\"",
+            0.0467
+          ],
+          [
+            "Output \" E\"",
+            0.0227
+          ],
+          [
+            "Output \" F\"",
+            0.022
+          ],
+          [
+            "Output \" anti\"",
+            0.0207
+          ],
+          [
+            "Output \" O\"",
+            0.0177
+          ],
+          [
+            "Output \" antibiotic\"",
+            0.0161
+          ],
+          [
+            "Output \" o\"",
+            0.0126
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ultrasound\"",
+            0.2354
+          ],
+          [
+            "Output \" estrogen\"",
+            0.1012
+          ],
+          [
+            "Output \" over\"",
+            0.0718
+          ],
+          [
+            "Output \" iron\"",
+            0.0422
+          ],
+          [
+            "Output \" extra\"",
+            0.0378
+          ],
+          [
+            "Output \" I\"",
+            0.0324
+          ],
+          [
+            "Output \" oral\"",
+            0.0314
+          ],
+          [
+            "Output \" at\"",
+            0.029
+          ],
+          [
+            "Output \" end\"",
+            0.024
+          ],
+          [
+            "Output \" E\"",
+            0.0201
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "estrogen": "estrogen pill.",
+          "iron": "iron supplement.",
+          "I": "IUD.",
+          "oral": "oral contraceptive."
+        },
+        "patient": {
+          "ultrasound": "ultrasound to see",
+          "estrogen": "estrogen pill.",
+          "over": "over-the-counter",
+          "iron": "iron supplement."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 6,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have hyperglycemia, so I'm worried I might be",
+        "patient": "My blood sugar has been all crazy, so I'm worried I might be"
+      },
+      "target_token": "Output \" diabetic\"",
+      "probabilities": {
+        "clinical": 0.1289,
+        "patient": 0.0737
+      },
+      "language_penalty": -0.0552,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" diabetic\"",
+            0.1289
+          ],
+          [
+            "Output \" pre\"",
+            0.0712
+          ],
+          [
+            "Output \" having\"",
+            0.0554
+          ],
+          [
+            "Output \" getting\"",
+            0.0489
+          ],
+          [
+            "Output \" developing\"",
+            0.0474
+          ],
+          [
+            "Output \" at\"",
+            0.0432
+          ],
+          [
+            "Output \" in\"",
+            0.0306
+          ],
+          [
+            "Output \" hyp\"",
+            0.0279
+          ],
+          [
+            "Output \" going\"",
+            0.027
+          ],
+          [
+            "Output \" a\"",
+            0.0217
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" pre\"",
+            0.1177
+          ],
+          [
+            "Output \" having\"",
+            0.0888
+          ],
+          [
+            "Output \" diabetic\"",
+            0.0737
+          ],
+          [
+            "Output \" pregnant\"",
+            0.065
+          ],
+          [
+            "Output \" going\"",
+            0.063
+          ],
+          [
+            "Output \" getting\"",
+            0.0592
+          ],
+          [
+            "Output \" hyp\"",
+            0.0461
+          ],
+          [
+            "Output \" developing\"",
+            0.042
+          ],
+          [
+            "Output \" in\"",
+            0.0317
+          ],
+          [
+            "Output \" low\"",
+            0.0211
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "diabetic": "diabetic. What",
+          "pre": "pre-diabetic",
+          "having": "having a stroke",
+          "getting": "getting diabetes."
+        },
+        "patient": {
+          "pre": "pre-diabetic",
+          "having": "having a reaction",
+          "diabetic": "diabetic. What",
+          "pregnant": "pregnant. What"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 7,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have menstrual irregularity, so my gynecologist ordered some",
+        "patient": "My monthly cycle has been really out of whack, so my gynecologist ordered some"
+      },
+      "target_token": "Output \" blood\"",
+      "probabilities": {
+        "clinical": 0.3598,
+        "patient": 0.4181
+      },
+      "language_penalty": 0.0583,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.3598
+          ],
+          [
+            "Output \" tests\"",
+            0.205
+          ],
+          [
+            "Output \" home\"",
+            0.0245
+          ],
+          [
+            "Output \" lab\"",
+            0.0209
+          ],
+          [
+            "Output \" hormone\"",
+            0.0174
+          ],
+          [
+            "Output \" ultrasound\"",
+            0.0153
+          ],
+          [
+            "Output \" testing\"",
+            0.0144
+          ],
+          [
+            "Output \" test\"",
+            0.0119
+          ],
+          [
+            "Output \" prog\"",
+            0.0096
+          ],
+          [
+            "Output \" kind\"",
+            0.009
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" blood\"",
+            0.4181
+          ],
+          [
+            "Output \" tests\"",
+            0.1743
+          ],
+          [
+            "Output \" lab\"",
+            0.0251
+          ],
+          [
+            "Output \" home\"",
+            0.0222
+          ],
+          [
+            "Output \" new\"",
+            0.0215
+          ],
+          [
+            "Output \" ultrasound\"",
+            0.0208
+          ],
+          [
+            "Output \" ul\"",
+            0.0178
+          ],
+          [
+            "Output \" test\"",
+            0.0162
+          ],
+          [
+            "Output \" hormone\"",
+            0.0157
+          ],
+          [
+            "Output \" more\"",
+            0.0148
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "blood": "blood tests to",
+          "tests": "tests to see",
+          "home": "home tests to",
+          "lab": "lab tests to"
+        },
+        "patient": {
+          "blood": "blood work to",
+          "tests": "tests. I",
+          "lab": "lab tests.",
+          "home": "home tests to"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 8,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My husband and I have been diagnosed with infertility, so we decided to see a",
+        "patient": "My husband and I have been trying, but we're not getting anywhere, so we decided to see a"
+      },
+      "target_token": "Output \" specialist\"",
+      "probabilities": {
+        "clinical": 0.1027,
+        "patient": 0.0638
+      },
+      "language_penalty": -0.0389,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" fertility\"",
+            0.4192
+          ],
+          [
+            "Output \" specialist\"",
+            0.1027
+          ],
+          [
+            "Output \" doctor\"",
+            0.0879
+          ],
+          [
+            "Output \" nat\"",
+            0.0366
+          ],
+          [
+            "Output \" reproductive\"",
+            0.0244
+          ],
+          [
+            "Output \" u\"",
+            0.0244
+          ],
+          [
+            "Output \" couple\"",
+            0.0209
+          ],
+          [
+            "Output \" g\"",
+            0.019
+          ],
+          [
+            "Output \" counselor\"",
+            0.0158
+          ],
+          [
+            "Output \" therapist\"",
+            0.0127
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.1735
+          ],
+          [
+            "Output \" therapist\"",
+            0.127
+          ],
+          [
+            "Output \" specialist\"",
+            0.0638
+          ],
+          [
+            "Output \" counselor\"",
+            0.0619
+          ],
+          [
+            "Output \" professional\"",
+            0.0619
+          ],
+          [
+            "Output \" marriage\"",
+            0.0513
+          ],
+          [
+            "Output \" nutrition\"",
+            0.0242
+          ],
+          [
+            "Output \" couple\"",
+            0.0161
+          ],
+          [
+            "Output \" psychologist\"",
+            0.0147
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.0134
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "fertility": "fertility specialist.",
+          "specialist": "specialist. We",
+          "doctor": "doctor. We",
+          "nat": "naturop"
+        },
+        "patient": {
+          "doctor": "doctor. He",
+          "therapist": "therapist. We",
+          "specialist": "specialist. We",
+          "counselor": "counselor. We"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 9,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing polyuria, so I'm worried I might have a",
+        "patient": "I've been peeing all the time lately, so I'm worried I might have a"
+      },
+      "target_token": "Output \" infection\"",
+      "probabilities": {
+        "clinical": 0.0003,
+        "patient": 0.0014
+      },
+      "language_penalty": 0.0011,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" kidney\"",
+            0.207
+          ],
+          [
+            "Output \" urinary\"",
+            0.1771
+          ],
+          [
+            "Output \" problem\"",
+            0.1563
+          ],
+          [
+            "Output \" UT\"",
+            0.1316
+          ],
+          [
+            "Output \" bladder\"",
+            0.0462
+          ],
+          [
+            "Output \" serious\"",
+            0.0354
+          ],
+          [
+            "Output \" disease\"",
+            0.0184
+          ],
+          [
+            "Output \" medical\"",
+            0.0161
+          ],
+          [
+            "Output \" tumor\"",
+            0.0108
+          ],
+          [
+            "Output \" diabetes\"",
+            0.0096
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" bladder\"",
+            0.2651
+          ],
+          [
+            "Output \" urinary\"",
+            0.257
+          ],
+          [
+            "Output \" UT\"",
+            0.1214
+          ],
+          [
+            "Output \" problem\"",
+            0.1123
+          ],
+          [
+            "Output \" kidney\"",
+            0.0547
+          ],
+          [
+            "Output \" prostate\"",
+            0.0247
+          ],
+          [
+            "Output \" tumor\"",
+            0.0218
+          ],
+          [
+            "Output \" serious\"",
+            0.0178
+          ],
+          [
+            "Output \" bad\"",
+            0.0106
+          ],
+          [
+            "Output \" disease\"",
+            0.0062
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "kidney": "kidney infection.",
+          "urinary": "urinary tract infection",
+          "problem": "problem. What",
+          "UT": "UTI."
+        },
+        "patient": {
+          "bladder": "bladder infection.",
+          "urinary": "urinary tract infection",
+          "UT": "UTI.",
+          "problem": "problem. What"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 10,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing edema, so I should probably see a",
+        "patient": "I've been retaining water something awful, so I should probably see a"
+      },
+      "target_token": "Output \" neph\"",
+      "probabilities": {
+        "clinical": 0.0023,
+        "patient": 0.0005
+      },
+      "language_penalty": -0.0018,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.8174
+          ],
+          [
+            "Output \" doc\"",
+            0.0286
+          ],
+          [
+            "Output \" specialist\"",
+            0.0219
+          ],
+          [
+            "Output \" physician\"",
+            0.0195
+          ],
+          [
+            "Output \" Doctor\"",
+            0.007
+          ],
+          [
+            "Output \" medical\"",
+            0.0061
+          ],
+          [
+            "Output \" Dr\"",
+            0.0044
+          ],
+          [
+            "Output \" rhe\"",
+            0.0042
+          ],
+          [
+            "Output \" primary\"",
+            0.0041
+          ],
+          [
+            "Output \" health\"",
+            0.004
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.8081
+          ],
+          [
+            "Output \" doc\"",
+            0.0425
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0143
+          ],
+          [
+            "Output \" physician\"",
+            0.0125
+          ],
+          [
+            "Output \" u\"",
+            0.0114
+          ],
+          [
+            "Output \" specialist\"",
+            0.011
+          ],
+          [
+            "Output \" Dr\"",
+            0.0081
+          ],
+          [
+            "Output \" vet\"",
+            0.0069
+          ],
+          [
+            "Output \" dr\"",
+            0.0049
+          ],
+          [
+            "Output \" medical\"",
+            0.0042
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. I",
+          "doc": "doc. I",
+          "specialist": "specialist. I",
+          "physician": "physician. I"
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "doc": "doc. I",
+          "Doctor": "Doctor. I",
+          "physician": "physician. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 11,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I think I have low sperm motility, so we should probably get my",
+        "patient": "I think my swimmers are slow, so we should probably get my"
+      },
+      "target_token": "Output \" semen\"",
+      "probabilities": {
+        "clinical": 0.0666,
+        "patient": 0.0
+      },
+      "language_penalty": -0.0666,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" sperm\"",
+            0.3835
+          ],
+          [
+            "Output \" wife\"",
+            0.1
+          ],
+          [
+            "Output \" semen\"",
+            0.0666
+          ],
+          [
+            "Output \" husband\"",
+            0.0626
+          ],
+          [
+            "Output \" testosterone\"",
+            0.043
+          ],
+          [
+            "Output \" partner\"",
+            0.0392
+          ],
+          [
+            "Output \" tubes\"",
+            0.0305
+          ],
+          [
+            "Output \" test\"",
+            0.0185
+          ],
+          [
+            "Output \" levels\"",
+            0.0174
+          ],
+          [
+            "Output \" doctor\"",
+            0.0131
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" dad\"",
+            0.0476
+          ],
+          [
+            "Output \" son\"",
+            0.0476
+          ],
+          [
+            "Output \" brother\"",
+            0.0461
+          ],
+          [
+            "Output \" sister\"",
+            0.0447
+          ],
+          [
+            "Output \" mom\"",
+            0.0433
+          ],
+          [
+            "Output \" husband\"",
+            0.042
+          ],
+          [
+            "Output \" daughter\"",
+            0.037
+          ],
+          [
+            "Output \" friend\"",
+            0.028
+          ],
+          [
+            "Output \" \"",
+            0.0271
+          ],
+          [
+            "Output \" kids\"",
+            0.0247
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "sperm": "sperm checked.",
+          "wife": "wife tested for",
+          "semen": "semen checked.",
+          "husband": "husband tested for"
+        },
+        "patient": {
+          "dad": "dad to help",
+          "son": "son a new",
+          "brother": "brother to swim",
+          "sister": "sister to swim"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 12,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have vasomotor symptoms, so my doctor wants to check my",
+        "patient": "I've been getting hot flashes like crazy, so my doctor wants to check my"
+      },
+      "target_token": "Output \" hormones\"",
+      "probabilities": {
+        "clinical": 0.0086,
+        "patient": 0.0235
+      },
+      "language_penalty": 0.0149,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.3436
+          ],
+          [
+            "Output \" heart\"",
+            0.1432
+          ],
+          [
+            "Output \" thyroid\"",
+            0.0896
+          ],
+          [
+            "Output \" BP\"",
+            0.0182
+          ],
+          [
+            "Output \" brain\"",
+            0.0146
+          ],
+          [
+            "Output \" pulse\"",
+            0.0118
+          ],
+          [
+            "Output \" arteries\"",
+            0.0107
+          ],
+          [
+            "Output \" hormone\"",
+            0.0097
+          ],
+          [
+            "Output \" car\"",
+            0.0097
+          ],
+          [
+            "Output \" hormones\"",
+            0.0086
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" thyroid\"",
+            0.5526
+          ],
+          [
+            "Output \" hormone\"",
+            0.096
+          ],
+          [
+            "Output \" blood\"",
+            0.0902
+          ],
+          [
+            "Output \" estrogen\"",
+            0.0388
+          ],
+          [
+            "Output \" hormones\"",
+            0.0235
+          ],
+          [
+            "Output \" levels\"",
+            0.0201
+          ],
+          [
+            "Output \" iron\"",
+            0.0172
+          ],
+          [
+            "Output \" heart\"",
+            0.0103
+          ],
+          [
+            "Output \" cortisol\"",
+            0.0084
+          ],
+          [
+            "Output \" testosterone\"",
+            0.0081
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "blood": "blood pressure.",
+          "heart": "heart. I",
+          "thyroid": "thyroid. I",
+          "BP": "BP. I"
+        },
+        "patient": {
+          "thyroid": "thyroid. I",
+          "hormone": "hormone levels.",
+          "blood": "blood pressure.",
+          "estrogen": "estrogen levels."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 13,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing nocturnal diaphoresis, so I'm wondering if I might have a",
+        "patient": "I've been sweating buckets at night, so I'm wondering if I might have a"
+      },
+      "target_token": "Output \" fever\"",
+      "probabilities": {
+        "clinical": 0.0573,
+        "patient": 0.1088
+      },
+      "language_penalty": 0.0515,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" problem\"",
+            0.1558
+          ],
+          [
+            "Output \" heart\"",
+            0.0975
+          ],
+          [
+            "Output \" sleep\"",
+            0.067
+          ],
+          [
+            "Output \" fever\"",
+            0.0573
+          ],
+          [
+            "Output \" thyroid\"",
+            0.0419
+          ],
+          [
+            "Output \" more\"",
+            0.0348
+          ],
+          [
+            "Output \" serious\"",
+            0.0297
+          ],
+          [
+            "Output \" low\"",
+            0.0211
+          ],
+          [
+            "Output \" cold\"",
+            0.0204
+          ],
+          [
+            "Output \" heat\"",
+            0.0186
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" problem\"",
+            0.1685
+          ],
+          [
+            "Output \" fever\"",
+            0.1088
+          ],
+          [
+            "Output \" sleep\"",
+            0.0454
+          ],
+          [
+            "Output \" heat\"",
+            0.0388
+          ],
+          [
+            "Output \" thyroid\"",
+            0.0275
+          ],
+          [
+            "Output \" serious\"",
+            0.0201
+          ],
+          [
+            "Output \" leak\"",
+            0.0195
+          ],
+          [
+            "Output \" low\"",
+            0.0178
+          ],
+          [
+            "Output \" high\"",
+            0.0178
+          ],
+          [
+            "Output \" heart\"",
+            0.0152
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "problem": "problem. I",
+          "heart": "heart problem.",
+          "sleep": "sleep disorder.",
+          "fever": "fever. I"
+        },
+        "patient": {
+          "problem": "problem. I",
+          "fever": "fever. I",
+          "sleep": "sleep disorder.",
+          "heat": "heat rash."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 14,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I woke up with fever last night, so I think I might have a",
+        "patient": "I woke up burning up last night, so I think I might have a"
+      },
+      "target_token": "Output \" infection\"",
+      "probabilities": {
+        "clinical": 0.0002,
+        "patient": 0.0
+      },
+      "language_penalty": -0.0002,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" cold\"",
+            0.4731
+          ],
+          [
+            "Output \" fever\"",
+            0.1023
+          ],
+          [
+            "Output \" virus\"",
+            0.0848
+          ],
+          [
+            "Output \" bad\"",
+            0.0382
+          ],
+          [
+            "Output \" sinus\"",
+            0.0254
+          ],
+          [
+            "Output \" mild\"",
+            0.0205
+          ],
+          [
+            "Output \" little\"",
+            0.0199
+          ],
+          [
+            "Output \" flu\"",
+            0.0188
+          ],
+          [
+            "Output \" viral\"",
+            0.0138
+          ],
+          [
+            "Output \" slight\"",
+            0.0126
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" fever\"",
+            0.6928
+          ],
+          [
+            "Output \" cold\"",
+            0.0644
+          ],
+          [
+            "Output \" little\"",
+            0.0324
+          ],
+          [
+            "Output \" bad\"",
+            0.0237
+          ],
+          [
+            "Output \" case\"",
+            0.0137
+          ],
+          [
+            "Output \" slight\"",
+            0.0104
+          ],
+          [
+            "Output \" mild\"",
+            0.0099
+          ],
+          [
+            "Output \" virus\"",
+            0.0097
+          ],
+          [
+            "Output \" temperature\"",
+            0.0075
+          ],
+          [
+            "Output \" bit\"",
+            0.007
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "cold": "cold. I",
+          "fever": "fever. I",
+          "virus": "virus. I",
+          "bad": "bad cold."
+        },
+        "patient": {
+          "fever": "fever. I",
+          "cold": "cold. I",
+          "little": "little fever.",
+          "bad": "bad case of"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 15,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My partner has erectile dysfunction, so we should probably get his",
+        "patient": "My man's been acting strange down there, so we should probably get his"
+      },
+      "target_token": "Output \" testosterone\"",
+      "probabilities": {
+        "clinical": 0.1596,
+        "patient": 0.0012
+      },
+      "language_penalty": -0.1584,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" testosterone\"",
+            0.1596
+          ],
+          [
+            "Output \" prescription\"",
+            0.0828
+          ],
+          [
+            "Output \" penis\"",
+            0.0552
+          ],
+          [
+            "Output \" checked\"",
+            0.0518
+          ],
+          [
+            "Output \" doctor\"",
+            0.0335
+          ],
+          [
+            "Output \" medication\"",
+            0.0269
+          ],
+          [
+            "Output \" blood\"",
+            0.0163
+          ],
+          [
+            "Output \" hormones\"",
+            0.0153
+          ],
+          [
+            "Output \" medical\"",
+            0.0144
+          ],
+          [
+            "Output \" meds\"",
+            0.0139
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ass\"",
+            0.0478
+          ],
+          [
+            "Output \" attention\"",
+            0.0372
+          ],
+          [
+            "Output \" car\"",
+            0.0339
+          ],
+          [
+            "Output \" check\"",
+            0.0272
+          ],
+          [
+            "Output \" blood\"",
+            0.0272
+          ],
+          [
+            "Output \" back\"",
+            0.0272
+          ],
+          [
+            "Output \" stuff\"",
+            0.0199
+          ],
+          [
+            "Output \" butt\"",
+            0.017
+          ],
+          [
+            "Output \" name\"",
+            0.016
+          ],
+          [
+            "Output \" eyes\"",
+            0.0155
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "testosterone": "testosterone checked.",
+          "prescription": "prescription refilled",
+          "penis": "penis checked out",
+          "checked": "checked out."
+        },
+        "patient": {
+          "ass": "ass home.",
+          "attention": "attention.\" \"",
+          "car": "car looked at",
+          "check": "check up in"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 16,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Ever since my thyroid became dysregulated, I've been needing to take an",
+        "patient": "Ever since my thyroid went haywire, I've been needing to take an"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.0924,
+        "patient": 0.1073
+      },
+      "language_penalty": 0.0149,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" extra\"",
+            0.1303
+          ],
+          [
+            "Output \" ant\"",
+            0.0924
+          ],
+          [
+            "Output \" additional\"",
+            0.0924
+          ],
+          [
+            "Output \" anti\"",
+            0.0645
+          ],
+          [
+            "Output \" iron\"",
+            0.063
+          ],
+          [
+            "Output \" iod\"",
+            0.0272
+          ],
+          [
+            "Output \" antibiotic\"",
+            0.0234
+          ],
+          [
+            "Output \" over\"",
+            0.0226
+          ],
+          [
+            "Output \" average\"",
+            0.0205
+          ],
+          [
+            "Output \" oral\"",
+            0.0185
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" extra\"",
+            0.1216
+          ],
+          [
+            "Output \" ant\"",
+            0.1073
+          ],
+          [
+            "Output \" anti\"",
+            0.0823
+          ],
+          [
+            "Output \" iron\"",
+            0.0726
+          ],
+          [
+            "Output \" additional\"",
+            0.0488
+          ],
+          [
+            "Output \" iod\"",
+            0.0357
+          ],
+          [
+            "Output \" over\"",
+            0.0265
+          ],
+          [
+            "Output \" antibiotic\"",
+            0.0224
+          ],
+          [
+            "Output \" oral\"",
+            0.0208
+          ],
+          [
+            "Output \" occasional\"",
+            0.018
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "extra": "extra dose of",
+          "ant": "antacid every",
+          "additional": "additional 100",
+          "anti": "anti-depress"
+        },
+        "patient": {
+          "extra": "extra dose of",
+          "ant": "antacid every",
+          "anti": "anti-depress",
+          "iron": "iron supplement."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 17,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have vulvovaginitis, so I need to get a",
+        "patient": "I've got a nasty itch down there, so I need to get a"
+      },
+      "target_token": "Output \" culture\"",
+      "probabilities": {
+        "clinical": 0.0014,
+        "patient": 0.0001
+      },
+      "language_penalty": -0.0013,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" prescription\"",
+            0.1591
+          ],
+          [
+            "Output \" pap\"",
+            0.1319
+          ],
+          [
+            "Output \" new\"",
+            0.0706
+          ],
+          [
+            "Output \" yeast\"",
+            0.0304
+          ],
+          [
+            "Output \" doctor\"",
+            0.026
+          ],
+          [
+            "Output \" clean\"",
+            0.0202
+          ],
+          [
+            "Output \" P\"",
+            0.0135
+          ],
+          [
+            "Output \" di\"",
+            0.0119
+          ],
+          [
+            "Output \" Pap\"",
+            0.0115
+          ],
+          [
+            "Output \" good\"",
+            0.0112
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" new\"",
+            0.1067
+          ],
+          [
+            "Output \" good\"",
+            0.0459
+          ],
+          [
+            "Output \" doctor\"",
+            0.0326
+          ],
+          [
+            "Output \" prescription\"",
+            0.0278
+          ],
+          [
+            "Output \" little\"",
+            0.0278
+          ],
+          [
+            "Output \" few\"",
+            0.0174
+          ],
+          [
+            "Output \" quick\"",
+            0.0169
+          ],
+          [
+            "Output \" scratch\"",
+            0.0164
+          ],
+          [
+            "Output \" shave\"",
+            0.0149
+          ],
+          [
+            "Output \" hold\"",
+            0.0136
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "prescription": "prescription for a",
+          "pap": "pap smear.",
+          "new": "new tampon",
+          "yeast": "yeast infection test"
+        },
+        "patient": {
+          "new": "new razor.",
+          "good": "good scratch.",
+          "doctor": "doctor's appointment",
+          "prescription": "prescription for some"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 18,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I woke up with flank pain, so I'm worried my",
+        "patient": "I woke up with my back absolutely throbbing, so I'm worried my"
+      },
+      "target_token": "Output \" kidneys\"",
+      "probabilities": {
+        "clinical": 0.1697,
+        "patient": 0.0035
+      },
+      "language_penalty": -0.1662,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" kidneys\"",
+            0.1697
+          ],
+          [
+            "Output \" kidney\"",
+            0.1594
+          ],
+          [
+            "Output \" appendix\"",
+            0.0685
+          ],
+          [
+            "Output \" gall\"",
+            0.0605
+          ],
+          [
+            "Output \" dog\"",
+            0.0314
+          ],
+          [
+            "Output \" heart\"",
+            0.0244
+          ],
+          [
+            "Output \" baby\"",
+            0.0184
+          ],
+          [
+            "Output \" cat\"",
+            0.0135
+          ],
+          [
+            "Output \" blood\"",
+            0.0127
+          ],
+          [
+            "Output \" liver\"",
+            0.0105
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" back\"",
+            0.141
+          ],
+          [
+            "Output \" spine\"",
+            0.0458
+          ],
+          [
+            "Output \" injury\"",
+            0.0261
+          ],
+          [
+            "Output \" dog\"",
+            0.0203
+          ],
+          [
+            "Output \" tail\"",
+            0.0191
+          ],
+          [
+            "Output \" sci\"",
+            0.0185
+          ],
+          [
+            "Output \" cat\"",
+            0.0168
+          ],
+          [
+            "Output \" sc\"",
+            0.0149
+          ],
+          [
+            "Output \" doctor\"",
+            0.0144
+          ],
+          [
+            "Output \" vert\"",
+            0.0144
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "kidneys": "kidneys are infl",
+          "kidney": "kidney is infl",
+          "appendix": "appendix is infl",
+          "gall": "gallbladder"
+        },
+        "patient": {
+          "back": "back is going",
+          "spine": "spine is out",
+          "injury": "injury is getting",
+          "dog": "dog might have"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 19,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing hypothyroid symptoms all week, so my doctor checked my",
+        "patient": "I've been feeling foggy and sluggish all week, so my doctor checked my"
+      },
+      "target_token": "Output \" thyroid\"",
+      "probabilities": {
+        "clinical": 0.5522,
+        "patient": 0.4765
+      },
+      "language_penalty": -0.0757,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" thyroid\"",
+            0.5522
+          ],
+          [
+            "Output \" T\"",
+            0.2
+          ],
+          [
+            "Output \" blood\"",
+            0.0874
+          ],
+          [
+            "Output \" levels\"",
+            0.0514
+          ],
+          [
+            "Output \" Thy\"",
+            0.0097
+          ],
+          [
+            "Output \" free\"",
+            0.0087
+          ],
+          [
+            "Output \" labs\"",
+            0.0084
+          ],
+          [
+            "Output \" level\"",
+            0.0065
+          ],
+          [
+            "Output \" iron\"",
+            0.0055
+          ],
+          [
+            "Output \" t\"",
+            0.005
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" thyroid\"",
+            0.4765
+          ],
+          [
+            "Output \" blood\"",
+            0.1699
+          ],
+          [
+            "Output \" iron\"",
+            0.0686
+          ],
+          [
+            "Output \" vitamin\"",
+            0.0324
+          ],
+          [
+            "Output \" cholesterol\"",
+            0.0219
+          ],
+          [
+            "Output \" CBC\"",
+            0.0156
+          ],
+          [
+            "Output \" Vitamin\"",
+            0.0107
+          ],
+          [
+            "Output \" liver\"",
+            0.0094
+          ],
+          [
+            "Output \" cortisol\"",
+            0.0089
+          ],
+          [
+            "Output \" vit\"",
+            0.0083
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "thyroid": "thyroid levels and",
+          "T": "TSH and",
+          "blood": "blood work and",
+          "levels": "levels and they"
+        },
+        "patient": {
+          "thyroid": "thyroid and found",
+          "blood": "blood sugar and",
+          "iron": "iron levels and",
+          "vitamin": "vitamin D levels"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 20,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have night sweats, so I'm worried I might have a",
+        "patient": "I woke up drenched in sweat, so I'm worried I might have a"
+      },
+      "target_token": "Output \" fever\"",
+      "probabilities": {
+        "clinical": 0.1156,
+        "patient": 0.5626
+      },
+      "language_penalty": 0.447,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" problem\"",
+            0.179
+          ],
+          [
+            "Output \" fever\"",
+            0.1156
+          ],
+          [
+            "Output \" thyroid\"",
+            0.0872
+          ],
+          [
+            "Output \" tumor\"",
+            0.0746
+          ],
+          [
+            "Output \" brain\"",
+            0.0497
+          ],
+          [
+            "Output \" serious\"",
+            0.046
+          ],
+          [
+            "Output \" heart\"",
+            0.0446
+          ],
+          [
+            "Output \" sleep\"",
+            0.0364
+          ],
+          [
+            "Output \" UT\"",
+            0.0217
+          ],
+          [
+            "Output \" bad\"",
+            0.0214
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" fever\"",
+            0.5626
+          ],
+          [
+            "Output \" bad\"",
+            0.0761
+          ],
+          [
+            "Output \" heart\"",
+            0.0448
+          ],
+          [
+            "Output \" stroke\"",
+            0.0365
+          ],
+          [
+            "Output \" nightmare\"",
+            0.0282
+          ],
+          [
+            "Output \" seizure\"",
+            0.0251
+          ],
+          [
+            "Output \" problem\"",
+            0.0211
+          ],
+          [
+            "Output \" really\"",
+            0.0171
+          ],
+          [
+            "Output \" heat\"",
+            0.017
+          ],
+          [
+            "Output \" serious\"",
+            0.0117
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "problem": "problem. What",
+          "fever": "fever. What",
+          "thyroid": "thyroid problem.",
+          "tumor": "tumor. What"
+        },
+        "patient": {
+          "fever": "fever. What",
+          "bad": "bad dream.",
+          "heart": "heart attack.",
+          "stroke": "stroke. What"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 21,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have hyperglycemia, so my doctor wants me to take an",
+        "patient": "My blood sugar has been bouncing around, so my doctor wants me to take an"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.0128,
+        "patient": 0.0023
+      },
+      "language_penalty": -0.0105,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" insulin\"",
+            0.4455
+          ],
+          [
+            "Output \" oral\"",
+            0.2039
+          ],
+          [
+            "Output \" anti\"",
+            0.0217
+          ],
+          [
+            "Output \" extra\"",
+            0.0154
+          ],
+          [
+            "Output \" alpha\"",
+            0.0147
+          ],
+          [
+            "Output \" aspir\"",
+            0.0139
+          ],
+          [
+            "Output \" antibiotic\"",
+            0.0132
+          ],
+          [
+            "Output \" ant\"",
+            0.0128
+          ],
+          [
+            "Output \" A\"",
+            0.0127
+          ],
+          [
+            "Output \" ACE\"",
+            0.0115
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" insulin\"",
+            0.2963
+          ],
+          [
+            "Output \" oral\"",
+            0.2784
+          ],
+          [
+            "Output \" A\"",
+            0.0993
+          ],
+          [
+            "Output \" extra\"",
+            0.0187
+          ],
+          [
+            "Output \" in\"",
+            0.0117
+          ],
+          [
+            "Output \" additional\"",
+            0.0106
+          ],
+          [
+            "Output \" H\"",
+            0.0105
+          ],
+          [
+            "Output \" ultra\"",
+            0.0097
+          ],
+          [
+            "Output \" OG\"",
+            0.0083
+          ],
+          [
+            "Output \" extended\"",
+            0.0069
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "insulin": "insulin shot every",
+          "oral": "oral medication to",
+          "anti": "anti-diabetic",
+          "extra": "extra dose of"
+        },
+        "patient": {
+          "insulin": "insulin shot every",
+          "oral": "oral glucose tolerance",
+          "A": "A1C",
+          "extra": "extra dose of"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 22,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have erectile dysfunction, so we should probably see a",
+        "patient": "My plumbing's been acting up down there, so we should probably see a"
+      },
+      "target_token": "Output \" u\"",
+      "probabilities": {
+        "clinical": 0.1937,
+        "patient": 0.0001
+      },
+      "language_penalty": -0.1936,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.5606
+          ],
+          [
+            "Output \" u\"",
+            0.1937
+          ],
+          [
+            "Output \" specialist\"",
+            0.1005
+          ],
+          [
+            "Output \" physician\"",
+            0.0154
+          ],
+          [
+            "Output \" sex\"",
+            0.0102
+          ],
+          [
+            "Output \" g\"",
+            0.0085
+          ],
+          [
+            "Output \" doc\"",
+            0.006
+          ],
+          [
+            "Output \" professional\"",
+            0.0057
+          ],
+          [
+            "Output \" couple\"",
+            0.0049
+          ],
+          [
+            "Output \" medical\"",
+            0.0049
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" plumber\"",
+            0.6034
+          ],
+          [
+            "Output \" professional\"",
+            0.0755
+          ],
+          [
+            "Output \" pro\"",
+            0.0755
+          ],
+          [
+            "Output \" specialist\"",
+            0.0202
+          ],
+          [
+            "Output \" guy\"",
+            0.0161
+          ],
+          [
+            "Output \" repair\"",
+            0.0145
+          ],
+          [
+            "Output \" licensed\"",
+            0.0144
+          ],
+          [
+            "Output \" good\"",
+            0.0144
+          ],
+          [
+            "Output \" real\"",
+            0.0118
+          ],
+          [
+            "Output \" man\"",
+            0.0077
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. I",
+          "u": "urolog",
+          "specialist": "specialist. I",
+          "physician": "physician. I"
+        },
+        "patient": {
+          "plumber": "plumber.",
+          "professional": "professional.",
+          "pro": "pro about that",
+          "specialist": "specialist. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 23,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have a high fever, so I'm pretty sure I've got a",
+        "patient": "I've been burning up with fever for three days, so I'm pretty sure I've got a"
+      },
+      "target_token": "Output \" bacterial\"",
+      "probabilities": {
+        "clinical": 0.0178,
+        "patient": 0.0103
+      },
+      "language_penalty": -0.0075,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" cold\"",
+            0.2923
+          ],
+          [
+            "Output \" virus\"",
+            0.1858
+          ],
+          [
+            "Output \" fever\"",
+            0.1493
+          ],
+          [
+            "Output \" bad\"",
+            0.0594
+          ],
+          [
+            "Output \" flu\"",
+            0.0355
+          ],
+          [
+            "Output \" bug\"",
+            0.0208
+          ],
+          [
+            "Output \" viral\"",
+            0.0181
+          ],
+          [
+            "Output \" bacterial\"",
+            0.0178
+          ],
+          [
+            "Output \" sinus\"",
+            0.0162
+          ],
+          [
+            "Output \" case\"",
+            0.0123
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" cold\"",
+            0.3316
+          ],
+          [
+            "Output \" virus\"",
+            0.1642
+          ],
+          [
+            "Output \" fever\"",
+            0.1404
+          ],
+          [
+            "Output \" bad\"",
+            0.0653
+          ],
+          [
+            "Output \" flu\"",
+            0.0272
+          ],
+          [
+            "Output \" nasty\"",
+            0.0246
+          ],
+          [
+            "Output \" case\"",
+            0.0227
+          ],
+          [
+            "Output \" bug\"",
+            0.0217
+          ],
+          [
+            "Output \" viral\"",
+            0.0159
+          ],
+          [
+            "Output \" sinus\"",
+            0.0157
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "cold": "cold. I",
+          "virus": "virus. I",
+          "fever": "fever. I",
+          "bad": "bad cold."
+        },
+        "patient": {
+          "cold": "cold. I",
+          "virus": "virus. I",
+          "fever": "fever. I",
+          "bad": "bad cold."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 24,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have amenorrhea for two months, so I probably need to take a",
+        "patient": "I haven't had my monthlies in two months, so I probably need to take a"
+      },
+      "target_token": "Output \" pregnancy\"",
+      "probabilities": {
+        "clinical": 0.0299,
+        "patient": 0.1301
+      },
+      "language_penalty": 0.1002,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" pill\"",
+            0.2074
+          ],
+          [
+            "Output \" break\"",
+            0.098
+          ],
+          [
+            "Output \" pregnancy\"",
+            0.0299
+          ],
+          [
+            "Output \" pro\"",
+            0.029
+          ],
+          [
+            "Output \" hormone\"",
+            0.0264
+          ],
+          [
+            "Output \" test\"",
+            0.0226
+          ],
+          [
+            "Output \" few\"",
+            0.0205
+          ],
+          [
+            "Output \" trip\"",
+            0.0205
+          ],
+          [
+            "Output \" prescription\"",
+            0.0199
+          ],
+          [
+            "Output \" birth\"",
+            0.0181
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" break\"",
+            0.1301
+          ],
+          [
+            "Output \" pregnancy\"",
+            0.1301
+          ],
+          [
+            "Output \" look\"",
+            0.084
+          ],
+          [
+            "Output \" pill\"",
+            0.0789
+          ],
+          [
+            "Output \" trip\"",
+            0.0542
+          ],
+          [
+            "Output \" few\"",
+            0.0339
+          ],
+          [
+            "Output \" month\"",
+            0.0273
+          ],
+          [
+            "Output \" closer\"",
+            0.0219
+          ],
+          [
+            "Output \" new\"",
+            0.0199
+          ],
+          [
+            "Output \" couple\"",
+            0.0187
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "pill": "pill. I",
+          "break": "break from the",
+          "pregnancy": "pregnancy test.",
+          "pro": "progestin"
+        },
+        "patient": {
+          "break": "break from the",
+          "pregnancy": "pregnancy test.",
+          "look": "look at my",
+          "pill": "pill every day"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 25,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have menstrual irregularity, so my doctor wants to run some",
+        "patient": "I've been a bit irregular with my flow lately, so my doctor wants to run some"
+      },
+      "target_token": "Output \" tests\"",
+      "probabilities": {
+        "clinical": 0.4096,
+        "patient": 0.5706
+      },
+      "language_penalty": 0.161,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" tests\"",
+            0.4096
+          ],
+          [
+            "Output \" blood\"",
+            0.3848
+          ],
+          [
+            "Output \" more\"",
+            0.0297
+          ],
+          [
+            "Output \" lab\"",
+            0.0246
+          ],
+          [
+            "Output \" hormone\"",
+            0.014
+          ],
+          [
+            "Output \" testing\"",
+            0.0085
+          ],
+          [
+            "Output \" additional\"",
+            0.0075
+          ],
+          [
+            "Output \" labs\"",
+            0.0075
+          ],
+          [
+            "Output \" hormonal\"",
+            0.0064
+          ],
+          [
+            "Output \" test\"",
+            0.0062
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" tests\"",
+            0.5706
+          ],
+          [
+            "Output \" blood\"",
+            0.2099
+          ],
+          [
+            "Output \" more\"",
+            0.0681
+          ],
+          [
+            "Output \" lab\"",
+            0.0208
+          ],
+          [
+            "Output \" test\"",
+            0.0101
+          ],
+          [
+            "Output \" additional\"",
+            0.0097
+          ],
+          [
+            "Output \" extra\"",
+            0.0075
+          ],
+          [
+            "Output \" basic\"",
+            0.0066
+          ],
+          [
+            "Output \" other\"",
+            0.0055
+          ],
+          [
+            "Output \" testing\"",
+            0.0043
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "tests": "tests to see",
+          "blood": "blood tests to",
+          "more": "more tests to",
+          "lab": "lab tests to"
+        },
+        "patient": {
+          "tests": "tests to make",
+          "blood": "blood tests to",
+          "more": "more tests to",
+          "lab": "lab tests to"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 26,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "We have had sexual dysfunction, so he wants to check his",
+        "patient": "We've been having trouble in the bedroom, so he wants to check his"
+      },
+      "target_token": "Output \" hormones\"",
+      "probabilities": {
+        "clinical": 0.0416,
+        "patient": 0.0006
+      },
+      "language_penalty": -0.041,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" testosterone\"",
+            0.3077
+          ],
+          [
+            "Output \" blood\"",
+            0.1205
+          ],
+          [
+            "Output \" prostate\"",
+            0.0535
+          ],
+          [
+            "Output \" hormones\"",
+            0.0416
+          ],
+          [
+            "Output \" hormone\"",
+            0.0391
+          ],
+          [
+            "Output \" heart\"",
+            0.0314
+          ],
+          [
+            "Output \" penis\"",
+            0.0261
+          ],
+          [
+            "Output \" levels\"",
+            0.0253
+          ],
+          [
+            "Output \" medication\"",
+            0.023
+          ],
+          [
+            "Output \" sperm\"",
+            0.0209
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" phone\"",
+            0.0808
+          ],
+          [
+            "Output \" email\"",
+            0.0713
+          ],
+          [
+            "Output \" blood\"",
+            0.0506
+          ],
+          [
+            "Output \" work\"",
+            0.0231
+          ],
+          [
+            "Output \" e\"",
+            0.0231
+          ],
+          [
+            "Output \" computer\"",
+            0.0186
+          ],
+          [
+            "Output \" watch\"",
+            0.0159
+          ],
+          [
+            "Output \" heart\"",
+            0.0128
+          ],
+          [
+            "Output \" emails\"",
+            0.0124
+          ],
+          [
+            "Output \" math\"",
+            0.0124
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "testosterone": "testosterone levels.",
+          "blood": "blood pressure.",
+          "prostate": "prostate. He",
+          "hormones": "hormones. He"
+        },
+        "patient": {
+          "phone": "phone. He",
+          "email": "email. He",
+          "blood": "blood sugar.",
+          "work": "work. He"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 27,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have urinary dysfunction, so we should schedule a",
+        "patient": "My plumbing's been acting weird down below, so we should schedule a"
+      },
+      "target_token": "Output \" u\"",
+      "probabilities": {
+        "clinical": 0.0163,
+        "patient": 0.0
+      },
+      "language_penalty": -0.0163,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" visit\"",
+            0.1096
+          ],
+          [
+            "Output \" follow\"",
+            0.0827
+          ],
+          [
+            "Output \" urine\"",
+            0.0403
+          ],
+          [
+            "Output \" ur\"",
+            0.0391
+          ],
+          [
+            "Output \" check\"",
+            0.0345
+          ],
+          [
+            "Output \" trip\"",
+            0.0324
+          ],
+          [
+            "Output \" time\"",
+            0.0295
+          ],
+          [
+            "Output \" consultation\"",
+            0.0237
+          ],
+          [
+            "Output \" cyst\"",
+            0.0209
+          ],
+          [
+            "Output \" doctor\"",
+            0.019
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" plumber\"",
+            0.1987
+          ],
+          [
+            "Output \" service\"",
+            0.1168
+          ],
+          [
+            "Output \" visit\"",
+            0.1031
+          ],
+          [
+            "Output \" plumbing\"",
+            0.0487
+          ],
+          [
+            "Output \" call\"",
+            0.0458
+          ],
+          [
+            "Output \" check\"",
+            0.0335
+          ],
+          [
+            "Output \" house\"",
+            0.0295
+          ],
+          [
+            "Output \" repair\"",
+            0.0286
+          ],
+          [
+            "Output \" tune\"",
+            0.0245
+          ],
+          [
+            "Output \" time\"",
+            0.0223
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "visit": "visit to the",
+          "follow": "follow-up appointment",
+          "urine": "urine test.",
+          "ur": "urinalysis"
+        },
+        "patient": {
+          "plumber": "plumber to come",
+          "service": "service call.",
+          "visit": "visit to the",
+          "plumbing": "plumbing inspection."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 28,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My wife says I have erectile dysfunction, so I'm worried I might need a",
+        "patient": "My wife says I'm getting soft down there, so I'm worried I might need a"
+      },
+      "target_token": "Output \" u\"",
+      "probabilities": {
+        "clinical": 0.0016,
+        "patient": 0.0013
+      },
+      "language_penalty": -0.0003,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" new\"",
+            0.1075
+          ],
+          [
+            "Output \" transplant\"",
+            0.0775
+          ],
+          [
+            "Output \" penis\"",
+            0.0751
+          ],
+          [
+            "Output \" vas\"",
+            0.0558
+          ],
+          [
+            "Output \" prescription\"",
+            0.0504
+          ],
+          [
+            "Output \" sex\"",
+            0.0296
+          ],
+          [
+            "Output \" Viagra\"",
+            0.0289
+          ],
+          [
+            "Output \" doctor\"",
+            0.0285
+          ],
+          [
+            "Output \" heart\"",
+            0.0242
+          ],
+          [
+            "Output \" pill\"",
+            0.0206
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" new\"",
+            0.1229
+          ],
+          [
+            "Output \" little\"",
+            0.0387
+          ],
+          [
+            "Output \" transplant\"",
+            0.0352
+          ],
+          [
+            "Output \" prostate\"",
+            0.0207
+          ],
+          [
+            "Output \" vas\"",
+            0.0195
+          ],
+          [
+            "Output \" replacement\"",
+            0.0189
+          ],
+          [
+            "Output \" circumcision\"",
+            0.0166
+          ],
+          [
+            "Output \" bigger\"",
+            0.0156
+          ],
+          [
+            "Output \" different\"",
+            0.0138
+          ],
+          [
+            "Output \" root\"",
+            0.0118
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "new": "new penis.",
+          "transplant": "transplant. What",
+          "penis": "penis pump.",
+          "vas": "vasectomy."
+        },
+        "patient": {
+          "new": "new one.",
+          "little": "little help.",
+          "transplant": "transplant. What",
+          "prostate": "prostate exam."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 29,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have amenorrhea for four months, so I'm probably going to need an",
+        "patient": "I haven't seen my period in four months, so I'm probably going to need an"
+      },
+      "target_token": "Output \" ultrasound\"",
+      "probabilities": {
+        "clinical": 0.0696,
+        "patient": 0.1144
+      },
+      "language_penalty": 0.0448,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" I\"",
+            0.3761
+          ],
+          [
+            "Output \" appointment\"",
+            0.0788
+          ],
+          [
+            "Output \" ultrasound\"",
+            0.0696
+          ],
+          [
+            "Output \" operation\"",
+            0.0422
+          ],
+          [
+            "Output \" end\"",
+            0.0361
+          ],
+          [
+            "Output \" estrogen\"",
+            0.0324
+          ],
+          [
+            "Output \" o\"",
+            0.0304
+          ],
+          [
+            "Output \" exam\"",
+            0.0199
+          ],
+          [
+            "Output \" injection\"",
+            0.0173
+          ],
+          [
+            "Output \" MRI\"",
+            0.0163
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" I\"",
+            0.2121
+          ],
+          [
+            "Output \" abortion\"",
+            0.1872
+          ],
+          [
+            "Output \" ultrasound\"",
+            0.1144
+          ],
+          [
+            "Output \" appointment\"",
+            0.0818
+          ],
+          [
+            "Output \" emergency\"",
+            0.0578
+          ],
+          [
+            "Output \" exam\"",
+            0.0354
+          ],
+          [
+            "Output \" end\"",
+            0.0187
+          ],
+          [
+            "Output \" H\"",
+            0.0123
+          ],
+          [
+            "Output \" early\"",
+            0.012
+          ],
+          [
+            "Output \" internal\"",
+            0.0116
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "I": "IUD.",
+          "appointment": "appointment with my",
+          "ultrasound": "ultrasound to see",
+          "operation": "operation. I"
+        },
+        "patient": {
+          "I": "IUD.",
+          "abortion": "abortion. I",
+          "ultrasound": "ultrasound. I",
+          "appointment": "appointment with my"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 30,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have menorrhagia lately, so I should probably get my",
+        "patient": "My flow has been crazy heavy lately, so I should probably get my"
+      },
+      "target_token": "Output \" hem\"",
+      "probabilities": {
+        "clinical": 0.0002,
+        "patient": 0.0
+      },
+      "language_penalty": -0.0002,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" period\"",
+            0.5976
+          ],
+          [
+            "Output \" uterus\"",
+            0.0736
+          ],
+          [
+            "Output \" periods\"",
+            0.0407
+          ],
+          [
+            "Output \" blood\"",
+            0.0254
+          ],
+          [
+            "Output \" iron\"",
+            0.0225
+          ],
+          [
+            "Output \" self\"",
+            0.0103
+          ],
+          [
+            "Output \" first\"",
+            0.0091
+          ],
+          [
+            "Output \" hormones\"",
+            0.0085
+          ],
+          [
+            "Output \" menstrual\"",
+            0.0075
+          ],
+          [
+            "Output \" flow\"",
+            0.0064
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" head\"",
+            0.0932
+          ],
+          [
+            "Output \" butt\"",
+            0.0849
+          ],
+          [
+            "Output \" act\"",
+            0.0661
+          ],
+          [
+            "Output \" ass\"",
+            0.0515
+          ],
+          [
+            "Output \" own\"",
+            0.0243
+          ],
+          [
+            "Output \" shit\"",
+            0.0228
+          ],
+          [
+            "Output \" blood\"",
+            0.0178
+          ],
+          [
+            "Output \" house\"",
+            0.0162
+          ],
+          [
+            "Output \" hands\"",
+            0.0139
+          ],
+          [
+            "Output \" stuff\"",
+            0.0139
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "period": "period soon.",
+          "uterus": "uterus checked out",
+          "periods": "periods checked out",
+          "blood": "blood tested."
+        },
+        "patient": {
+          "head": "head back in",
+          "butt": "butt in gear",
+          "act": "act together and",
+          "ass": "ass in gear"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 31,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been having dysuria, so I think I might have a",
+        "patient": "I've been having trouble down there passing water, so I think I might have a"
+      },
+      "target_token": "Output \" UT\"",
+      "probabilities": {
+        "clinical": 0.578,
+        "patient": 0.0044
+      },
+      "language_penalty": -0.5736,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" UT\"",
+            0.578
+          ],
+          [
+            "Output \" urinary\"",
+            0.1877
+          ],
+          [
+            "Output \" bladder\"",
+            0.1331
+          ],
+          [
+            "Output \" kidney\"",
+            0.0217
+          ],
+          [
+            "Output \" problem\"",
+            0.0145
+          ],
+          [
+            "Output \" urine\"",
+            0.0057
+          ],
+          [
+            "Output \" bacterial\"",
+            0.0046
+          ],
+          [
+            "Output \" cyst\"",
+            0.0044
+          ],
+          [
+            "Output \" yeast\"",
+            0.0041
+          ],
+          [
+            "Output \" prostate\"",
+            0.0027
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" leak\"",
+            0.2353
+          ],
+          [
+            "Output \" problem\"",
+            0.126
+          ],
+          [
+            "Output \" little\"",
+            0.0248
+          ],
+          [
+            "Output \" hole\"",
+            0.0226
+          ],
+          [
+            "Output \" block\"",
+            0.0219
+          ],
+          [
+            "Output \" c\"",
+            0.0165
+          ],
+          [
+            "Output \" small\"",
+            0.0146
+          ],
+          [
+            "Output \" broken\"",
+            0.0146
+          ],
+          [
+            "Output \" few\"",
+            0.0117
+          ],
+          [
+            "Output \" bit\"",
+            0.0117
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "UT": "UTI.",
+          "urinary": "urinary tract infection",
+          "bladder": "bladder infection.",
+          "kidney": "kidney infection."
+        },
+        "patient": {
+          "leak": "leak. I",
+          "problem": "problem with my",
+          "little": "little problem with",
+          "hole": "hole in my"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 32,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been developing central obesity despite dieting, so my doctor thinks I might be",
+        "patient": "I've been gaining weight around my middle despite dieting, so my doctor thinks I might be"
+      },
+      "target_token": "Output \" insulin\"",
+      "probabilities": {
+        "clinical": 0.1297,
+        "patient": 0.1397
+      },
+      "language_penalty": 0.01,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" insulin\"",
+            0.1297
+          ],
+          [
+            "Output \" a\"",
+            0.101
+          ],
+          [
+            "Output \" an\"",
+            0.0576
+          ],
+          [
+            "Output \" diabetic\"",
+            0.0576
+          ],
+          [
+            "Output \" suffering\"",
+            0.0492
+          ],
+          [
+            "Output \" on\"",
+            0.0492
+          ],
+          [
+            "Output \" lept\"",
+            0.0328
+          ],
+          [
+            "Output \" at\"",
+            0.0308
+          ],
+          [
+            "Output \" one\"",
+            0.0255
+          ],
+          [
+            "Output \" pre\"",
+            0.0225
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" insulin\"",
+            0.1397
+          ],
+          [
+            "Output \" diabetic\"",
+            0.1177
+          ],
+          [
+            "Output \" pre\"",
+            0.0681
+          ],
+          [
+            "Output \" suffering\"",
+            0.061
+          ],
+          [
+            "Output \" having\"",
+            0.0539
+          ],
+          [
+            "Output \" developing\"",
+            0.0454
+          ],
+          [
+            "Output \" a\"",
+            0.0332
+          ],
+          [
+            "Output \" pred\"",
+            0.0297
+          ],
+          [
+            "Output \" pregnant\"",
+            0.0293
+          ],
+          [
+            "Output \" at\"",
+            0.0241
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "insulin": "insulin resistant.",
+          "a": "a candidate for",
+          "an": "an \"ob",
+          "diabetic": "diabetic. I"
+        },
+        "patient": {
+          "insulin": "insulin resistant.",
+          "diabetic": "diabetic. I",
+          "pre": "pre-diabetic",
+          "suffering": "suffering from hyp"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 33,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have urinary dysuria, so I'm worried I might have an",
+        "patient": "My stomach's been acting weird, so I'm worried I might have an"
+      },
+      "target_token": "Output \" infection\"",
+      "probabilities": {
+        "clinical": 0.8095,
+        "patient": 0.1107
+      },
+      "language_penalty": -0.6988,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" infection\"",
+            0.8095
+          ],
+          [
+            "Output \" STD\"",
+            0.0605
+          ],
+          [
+            "Output \" UT\"",
+            0.0538
+          ],
+          [
+            "Output \" urinary\"",
+            0.0117
+          ],
+          [
+            "Output \" underlying\"",
+            0.0051
+          ],
+          [
+            "Output \" enlarged\"",
+            0.0048
+          ],
+          [
+            "Output \" over\"",
+            0.0042
+          ],
+          [
+            "Output \" bladder\"",
+            0.0035
+          ],
+          [
+            "Output \" obstruction\"",
+            0.0026
+          ],
+          [
+            "Output \" acute\"",
+            0.0025
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ulcer\"",
+            0.6921
+          ],
+          [
+            "Output \" infection\"",
+            0.1107
+          ],
+          [
+            "Output \" upset\"",
+            0.0488
+          ],
+          [
+            "Output \" intestinal\"",
+            0.0186
+          ],
+          [
+            "Output \" issue\"",
+            0.0155
+          ],
+          [
+            "Output \" STD\"",
+            0.0097
+          ],
+          [
+            "Output \" illness\"",
+            0.0079
+          ],
+          [
+            "Output \" allergic\"",
+            0.007
+          ],
+          [
+            "Output \" ear\"",
+            0.0066
+          ],
+          [
+            "Output \" allergy\"",
+            0.0065
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "infection": "infection. What",
+          "STD": "STD. What",
+          "UT": "UTI.",
+          "urinary": "urinary tract infection"
+        },
+        "patient": {
+          "ulcer": "ulcer. What",
+          "infection": "infection. What",
+          "upset": "upset stomach.",
+          "intestinal": "intestinal blockage"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 34,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have polydipsia lately, so my doctor wants to check my",
+        "patient": "I've been thirsty as anything lately, so my doctor wants to check my"
+      },
+      "target_token": "Output \" glucose\"",
+      "probabilities": {
+        "clinical": 0.0078,
+        "patient": 0.0117
+      },
+      "language_penalty": 0.0039,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.213
+          ],
+          [
+            "Output \" thyroid\"",
+            0.1766
+          ],
+          [
+            "Output \" electroly\"",
+            0.0461
+          ],
+          [
+            "Output \" sodium\"",
+            0.0359
+          ],
+          [
+            "Output \" hormone\"",
+            0.0297
+          ],
+          [
+            "Output \" urine\"",
+            0.0297
+          ],
+          [
+            "Output \" kidneys\"",
+            0.0271
+          ],
+          [
+            "Output \" cortisol\"",
+            0.0254
+          ],
+          [
+            "Output \" pit\"",
+            0.0211
+          ],
+          [
+            "Output \" kidney\"",
+            0.0204
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" blood\"",
+            0.296
+          ],
+          [
+            "Output \" thyroid\"",
+            0.0671
+          ],
+          [
+            "Output \" urine\"",
+            0.063
+          ],
+          [
+            "Output \" kidney\"",
+            0.0565
+          ],
+          [
+            "Output \" sodium\"",
+            0.0468
+          ],
+          [
+            "Output \" electroly\"",
+            0.0447
+          ],
+          [
+            "Output \" kidneys\"",
+            0.0327
+          ],
+          [
+            "Output \" sugar\"",
+            0.0317
+          ],
+          [
+            "Output \" water\"",
+            0.028
+          ],
+          [
+            "Output \" hydration\"",
+            0.0267
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "blood": "blood sugar.",
+          "thyroid": "thyroid. I",
+          "electroly": "electrolytes.",
+          "sodium": "sodium levels."
+        },
+        "patient": {
+          "blood": "blood sugar levels",
+          "thyroid": "thyroid. I",
+          "urine": "urine for sugar",
+          "kidney": "kidney function."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 35,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My daughter's menstrual irregularity is all over the place, so we should probably get her",
+        "patient": "My girls' cycle is all over the place, so we should probably get her"
+      },
+      "target_token": "Output \" evaluated\"",
+      "probabilities": {
+        "clinical": 0.0157,
+        "patient": 0.0044
+      },
+      "language_penalty": -0.0113,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" checked\"",
+            0.316
+          ],
+          [
+            "Output \" tested\"",
+            0.1639
+          ],
+          [
+            "Output \" to\"",
+            0.1026
+          ],
+          [
+            "Output \" on\"",
+            0.0774
+          ],
+          [
+            "Output \" a\"",
+            0.0705
+          ],
+          [
+            "Output \" in\"",
+            0.0251
+          ],
+          [
+            "Output \" some\"",
+            0.0222
+          ],
+          [
+            "Output \" evaluated\"",
+            0.0157
+          ],
+          [
+            "Output \" an\"",
+            0.0152
+          ],
+          [
+            "Output \" seen\"",
+            0.0106
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" a\"",
+            0.1383
+          ],
+          [
+            "Output \" checked\"",
+            0.1147
+          ],
+          [
+            "Output \" on\"",
+            0.1077
+          ],
+          [
+            "Output \" to\"",
+            0.0695
+          ],
+          [
+            "Output \" back\"",
+            0.0525
+          ],
+          [
+            "Output \" tested\"",
+            0.0509
+          ],
+          [
+            "Output \" in\"",
+            0.0493
+          ],
+          [
+            "Output \" some\"",
+            0.0449
+          ],
+          [
+            "Output \" an\"",
+            0.0272
+          ],
+          [
+            "Output \" off\"",
+            0.0155
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "checked": "checked out.",
+          "tested": "tested for PC",
+          "to": "to see a",
+          "on": "on a regular"
+        },
+        "patient": {
+          "a": "a new one",
+          "checked": "checked out.",
+          "on": "on a schedule",
+          "to": "to a doctor"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 36,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have urinary incontinence, so I think I might need a",
+        "patient": "I've been leaking down there, so I think I might need a"
+      },
+      "target_token": "Output \" specialist\"",
+      "probabilities": {
+        "clinical": 0.0003,
+        "patient": 0.0005
+      },
+      "language_penalty": 0.0002,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" cath\"",
+            0.1619
+          ],
+          [
+            "Output \" p\"",
+            0.0814
+          ],
+          [
+            "Output \" new\"",
+            0.0634
+          ],
+          [
+            "Output \" different\"",
+            0.0281
+          ],
+          [
+            "Output \" diaper\"",
+            0.0256
+          ],
+          [
+            "Output \" pad\"",
+            0.0226
+          ],
+          [
+            "Output \" urinary\"",
+            0.0129
+          ],
+          [
+            "Output \" bigger\"",
+            0.0125
+          ],
+          [
+            "Output \" pee\"",
+            0.0121
+          ],
+          [
+            "Output \" larger\"",
+            0.0117
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" new\"",
+            0.3107
+          ],
+          [
+            "Output \" plumber\"",
+            0.042
+          ],
+          [
+            "Output \" replacement\"",
+            0.0289
+          ],
+          [
+            "Output \" little\"",
+            0.0271
+          ],
+          [
+            "Output \" bigger\"",
+            0.0199
+          ],
+          [
+            "Output \" different\"",
+            0.017
+          ],
+          [
+            "Output \" bit\"",
+            0.015
+          ],
+          [
+            "Output \" couple\"",
+            0.0141
+          ],
+          [
+            "Output \" few\"",
+            0.0128
+          ],
+          [
+            "Output \" shower\"",
+            0.012
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "cath": "catheter.",
+          "p": "pessary",
+          "new": "new one.",
+          "different": "different type of"
+        },
+        "patient": {
+          "new": "new one.",
+          "plumber": "plumber. I",
+          "replacement": "replacement. I",
+          "little": "little help."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 37,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I think I have fallopian tube obstruction, so we should probably get an",
+        "patient": "I think my tubes might be blocked, so we should probably get an"
+      },
+      "target_token": "Output \" ultrasound\"",
+      "probabilities": {
+        "clinical": 0.7785,
+        "patient": 0.5159
+      },
+      "language_penalty": -0.2626,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ultrasound\"",
+            0.7785
+          ],
+          [
+            "Output \" end\"",
+            0.0217
+          ],
+          [
+            "Output \" appointment\"",
+            0.0132
+          ],
+          [
+            "Output \" E\"",
+            0.0124
+          ],
+          [
+            "Output \" I\"",
+            0.0113
+          ],
+          [
+            "Output \" ultra\"",
+            0.0098
+          ],
+          [
+            "Output \" MRI\"",
+            0.0091
+          ],
+          [
+            "Output \" x\"",
+            0.0075
+          ],
+          [
+            "Output \" ul\"",
+            0.0065
+          ],
+          [
+            "Output \" F\"",
+            0.0061
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ultrasound\"",
+            0.5159
+          ],
+          [
+            "Output \" E\"",
+            0.0791
+          ],
+          [
+            "Output \" MRI\"",
+            0.0597
+          ],
+          [
+            "Output \" ech\"",
+            0.0544
+          ],
+          [
+            "Output \" X\"",
+            0.0527
+          ],
+          [
+            "Output \" x\"",
+            0.0423
+          ],
+          [
+            "Output \" appointment\"",
+            0.031
+          ],
+          [
+            "Output \" end\"",
+            0.0197
+          ],
+          [
+            "Output \" IV\"",
+            0.0087
+          ],
+          [
+            "Output \" echo\"",
+            0.0085
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "ultrasound": "ultrasound to see",
+          "end": "endometrial",
+          "appointment": "appointment with a",
+          "E": "EKG and"
+        },
+        "patient": {
+          "ultrasound": "ultrasound. I",
+          "E": "EKG.",
+          "MRI": "MRI. I",
+          "ech": "echocardi"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 38,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing polyuria, so I'm worried I might have a",
+        "patient": "I've been spending half my day in the bathroom, so I'm worried I might have a"
+      },
+      "target_token": "Output \" diabetes\"",
+      "probabilities": {
+        "clinical": 0.0096,
+        "patient": 0.0002
+      },
+      "language_penalty": -0.0094,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" kidney\"",
+            0.207
+          ],
+          [
+            "Output \" urinary\"",
+            0.1771
+          ],
+          [
+            "Output \" problem\"",
+            0.1563
+          ],
+          [
+            "Output \" UT\"",
+            0.1316
+          ],
+          [
+            "Output \" bladder\"",
+            0.0462
+          ],
+          [
+            "Output \" serious\"",
+            0.0354
+          ],
+          [
+            "Output \" disease\"",
+            0.0184
+          ],
+          [
+            "Output \" medical\"",
+            0.0161
+          ],
+          [
+            "Output \" tumor\"",
+            0.0108
+          ],
+          [
+            "Output \" diabetes\"",
+            0.0096
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" UT\"",
+            0.1682
+          ],
+          [
+            "Output \" bladder\"",
+            0.1269
+          ],
+          [
+            "Output \" kidney\"",
+            0.0958
+          ],
+          [
+            "Output \" urinary\"",
+            0.0846
+          ],
+          [
+            "Output \" problem\"",
+            0.0659
+          ],
+          [
+            "Output \" serious\"",
+            0.0364
+          ],
+          [
+            "Output \" stomach\"",
+            0.0301
+          ],
+          [
+            "Output \" tumor\"",
+            0.0266
+          ],
+          [
+            "Output \" disease\"",
+            0.0186
+          ],
+          [
+            "Output \" stroke\"",
+            0.0159
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "kidney": "kidney infection.",
+          "urinary": "urinary tract infection",
+          "problem": "problem. What",
+          "UT": "UTI."
+        },
+        "patient": {
+          "UT": "UTI.",
+          "bladder": "bladder infection.",
+          "kidney": "kidney infection.",
+          "urinary": "urinary tract infection"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 39,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I'm experiencing weight gain with reduced caloric intake, so my doctor thinks I might be",
+        "patient": "My clothes don't fit anymore even though I barely eat, so my doctor thinks I might be"
+      },
+      "target_token": "Output \" hyp\"",
+      "probabilities": {
+        "clinical": 0.1072,
+        "patient": 0.0055
+      },
+      "language_penalty": -0.1017,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hyp\"",
+            0.1072
+          ],
+          [
+            "Output \" eating\"",
+            0.0681
+          ],
+          [
+            "Output \" pregnant\"",
+            0.065
+          ],
+          [
+            "Output \" an\"",
+            0.0514
+          ],
+          [
+            "Output \" diabetic\"",
+            0.0491
+          ],
+          [
+            "Output \" suffering\"",
+            0.0348
+          ],
+          [
+            "Output \" having\"",
+            0.0312
+          ],
+          [
+            "Output \" deficient\"",
+            0.028
+          ],
+          [
+            "Output \" going\"",
+            0.0239
+          ],
+          [
+            "Output \" on\"",
+            0.0236
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" an\"",
+            0.2492
+          ],
+          [
+            "Output \" pregnant\"",
+            0.0931
+          ],
+          [
+            "Output \" diabetic\"",
+            0.0574
+          ],
+          [
+            "Output \" losing\"",
+            0.0483
+          ],
+          [
+            "Output \" getting\"",
+            0.0362
+          ],
+          [
+            "Output \" bul\"",
+            0.0327
+          ],
+          [
+            "Output \" having\"",
+            0.0314
+          ],
+          [
+            "Output \" suffering\"",
+            0.0257
+          ],
+          [
+            "Output \" eating\"",
+            0.0255
+          ],
+          [
+            "Output \" going\"",
+            0.0249
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hyp": "hypothyroid",
+          "eating": "eating too much",
+          "pregnant": "pregnant. I",
+          "an": "anorexic"
+        },
+        "patient": {
+          "an": "anorexic",
+          "pregnant": "pregnant. What",
+          "diabetic": "diabetic. I",
+          "losing": "losing weight because"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 40,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "We're experiencing infertility, so we should probably see a",
+        "patient": "We've been trying for a baby but nothing's happening, so we should probably see a"
+      },
+      "target_token": "Output \" reproductive\"",
+      "probabilities": {
+        "clinical": 0.0703,
+        "patient": 0.0004
+      },
+      "language_penalty": -0.0699,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.3054
+          ],
+          [
+            "Output \" specialist\"",
+            0.2532
+          ],
+          [
+            "Output \" fertility\"",
+            0.2035
+          ],
+          [
+            "Output \" reproductive\"",
+            0.0703
+          ],
+          [
+            "Output \" g\"",
+            0.0141
+          ],
+          [
+            "Output \" couple\"",
+            0.0118
+          ],
+          [
+            "Output \" physician\"",
+            0.01
+          ],
+          [
+            "Output \" counselor\"",
+            0.0064
+          ],
+          [
+            "Output \" professional\"",
+            0.0062
+          ],
+          [
+            "Output \" therapist\"",
+            0.0059
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.8619
+          ],
+          [
+            "Output \" specialist\"",
+            0.0353
+          ],
+          [
+            "Output \" mid\"",
+            0.0173
+          ],
+          [
+            "Output \" fertility\"",
+            0.012
+          ],
+          [
+            "Output \" g\"",
+            0.0092
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0063
+          ],
+          [
+            "Output \" couple\"",
+            0.006
+          ],
+          [
+            "Output \" baby\"",
+            0.0057
+          ],
+          [
+            "Output \" vet\"",
+            0.0043
+          ],
+          [
+            "Output \" few\"",
+            0.0039
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. I",
+          "specialist": "specialist. What",
+          "fertility": "fertility specialist.",
+          "reproductive": "reproductive endocrin"
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "specialist": "specialist. I",
+          "mid": "midwife.\"",
+          "fertility": "fertility specialist."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 41,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have erectile dysfunction lately, so my partner thinks I should see a",
+        "patient": "I've been having trouble getting it up lately, so my partner thinks I should see a"
+      },
+      "target_token": "Output \" u\"",
+      "probabilities": {
+        "clinical": 0.09,
+        "patient": 0.0054
+      },
+      "language_penalty": -0.0846,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.7654
+          ],
+          [
+            "Output \" u\"",
+            0.09
+          ],
+          [
+            "Output \" specialist\"",
+            0.0207
+          ],
+          [
+            "Output \" sex\"",
+            0.0163
+          ],
+          [
+            "Output \" therapist\"",
+            0.0097
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.0097
+          ],
+          [
+            "Output \" g\"",
+            0.0095
+          ],
+          [
+            "Output \" physician\"",
+            0.0073
+          ],
+          [
+            "Output \" shrink\"",
+            0.0068
+          ],
+          [
+            "Output \" psychologist\"",
+            0.0059
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.5359
+          ],
+          [
+            "Output \" therapist\"",
+            0.1355
+          ],
+          [
+            "Output \" specialist\"",
+            0.0388
+          ],
+          [
+            "Output \" shrink\"",
+            0.0284
+          ],
+          [
+            "Output \" chiropr\"",
+            0.0221
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.0221
+          ],
+          [
+            "Output \" doc\"",
+            0.017
+          ],
+          [
+            "Output \" counselor\"",
+            0.0115
+          ],
+          [
+            "Output \" psychologist\"",
+            0.01
+          ],
+          [
+            "Output \" g\"",
+            0.0097
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. What",
+          "u": "urolog",
+          "specialist": "specialist. What",
+          "sex": "sex therapist."
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "therapist": "therapist. I",
+          "specialist": "specialist. I",
+          "shrink": "shrink. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 42,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been passing turbid urine all day, so I'm worried I might have a",
+        "patient": "I've been passing cloudy water all day, so I'm worried I might have a"
+      },
+      "target_token": "Output \" infection\"",
+      "probabilities": {
+        "clinical": 0.0009,
+        "patient": 0.0003
+      },
+      "language_penalty": -0.0006,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" UT\"",
+            0.5949
+          ],
+          [
+            "Output \" kidney\"",
+            0.1327
+          ],
+          [
+            "Output \" urinary\"",
+            0.11
+          ],
+          [
+            "Output \" bladder\"",
+            0.052
+          ],
+          [
+            "Output \" problem\"",
+            0.0315
+          ],
+          [
+            "Output \" block\"",
+            0.0077
+          ],
+          [
+            "Output \" urine\"",
+            0.0075
+          ],
+          [
+            "Output \" stone\"",
+            0.0068
+          ],
+          [
+            "Output \" prostate\"",
+            0.0047
+          ],
+          [
+            "Output \" serious\"",
+            0.0039
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" problem\"",
+            0.172
+          ],
+          [
+            "Output \" leak\"",
+            0.1518
+          ],
+          [
+            "Output \" c\"",
+            0.0558
+          ],
+          [
+            "Output \" hole\"",
+            0.0233
+          ],
+          [
+            "Output \" blocked\"",
+            0.0181
+          ],
+          [
+            "Output \" bad\"",
+            0.017
+          ],
+          [
+            "Output \" block\"",
+            0.0155
+          ],
+          [
+            "Output \" water\"",
+            0.0155
+          ],
+          [
+            "Output \" broken\"",
+            0.0146
+          ],
+          [
+            "Output \" kidney\"",
+            0.0141
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "UT": "UTI.",
+          "kidney": "kidney infection.",
+          "urinary": "urinary tract infection",
+          "bladder": "bladder infection."
+        },
+        "patient": {
+          "problem": "problem. I",
+          "leak": "leak. How",
+          "c": "clogged pipe",
+          "hole": "hole in my"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 43,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My brother came down with something nasty last week, and now I have fever, so I think I might have caught a",
+        "patient": "My brother came down with something nasty last week, and now I'm running hot, so I think I might have caught a"
+      },
+      "target_token": "Output \" virus\"",
+      "probabilities": {
+        "clinical": 0.0717,
+        "patient": 0.0339
+      },
+      "language_penalty": -0.0378,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" cold\"",
+            0.6006
+          ],
+          [
+            "Output \" bug\"",
+            0.0788
+          ],
+          [
+            "Output \" virus\"",
+            0.0717
+          ],
+          [
+            "Output \" case\"",
+            0.0237
+          ],
+          [
+            "Output \" similar\"",
+            0.0229
+          ],
+          [
+            "Output \" bad\"",
+            0.0168
+          ],
+          [
+            "Output \" nasty\"",
+            0.0163
+          ],
+          [
+            "Output \" flu\"",
+            0.0082
+          ],
+          [
+            "Output \" common\"",
+            0.0078
+          ],
+          [
+            "Output \" stomach\"",
+            0.0073
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" cold\"",
+            0.601
+          ],
+          [
+            "Output \" case\"",
+            0.0633
+          ],
+          [
+            "Output \" bug\"",
+            0.0493
+          ],
+          [
+            "Output \" virus\"",
+            0.0339
+          ],
+          [
+            "Output \" bad\"",
+            0.0182
+          ],
+          [
+            "Output \" similar\"",
+            0.0168
+          ],
+          [
+            "Output \" little\"",
+            0.0123
+          ],
+          [
+            "Output \" nasty\"",
+            0.0115
+          ],
+          [
+            "Output \" fever\"",
+            0.0074
+          ],
+          [
+            "Output \" version\"",
+            0.0072
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "cold": "cold. I",
+          "bug": "bug. I",
+          "virus": "virus. I",
+          "case": "case of whatever"
+        },
+        "patient": {
+          "cold": "cold. I",
+          "case": "case of the",
+          "bug": "bug. I",
+          "virus": "virus. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 44,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Ever since I started my new job, I haven't had a menstrual period, so I should probably get my",
+        "patient": "Ever since I started my new job, I haven't had a visit from Aunt Flo, so I should probably get my"
+      },
+      "target_token": "Output \" hormone\"",
+      "probabilities": {
+        "clinical": 0.0059,
+        "patient": 0.0004
+      },
+      "language_penalty": -0.0055,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" period\"",
+            0.7432
+          ],
+          [
+            "Output \" uterus\"",
+            0.019
+          ],
+          [
+            "Output \" blood\"",
+            0.0182
+          ],
+          [
+            "Output \" first\"",
+            0.0159
+          ],
+          [
+            "Output \" cycle\"",
+            0.0158
+          ],
+          [
+            "Output \" hormones\"",
+            0.0155
+          ],
+          [
+            "Output \" periods\"",
+            0.0135
+          ],
+          [
+            "Output \" self\"",
+            0.0116
+          ],
+          [
+            "Output \" body\"",
+            0.0086
+          ],
+          [
+            "Output \" tubes\"",
+            0.0081
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" period\"",
+            0.6806
+          ],
+          [
+            "Output \" self\"",
+            0.0764
+          ],
+          [
+            "Output \" blood\"",
+            0.0163
+          ],
+          [
+            "Output \" first\"",
+            0.0086
+          ],
+          [
+            "Output \" periods\"",
+            0.0077
+          ],
+          [
+            "Output \" body\"",
+            0.0076
+          ],
+          [
+            "Output \" annual\"",
+            0.0072
+          ],
+          [
+            "Output \" cerv\"",
+            0.007
+          ],
+          [
+            "Output \" cycle\"",
+            0.0066
+          ],
+          [
+            "Output \" pregnancy\"",
+            0.0062
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "period": "period soon.",
+          "uterus": "uterus checked out",
+          "blood": "blood tested.",
+          "first": "first period soon"
+        },
+        "patient": {
+          "period": "period soon.",
+          "self": "self checked out",
+          "blood": "blood pressure checked",
+          "first": "first period soon"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 45,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have stress incontinence when I cough or laugh, so I think I might have a",
+        "patient": "I've been unable to hold my water when I cough or laugh, so I think I might have a"
+      },
+      "target_token": "Output \" problem\"",
+      "probabilities": {
+        "clinical": 0.084,
+        "patient": 0.2503
+      },
+      "language_penalty": 0.1663,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hern\"",
+            0.1185
+          ],
+          [
+            "Output \" bladder\"",
+            0.1149
+          ],
+          [
+            "Output \" problem\"",
+            0.084
+          ],
+          [
+            "Output \" urinary\"",
+            0.0479
+          ],
+          [
+            "Output \" leak\"",
+            0.0373
+          ],
+          [
+            "Output \" prol\"",
+            0.0309
+          ],
+          [
+            "Output \" weak\"",
+            0.0273
+          ],
+          [
+            "Output \" small\"",
+            0.0226
+          ],
+          [
+            "Output \" UT\"",
+            0.02
+          ],
+          [
+            "Output \" tear\"",
+            0.0137
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" problem\"",
+            0.2503
+          ],
+          [
+            "Output \" hern\"",
+            0.0509
+          ],
+          [
+            "Output \" cough\"",
+            0.0339
+          ],
+          [
+            "Output \" leak\"",
+            0.0264
+          ],
+          [
+            "Output \" sinus\"",
+            0.0256
+          ],
+          [
+            "Output \" dry\"",
+            0.024
+          ],
+          [
+            "Output \" mild\"",
+            0.0212
+          ],
+          [
+            "Output \" cold\"",
+            0.0193
+          ],
+          [
+            "Output \" bad\"",
+            0.0176
+          ],
+          [
+            "Output \" lung\"",
+            0.017
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hern": "hernia.",
+          "bladder": "bladder problem.",
+          "problem": "problem with my",
+          "urinary": "urinary tract infection"
+        },
+        "patient": {
+          "problem": "problem. I",
+          "hern": "hernia.",
+          "cough": "cough. I",
+          "leak": "leak. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 46,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been coughing up purulent sputum for a week, so I'm worried I might have a",
+        "patient": "I've been coughing up nasty stuff for a week, so I'm worried I might have a"
+      },
+      "target_token": "Output \" infection\"",
+      "probabilities": {
+        "clinical": 0.0007,
+        "patient": 0.0005
+      },
+      "language_penalty": -0.0002,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" chest\"",
+            0.2127
+          ],
+          [
+            "Output \" bacterial\"",
+            0.127
+          ],
+          [
+            "Output \" cold\"",
+            0.1053
+          ],
+          [
+            "Output \" sinus\"",
+            0.0887
+          ],
+          [
+            "Output \" lung\"",
+            0.069
+          ],
+          [
+            "Output \" bad\"",
+            0.0467
+          ],
+          [
+            "Output \" serious\"",
+            0.0429
+          ],
+          [
+            "Output \" respiratory\"",
+            0.0367
+          ],
+          [
+            "Output \" throat\"",
+            0.0331
+          ],
+          [
+            "Output \" pneumonia\"",
+            0.017
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" cold\"",
+            0.351
+          ],
+          [
+            "Output \" bad\"",
+            0.0736
+          ],
+          [
+            "Output \" chest\"",
+            0.053
+          ],
+          [
+            "Output \" sinus\"",
+            0.0514
+          ],
+          [
+            "Output \" serious\"",
+            0.0367
+          ],
+          [
+            "Output \" bacterial\"",
+            0.0326
+          ],
+          [
+            "Output \" virus\"",
+            0.0295
+          ],
+          [
+            "Output \" lung\"",
+            0.025
+          ],
+          [
+            "Output \" nasty\"",
+            0.0243
+          ],
+          [
+            "Output \" bron\"",
+            0.0182
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "chest": "chest infection.",
+          "bacterial": "bacterial infection.",
+          "cold": "cold or something",
+          "sinus": "sinus infection."
+        },
+        "patient": {
+          "cold": "cold. What",
+          "bad": "bad case of",
+          "chest": "chest infection.",
+          "sinus": "sinus infection."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 47,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My guy's been complaining about dysuria, so we should probably get his",
+        "patient": "My guy's been complaining about soreness down below, so we should probably get his"
+      },
+      "target_token": "Output \" urine\"",
+      "probabilities": {
+        "clinical": 0.182,
+        "patient": 0.0034
+      },
+      "language_penalty": -0.1786,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" urine\"",
+            0.182
+          ],
+          [
+            "Output \" PSA\"",
+            0.1291
+          ],
+          [
+            "Output \" prostate\"",
+            0.1005
+          ],
+          [
+            "Output \" kidneys\"",
+            0.0713
+          ],
+          [
+            "Output \" pe\"",
+            0.0505
+          ],
+          [
+            "Output \" bladder\"",
+            0.049
+          ],
+          [
+            "Output \" UT\"",
+            0.0266
+          ],
+          [
+            "Output \" checked\"",
+            0.0258
+          ],
+          [
+            "Output \" kidney\"",
+            0.0243
+          ],
+          [
+            "Output \" urinary\"",
+            0.0217
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" prostate\"",
+            0.1555
+          ],
+          [
+            "Output \" junk\"",
+            0.0628
+          ],
+          [
+            "Output \" test\"",
+            0.0369
+          ],
+          [
+            "Output \" PSA\"",
+            0.0288
+          ],
+          [
+            "Output \" check\"",
+            0.0279
+          ],
+          [
+            "Output \" balls\"",
+            0.0254
+          ],
+          [
+            "Output \" testosterone\"",
+            0.0224
+          ],
+          [
+            "Output \" pro\"",
+            0.0192
+          ],
+          [
+            "Output \" g\"",
+            0.0192
+          ],
+          [
+            "Output \" sperm\"",
+            0.018
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "urine": "urine checked out",
+          "PSA": "PSA checked.",
+          "prostate": "prostate checked.",
+          "kidneys": "kidneys checked out"
+        },
+        "patient": {
+          "prostate": "prostate checked.",
+          "junk": "junk checked out",
+          "test": "testicles checked",
+          "PSA": "PSA checked."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 48,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing metrorrhagia, so my doctor ordered a",
+        "patient": "I've been spotting between my cycles, so my doctor ordered a"
+      },
+      "target_token": "Output \" biopsy\"",
+      "probabilities": {
+        "clinical": 0.0042,
+        "patient": 0.0009
+      },
+      "language_penalty": -0.0033,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" son\"",
+            0.0731
+          ],
+          [
+            "Output \" CT\"",
+            0.0503
+          ],
+          [
+            "Output \" pregnancy\"",
+            0.0356
+          ],
+          [
+            "Output \" h\"",
+            0.0325
+          ],
+          [
+            "Output \" test\"",
+            0.0315
+          ],
+          [
+            "Output \" trans\"",
+            0.0305
+          ],
+          [
+            "Output \" blood\"",
+            0.0295
+          ],
+          [
+            "Output \" pelvic\"",
+            0.0253
+          ],
+          [
+            "Output \" CAT\"",
+            0.0237
+          ],
+          [
+            "Output \" \"",
+            0.0197
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" blood\"",
+            0.3014
+          ],
+          [
+            "Output \" pregnancy\"",
+            0.1665
+          ],
+          [
+            "Output \" test\"",
+            0.0739
+          ],
+          [
+            "Output \" h\"",
+            0.0652
+          ],
+          [
+            "Output \" son\"",
+            0.0187
+          ],
+          [
+            "Output \" urine\"",
+            0.0175
+          ],
+          [
+            "Output \" prog\"",
+            0.017
+          ],
+          [
+            "Output \" H\"",
+            0.0155
+          ],
+          [
+            "Output \" pelvic\"",
+            0.0145
+          ],
+          [
+            "Output \" home\"",
+            0.0128
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "son": "sonogram.",
+          "CT": "CT scan.",
+          "pregnancy": "pregnancy test.",
+          "h": "hysteros"
+        },
+        "patient": {
+          "blood": "blood test to",
+          "pregnancy": "pregnancy test.",
+          "test": "test. I",
+          "h": "hysteros"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 49,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My daughter ran a fever and now has dark urine, so we need to take her",
+        "patient": "My daughter ran a fever and now her pee is dark, so we need to take her"
+      },
+      "target_token": "Output \" blood\"",
+      "probabilities": {
+        "clinical": 0.0013,
+        "patient": 0.0008
+      },
+      "language_penalty": -0.0005,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" to\"",
+            0.8735
+          ],
+          [
+            "Output \" in\"",
+            0.0658
+          ],
+          [
+            "Output \" back\"",
+            0.0126
+          ],
+          [
+            "Output \" into\"",
+            0.0082
+          ],
+          [
+            "Output \" off\"",
+            0.0048
+          ],
+          [
+            "Output \" for\"",
+            0.0036
+          ],
+          [
+            "Output \" temperature\"",
+            0.0022
+          ],
+          [
+            "Output \".\"",
+            0.0019
+          ],
+          [
+            "Output \" down\"",
+            0.0016
+          ],
+          [
+            "Output \" out\"",
+            0.0014
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" to\"",
+            0.8568
+          ],
+          [
+            "Output \" in\"",
+            0.0816
+          ],
+          [
+            "Output \" back\"",
+            0.0206
+          ],
+          [
+            "Output \" into\"",
+            0.0062
+          ],
+          [
+            "Output \" temperature\"",
+            0.0035
+          ],
+          [
+            "Output \" for\"",
+            0.0027
+          ],
+          [
+            "Output \" off\"",
+            0.0019
+          ],
+          [
+            "Output \" down\"",
+            0.0018
+          ],
+          [
+            "Output \".\"",
+            0.0017
+          ],
+          [
+            "Output \" somewhere\"",
+            0.0013
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "to": "to the doctor",
+          "in": "in. What",
+          "back": "back to the",
+          "into": "into the ER"
+        },
+        "patient": {
+          "to": "to the doctor",
+          "in": "in.",
+          "back": "back to the",
+          "into": "into the ER"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 50,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Since I started my new meds, I've been experiencing vasomotor symptoms, so my doctor wants to check my",
+        "patient": "Since I started my new meds, I've been feeling flushed and sweaty, so my doctor wants to check my"
+      },
+      "target_token": "Output \" thyroid\"",
+      "probabilities": {
+        "clinical": 0.2489,
+        "patient": 0.195
+      },
+      "language_penalty": -0.0539,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" thyroid\"",
+            0.2489
+          ],
+          [
+            "Output \" blood\"",
+            0.1879
+          ],
+          [
+            "Output \" hormone\"",
+            0.0433
+          ],
+          [
+            "Output \" estrogen\"",
+            0.0406
+          ],
+          [
+            "Output \" iron\"",
+            0.0337
+          ],
+          [
+            "Output \" heart\"",
+            0.0307
+          ],
+          [
+            "Output \" electroly\"",
+            0.0218
+          ],
+          [
+            "Output \" hormones\"",
+            0.0204
+          ],
+          [
+            "Output \" levels\"",
+            0.0136
+          ],
+          [
+            "Output \" testosterone\"",
+            0.012
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" blood\"",
+            0.2076
+          ],
+          [
+            "Output \" thyroid\"",
+            0.195
+          ],
+          [
+            "Output \" iron\"",
+            0.0577
+          ],
+          [
+            "Output \" heart\"",
+            0.0542
+          ],
+          [
+            "Output \" liver\"",
+            0.0509
+          ],
+          [
+            "Output \" potassium\"",
+            0.0449
+          ],
+          [
+            "Output \" electroly\"",
+            0.0339
+          ],
+          [
+            "Output \" sodium\"",
+            0.0206
+          ],
+          [
+            "Output \" urine\"",
+            0.0193
+          ],
+          [
+            "Output \" kidney\"",
+            0.0193
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "thyroid": "thyroid. I",
+          "blood": "blood pressure.",
+          "hormone": "hormone levels.",
+          "estrogen": "estrogen levels."
+        },
+        "patient": {
+          "blood": "blood pressure.",
+          "thyroid": "thyroid. I",
+          "iron": "iron levels.",
+          "heart": "heart. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 51,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have amenorrhea, so I'm worried my",
+        "patient": "My cycle's been totally skipped, so I'm worried my"
+      },
+      "target_token": "Output \" hormones\"",
+      "probabilities": {
+        "clinical": 0.0209,
+        "patient": 0.0052
+      },
+      "language_penalty": -0.0157,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" period\"",
+            0.2317
+          ],
+          [
+            "Output \" periods\"",
+            0.0908
+          ],
+          [
+            "Output \" cycle\"",
+            0.0853
+          ],
+          [
+            "Output \" body\"",
+            0.0586
+          ],
+          [
+            "Output \" baby\"",
+            0.0304
+          ],
+          [
+            "Output \" hormones\"",
+            0.0209
+          ],
+          [
+            "Output \" uterus\"",
+            0.0184
+          ],
+          [
+            "Output \" ovar\"",
+            0.0173
+          ],
+          [
+            "Output \" menstrual\"",
+            0.0148
+          ],
+          [
+            "Output \" estrogen\"",
+            0.0139
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" period\"",
+            0.2862
+          ],
+          [
+            "Output \" cycle\"",
+            0.127
+          ],
+          [
+            "Output \" body\"",
+            0.0701
+          ],
+          [
+            "Output \" periods\"",
+            0.0302
+          ],
+          [
+            "Output \" doctor\"",
+            0.0292
+          ],
+          [
+            "Output \" baby\"",
+            0.0275
+          ],
+          [
+            "Output \" next\"",
+            0.0189
+          ],
+          [
+            "Output \" ov\"",
+            0.0152
+          ],
+          [
+            "Output \" fertility\"",
+            0.0122
+          ],
+          [
+            "Output \" cycles\"",
+            0.0111
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "period": "period is coming",
+          "periods": "periods will never",
+          "cycle": "cycle is coming",
+          "body": "body is not"
+        },
+        "patient": {
+          "period": "period is coming",
+          "cycle": "cycle is not",
+          "body": "body is not",
+          "periods": "periods will never"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 52,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My partner has dysuria, so we should probably get his",
+        "patient": "My guy woke up with a burning sensation down there, so we should probably get his"
+      },
+      "target_token": "Output \" urine\"",
+      "probabilities": {
+        "clinical": 0.1247,
+        "patient": 0.0087
+      },
+      "language_penalty": -0.116,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" urine\"",
+            0.1247
+          ],
+          [
+            "Output \" prostate\"",
+            0.1067
+          ],
+          [
+            "Output \" checked\"",
+            0.0913
+          ],
+          [
+            "Output \" PSA\"",
+            0.0857
+          ],
+          [
+            "Output \" kidneys\"",
+            0.0537
+          ],
+          [
+            "Output \" pe\"",
+            0.0261
+          ],
+          [
+            "Output \" bladder\"",
+            0.0253
+          ],
+          [
+            "Output \" urinary\"",
+            0.0246
+          ],
+          [
+            "Output \" kidney\"",
+            0.0217
+          ],
+          [
+            "Output \" test\"",
+            0.0204
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" prostate\"",
+            0.0515
+          ],
+          [
+            "Output \" test\"",
+            0.0499
+          ],
+          [
+            "Output \" penis\"",
+            0.0388
+          ],
+          [
+            "Output \" checked\"",
+            0.0388
+          ],
+          [
+            "Output \" balls\"",
+            0.0284
+          ],
+          [
+            "Output \" testosterone\"",
+            0.0267
+          ],
+          [
+            "Output \" junk\"",
+            0.0236
+          ],
+          [
+            "Output \" rect\"",
+            0.0202
+          ],
+          [
+            "Output \" sperm\"",
+            0.0143
+          ],
+          [
+            "Output \" pe\"",
+            0.0134
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "urine": "urine checked out",
+          "prostate": "prostate checked.",
+          "checked": "checked out.",
+          "PSA": "PSA checked."
+        },
+        "patient": {
+          "prostate": "prostate checked.",
+          "test": "testicles checked",
+          "penis": "penis checked out",
+          "checked": "checked out."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 53,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "She has vaginal candidiasis, so we should probably get a",
+        "patient": "She's had a thick whitish discharge for a week, so we should probably get a"
+      },
+      "target_token": "Output \" culture\"",
+      "probabilities": {
+        "clinical": 0.0486,
+        "patient": 0.0319
+      },
+      "language_penalty": -0.0167,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" prescription\"",
+            0.0966
+          ],
+          [
+            "Output \" culture\"",
+            0.0486
+          ],
+          [
+            "Output \" yeast\"",
+            0.0486
+          ],
+          [
+            "Output \" pap\"",
+            0.0429
+          ],
+          [
+            "Output \" vaginal\"",
+            0.039
+          ],
+          [
+            "Output \" test\"",
+            0.0367
+          ],
+          [
+            "Output \" P\"",
+            0.0344
+          ],
+          [
+            "Output \" new\"",
+            0.0314
+          ],
+          [
+            "Output \" Pap\"",
+            0.0285
+          ],
+          [
+            "Output \" sample\"",
+            0.0215
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" check\"",
+            0.2287
+          ],
+          [
+            "Output \" pregnancy\"",
+            0.072
+          ],
+          [
+            "Output \" new\"",
+            0.0479
+          ],
+          [
+            "Output \" test\"",
+            0.0437
+          ],
+          [
+            "Output \" doctor\"",
+            0.0385
+          ],
+          [
+            "Output \" pap\"",
+            0.0373
+          ],
+          [
+            "Output \" second\"",
+            0.033
+          ],
+          [
+            "Output \" culture\"",
+            0.0319
+          ],
+          [
+            "Output \" urine\"",
+            0.0249
+          ],
+          [
+            "Output \" Pap\"",
+            0.0234
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "prescription": "prescription for some",
+          "culture": "culture to confirm",
+          "yeast": "yeast infection test",
+          "pap": "pap smear."
+        },
+        "patient": {
+          "check": "check up.",
+          "pregnancy": "pregnancy test.",
+          "new": "new one.",
+          "test": "test done."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 54,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have a viral infection spreading through my workplace for days, so I'm pretty sure I need an",
+        "patient": "I've had this nasty bug going around the office for days, so I'm pretty sure I need an"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.1206,
+        "patient": 0.0341
+      },
+      "language_penalty": -0.0865,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" antibiotic\"",
+            0.1501
+          ],
+          [
+            "Output \" ant\"",
+            0.1206
+          ],
+          [
+            "Output \" anti\"",
+            0.0969
+          ],
+          [
+            "Output \" extra\"",
+            0.0374
+          ],
+          [
+            "Output \" appointment\"",
+            0.0179
+          ],
+          [
+            "Output \" office\"",
+            0.0163
+          ],
+          [
+            "Output \" upper\"",
+            0.0156
+          ],
+          [
+            "Output \" air\"",
+            0.0146
+          ],
+          [
+            "Output \" antivirus\"",
+            0.0137
+          ],
+          [
+            "Output \" isolation\"",
+            0.0118
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" antibiotic\"",
+            0.1247
+          ],
+          [
+            "Output \" extra\"",
+            0.0971
+          ],
+          [
+            "Output \" anti\"",
+            0.0438
+          ],
+          [
+            "Output \" ant\"",
+            0.0341
+          ],
+          [
+            "Output \" update\"",
+            0.0242
+          ],
+          [
+            "Output \" immediate\"",
+            0.0185
+          ],
+          [
+            "Output \" air\"",
+            0.0166
+          ],
+          [
+            "Output \" office\"",
+            0.0159
+          ],
+          [
+            "Output \" excuse\"",
+            0.0147
+          ],
+          [
+            "Output \" injection\"",
+            0.014
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "antibiotic": "antibiotic. I",
+          "ant": "antiviral",
+          "anti": "anti-viral",
+          "extra": "extra day off"
+        },
+        "patient": {
+          "antibiotic": "antibiotic. I",
+          "extra": "extra dose of",
+          "anti": "anti-virus",
+          "ant": "antihist"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 55,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My partner's been complaining about dyspareunia during sex, so we should probably get her",
+        "patient": "My partner's been complaining about soreness down there during sex, so we should probably get her"
+      },
+      "target_token": "Output \" evaluated\"",
+      "probabilities": {
+        "clinical": 0.0076,
+        "patient": 0.0019
+      },
+      "language_penalty": -0.0057,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" checked\"",
+            0.3953
+          ],
+          [
+            "Output \" a\"",
+            0.1454
+          ],
+          [
+            "Output \" to\"",
+            0.1168
+          ],
+          [
+            "Output \" some\"",
+            0.0778
+          ],
+          [
+            "Output \" in\"",
+            0.0458
+          ],
+          [
+            "Output \" on\"",
+            0.0295
+          ],
+          [
+            "Output \" the\"",
+            0.022
+          ],
+          [
+            "Output \" an\"",
+            0.0185
+          ],
+          [
+            "Output \" something\"",
+            0.0144
+          ],
+          [
+            "Output \" into\"",
+            0.0123
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" checked\"",
+            0.4882
+          ],
+          [
+            "Output \" a\"",
+            0.1443
+          ],
+          [
+            "Output \" to\"",
+            0.1196
+          ],
+          [
+            "Output \" some\"",
+            0.0433
+          ],
+          [
+            "Output \" in\"",
+            0.0275
+          ],
+          [
+            "Output \" the\"",
+            0.0205
+          ],
+          [
+            "Output \" on\"",
+            0.0189
+          ],
+          [
+            "Output \" tested\"",
+            0.017
+          ],
+          [
+            "Output \" an\"",
+            0.0126
+          ],
+          [
+            "Output \" something\"",
+            0.0113
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "checked": "checked out.",
+          "a": "a new one",
+          "to": "to see a",
+          "some": "some lubricant"
+        },
+        "patient": {
+          "checked": "checked out.",
+          "a": "a vibrator.",
+          "to": "to the doctor",
+          "some": "some lubricant"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    }
+  ]
+}
