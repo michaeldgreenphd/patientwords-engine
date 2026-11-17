@@ -1,6 +1,7 @@
 """EXPLORATORY: formation-depth analytics from the committed J-lens readouts.
 
-Reads every jlens_summary.part_*.json under trace_out/*__jlens_<model>/ and
+Reads every jlens_summary.part_*.json under trace_out/*__jlens_<model>/
+(hand-authored exploratory agscen_ sets excepted, counted on stdout) and
 derives, per pair and side, where in depth the clinical answer forms and, on
 the patient side, where the eventual wrong answer locks in. Emits the site's
 technical-page payload: formation distributions, the capture-vs-hijack
@@ -18,6 +19,7 @@ from collections import defaultdict
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from publication_hold import is_exploratory_run_dir  # noqa: E402  (script-style module)
 from tierb_split import SealError, seal_config_error, sealed_pair  # noqa: E402  (script-style module)
 
 CREDIT = ("Jacobian lens: Gurnee et al., Transformer Circuits (2026); hosted by "
@@ -77,8 +79,12 @@ def lock_in_layer(layers):
     return lock
 
 
-def collect(trace_root: Path):
+def collect(trace_root: Path, skipped: list[str] | None = None):
     """{model: [pair rows]}, holdout_excluded across every landed lens summary.
+
+    A part in a hand-authored exploratory set (agscen_; is_exploratory_run_dir)
+    is never read: no analysis membership includes those sets. Its path is
+    appended to `skipped` when a list is given, so main can print the count.
 
     Amendment 1/3: confirmatory-holdout pairs never enter interim analyses or
     public data files. The seal is tierb_split.sealed_pair, stamp_rows' rule for
@@ -95,6 +101,12 @@ def collect(trace_root: Path):
     per_model = defaultdict(list)
     holdout_excluded = 0
     for part in sorted(trace_root.glob("*__jlens_*/jlens_summary.part_*.json")):
+        if is_exploratory_run_dir(part.parent.name):
+            # a hand-authored exploratory set (agscen_) is traced for inspection only: its pairs never
+            # passed the study's generator or Tier B split, so they stay out of the formation census
+            if skipped is not None:
+                skipped.append(str(part))
+            continue
         dataset = part.parent.name.split("__jlens_")[0]
         if (dataset.startswith(("txcorpus_", "drift_sentinel_"))
                 or dataset.endswith(("_txopus", "_txplacebo", "__context", "__lenspairs"))):
@@ -362,10 +374,14 @@ def main(argv=None):
                              "(defaults to <site>/data/simulated_scenarios.json)")
     args = parser.parse_args(argv)
 
+    skipped: list[str] = []
     try:
-        per_model, holdout_excluded = collect(Path(args.trace_root))
+        per_model, holdout_excluded = collect(Path(args.trace_root), skipped)
     except SealError as exc:
         return seal_config_error(exc)  # exit 2: the publish chain stops
+    if skipped:
+        print(f"jlens insights: {len(skipped)} exploratory-set part(s) not read "
+              "(scripts/results_policy.py)")
     if not per_model.get(args.base_model):
         # F-H08 (audit 1, 2026-07-17): a sparse checkout must never overwrite
         # the committed census (ops + site copies) with an empty one.
