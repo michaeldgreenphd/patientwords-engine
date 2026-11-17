@@ -1,0 +1,2645 @@
+{
+  "batch": {
+    "batch_id": "r10_reviewer_pilot8",
+    "families": 8,
+    "sha256": "92cffb6791da338bb8da97067973130d632f068fcc67da66ee94879e0961d410",
+    "source": "draft/antigravity-scenarios-20261107: 8 families of round10_20261112_rev1/families.json, drawn with seed 20261117, 2 per care level"
+  },
+  "comparisons_not_made": [
+    "Care tiers are not compared with each other: families at different tiers use different carrier phrases and target words, so their endpoints are probabilities of different tokens in different contexts.",
+    "Strata are not pooled: a register contrast, a patient-explanation contrast and a syntax crossing are different manipulations."
+  ],
+  "design": {
+    "file": "data/experiments/intake_design.v1.json",
+    "protocol": {
+      "file": "docs/protocols/instrument_register_experiment_20261111.md",
+      "manipulated_dimension": "register only",
+      "status": "draft, not signed"
+    },
+    "sha256": "bc93653f26ed69fcbc570e737b18c22fc993206218cf23f8b40a78ae2ba8ed8b",
+    "status": "draft, 2026-11-13: the items listed under decisions are as the owner decided on 2026-11-13; every other rule is proposed by the batch-intake change and not agreed. The owner agrees the rest by a commit that changes this line."
+  },
+  "eligibility_rules": {
+    "confirmatory": "A held-out family's register contrast can enter a confirmatory statement only when none of the blockers in confirmatory_blockers applies. The protocol draft names the signed protocol, the two reviews, the single manipulated dimension and the split made before measurement. The open-concern rule and the named stem are criteria this design adds and are not yet agreed. The owner's read is not a criterion (decisions, 2026-11-13): it is recorded, and inclusion rests on the two reviews.",
+    "confirmatory_blockers": {
+      "calibration_split": "the family is in discovery, which calibrates thresholds and is never part of a confirmatory statement",
+      "clinician_review_missing": "no clinician has recorded all six dimensions on this version of the family",
+      "domain_review_not_passed": "the rubric's status rule does not give 'reviewed': the clinician did not record 'same' on all six dimensions (a 'cannot_judge' is not 'same'), or a review is missing",
+      "exploratory_stratum": "the family has a flag (a dialect form, or a carrier with no earlier measurement), so its register contrast changes more than register",
+      "open_concern_on_register_pair": "an open concern applies to the family or to its register contrast. Added by this design",
+      "patient_language_review_missing": "no patient-language reviewer has recorded both items on this version of the family",
+      "protocol_not_signed": "the protocol's status does not begin with the word 'signed'",
+      "removed_by_review": "a reviewer recorded 'different' on an item",
+      "software_validation_failed": "the family has a structural error",
+      "split_timing_not_verified": "the stem has a run directory, so the command cannot verify that the split was recorded first",
+      "split_unassigned": "the family has no split",
+      "stem_not_named": "no stem was named, so the command has not looked for measurements. Added by this design"
+    },
+    "publication": "docs/open_results_policy.md: an intact result of a hand-authored family is shared under public-display/1 whatever its effect, with its evidence class and review status shown. Publication does not need the reviews; it needs the labels."
+  },
+  "endpoint": {
+    "definition": "the full-vocabulary probability of the first token of the family's declared target word at the position after the carrier phrase",
+    "is_not": [
+      "triage accuracy",
+      "the quality of an answer",
+      "evidence that a model understands a wording"
+    ],
+    "name": "first_token_probability",
+    "partial_when": "the target word is more than one token; the endpoint then reads its first token only and is labelled partial"
+  },
+  "estimated_work": {
+    "behavioural_pass_owner_kept": {
+      "measured": false,
+      "no_recorded_rate": [],
+      "pairs": 48,
+      "rates_label": "measured (slowest successful run per model; sample size not recorded)",
+      "rates_source": "scripts/backfill_planner.py SECONDS_PER_PAIR: the SLOWEST rate each model showed in its successful logits-eval runs on GitHub Actions up to 2026-10-09: the 'Measure next-token behavior' step's duration (model load included) over the pairs the run's trigger file asked for. Medians were about half these (gemma-3-4b-it 94, qwen3-1.7b 33, qwen3-4b 76, llama-3.2-3b 69, olmo-2-1b 37, gemma-2-2b-it 79 s/pair), so sizing on the slowest keeps a slow runner inside the timeout too"
+    },
+    "behavioural_pass_owner_kept_discovery": {
+      "measured": false,
+      "no_recorded_rate": [],
+      "pairs": 0,
+      "rates_label": "measured (slowest successful run per model; sample size not recorded)",
+      "rates_source": "scripts/backfill_planner.py SECONDS_PER_PAIR: the SLOWEST rate each model showed in its successful logits-eval runs on GitHub Actions up to 2026-10-09: the 'Measure next-token behavior' step's duration (model load included) over the pairs the run's trigger file asked for. Medians were about half these (gemma-3-4b-it 94, qwen3-1.7b 33, qwen3-4b 76, llama-3.2-3b 69, olmo-2-1b 37, gemma-2-2b-it 79 s/pair), so sizing on the slowest keeps a slow runner inside the timeout too"
+    },
+    "domain_review": {
+      "families_awaiting_clinician": 8,
+      "families_awaiting_patient_language": 8,
+      "minutes": "not_recorded",
+      "texts_to_read": 56
+    },
+    "mechanistic_subset": {
+      "families": 0,
+      "formula": "families * (1 + controls per site) * minutes per pair",
+      "measured": false,
+      "register_contrasts": 0,
+      "runner_minutes": {
+        "high": 0,
+        "low": 0
+      },
+      "sites_per_contrast_with_controls": 4,
+      "source": "documented estimate in .github/workflows/activation_patching.yml and docs/activation_patching_design.md for gemma-2-2b; no landed part records a duration"
+    },
+    "note": "Arithmetic on recorded rates and documented estimates. Nothing here is a measurement."
+  },
+  "families": [
+    {
+      "admissible": true,
+      "carrier_frame": "so I need to go to the",
+      "concerns": {
+        "closed": 0,
+        "note": "A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.",
+        "open": 1,
+        "records": [
+          {
+            "applies_to": [
+              "reg"
+            ],
+            "concern_id": "r10-01-c1",
+            "disposition": {
+              "note": "Changed by the author's second version (9a495c763): every everyday text now says 'numb left toes'. Open until a person confirms it.",
+              "status": "revised_pending_reread"
+            },
+            "family_changed_since_raised": true,
+            "kind": "fact_parity",
+            "raised_by": "Claude review session (a model's reading; not a clinician's or a patient-language reviewer's)",
+            "raised_by_kind": "model",
+            "raised_on": "2026-11-12",
+            "state": "open",
+            "text": "In the first version the everyday wording said 'numb toes' where the fact and the medical wording say the left toes."
+          }
+        ]
+      },
+      "contrasts": [
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday",
+          "bottom_sha256": "005a35e3926aaa669592eae4e37e624232bd6a828848c0161ab4412a350d7d9b",
+          "holds_constant": "the reference facts",
+          "id": "r10-01-reg",
+          "open_concerns": [
+            "r10-01-c1"
+          ],
+          "role": "contrast",
+          "stratum": "register",
+          "top": "medical",
+          "top_sha256": "d46fa8e5b9d629c97ecff0565712219bb0b3f88cb51a8c00e84594e1038b09d4",
+          "words": {
+            "bottom_stretch_words": 15,
+            "prefix_words": 9,
+            "suffix_words": 8,
+            "top_stretch_words": 13,
+            "word_edit_regions": 4
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "medical_paraphrase",
+          "bottom_sha256": "fb489097de9605afd1dbd3c16982393f829c7e57a3d6bb85752bf2df3453ae26",
+          "holds_constant": "the reference facts and the register",
+          "id": "r10-01-mpar",
+          "open_concerns": [],
+          "role": "paraphrase_control",
+          "stratum": "register",
+          "top": "medical",
+          "top_sha256": "d46fa8e5b9d629c97ecff0565712219bb0b3f88cb51a8c00e84594e1038b09d4",
+          "words": {
+            "bottom_stretch_words": 18,
+            "prefix_words": 4,
+            "suffix_words": 12,
+            "top_stretch_words": 14,
+            "word_edit_regions": 4
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday_paraphrase",
+          "bottom_sha256": "888e4a96634cf79197640e6ba1707ebacd410f8ff77f1bc2efae08730094d3c3",
+          "holds_constant": "the reference facts and the register",
+          "id": "r10-01-epar",
+          "open_concerns": [],
+          "role": "paraphrase_control",
+          "stratum": "register",
+          "top": "everyday",
+          "top_sha256": "005a35e3926aaa669592eae4e37e624232bd6a828848c0161ab4412a350d7d9b",
+          "words": {
+            "bottom_stretch_words": 22,
+            "prefix_words": 1,
+            "suffix_words": 13,
+            "top_stretch_words": 18,
+            "word_edit_regions": 3
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "changed_fact",
+          "bottom_sha256": "aaf41b90492926e8079e94bffe6c94d6f1045688e3909dbda4b8a99590dc4073",
+          "holds_constant": "the register and every reference fact but one",
+          "id": "r10-01-chg",
+          "open_concerns": [],
+          "role": "changed_fact_control",
+          "stratum": "register",
+          "top": "everyday",
+          "top_sha256": "005a35e3926aaa669592eae4e37e624232bd6a828848c0161ab4412a350d7d9b",
+          "words": {
+            "bottom_stretch_words": 3,
+            "prefix_words": 22,
+            "suffix_words": 8,
+            "top_stretch_words": 2,
+            "word_edit_regions": 2
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday_attribution",
+          "bottom_sha256": "58a3edd4266604259bf779ef46d3d66c1430193dfe93a85278d8355a8c87abc3",
+          "holds_constant": "the reference facts and the everyday wording; the bottom side adds the speaker's stated belief",
+          "id": "r10-01-attr",
+          "open_concerns": [],
+          "role": "contrast",
+          "stratum": "patient_explanation",
+          "top": "everyday",
+          "top_sha256": "005a35e3926aaa669592eae4e37e624232bd6a828848c0161ab4412a350d7d9b",
+          "words": {
+            "bottom_stretch_words": 7,
+            "prefix_words": 25,
+            "suffix_words": 7,
+            "top_stretch_words": 0,
+            "word_edit_regions": 1
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "quad_b",
+          "bottom_sha256": "ad57c11a07e1ce4864ad4280a4c3459a00f4a0c10000279f89870d4e1aec9c09",
+          "holds_constant": "the reference facts and the medical terms",
+          "id": "r10-01-qb",
+          "open_concerns": [],
+          "role": "contrast",
+          "stratum": "syntax_crossing",
+          "top": "medical",
+          "top_sha256": "d46fa8e5b9d629c97ecff0565712219bb0b3f88cb51a8c00e84594e1038b09d4",
+          "words": {
+            "bottom_stretch_words": 5,
+            "prefix_words": 9,
+            "suffix_words": 15,
+            "top_stretch_words": 6,
+            "word_edit_regions": 2
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "quad_c",
+          "bottom_sha256": "b8daf68b269ca45b8ef37bd7d5bb41727ffb5343de3361e8f5aa1ea0014162d8",
+          "holds_constant": "the reference facts and the medical sentence structure",
+          "id": "r10-01-qc",
+          "open_concerns": [],
+          "role": "contrast",
+          "stratum": "syntax_crossing",
+          "top": "medical",
+          "top_sha256": "d46fa8e5b9d629c97ecff0565712219bb0b3f88cb51a8c00e84594e1038b09d4",
+          "words": {
+            "bottom_stretch_words": 16,
+            "prefix_words": 10,
+            "suffix_words": 8,
+            "top_stretch_words": 12,
+            "word_edit_regions": 5
+          }
+        }
+      ],
+      "eligibility": {
+        "confirmatory": {
+          "applies_to": "the register pair of a held-out family. Discovery families calibrate thresholds and are not part of a confirmatory statement (calibration_split). A control with an open concern is listed in controls_with_open_concerns and does not block the pair. Without a named stem the command has not looked for measurements and reports no family as eligible. Once the batch has measurements this command cannot verify that a split was recorded first, so it reports no family as eligible: eligibility is read from a manifest written before measurement.",
+          "blocked_by": [
+            "protocol_not_signed",
+            "clinician_review_missing",
+            "patient_language_review_missing",
+            "domain_review_not_passed",
+            "split_unassigned",
+            "stem_not_named",
+            "open_concern_on_register_pair:r10-01-c1"
+          ],
+          "controls_with_open_concerns": {},
+          "eligible": false
+        },
+        "publication": {
+          "labels_required": [
+            "exploratory, hand-authored",
+            "review status: domain_review_pending"
+          ],
+          "membership": "public-display/1",
+          "shareable": true
+        }
+      },
+      "family_id": "r10-01",
+      "family_sha256": "07b8ad9076117b1987046557c877d4d7a2c860b4340be18491c6a39fcfc4babb",
+      "flags": [],
+      "register_stratum": "register",
+      "review": {
+        "clinician": {
+          "items": {
+            "clinical_facts": null,
+            "negation": null,
+            "severity": null,
+            "timing": null,
+            "uncertainty": null,
+            "urgency": null
+          },
+          "status": "not_reviewed"
+        },
+        "owner_read": {
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f",
+          "read_utc": "2026-11-13T23:54:55Z",
+          "reasons": [],
+          "status": "kept"
+        },
+        "patient_language_reviewer": {
+          "items": {
+            "plausible_patient_wording": null,
+            "same_meaning_to_a_lay_reader": null
+          },
+          "status": "not_reviewed"
+        },
+        "status": "domain_review_pending"
+      },
+      "review_basis_sha256": "6c2badbd2c264a7ef3f152ad721d4e470b08a5f8383e335bf3bb84d9d6253d05",
+      "right_care": 4,
+      "sources": {
+        "by_quote_type": {
+          "authors' summary": 2,
+          "none": 3
+        },
+        "expressions": 5,
+        "note": "Counts of what the author declared. This command does not open any source.",
+        "verification": {
+          "counts": {
+            "record_and_sentence_found": 2
+          },
+          "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
+          "per_citation": [
+            {
+              "expression": "low back pain",
+              "identifier": "PMID: 42597798; DOI: 10.13107/jocr.2026.v16.i08.7832",
+              "status": "record_and_sentence_found"
+            },
+            {
+              "expression": "numbness of my left toes",
+              "identifier": "PMID: 42991049; DOI: 10.3389/fsurg.2026.2004471",
+              "status": "record_and_sentence_found"
+            }
+          ]
+        },
+        "with_evidence_sentence": 2
+      },
+      "split": null,
+      "split_source": "unassigned",
+      "target": {
+        "endpoint_partial": "not_recorded",
+        "text": " ER",
+        "tokens": "not_recorded",
+        "words": 1
+      },
+      "texts_sha256": "76eecc9e4977a04b14e94b34536ecbca62e66f12bf17a94cb0bfe733ad599fbc",
+      "validation": {
+        "errors": [],
+        "warnings": []
+      },
+      "variants": {
+        "changed_fact": {
+          "sha256": "aaf41b90492926e8079e94bffe6c94d6f1045688e3909dbda4b8a99590dc4073",
+          "words": 33
+        },
+        "everyday": {
+          "sha256": "005a35e3926aaa669592eae4e37e624232bd6a828848c0161ab4412a350d7d9b",
+          "words": 32
+        },
+        "everyday_attribution": {
+          "sha256": "58a3edd4266604259bf779ef46d3d66c1430193dfe93a85278d8355a8c87abc3",
+          "words": 39
+        },
+        "everyday_paraphrase": {
+          "sha256": "888e4a96634cf79197640e6ba1707ebacd410f8ff77f1bc2efae08730094d3c3",
+          "words": 36
+        },
+        "medical": {
+          "sha256": "d46fa8e5b9d629c97ecff0565712219bb0b3f88cb51a8c00e84594e1038b09d4",
+          "words": 30
+        },
+        "medical_paraphrase": {
+          "sha256": "fb489097de9605afd1dbd3c16982393f829c7e57a3d6bb85752bf2df3453ae26",
+          "words": 34
+        },
+        "quad_b": {
+          "sha256": "ad57c11a07e1ce4864ad4280a4c3459a00f4a0c10000279f89870d4e1aec9c09",
+          "words": 29
+        },
+        "quad_c": {
+          "sha256": "b8daf68b269ca45b8ef37bd7d5bb41727ffb5343de3361e8f5aa1ea0014162d8",
+          "words": 34
+        }
+      }
+    },
+    {
+      "admissible": true,
+      "carrier_frame": "so I need to go to the",
+      "concerns": {
+        "closed": 0,
+        "note": "A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.",
+        "open": 1,
+        "records": [
+          {
+            "applies_to": [
+              "chg"
+            ],
+            "concern_id": "r10-03-c1",
+            "disposition": {
+              "note": "Left pending clinical review at the owner's instruction of 2026-11-12. It does not invalidate the register pair.",
+              "status": "pending_clinical_review"
+            },
+            "family_changed_since_raised": false,
+            "kind": "control_level_disputed",
+            "raised_by": "Claude review session (a model's reading; not a clinician's or a patient-language reviewer's)",
+            "raised_by_kind": "model",
+            "raised_on": "2026-11-12",
+            "state": "open",
+            "text": "The control (age 68, 3 days of spreading hot red calf swelling, 39 C fever, no fainting) is labelled a general doctor; that is arguably still urgent."
+          }
+        ]
+      },
+      "contrasts": [
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday",
+          "bottom_sha256": "2061e335dac0215c7d6a169c6a6e749f819b821f26ecff001de8ba005e1f8065",
+          "holds_constant": "the reference facts",
+          "id": "r10-03-reg",
+          "open_concerns": [],
+          "role": "contrast",
+          "stratum": "register_with_dialect",
+          "top": "medical",
+          "top_sha256": "a7549a7f38208fa2a1674dca20f3c4b2343489044e92fe99e26be2accc2f0fea",
+          "words": {
+            "bottom_stretch_words": 15,
+            "prefix_words": 7,
+            "suffix_words": 9,
+            "top_stretch_words": 17,
+            "word_edit_regions": 3
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "medical_paraphrase",
+          "bottom_sha256": "8d1ea032e452d2d880d2132170f31f5da7869b843455727e1ba007855edc092c",
+          "holds_constant": "the reference facts and the register",
+          "id": "r10-03-mpar",
+          "open_concerns": [],
+          "role": "paraphrase_control",
+          "stratum": "register_with_dialect",
+          "top": "medical",
+          "top_sha256": "a7549a7f38208fa2a1674dca20f3c4b2343489044e92fe99e26be2accc2f0fea",
+          "words": {
+            "bottom_stretch_words": 22,
+            "prefix_words": 3,
+            "suffix_words": 9,
+            "top_stretch_words": 21,
+            "word_edit_regions": 7
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday_paraphrase",
+          "bottom_sha256": "141fbd77c93dbf45619f07eb21dc6e31c02dc26d03a6716d4d01c0dfba48e0a9",
+          "holds_constant": "the reference facts and the register",
+          "id": "r10-03-epar",
+          "open_concerns": [],
+          "role": "paraphrase_control",
+          "stratum": "register_with_dialect",
+          "top": "everyday",
+          "top_sha256": "2061e335dac0215c7d6a169c6a6e749f819b821f26ecff001de8ba005e1f8065",
+          "words": {
+            "bottom_stretch_words": 21,
+            "prefix_words": 3,
+            "suffix_words": 10,
+            "top_stretch_words": 18,
+            "word_edit_regions": 5
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "changed_fact",
+          "bottom_sha256": "0adf55f7ada7fc1227a2f774869dc84bb34f5c2f05c1889ee2e1b873504750ff",
+          "holds_constant": "the register and every reference fact but one",
+          "id": "r10-03-chg",
+          "open_concerns": [
+            "r10-03-c1"
+          ],
+          "role": "changed_fact_control",
+          "stratum": "register_with_dialect",
+          "top": "everyday",
+          "top_sha256": "2061e335dac0215c7d6a169c6a6e749f819b821f26ecff001de8ba005e1f8065",
+          "words": {
+            "bottom_stretch_words": 3,
+            "prefix_words": 18,
+            "suffix_words": 9,
+            "top_stretch_words": 4,
+            "word_edit_regions": 1
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday_attribution",
+          "bottom_sha256": "bff9536301bc9f3d479dc947e1556c4e6edf258f571feb24e7a4756148b49647",
+          "holds_constant": "the reference facts and the everyday wording; the bottom side adds the speaker's stated belief",
+          "id": "r10-03-attr",
+          "open_concerns": [],
+          "role": "contrast",
+          "stratum": "patient_explanation",
+          "top": "everyday",
+          "top_sha256": "2061e335dac0215c7d6a169c6a6e749f819b821f26ecff001de8ba005e1f8065",
+          "words": {
+            "bottom_stretch_words": 8,
+            "prefix_words": 24,
+            "suffix_words": 7,
+            "top_stretch_words": 0,
+            "word_edit_regions": 1
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "quad_b",
+          "bottom_sha256": "7fe6ee531e65de99cf37cea86c3da5e1014bd301b2c9b2392643e3b3b39c371c",
+          "holds_constant": "the reference facts and the medical terms",
+          "id": "r10-03-qb",
+          "open_concerns": [],
+          "role": "contrast",
+          "stratum": "syntax_crossing",
+          "top": "medical",
+          "top_sha256": "a7549a7f38208fa2a1674dca20f3c4b2343489044e92fe99e26be2accc2f0fea",
+          "words": {
+            "bottom_stretch_words": 7,
+            "prefix_words": 14,
+            "suffix_words": 11,
+            "top_stretch_words": 8,
+            "word_edit_regions": 2
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "quad_c",
+          "bottom_sha256": "229f498710da48fe53b33e366aa18a3cbb1a57052ded3e5c8040ad8f70fc35c2",
+          "holds_constant": "the reference facts and the medical sentence structure",
+          "id": "r10-03-qc",
+          "open_concerns": [],
+          "role": "contrast",
+          "stratum": "syntax_crossing",
+          "top": "medical",
+          "top_sha256": "a7549a7f38208fa2a1674dca20f3c4b2343489044e92fe99e26be2accc2f0fea",
+          "words": {
+            "bottom_stretch_words": 16,
+            "prefix_words": 7,
+            "suffix_words": 9,
+            "top_stretch_words": 17,
+            "word_edit_regions": 3
+          }
+        }
+      ],
+      "eligibility": {
+        "confirmatory": {
+          "applies_to": "the register pair of a held-out family. Discovery families calibrate thresholds and are not part of a confirmatory statement (calibration_split). A control with an open concern is listed in controls_with_open_concerns and does not block the pair. Without a named stem the command has not looked for measurements and reports no family as eligible. Once the batch has measurements this command cannot verify that a split was recorded first, so it reports no family as eligible: eligibility is read from a manifest written before measurement.",
+          "blocked_by": [
+            "protocol_not_signed",
+            "clinician_review_missing",
+            "patient_language_review_missing",
+            "domain_review_not_passed",
+            "exploratory_stratum:register_with_dialect",
+            "split_unassigned",
+            "stem_not_named"
+          ],
+          "controls_with_open_concerns": {
+            "r10-03-chg": [
+              "r10-03-c1"
+            ]
+          },
+          "eligible": false
+        },
+        "publication": {
+          "labels_required": [
+            "exploratory, hand-authored",
+            "review status: domain_review_pending"
+          ],
+          "membership": "public-display/1",
+          "shareable": true
+        }
+      },
+      "family_id": "r10-03",
+      "family_sha256": "50fe2e8c241d6c1a8fc2281f89d05f17e03d8a06712750a2122d61a27337a937",
+      "flags": [
+        "dialect"
+      ],
+      "register_stratum": "register_with_dialect",
+      "review": {
+        "clinician": {
+          "items": {
+            "clinical_facts": null,
+            "negation": null,
+            "severity": null,
+            "timing": null,
+            "uncertainty": null,
+            "urgency": null
+          },
+          "status": "not_reviewed"
+        },
+        "owner_read": {
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f",
+          "read_utc": "2026-11-13T23:54:55Z",
+          "reasons": [],
+          "status": "kept"
+        },
+        "patient_language_reviewer": {
+          "items": {
+            "plausible_patient_wording": null,
+            "same_meaning_to_a_lay_reader": null
+          },
+          "status": "not_reviewed"
+        },
+        "status": "domain_review_pending"
+      },
+      "review_basis_sha256": "2a793d2f3b27583b89210eb838519e3df12813998e5fbce96019563813153d67",
+      "right_care": 4,
+      "sources": {
+        "by_quote_type": {
+          "authors' summary": 1,
+          "dictionary definition": 1,
+          "none": 1
+        },
+        "expressions": 3,
+        "note": "Counts of what the author declared. This command does not open any source.",
+        "verification": {
+          "counts": {
+            "not_checked": 1,
+            "record_and_sentence_found": 1
+          },
+          "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
+          "per_citation": [
+            {
+              "expression": "fell out",
+              "identifier": "https://en.wiktionary.org/wiki/fall_out",
+              "status": "not_checked"
+            },
+            {
+              "expression": "falling out",
+              "identifier": "PMID: 35370146; DOI: 10.1353/bhm.2022.0003",
+              "status": "record_and_sentence_found"
+            }
+          ]
+        },
+        "with_evidence_sentence": 2
+      },
+      "split": null,
+      "split_source": "unassigned",
+      "target": {
+        "endpoint_partial": "not_recorded",
+        "text": " hospital",
+        "tokens": "not_recorded",
+        "words": 1
+      },
+      "texts_sha256": "b8c8a99d8edb54b06f51d12cea8e5f9959c55dcf43f4d386803c6c9fe9643961",
+      "validation": {
+        "errors": [],
+        "warnings": []
+      },
+      "variants": {
+        "changed_fact": {
+          "sha256": "0adf55f7ada7fc1227a2f774869dc84bb34f5c2f05c1889ee2e1b873504750ff",
+          "words": 30
+        },
+        "everyday": {
+          "sha256": "2061e335dac0215c7d6a169c6a6e749f819b821f26ecff001de8ba005e1f8065",
+          "words": 31
+        },
+        "everyday_attribution": {
+          "sha256": "bff9536301bc9f3d479dc947e1556c4e6edf258f571feb24e7a4756148b49647",
+          "words": 39
+        },
+        "everyday_paraphrase": {
+          "sha256": "141fbd77c93dbf45619f07eb21dc6e31c02dc26d03a6716d4d01c0dfba48e0a9",
+          "words": 34
+        },
+        "medical": {
+          "sha256": "a7549a7f38208fa2a1674dca20f3c4b2343489044e92fe99e26be2accc2f0fea",
+          "words": 33
+        },
+        "medical_paraphrase": {
+          "sha256": "8d1ea032e452d2d880d2132170f31f5da7869b843455727e1ba007855edc092c",
+          "words": 34
+        },
+        "quad_b": {
+          "sha256": "7fe6ee531e65de99cf37cea86c3da5e1014bd301b2c9b2392643e3b3b39c371c",
+          "words": 32
+        },
+        "quad_c": {
+          "sha256": "229f498710da48fe53b33e366aa18a3cbb1a57052ded3e5c8040ad8f70fc35c2",
+          "words": 32
+        }
+      }
+    },
+    {
+      "admissible": true,
+      "carrier_frame": "so I should see a",
+      "concerns": {
+        "closed": 0,
+        "note": "A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.",
+        "open": 2,
+        "records": [
+          {
+            "applies_to": [
+              "reg"
+            ],
+            "concern_id": "r10-10-c1",
+            "disposition": {
+              "note": "Retained at the owner's instruction of 2026-11-12: the negative carries information and is not deleted. Whether a patient would say it is for the patient-language reviewer.",
+              "status": "pending_patient_language_review"
+            },
+            "family_changed_since_raised": true,
+            "kind": "stated_negative",
+            "raised_by": "Claude review session (a model's reading; not a clinician's or a patient-language reviewer's)",
+            "raised_by_kind": "model",
+            "raised_on": "2026-11-12",
+            "state": "open",
+            "text": "The texts state a negative ('without raw skin sloughing today') that a patient would rarely volunteer. It is kept: it is the fact the control changes. Reviewer's reading of how plausible it is in a patient's mouth: unlikely."
+          },
+          {
+            "applies_to": [
+              "chg"
+            ],
+            "concern_id": "r10-10-c2",
+            "disposition": {
+              "note": "Not revised.",
+              "status": "pending_clinical_review"
+            },
+            "family_changed_since_raised": true,
+            "kind": "control_adds_fact",
+            "raised_by": "Claude review session (a model's reading; not a clinician's or a patient-language reviewer's)",
+            "raised_by_kind": "model",
+            "raised_on": "2026-11-12",
+            "state": "open",
+            "text": "The control changes fact f3 and gives the sloughing a place ('across my chest') that the fact does not name."
+          }
+        ]
+      },
+      "contrasts": [
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday",
+          "bottom_sha256": "c7755867aa9a798635589fcb8e8ba1ef32a1721bfa4c8162d8d224d071ca4c5d",
+          "holds_constant": "the reference facts",
+          "id": "r10-10-reg",
+          "open_concerns": [
+            "r10-10-c1"
+          ],
+          "role": "contrast",
+          "stratum": "register",
+          "top": "medical",
+          "top_sha256": "7341e1c627beca5a7922a2b160f063f3ba0e03da9516f02c49b163c9e0fcbbee",
+          "words": {
+            "bottom_stretch_words": 19,
+            "prefix_words": 6,
+            "suffix_words": 6,
+            "top_stretch_words": 19,
+            "word_edit_regions": 4
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "medical_paraphrase",
+          "bottom_sha256": "3bf0e6fb5309b790e51511817c04905f6da86e68f077b7a755610809b0fcfb99",
+          "holds_constant": "the reference facts and the register",
+          "id": "r10-10-mpar",
+          "open_concerns": [],
+          "role": "paraphrase_control",
+          "stratum": "register",
+          "top": "medical",
+          "top_sha256": "7341e1c627beca5a7922a2b160f063f3ba0e03da9516f02c49b163c9e0fcbbee",
+          "words": {
+            "bottom_stretch_words": 22,
+            "prefix_words": 1,
+            "suffix_words": 6,
+            "top_stretch_words": 24,
+            "word_edit_regions": 9
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday_paraphrase",
+          "bottom_sha256": "bb6a5111c9a39dd5063576015574eae7a4e7aecf9cba46f0c9dc26b257c55076",
+          "holds_constant": "the reference facts and the register",
+          "id": "r10-10-epar",
+          "open_concerns": [],
+          "role": "paraphrase_control",
+          "stratum": "register",
+          "top": "everyday",
+          "top_sha256": "c7755867aa9a798635589fcb8e8ba1ef32a1721bfa4c8162d8d224d071ca4c5d",
+          "words": {
+            "bottom_stretch_words": 21,
+            "prefix_words": 1,
+            "suffix_words": 10,
+            "top_stretch_words": 20,
+            "word_edit_regions": 7
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "changed_fact",
+          "bottom_sha256": "d9bbb61d027c8f658196eee6078a669c4367cef1aaa2374b3a54c6cdf4be33ee",
+          "holds_constant": "the register and every reference fact but one",
+          "id": "r10-10-chg",
+          "open_concerns": [
+            "r10-10-c2"
+          ],
+          "role": "changed_fact_control",
+          "stratum": "register",
+          "top": "everyday",
+          "top_sha256": "c7755867aa9a798635589fcb8e8ba1ef32a1721bfa4c8162d8d224d071ca4c5d",
+          "words": {
+            "bottom_stretch_words": 7,
+            "prefix_words": 21,
+            "suffix_words": 6,
+            "top_stretch_words": 4,
+            "word_edit_regions": 2
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday_attribution",
+          "bottom_sha256": "38397135747fae15244e0d943a85ccc4cfcbc802e974d5d8b81e43798e89c445",
+          "holds_constant": "the reference facts and the everyday wording; the bottom side adds the speaker's stated belief",
+          "id": "r10-10-attr",
+          "open_concerns": [],
+          "role": "contrast",
+          "stratum": "patient_explanation",
+          "top": "everyday",
+          "top_sha256": "c7755867aa9a798635589fcb8e8ba1ef32a1721bfa4c8162d8d224d071ca4c5d",
+          "words": {
+            "bottom_stretch_words": 7,
+            "prefix_words": 26,
+            "suffix_words": 5,
+            "top_stretch_words": 0,
+            "word_edit_regions": 1
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "quad_b",
+          "bottom_sha256": "1c258f99d5fcc9ff9c5b29ffdea4fe9615299b914ca1ca34876d7785ca1edaec",
+          "holds_constant": "the reference facts and the medical terms",
+          "id": "r10-10-qb",
+          "open_concerns": [],
+          "role": "contrast",
+          "stratum": "syntax_crossing",
+          "top": "medical",
+          "top_sha256": "7341e1c627beca5a7922a2b160f063f3ba0e03da9516f02c49b163c9e0fcbbee",
+          "words": {
+            "bottom_stretch_words": 2,
+            "prefix_words": 17,
+            "suffix_words": 12,
+            "top_stretch_words": 2,
+            "word_edit_regions": 1
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "quad_c",
+          "bottom_sha256": "0fe1ad76cc07e7e600a63b778808f630e34d21822be9e37078316620191bb9d4",
+          "holds_constant": "the reference facts and the medical sentence structure",
+          "id": "r10-10-qc",
+          "open_concerns": [],
+          "role": "contrast",
+          "stratum": "syntax_crossing",
+          "top": "medical",
+          "top_sha256": "7341e1c627beca5a7922a2b160f063f3ba0e03da9516f02c49b163c9e0fcbbee",
+          "words": {
+            "bottom_stretch_words": 19,
+            "prefix_words": 6,
+            "suffix_words": 6,
+            "top_stretch_words": 19,
+            "word_edit_regions": 4
+          }
+        }
+      ],
+      "eligibility": {
+        "confirmatory": {
+          "applies_to": "the register pair of a held-out family. Discovery families calibrate thresholds and are not part of a confirmatory statement (calibration_split). A control with an open concern is listed in controls_with_open_concerns and does not block the pair. Without a named stem the command has not looked for measurements and reports no family as eligible. Once the batch has measurements this command cannot verify that a split was recorded first, so it reports no family as eligible: eligibility is read from a manifest written before measurement.",
+          "blocked_by": [
+            "protocol_not_signed",
+            "clinician_review_missing",
+            "patient_language_review_missing",
+            "domain_review_not_passed",
+            "split_unassigned",
+            "stem_not_named",
+            "open_concern_on_register_pair:r10-10-c1"
+          ],
+          "controls_with_open_concerns": {
+            "r10-10-chg": [
+              "r10-10-c2"
+            ]
+          },
+          "eligible": false
+        },
+        "publication": {
+          "labels_required": [
+            "exploratory, hand-authored",
+            "review status: domain_review_pending"
+          ],
+          "membership": "public-display/1",
+          "shareable": true
+        }
+      },
+      "family_id": "r10-10",
+      "family_sha256": "b0e96b3e8b1ff74d0a60b2741c245512d0380e9f5f62c7a0b5eef2f346177595",
+      "flags": [],
+      "register_stratum": "register",
+      "review": {
+        "clinician": {
+          "items": {
+            "clinical_facts": null,
+            "negation": null,
+            "severity": null,
+            "timing": null,
+            "uncertainty": null,
+            "urgency": null
+          },
+          "status": "not_reviewed"
+        },
+        "owner_read": {
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f",
+          "read_utc": "2026-11-13T23:54:55Z",
+          "reasons": [],
+          "status": "kept"
+        },
+        "patient_language_reviewer": {
+          "items": {
+            "plausible_patient_wording": null,
+            "same_meaning_to_a_lay_reader": null
+          },
+          "status": "not_reviewed"
+        },
+        "status": "domain_review_pending"
+      },
+      "review_basis_sha256": "6c2f3d910ff9db3b79c826339d637d6de343adb73dcf14cfc0c0242f2242e271",
+      "right_care": 3,
+      "sources": {
+        "by_quote_type": {
+          "authors' summary": 3,
+          "none": 2
+        },
+        "expressions": 5,
+        "note": "Counts of what the author declared. This command does not open any source.",
+        "verification": {
+          "counts": {
+            "record_and_sentence_found": 3
+          },
+          "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
+          "per_citation": [
+            {
+              "expression": "red patches",
+              "identifier": "PMID: 41544022; DOI: 10.1371/journal.pone.0329066",
+              "status": "record_and_sentence_found"
+            },
+            {
+              "expression": "silvery scales",
+              "identifier": "PMID: 41544022; DOI: 10.1371/journal.pone.0329066",
+              "status": "record_and_sentence_found"
+            },
+            {
+              "expression": "shedding flakes",
+              "identifier": "PMID: 41544022; DOI: 10.1371/journal.pone.0329066",
+              "status": "record_and_sentence_found"
+            }
+          ]
+        },
+        "with_evidence_sentence": 3
+      },
+      "split": null,
+      "split_source": "unassigned",
+      "target": {
+        "endpoint_partial": "not_recorded",
+        "text": " dermatologist",
+        "tokens": "not_recorded",
+        "words": 1
+      },
+      "texts_sha256": "fb1e3c00bc39df0242c8354154d71648b27f19c5d072aefe9cc083edcbab873b",
+      "validation": {
+        "errors": [],
+        "warnings": []
+      },
+      "variants": {
+        "changed_fact": {
+          "sha256": "d9bbb61d027c8f658196eee6078a669c4367cef1aaa2374b3a54c6cdf4be33ee",
+          "words": 34
+        },
+        "everyday": {
+          "sha256": "c7755867aa9a798635589fcb8e8ba1ef32a1721bfa4c8162d8d224d071ca4c5d",
+          "words": 31
+        },
+        "everyday_attribution": {
+          "sha256": "38397135747fae15244e0d943a85ccc4cfcbc802e974d5d8b81e43798e89c445",
+          "words": 38
+        },
+        "everyday_paraphrase": {
+          "sha256": "bb6a5111c9a39dd5063576015574eae7a4e7aecf9cba46f0c9dc26b257c55076",
+          "words": 32
+        },
+        "medical": {
+          "sha256": "7341e1c627beca5a7922a2b160f063f3ba0e03da9516f02c49b163c9e0fcbbee",
+          "words": 31
+        },
+        "medical_paraphrase": {
+          "sha256": "3bf0e6fb5309b790e51511817c04905f6da86e68f077b7a755610809b0fcfb99",
+          "words": 29
+        },
+        "quad_b": {
+          "sha256": "1c258f99d5fcc9ff9c5b29ffdea4fe9615299b914ca1ca34876d7785ca1edaec",
+          "words": 31
+        },
+        "quad_c": {
+          "sha256": "0fe1ad76cc07e7e600a63b778808f630e34d21822be9e37078316620191bb9d4",
+          "words": 31
+        }
+      }
+    },
+    {
+      "admissible": true,
+      "carrier_frame": "so I should see a",
+      "concerns": {
+        "closed": 0,
+        "note": "A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.",
+        "open": 1,
+        "records": [
+          {
+            "applies_to": [
+              "reg"
+            ],
+            "concern_id": "r10-14-c1",
+            "disposition": {
+              "note": "Retained at the owner's instruction of 2026-11-12: the negative carries information and is not deleted. Whether a patient would say it is for the patient-language reviewer.",
+              "status": "pending_patient_language_review"
+            },
+            "family_changed_since_raised": false,
+            "kind": "stated_negative",
+            "raised_by": "Claude review session (a model's reading; not a clinician's or a patient-language reviewer's)",
+            "raised_by_kind": "model",
+            "raised_on": "2026-11-12",
+            "state": "open",
+            "text": "The texts state a negative ('without fainting today') that a patient would rarely volunteer. It is kept: it is the fact the control changes. Reviewer's reading of how plausible it is in a patient's mouth: possible."
+          }
+        ]
+      },
+      "contrasts": [
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday",
+          "bottom_sha256": "1316bca6174a1672ad103b3865883e2f9ef424a16f2b787a4be3badb53490141",
+          "holds_constant": "the reference facts",
+          "id": "r10-14-reg",
+          "open_concerns": [
+            "r10-14-c1"
+          ],
+          "role": "contrast",
+          "stratum": "register",
+          "top": "medical",
+          "top_sha256": "e5c72c05b3efdd38af66d31bc88ed5db057ed493f9cf01b224207cf932540ba5",
+          "words": {
+            "bottom_stretch_words": 15,
+            "prefix_words": 6,
+            "suffix_words": 6,
+            "top_stretch_words": 15,
+            "word_edit_regions": 5
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "medical_paraphrase",
+          "bottom_sha256": "dfd68de24bf97c5850e59117e5ab4a60a00c2b9e9be9b9a277fd0e3710d25b2d",
+          "holds_constant": "the reference facts and the register",
+          "id": "r10-14-mpar",
+          "open_concerns": [],
+          "role": "paraphrase_control",
+          "stratum": "register",
+          "top": "medical",
+          "top_sha256": "e5c72c05b3efdd38af66d31bc88ed5db057ed493f9cf01b224207cf932540ba5",
+          "words": {
+            "bottom_stretch_words": 18,
+            "prefix_words": 1,
+            "suffix_words": 7,
+            "top_stretch_words": 19,
+            "word_edit_regions": 7
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday_paraphrase",
+          "bottom_sha256": "2fc5776e2287a0524f5d63508915decaadce1b84eab9296192538bca05caa049",
+          "holds_constant": "the reference facts and the register",
+          "id": "r10-14-epar",
+          "open_concerns": [],
+          "role": "paraphrase_control",
+          "stratum": "register",
+          "top": "everyday",
+          "top_sha256": "1316bca6174a1672ad103b3865883e2f9ef424a16f2b787a4be3badb53490141",
+          "words": {
+            "bottom_stretch_words": 16,
+            "prefix_words": 1,
+            "suffix_words": 10,
+            "top_stretch_words": 16,
+            "word_edit_regions": 6
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "changed_fact",
+          "bottom_sha256": "052242f0031c0a2361d404f888dd98e5eb9e97cc3f15d8bc1a270fece668bb29",
+          "holds_constant": "the register and every reference fact but one",
+          "id": "r10-14-chg",
+          "open_concerns": [],
+          "role": "changed_fact_control",
+          "stratum": "register",
+          "top": "everyday",
+          "top_sha256": "1316bca6174a1672ad103b3865883e2f9ef424a16f2b787a4be3badb53490141",
+          "words": {
+            "bottom_stretch_words": 4,
+            "prefix_words": 19,
+            "suffix_words": 6,
+            "top_stretch_words": 2,
+            "word_edit_regions": 1
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday_attribution",
+          "bottom_sha256": "cc522554c9d37e53a52b50fd5b6a9c02e881720faa70786702a42edfacec5abe",
+          "holds_constant": "the reference facts and the everyday wording; the bottom side adds the speaker's stated belief",
+          "id": "r10-14-attr",
+          "open_concerns": [],
+          "role": "contrast",
+          "stratum": "patient_explanation",
+          "top": "everyday",
+          "top_sha256": "1316bca6174a1672ad103b3865883e2f9ef424a16f2b787a4be3badb53490141",
+          "words": {
+            "bottom_stretch_words": 9,
+            "prefix_words": 22,
+            "suffix_words": 5,
+            "top_stretch_words": 0,
+            "word_edit_regions": 1
+          }
+        }
+      ],
+      "eligibility": {
+        "confirmatory": {
+          "applies_to": "the register pair of a held-out family. Discovery families calibrate thresholds and are not part of a confirmatory statement (calibration_split). A control with an open concern is listed in controls_with_open_concerns and does not block the pair. Without a named stem the command has not looked for measurements and reports no family as eligible. Once the batch has measurements this command cannot verify that a split was recorded first, so it reports no family as eligible: eligibility is read from a manifest written before measurement.",
+          "blocked_by": [
+            "protocol_not_signed",
+            "clinician_review_missing",
+            "patient_language_review_missing",
+            "domain_review_not_passed",
+            "split_unassigned",
+            "stem_not_named",
+            "open_concern_on_register_pair:r10-14-c1"
+          ],
+          "controls_with_open_concerns": {},
+          "eligible": false
+        },
+        "publication": {
+          "labels_required": [
+            "exploratory, hand-authored",
+            "review status: domain_review_pending"
+          ],
+          "membership": "public-display/1",
+          "shareable": true
+        }
+      },
+      "family_id": "r10-14",
+      "family_sha256": "c6bbaf4d89c6bb4fadb63c7c08d90d01437282cba6acfaf178d34925d7c1c49d",
+      "flags": [],
+      "register_stratum": "register",
+      "review": {
+        "clinician": {
+          "items": {
+            "clinical_facts": null,
+            "negation": null,
+            "severity": null,
+            "timing": null,
+            "uncertainty": null,
+            "urgency": null
+          },
+          "status": "not_reviewed"
+        },
+        "owner_read": {
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f",
+          "read_utc": "2026-11-13T23:54:55Z",
+          "reasons": [],
+          "status": "kept"
+        },
+        "patient_language_reviewer": {
+          "items": {
+            "plausible_patient_wording": null,
+            "same_meaning_to_a_lay_reader": null
+          },
+          "status": "not_reviewed"
+        },
+        "status": "domain_review_pending"
+      },
+      "review_basis_sha256": "9284dbd6d5b3e90dd65a360b6415c05ad185eab34a1d97bf818c4fe7a81c7cec",
+      "right_care": 3,
+      "sources": {
+        "by_quote_type": {
+          "direct patient quote": 1,
+          "none": 2
+        },
+        "expressions": 3,
+        "note": "Counts of what the author declared. This command does not open any source.",
+        "verification": {
+          "counts": {
+            "record_and_sentence_found": 2
+          },
+          "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
+          "per_citation": [
+            {
+              "expression": "heavy periods",
+              "identifier": "PMID: 42324234; DOI: 10.1111/1471-0528.70290",
+              "status": "record_and_sentence_found"
+            },
+            {
+              "expression": "and I think heavy periods are normal for me",
+              "identifier": "PMID: 42971550; DOI: 10.1503/cmaj.252102",
+              "status": "record_and_sentence_found"
+            }
+          ]
+        },
+        "with_evidence_sentence": 1
+      },
+      "split": null,
+      "split_source": "unassigned",
+      "target": {
+        "endpoint_partial": "not_recorded",
+        "text": " specialist",
+        "tokens": "not_recorded",
+        "words": 1
+      },
+      "texts_sha256": "e5a8887e6a6173f5f3cd90d8aed67ebb807dc48ed3dc5a8f19d0942badf8317e",
+      "validation": {
+        "errors": [],
+        "warnings": []
+      },
+      "variants": {
+        "changed_fact": {
+          "sha256": "052242f0031c0a2361d404f888dd98e5eb9e97cc3f15d8bc1a270fece668bb29",
+          "words": 29
+        },
+        "everyday": {
+          "sha256": "1316bca6174a1672ad103b3865883e2f9ef424a16f2b787a4be3badb53490141",
+          "words": 27
+        },
+        "everyday_attribution": {
+          "sha256": "cc522554c9d37e53a52b50fd5b6a9c02e881720faa70786702a42edfacec5abe",
+          "words": 36
+        },
+        "everyday_paraphrase": {
+          "sha256": "2fc5776e2287a0524f5d63508915decaadce1b84eab9296192538bca05caa049",
+          "words": 27
+        },
+        "medical": {
+          "sha256": "e5c72c05b3efdd38af66d31bc88ed5db057ed493f9cf01b224207cf932540ba5",
+          "words": 27
+        },
+        "medical_paraphrase": {
+          "sha256": "dfd68de24bf97c5850e59117e5ab4a60a00c2b9e9be9b9a277fd0e3710d25b2d",
+          "words": 26
+        }
+      }
+    },
+    {
+      "admissible": true,
+      "carrier_frame": "so I should see a",
+      "concerns": {
+        "closed": 0,
+        "note": "A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.",
+        "open": 1,
+        "records": [
+          {
+            "applies_to": [
+              "reg"
+            ],
+            "concern_id": "r10-16-c1",
+            "disposition": {
+              "note": "Retained at the owner's instruction of 2026-11-12: the negative carries information and is not deleted. Whether a patient would say it is for the patient-language reviewer.",
+              "status": "pending_patient_language_review"
+            },
+            "family_changed_since_raised": true,
+            "kind": "stated_negative",
+            "raised_by": "Claude review session (a model's reading; not a clinician's or a patient-language reviewer's)",
+            "raised_by_kind": "model",
+            "raised_on": "2026-11-12",
+            "state": "open",
+            "text": "The texts state a negative ('while staying fully alert today') that a patient would rarely volunteer. It is kept: it is the fact the control changes. Reviewer's reading of how plausible it is in a patient's mouth: unlikely."
+          }
+        ]
+      },
+      "contrasts": [
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday",
+          "bottom_sha256": "9fb729e2bb2800e7280bf140fdae2a5812610508be4657ee139b144237e5b15a",
+          "holds_constant": "the reference facts",
+          "id": "r10-16-reg",
+          "open_concerns": [
+            "r10-16-c1"
+          ],
+          "role": "contrast",
+          "stratum": "register",
+          "top": "medical",
+          "top_sha256": "f2c85fa3fa4edb0d491a7c37b25b0cb0622509ca6970107ca113f0eca1d27ab6",
+          "words": {
+            "bottom_stretch_words": 22,
+            "prefix_words": 6,
+            "suffix_words": 6,
+            "top_stretch_words": 21,
+            "word_edit_regions": 5
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "medical_paraphrase",
+          "bottom_sha256": "47e2613392ecb0fa47c00d87aeb960150f7280fab9dacfd1cd3b6dc4d515d9da",
+          "holds_constant": "the reference facts and the register",
+          "id": "r10-16-mpar",
+          "open_concerns": [],
+          "role": "paraphrase_control",
+          "stratum": "register",
+          "top": "medical",
+          "top_sha256": "f2c85fa3fa4edb0d491a7c37b25b0cb0622509ca6970107ca113f0eca1d27ab6",
+          "words": {
+            "bottom_stretch_words": 25,
+            "prefix_words": 1,
+            "suffix_words": 6,
+            "top_stretch_words": 26,
+            "word_edit_regions": 4
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday_paraphrase",
+          "bottom_sha256": "374be137f4a525018b0034b59b90cb8d01301355c705612739897e625abdffca",
+          "holds_constant": "the reference facts and the register",
+          "id": "r10-16-epar",
+          "open_concerns": [],
+          "role": "paraphrase_control",
+          "stratum": "register",
+          "top": "everyday",
+          "top_sha256": "9fb729e2bb2800e7280bf140fdae2a5812610508be4657ee139b144237e5b15a",
+          "words": {
+            "bottom_stretch_words": 24,
+            "prefix_words": 1,
+            "suffix_words": 6,
+            "top_stretch_words": 27,
+            "word_edit_regions": 6
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "changed_fact",
+          "bottom_sha256": "4cd46628fca3e8708c8e6b1e3466ce74a6f65f1b0fdd2363e46e59ea6cc84157",
+          "holds_constant": "the register and every reference fact but one",
+          "id": "r10-16-chg",
+          "open_concerns": [],
+          "role": "changed_fact_control",
+          "stratum": "register",
+          "top": "everyday",
+          "top_sha256": "9fb729e2bb2800e7280bf140fdae2a5812610508be4657ee139b144237e5b15a",
+          "words": {
+            "bottom_stretch_words": 6,
+            "prefix_words": 24,
+            "suffix_words": 6,
+            "top_stretch_words": 4,
+            "word_edit_regions": 1
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "quad_b",
+          "bottom_sha256": "f46cbcde023dae4db56036ea8d865bfc70ba39f54ac456d448541c3a165a33c7",
+          "holds_constant": "the reference facts and the medical terms",
+          "id": "r10-16-qb",
+          "open_concerns": [],
+          "role": "contrast",
+          "stratum": "syntax_crossing",
+          "top": "medical",
+          "top_sha256": "f2c85fa3fa4edb0d491a7c37b25b0cb0622509ca6970107ca113f0eca1d27ab6",
+          "words": {
+            "bottom_stretch_words": 9,
+            "prefix_words": 17,
+            "suffix_words": 6,
+            "top_stretch_words": 10,
+            "word_edit_regions": 2
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "quad_c",
+          "bottom_sha256": "d472fe80864d2fd890fa06c0e24054a380c86ebbcf098ad86c6a5899a5f377a6",
+          "holds_constant": "the reference facts and the medical sentence structure",
+          "id": "r10-16-qc",
+          "open_concerns": [],
+          "role": "contrast",
+          "stratum": "syntax_crossing",
+          "top": "medical",
+          "top_sha256": "f2c85fa3fa4edb0d491a7c37b25b0cb0622509ca6970107ca113f0eca1d27ab6",
+          "words": {
+            "bottom_stretch_words": 21,
+            "prefix_words": 6,
+            "suffix_words": 7,
+            "top_stretch_words": 20,
+            "word_edit_regions": 6
+          }
+        }
+      ],
+      "eligibility": {
+        "confirmatory": {
+          "applies_to": "the register pair of a held-out family. Discovery families calibrate thresholds and are not part of a confirmatory statement (calibration_split). A control with an open concern is listed in controls_with_open_concerns and does not block the pair. Without a named stem the command has not looked for measurements and reports no family as eligible. Once the batch has measurements this command cannot verify that a split was recorded first, so it reports no family as eligible: eligibility is read from a manifest written before measurement.",
+          "blocked_by": [
+            "protocol_not_signed",
+            "clinician_review_missing",
+            "patient_language_review_missing",
+            "domain_review_not_passed",
+            "split_unassigned",
+            "stem_not_named",
+            "open_concern_on_register_pair:r10-16-c1"
+          ],
+          "controls_with_open_concerns": {},
+          "eligible": false
+        },
+        "publication": {
+          "labels_required": [
+            "exploratory, hand-authored",
+            "review status: domain_review_pending"
+          ],
+          "membership": "public-display/1",
+          "shareable": true
+        }
+      },
+      "family_id": "r10-16",
+      "family_sha256": "c76e3924af19f3ba84d0012cbddd27fd6a762a41ad44a5d3421729e4a03950ca",
+      "flags": [],
+      "register_stratum": "register",
+      "review": {
+        "clinician": {
+          "items": {
+            "clinical_facts": null,
+            "negation": null,
+            "severity": null,
+            "timing": null,
+            "uncertainty": null,
+            "urgency": null
+          },
+          "status": "not_reviewed"
+        },
+        "owner_read": {
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f",
+          "read_utc": "2026-11-13T23:54:55Z",
+          "reasons": [],
+          "status": "kept"
+        },
+        "patient_language_reviewer": {
+          "items": {
+            "plausible_patient_wording": null,
+            "same_meaning_to_a_lay_reader": null
+          },
+          "status": "not_reviewed"
+        },
+        "status": "domain_review_pending"
+      },
+      "review_basis_sha256": "a6516e7d59729965adef9da4ef70e566e6441a37e227e657a8c863f769070b34",
+      "right_care": 2,
+      "sources": {
+        "by_quote_type": {
+          "authors' summary": 3,
+          "none": 2
+        },
+        "expressions": 5,
+        "note": "Counts of what the author declared. This command does not open any source.",
+        "verification": {
+          "counts": {
+            "record_and_sentence_found": 3
+          },
+          "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
+          "per_citation": [
+            {
+              "expression": "weight gain",
+              "identifier": "PMID: 42800981; DOI: 10.7759/cureus.115269",
+              "status": "record_and_sentence_found"
+            },
+            {
+              "expression": "dry skin",
+              "identifier": "PMID: 42800981; DOI: 10.7759/cureus.115269",
+              "status": "record_and_sentence_found"
+            },
+            {
+              "expression": "constipation",
+              "identifier": "PMID: 42800981; DOI: 10.7759/cureus.115269",
+              "status": "record_and_sentence_found"
+            }
+          ]
+        },
+        "with_evidence_sentence": 3
+      },
+      "split": null,
+      "split_source": "unassigned",
+      "target": {
+        "endpoint_partial": "not_recorded",
+        "text": " doctor",
+        "tokens": "not_recorded",
+        "words": 1
+      },
+      "texts_sha256": "07f9291ff22f5a3ee73a7d0a9b24a09344ff6158d832bb814074e838a442bf59",
+      "validation": {
+        "errors": [],
+        "warnings": []
+      },
+      "variants": {
+        "changed_fact": {
+          "sha256": "4cd46628fca3e8708c8e6b1e3466ce74a6f65f1b0fdd2363e46e59ea6cc84157",
+          "words": 36
+        },
+        "everyday": {
+          "sha256": "9fb729e2bb2800e7280bf140fdae2a5812610508be4657ee139b144237e5b15a",
+          "words": 34
+        },
+        "everyday_paraphrase": {
+          "sha256": "374be137f4a525018b0034b59b90cb8d01301355c705612739897e625abdffca",
+          "words": 31
+        },
+        "medical": {
+          "sha256": "f2c85fa3fa4edb0d491a7c37b25b0cb0622509ca6970107ca113f0eca1d27ab6",
+          "words": 33
+        },
+        "medical_paraphrase": {
+          "sha256": "47e2613392ecb0fa47c00d87aeb960150f7280fab9dacfd1cd3b6dc4d515d9da",
+          "words": 32
+        },
+        "quad_b": {
+          "sha256": "f46cbcde023dae4db56036ea8d865bfc70ba39f54ac456d448541c3a165a33c7",
+          "words": 32
+        },
+        "quad_c": {
+          "sha256": "d472fe80864d2fd890fa06c0e24054a380c86ebbcf098ad86c6a5899a5f377a6",
+          "words": 34
+        }
+      }
+    },
+    {
+      "admissible": true,
+      "carrier_frame": "so I need to go to the",
+      "concerns": {
+        "closed": 0,
+        "note": "A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.",
+        "open": 1,
+        "records": [
+          {
+            "applies_to": [
+              "reg"
+            ],
+            "concern_id": "r10-17-c1",
+            "disposition": {
+              "note": "Retained at the owner's instruction of 2026-11-12: the negative carries information and is not deleted. Whether a patient would say it is for the patient-language reviewer.",
+              "status": "pending_patient_language_review"
+            },
+            "family_changed_since_raised": false,
+            "kind": "stated_negative",
+            "raised_by": "Claude review session (a model's reading; not a clinician's or a patient-language reviewer's)",
+            "raised_by_kind": "model",
+            "raised_on": "2026-11-12",
+            "state": "open",
+            "text": "The texts state a negative ('while moving both eyes easily today') that a patient would rarely volunteer. It is kept: it is the fact the control changes. Reviewer's reading of how plausible it is in a patient's mouth: unlikely."
+          }
+        ]
+      },
+      "contrasts": [
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday",
+          "bottom_sha256": "7f420018a4469b764febdc530bba96e00a111aeff524fedc4575f3a5bfa38b28",
+          "holds_constant": "the reference facts",
+          "id": "r10-17-reg",
+          "open_concerns": [
+            "r10-17-c1"
+          ],
+          "role": "contrast",
+          "stratum": "register",
+          "top": "medical",
+          "top_sha256": "1ab3cb083fb5826e918cf5656257719af2c357d5a2eada22221a569f55f21944",
+          "words": {
+            "bottom_stretch_words": 17,
+            "prefix_words": 9,
+            "suffix_words": 8,
+            "top_stretch_words": 16,
+            "word_edit_regions": 4
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "medical_paraphrase",
+          "bottom_sha256": "e806f8b787a58cf44ce322515705674a618ea3557e356eed7464ec39175d8d1b",
+          "holds_constant": "the reference facts and the register",
+          "id": "r10-17-mpar",
+          "open_concerns": [],
+          "role": "paraphrase_control",
+          "stratum": "register",
+          "top": "medical",
+          "top_sha256": "1ab3cb083fb5826e918cf5656257719af2c357d5a2eada22221a569f55f21944",
+          "words": {
+            "bottom_stretch_words": 21,
+            "prefix_words": 4,
+            "suffix_words": 8,
+            "top_stretch_words": 21,
+            "word_edit_regions": 7
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday_paraphrase",
+          "bottom_sha256": "561c39006eaa33af26e207ffa28afa24a2cf7e1eec0842e14baf745b61ca036f",
+          "holds_constant": "the reference facts and the register",
+          "id": "r10-17-epar",
+          "open_concerns": [],
+          "role": "paraphrase_control",
+          "stratum": "register",
+          "top": "everyday",
+          "top_sha256": "7f420018a4469b764febdc530bba96e00a111aeff524fedc4575f3a5bfa38b28",
+          "words": {
+            "bottom_stretch_words": 22,
+            "prefix_words": 4,
+            "suffix_words": 8,
+            "top_stretch_words": 22,
+            "word_edit_regions": 7
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "changed_fact",
+          "bottom_sha256": "0e7574562bb3b7b8f25b159cae409e59e11b43ef8dcdf2de2ac177b622b1115b",
+          "holds_constant": "the register and every reference fact but one",
+          "id": "r10-17-chg",
+          "open_concerns": [],
+          "role": "changed_fact_control",
+          "stratum": "register",
+          "top": "everyday",
+          "top_sha256": "7f420018a4469b764febdc530bba96e00a111aeff524fedc4575f3a5bfa38b28",
+          "words": {
+            "bottom_stretch_words": 6,
+            "prefix_words": 21,
+            "suffix_words": 8,
+            "top_stretch_words": 5,
+            "word_edit_regions": 1
+          }
+        }
+      ],
+      "eligibility": {
+        "confirmatory": {
+          "applies_to": "the register pair of a held-out family. Discovery families calibrate thresholds and are not part of a confirmatory statement (calibration_split). A control with an open concern is listed in controls_with_open_concerns and does not block the pair. Without a named stem the command has not looked for measurements and reports no family as eligible. Once the batch has measurements this command cannot verify that a split was recorded first, so it reports no family as eligible: eligibility is read from a manifest written before measurement.",
+          "blocked_by": [
+            "protocol_not_signed",
+            "clinician_review_missing",
+            "patient_language_review_missing",
+            "domain_review_not_passed",
+            "split_unassigned",
+            "stem_not_named",
+            "open_concern_on_register_pair:r10-17-c1"
+          ],
+          "controls_with_open_concerns": {},
+          "eligible": false
+        },
+        "publication": {
+          "labels_required": [
+            "exploratory, hand-authored",
+            "review status: domain_review_pending"
+          ],
+          "membership": "public-display/1",
+          "shareable": true
+        }
+      },
+      "family_id": "r10-17",
+      "family_sha256": "d63579a3823635088d472c21ce4da682981ea69dc4180f7edab9a8f5a61f84d6",
+      "flags": [],
+      "register_stratum": "register",
+      "review": {
+        "clinician": {
+          "items": {
+            "clinical_facts": null,
+            "negation": null,
+            "severity": null,
+            "timing": null,
+            "uncertainty": null,
+            "urgency": null
+          },
+          "status": "not_reviewed"
+        },
+        "owner_read": {
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f",
+          "read_utc": "2026-11-13T23:54:55Z",
+          "reasons": [],
+          "status": "kept"
+        },
+        "patient_language_reviewer": {
+          "items": {
+            "plausible_patient_wording": null,
+            "same_meaning_to_a_lay_reader": null
+          },
+          "status": "not_reviewed"
+        },
+        "status": "domain_review_pending"
+      },
+      "review_basis_sha256": "6da6625226a93c3d7c410ec15acdf8920b6cbc7beee9216f7b7fb25f1258f088",
+      "right_care": 2,
+      "sources": {
+        "by_quote_type": {
+          "authors' summary": 1,
+          "none": 2
+        },
+        "expressions": 3,
+        "note": "Counts of what the author declared. This command does not open any source.",
+        "verification": {
+          "counts": {
+            "record_and_sentence_found": 1
+          },
+          "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
+          "per_citation": [
+            {
+              "expression": "red eyes",
+              "identifier": "PMID: 42437059; DOI: 10.1016/j.idcr.2026.e02657",
+              "status": "record_and_sentence_found"
+            }
+          ]
+        },
+        "with_evidence_sentence": 1
+      },
+      "split": null,
+      "split_source": "unassigned",
+      "target": {
+        "endpoint_partial": "not_recorded",
+        "text": " clinic",
+        "tokens": "not_recorded",
+        "words": 1
+      },
+      "texts_sha256": "07783cfac49a08f7a3be710d3444e16810cbc2303bf4c8adabcbbc1425f364b2",
+      "validation": {
+        "errors": [],
+        "warnings": []
+      },
+      "variants": {
+        "changed_fact": {
+          "sha256": "0e7574562bb3b7b8f25b159cae409e59e11b43ef8dcdf2de2ac177b622b1115b",
+          "words": 35
+        },
+        "everyday": {
+          "sha256": "7f420018a4469b764febdc530bba96e00a111aeff524fedc4575f3a5bfa38b28",
+          "words": 34
+        },
+        "everyday_paraphrase": {
+          "sha256": "561c39006eaa33af26e207ffa28afa24a2cf7e1eec0842e14baf745b61ca036f",
+          "words": 34
+        },
+        "medical": {
+          "sha256": "1ab3cb083fb5826e918cf5656257719af2c357d5a2eada22221a569f55f21944",
+          "words": 33
+        },
+        "medical_paraphrase": {
+          "sha256": "e806f8b787a58cf44ce322515705674a618ea3557e356eed7464ec39175d8d1b",
+          "words": 33
+        }
+      }
+    },
+    {
+      "admissible": true,
+      "carrier_frame": "so I just need some",
+      "concerns": {
+        "closed": 0,
+        "note": "A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.",
+        "open": 1,
+        "records": [
+          {
+            "applies_to": [
+              "reg"
+            ],
+            "concern_id": "r10-21-c1",
+            "disposition": {
+              "note": "Retained at the owner's instruction of 2026-11-12: the negative carries information and is not deleted. Whether a patient would say it is for the patient-language reviewer.",
+              "status": "pending_patient_language_review"
+            },
+            "family_changed_since_raised": true,
+            "kind": "stated_negative",
+            "raised_by": "Claude review session (a model's reading; not a clinician's or a patient-language reviewer's)",
+            "raised_by_kind": "model",
+            "raised_on": "2026-11-12",
+            "state": "open",
+            "text": "The texts state a negative ('with no pus') that a patient would rarely volunteer. It is kept: it is the fact the control changes. Reviewer's reading of how plausible it is in a patient's mouth: plausible."
+          }
+        ]
+      },
+      "contrasts": [
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday",
+          "bottom_sha256": "db119526014e4812a419a6b0538a097ab548e56ffdf14e6f5e8eeccd05e41937",
+          "holds_constant": "the reference facts",
+          "id": "r10-21-reg",
+          "open_concerns": [
+            "r10-21-c1"
+          ],
+          "role": "contrast",
+          "stratum": "new_carrier",
+          "top": "medical",
+          "top_sha256": "4171cd6613cd73ec6acdf157977e9aa16d01a93304725161c3baf1f7ecc38093",
+          "words": {
+            "bottom_stretch_words": 16,
+            "prefix_words": 7,
+            "suffix_words": 5,
+            "top_stretch_words": 16,
+            "word_edit_regions": 2
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "medical_paraphrase",
+          "bottom_sha256": "1e3611da95a4f014d6d6705333656af236ad5d8e418eff59c35f8548f9293a1e",
+          "holds_constant": "the reference facts and the register",
+          "id": "r10-21-mpar",
+          "open_concerns": [],
+          "role": "paraphrase_control",
+          "stratum": "new_carrier",
+          "top": "medical",
+          "top_sha256": "4171cd6613cd73ec6acdf157977e9aa16d01a93304725161c3baf1f7ecc38093",
+          "words": {
+            "bottom_stretch_words": 23,
+            "prefix_words": 1,
+            "suffix_words": 5,
+            "top_stretch_words": 22,
+            "word_edit_regions": 4
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday_paraphrase",
+          "bottom_sha256": "ebde3a6e13c521f37290b4ba0a9e869772f47a27927003b67ef98bb34519dd01",
+          "holds_constant": "the reference facts and the register",
+          "id": "r10-21-epar",
+          "open_concerns": [],
+          "role": "paraphrase_control",
+          "stratum": "new_carrier",
+          "top": "everyday",
+          "top_sha256": "db119526014e4812a419a6b0538a097ab548e56ffdf14e6f5e8eeccd05e41937",
+          "words": {
+            "bottom_stretch_words": 23,
+            "prefix_words": 1,
+            "suffix_words": 5,
+            "top_stretch_words": 22,
+            "word_edit_regions": 4
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "changed_fact",
+          "bottom_sha256": "03486193074188a7031f7a276b35bf4be26745487f49f790b38b973b7f72b128",
+          "holds_constant": "the register and every reference fact but one",
+          "id": "r10-21-chg",
+          "open_concerns": [],
+          "role": "changed_fact_control",
+          "stratum": "new_carrier",
+          "top": "everyday",
+          "top_sha256": "db119526014e4812a419a6b0538a097ab548e56ffdf14e6f5e8eeccd05e41937",
+          "words": {
+            "bottom_stretch_words": 3,
+            "prefix_words": 20,
+            "suffix_words": 6,
+            "top_stretch_words": 2,
+            "word_edit_regions": 1
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "quad_b",
+          "bottom_sha256": "ab31bc1c668c7da8218035ab8c0b2578126195b813f3d6fe0853c448d9c249ee",
+          "holds_constant": "the reference facts and the medical terms",
+          "id": "r10-21-qb",
+          "open_concerns": [],
+          "role": "contrast",
+          "stratum": "syntax_crossing",
+          "top": "medical",
+          "top_sha256": "4171cd6613cd73ec6acdf157977e9aa16d01a93304725161c3baf1f7ecc38093",
+          "words": {
+            "bottom_stretch_words": 2,
+            "prefix_words": 20,
+            "suffix_words": 7,
+            "top_stretch_words": 1,
+            "word_edit_regions": 1
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "quad_c",
+          "bottom_sha256": "b154e8364295098d5ada9834cee507a3b4c453f3682106558487a177fc5fed76",
+          "holds_constant": "the reference facts and the medical sentence structure",
+          "id": "r10-21-qc",
+          "open_concerns": [],
+          "role": "contrast",
+          "stratum": "syntax_crossing",
+          "top": "medical",
+          "top_sha256": "4171cd6613cd73ec6acdf157977e9aa16d01a93304725161c3baf1f7ecc38093",
+          "words": {
+            "bottom_stretch_words": 15,
+            "prefix_words": 7,
+            "suffix_words": 5,
+            "top_stretch_words": 16,
+            "word_edit_regions": 2
+          }
+        }
+      ],
+      "eligibility": {
+        "confirmatory": {
+          "applies_to": "the register pair of a held-out family. Discovery families calibrate thresholds and are not part of a confirmatory statement (calibration_split). A control with an open concern is listed in controls_with_open_concerns and does not block the pair. Without a named stem the command has not looked for measurements and reports no family as eligible. Once the batch has measurements this command cannot verify that a split was recorded first, so it reports no family as eligible: eligibility is read from a manifest written before measurement.",
+          "blocked_by": [
+            "protocol_not_signed",
+            "clinician_review_missing",
+            "patient_language_review_missing",
+            "domain_review_not_passed",
+            "exploratory_stratum:new_carrier",
+            "split_unassigned",
+            "stem_not_named",
+            "open_concern_on_register_pair:r10-21-c1"
+          ],
+          "controls_with_open_concerns": {},
+          "eligible": false
+        },
+        "publication": {
+          "labels_required": [
+            "exploratory, hand-authored",
+            "review status: domain_review_pending"
+          ],
+          "membership": "public-display/1",
+          "shareable": true
+        }
+      },
+      "family_id": "r10-21",
+      "family_sha256": "0b02797006b96b436d0bf5cbd36c3bb70122becfc1120d47714eaff293ec8d98",
+      "flags": [
+        "new_carrier"
+      ],
+      "register_stratum": "new_carrier",
+      "review": {
+        "clinician": {
+          "items": {
+            "clinical_facts": null,
+            "negation": null,
+            "severity": null,
+            "timing": null,
+            "uncertainty": null,
+            "urgency": null
+          },
+          "status": "not_reviewed"
+        },
+        "owner_read": {
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f",
+          "read_utc": "2026-11-13T23:54:55Z",
+          "reasons": [],
+          "status": "kept"
+        },
+        "patient_language_reviewer": {
+          "items": {
+            "plausible_patient_wording": null,
+            "same_meaning_to_a_lay_reader": null
+          },
+          "status": "not_reviewed"
+        },
+        "status": "domain_review_pending"
+      },
+      "review_basis_sha256": "a32db4ba5e882f57b84d862921735b90919b545e57e893c45b56245cbc1ea5cd",
+      "right_care": 1,
+      "sources": {
+        "by_quote_type": {
+          "authors' summary": 1,
+          "none": 2
+        },
+        "expressions": 3,
+        "note": "Counts of what the author declared. This command does not open any source.",
+        "verification": {
+          "counts": {
+            "record_and_sentence_found": 1
+          },
+          "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
+          "per_citation": [
+            {
+              "expression": "peeling",
+              "identifier": "PMID: 41700199; DOI: 10.14744/SEMB.2025.54782",
+              "status": "record_and_sentence_found"
+            }
+          ]
+        },
+        "with_evidence_sentence": 1
+      },
+      "split": null,
+      "split_source": "unassigned",
+      "target": {
+        "endpoint_partial": "not_recorded",
+        "text": " cream",
+        "tokens": "not_recorded",
+        "words": 1
+      },
+      "texts_sha256": "7dec5e8d55080720b746c97703132c6227bbb2774303fa6143b57966d5038026",
+      "validation": {
+        "errors": [],
+        "warnings": []
+      },
+      "variants": {
+        "changed_fact": {
+          "sha256": "03486193074188a7031f7a276b35bf4be26745487f49f790b38b973b7f72b128",
+          "words": 29
+        },
+        "everyday": {
+          "sha256": "db119526014e4812a419a6b0538a097ab548e56ffdf14e6f5e8eeccd05e41937",
+          "words": 28
+        },
+        "everyday_paraphrase": {
+          "sha256": "ebde3a6e13c521f37290b4ba0a9e869772f47a27927003b67ef98bb34519dd01",
+          "words": 29
+        },
+        "medical": {
+          "sha256": "4171cd6613cd73ec6acdf157977e9aa16d01a93304725161c3baf1f7ecc38093",
+          "words": 28
+        },
+        "medical_paraphrase": {
+          "sha256": "1e3611da95a4f014d6d6705333656af236ad5d8e418eff59c35f8548f9293a1e",
+          "words": 29
+        },
+        "quad_b": {
+          "sha256": "ab31bc1c668c7da8218035ab8c0b2578126195b813f3d6fe0853c448d9c249ee",
+          "words": 29
+        },
+        "quad_c": {
+          "sha256": "b154e8364295098d5ada9834cee507a3b4c453f3682106558487a177fc5fed76",
+          "words": 27
+        }
+      }
+    },
+    {
+      "admissible": true,
+      "carrier_frame": "so I just need some",
+      "concerns": {
+        "closed": 0,
+        "note": "A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.",
+        "open": 1,
+        "records": [
+          {
+            "applies_to": [
+              "reg"
+            ],
+            "concern_id": "r10-23-c1",
+            "disposition": {
+              "note": "Retained at the owner's instruction of 2026-11-12: the negative carries information and is not deleted. Whether a patient would say it is for the patient-language reviewer.",
+              "status": "pending_patient_language_review"
+            },
+            "family_changed_since_raised": true,
+            "kind": "stated_negative",
+            "raised_by": "Claude review session (a model's reading; not a clinician's or a patient-language reviewer's)",
+            "raised_by_kind": "model",
+            "raised_on": "2026-11-12",
+            "state": "open",
+            "text": "The texts state a negative ('with no pus bumps') that a patient would rarely volunteer. It is kept: it is the fact the control changes. Reviewer's reading of how plausible it is in a patient's mouth: plausible."
+          }
+        ]
+      },
+      "contrasts": [
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday",
+          "bottom_sha256": "9c8d95699d596b09d7d21a1346aeec51c5a37b6fe901ba825576fd38ad4a7095",
+          "holds_constant": "the reference facts",
+          "id": "r10-23-reg",
+          "open_concerns": [
+            "r10-23-c1"
+          ],
+          "role": "contrast",
+          "stratum": "new_carrier",
+          "top": "medical",
+          "top_sha256": "bb167a42d706701e5ccd93a90c64f26a56014f35258d436bed93574def47f11a",
+          "words": {
+            "bottom_stretch_words": 16,
+            "prefix_words": 7,
+            "suffix_words": 5,
+            "top_stretch_words": 15,
+            "word_edit_regions": 4
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "medical_paraphrase",
+          "bottom_sha256": "1e7d5b861619e0c1bade8cbc541bba9a95e29866e0018fac97cce51115f91828",
+          "holds_constant": "the reference facts and the register",
+          "id": "r10-23-mpar",
+          "open_concerns": [],
+          "role": "paraphrase_control",
+          "stratum": "new_carrier",
+          "top": "medical",
+          "top_sha256": "bb167a42d706701e5ccd93a90c64f26a56014f35258d436bed93574def47f11a",
+          "words": {
+            "bottom_stretch_words": 20,
+            "prefix_words": 1,
+            "suffix_words": 5,
+            "top_stretch_words": 21,
+            "word_edit_regions": 7
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "everyday_paraphrase",
+          "bottom_sha256": "4cbb6de48b6eb1aa700f3b14857a4049b2d1d532cafd7747145ee6fed543ee31",
+          "holds_constant": "the reference facts and the register",
+          "id": "r10-23-epar",
+          "open_concerns": [],
+          "role": "paraphrase_control",
+          "stratum": "new_carrier",
+          "top": "everyday",
+          "top_sha256": "9c8d95699d596b09d7d21a1346aeec51c5a37b6fe901ba825576fd38ad4a7095",
+          "words": {
+            "bottom_stretch_words": 18,
+            "prefix_words": 1,
+            "suffix_words": 7,
+            "top_stretch_words": 20,
+            "word_edit_regions": 5
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "changed_fact",
+          "bottom_sha256": "9f5f6c2e4106f8a3e1bcb3a44da94689e6db3a390016b4131ddb56773f854aa6",
+          "holds_constant": "the register and every reference fact but one",
+          "id": "r10-23-chg",
+          "open_concerns": [],
+          "role": "changed_fact_control",
+          "stratum": "new_carrier",
+          "top": "everyday",
+          "top_sha256": "9c8d95699d596b09d7d21a1346aeec51c5a37b6fe901ba825576fd38ad4a7095",
+          "words": {
+            "bottom_stretch_words": 2,
+            "prefix_words": 20,
+            "suffix_words": 7,
+            "top_stretch_words": 1,
+            "word_edit_regions": 1
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "quad_b",
+          "bottom_sha256": "63d2af43d1b369d7f138e96f1b80211c2b312c771c3875fb0a03596563bb6ccc",
+          "holds_constant": "the reference facts and the medical terms",
+          "id": "r10-23-qb",
+          "open_concerns": [],
+          "role": "contrast",
+          "stratum": "syntax_crossing",
+          "top": "medical",
+          "top_sha256": "bb167a42d706701e5ccd93a90c64f26a56014f35258d436bed93574def47f11a",
+          "words": {
+            "bottom_stretch_words": 2,
+            "prefix_words": 20,
+            "suffix_words": 6,
+            "top_stretch_words": 1,
+            "word_edit_regions": 1
+          }
+        },
+        {
+          "alignment": {
+            "status": "not_recorded"
+          },
+          "bottom": "quad_c",
+          "bottom_sha256": "4693bfb8664ac28b2f06b35076a18fd86d708e0c3ec2461fda131d420887f977",
+          "holds_constant": "the reference facts and the medical sentence structure",
+          "id": "r10-23-qc",
+          "open_concerns": [],
+          "role": "contrast",
+          "stratum": "syntax_crossing",
+          "top": "medical",
+          "top_sha256": "bb167a42d706701e5ccd93a90c64f26a56014f35258d436bed93574def47f11a",
+          "words": {
+            "bottom_stretch_words": 15,
+            "prefix_words": 7,
+            "suffix_words": 5,
+            "top_stretch_words": 15,
+            "word_edit_regions": 4
+          }
+        }
+      ],
+      "eligibility": {
+        "confirmatory": {
+          "applies_to": "the register pair of a held-out family. Discovery families calibrate thresholds and are not part of a confirmatory statement (calibration_split). A control with an open concern is listed in controls_with_open_concerns and does not block the pair. Without a named stem the command has not looked for measurements and reports no family as eligible. Once the batch has measurements this command cannot verify that a split was recorded first, so it reports no family as eligible: eligibility is read from a manifest written before measurement.",
+          "blocked_by": [
+            "protocol_not_signed",
+            "clinician_review_missing",
+            "patient_language_review_missing",
+            "domain_review_not_passed",
+            "exploratory_stratum:new_carrier",
+            "split_unassigned",
+            "stem_not_named",
+            "open_concern_on_register_pair:r10-23-c1"
+          ],
+          "controls_with_open_concerns": {},
+          "eligible": false
+        },
+        "publication": {
+          "labels_required": [
+            "exploratory, hand-authored",
+            "review status: domain_review_pending"
+          ],
+          "membership": "public-display/1",
+          "shareable": true
+        }
+      },
+      "family_id": "r10-23",
+      "family_sha256": "c886c9b96dd0f20f442bd31137577d6496d213bc7347c3bea2a4c38a319860c3",
+      "flags": [
+        "new_carrier"
+      ],
+      "register_stratum": "new_carrier",
+      "review": {
+        "clinician": {
+          "items": {
+            "clinical_facts": null,
+            "negation": null,
+            "severity": null,
+            "timing": null,
+            "uncertainty": null,
+            "urgency": null
+          },
+          "status": "not_reviewed"
+        },
+        "owner_read": {
+          "decision": "kept",
+          "note": "",
+          "read_batch_sha256": "6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f",
+          "read_utc": "2026-11-13T23:54:55Z",
+          "reasons": [],
+          "status": "kept"
+        },
+        "patient_language_reviewer": {
+          "items": {
+            "plausible_patient_wording": null,
+            "same_meaning_to_a_lay_reader": null
+          },
+          "status": "not_reviewed"
+        },
+        "status": "domain_review_pending"
+      },
+      "review_basis_sha256": "f5525e1297db31458e01642b1c74399f891c2330de5cd2a5feba48d7443f0fdf",
+      "right_care": 1,
+      "sources": {
+        "by_quote_type": {
+          "authors' summary": 4,
+          "none": 1
+        },
+        "expressions": 5,
+        "note": "Counts of what the author declared. This command does not open any source.",
+        "verification": {
+          "counts": {
+            "record_and_sentence_found": 4
+          },
+          "means": "The cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression; that is source fit, recorded as a concern.",
+          "per_citation": [
+            {
+              "expression": "dry skin",
+              "identifier": "PMID: 41622615; DOI: 10.1111/jocd.70711",
+              "status": "record_and_sentence_found"
+            },
+            {
+              "expression": "flakiness",
+              "identifier": "PMID: 41622615; DOI: 10.1111/jocd.70711",
+              "status": "record_and_sentence_found"
+            },
+            {
+              "expression": "itching",
+              "identifier": "PMID: 41622615; DOI: 10.1111/jocd.70711",
+              "status": "record_and_sentence_found"
+            },
+            {
+              "expression": "shins",
+              "identifier": "PMID: 41622615; DOI: 10.1111/jocd.70711",
+              "status": "record_and_sentence_found"
+            }
+          ]
+        },
+        "with_evidence_sentence": 4
+      },
+      "split": null,
+      "split_source": "unassigned",
+      "target": {
+        "endpoint_partial": "not_recorded",
+        "text": " lotion",
+        "tokens": "not_recorded",
+        "words": 1
+      },
+      "texts_sha256": "8e7c2b2af3d4aba3545402ea4a566bf2818f4003bb3a54d534b6589c8c1deda8",
+      "validation": {
+        "errors": [],
+        "warnings": []
+      },
+      "variants": {
+        "changed_fact": {
+          "sha256": "9f5f6c2e4106f8a3e1bcb3a44da94689e6db3a390016b4131ddb56773f854aa6",
+          "words": 29
+        },
+        "everyday": {
+          "sha256": "9c8d95699d596b09d7d21a1346aeec51c5a37b6fe901ba825576fd38ad4a7095",
+          "words": 28
+        },
+        "everyday_paraphrase": {
+          "sha256": "4cbb6de48b6eb1aa700f3b14857a4049b2d1d532cafd7747145ee6fed543ee31",
+          "words": 26
+        },
+        "medical": {
+          "sha256": "bb167a42d706701e5ccd93a90c64f26a56014f35258d436bed93574def47f11a",
+          "words": 27
+        },
+        "medical_paraphrase": {
+          "sha256": "1e7d5b861619e0c1bade8cbc541bba9a95e29866e0018fac97cce51115f91828",
+          "words": 26
+        },
+        "quad_b": {
+          "sha256": "63d2af43d1b369d7f138e96f1b80211c2b312c771c3875fb0a03596563bb6ccc",
+          "words": 28
+        },
+        "quad_c": {
+          "sha256": "4693bfb8664ac28b2f06b35076a18fd86d708e0c3ec2461fda131d420887f977",
+          "words": 27
+        }
+      }
+    }
+  ],
+  "inputs": {
+    "concerns": [
+      {
+        "name": "concerns_pilot8.json",
+        "sha256": "7e3603403578e11878553a805a12b3a2e5288fd9bf4326f5fd2e074e1c58e9c1"
+      }
+    ],
+    "lexicon": {
+      "name": "dialect_lexicon_20261109.json",
+      "sha256": "e39ce3ca5f2d2f88e8141f1d91213cfa52c44beb087a6449b59b26dfcdf9abc1"
+    },
+    "read_batches": [
+      {
+        "name": "families.json",
+        "sha256": "6613e0a32baa5b032dc0c19005c323354d4f7cea88b2fd2ec1932a8a1bd5596f"
+      }
+    ],
+    "source_checks": [
+      {
+        "name": "source_check_pilot8.json",
+        "sha256": "465d6affbb66eab60556f68e986a6a52a923557e6d520a116aad85870ec0f9c8"
+      }
+    ],
+    "verdicts": [
+      {
+        "name": "gt_r10_20261113.json",
+        "sha256": "ae0d4cae832c895b21da6131a5b4e3dce744b85ed6f5803fe246827a2f003fd7"
+      }
+    ]
+  },
+  "inventory": {
+    "all_admissible": {
+      "contrasts": 48,
+      "contrasts_by_stratum_and_role": {
+        "new_carrier/changed_fact_control": 2,
+        "new_carrier/contrast": 2,
+        "new_carrier/paraphrase_control": 4,
+        "patient_explanation/contrast": 4,
+        "register/changed_fact_control": 5,
+        "register/contrast": 5,
+        "register/paraphrase_control": 10,
+        "register_with_dialect/changed_fact_control": 1,
+        "register_with_dialect/contrast": 1,
+        "register_with_dialect/paraphrase_control": 2,
+        "syntax_crossing/contrast": 12
+      },
+      "families": 8,
+      "families_by_carrier_and_target": {
+        "so I just need some | cream": 1,
+        "so I just need some | lotion": 1,
+        "so I need to go to the | ER": 1,
+        "so I need to go to the | clinic": 1,
+        "so I need to go to the | hospital": 1,
+        "so I should see a | dermatologist": 1,
+        "so I should see a | doctor": 1,
+        "so I should see a | specialist": 1
+      },
+      "families_by_register_stratum": {
+        "new_carrier": 2,
+        "register": 5,
+        "register_with_dialect": 1
+      },
+      "families_by_split": {
+        "None": 8
+      },
+      "prompts": 56
+    },
+    "concerns": {
+      "closed": 0,
+      "open": 9,
+      "open_by_disposition": {
+        "pending_clinical_review": 2,
+        "pending_patient_language_review": 6,
+        "revised_pending_reread": 1
+      },
+      "open_by_kind": {
+        "control_adds_fact": 1,
+        "control_level_disputed": 1,
+        "fact_parity": 1,
+        "stated_negative": 6
+      },
+      "owner_kept_families_with_open_concerns": [
+        "r10-01",
+        "r10-03",
+        "r10-10",
+        "r10-14",
+        "r10-16",
+        "r10-17",
+        "r10-21",
+        "r10-23"
+      ],
+      "rule": "A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it."
+    },
+    "confirmatory_eligible": 0,
+    "owner_kept": {
+      "contrasts": 48,
+      "contrasts_by_stratum_and_role": {
+        "new_carrier/changed_fact_control": 2,
+        "new_carrier/contrast": 2,
+        "new_carrier/paraphrase_control": 4,
+        "patient_explanation/contrast": 4,
+        "register/changed_fact_control": 5,
+        "register/contrast": 5,
+        "register/paraphrase_control": 10,
+        "register_with_dialect/changed_fact_control": 1,
+        "register_with_dialect/contrast": 1,
+        "register_with_dialect/paraphrase_control": 2,
+        "syntax_crossing/contrast": 12
+      },
+      "families": 8,
+      "families_by_carrier_and_target": {
+        "so I just need some | cream": 1,
+        "so I just need some | lotion": 1,
+        "so I need to go to the | ER": 1,
+        "so I need to go to the | clinic": 1,
+        "so I need to go to the | hospital": 1,
+        "so I should see a | dermatologist": 1,
+        "so I should see a | doctor": 1,
+        "so I should see a | specialist": 1
+      },
+      "families_by_register_stratum": {
+        "new_carrier": 2,
+        "register": 5,
+        "register_with_dialect": 1
+      },
+      "families_by_split": {
+        "None": 8
+      },
+      "prompts": 56
+    },
+    "owner_kept_discovery": {
+      "contrasts": 0,
+      "contrasts_by_stratum_and_role": {},
+      "families": 0,
+      "families_by_carrier_and_target": {},
+      "families_by_register_stratum": {},
+      "families_by_split": {},
+      "prompts": 0
+    },
+    "owner_read": {
+      "kept": 8
+    },
+    "review_status": {
+      "domain_review_pending": 8
+    },
+    "source_verification": {
+      "not_checked": 1,
+      "record_and_sentence_found": 17
+    }
+  },
+  "measurements": {
+    "existing_run_directories": [],
+    "note": "Directories under trace_out/ whose name starts with the stem. This command reads their names only and never their contents.",
+    "stem": null
+  },
+  "mechanistic_subset": {
+    "controls_per_site": [
+      "random_site",
+      "size_matched",
+      "reverse_direction"
+    ],
+    "families": [],
+    "ica_basis": "one fitted basis per model, fitted on discovery families only, used unchanged for every register and every stratum",
+    "rule": "A method states which alignment classes it reads. A family is never rewritten to reach a class: unnatural patient wording is a worse defect than a coarser alignment.",
+    "selection": "a seeded draw of families, made before any measurement of the batch, from owner-kept discovery families in the register stratum without flags; care levels are visited in turn. Held-out families are not drawn: a mechanism developed on them could not be confirmed on them.",
+    "status": "not_selected"
+  },
+  "models": "not_recorded",
+  "review_layers": {
+    "clinician_review": "six dimensions of the rubric, recorded by a clinician",
+    "owner_read": "the owner's keep or exclude decision on a named version of the texts. It is not a clinician's review. It is recorded and shown in every output, and it does not gate confirmatory eligibility (decisions, 2026-11-13)",
+    "patient_language_review": "two items of the rubric, recorded by a patient-language reviewer",
+    "software_validation": "structural checks by this command. It says nothing about clinical content or patient language."
+  },
+  "schema": "patientwords.batch-intake/1",
+  "software_validation": {
+    "by_check": {},
+    "errors": 0,
+    "is": "structural checks by this command. It says nothing about clinical content or patient language.",
+    "parameters": {
+      "forbid": ",;-",
+      "lexicon_supplied": true,
+      "max_words": 40,
+      "note": "Caller-set. Another value changes which texts pass; compare runs on these."
+    },
+    "status": "passed",
+    "unusable_families": [],
+    "warnings": 0
+  },
+  "splits": {
+    "counts": {
+      "None": 8
+    },
+    "method": "python random.Random(seed); for each care level from highest to lowest: sort the family ids, rng.shuffle, first half discovery, next quarter validation, rest fresh_test",
+    "newly_assigned": [],
+    "open": "families per split is not fixed in the protocol (its section 14)",
+    "records_checked": [],
+    "records_timing": null,
+    "seed_for_new_assignments": null,
+    "source": {
+      "r10-01": "unassigned",
+      "r10-03": "unassigned",
+      "r10-10": "unassigned",
+      "r10-14": "unassigned",
+      "r10-16": "unassigned",
+      "r10-17": "unassigned",
+      "r10-21": "unassigned",
+      "r10-23": "unassigned"
+    },
+    "unit": "case family: every wording of a case is in the family's split"
+  },
+  "tokenization": {
+    "note": "No tokenizer file is available offline. Token ids come from a recorded run; until then alignment is known at word level only.",
+    "status": "not_recorded"
+  }
+}
