@@ -9,7 +9,7 @@ What has and has not been reviewed:
 - **Software validation: passed** (0 errors, 0 warnings). These are structural checks by this command. It says nothing about clinical content or patient language.
 - **Owner's read:** 8 kept. This is the owner's keep or exclude decision on a named version of the texts. It is not a clinician's review. It is recorded and shown in every output, and it does not gate confirmatory eligibility (decisions, 2026-11-13)
 - **Domain review:** 8 domain review pending. A family is reviewed only when a clinician and a patient-language reviewer have both recorded their items; nothing in this packet does that.
-- **Known concerns:** 9 open, 0 closed. A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.
+- **Known concerns:** 8 open, 1 closed. A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.
 - **Sources:** 1 not checked, 17 record and sentence found. A check shows that the cited record exists and contains the evidence sentence. It does not show that patients in the family's population use the expression.
 
 No model output appears in this packet.
@@ -57,8 +57,8 @@ Patient explanation (adds a belief, analysed apart from register): "and I think 
 | numb left toes | no source |  |   |  |
 | cannot pee | no source |  |   |  |
 
-Known concerns: 1 open, 0 closed.
-- `r10-01-c1` **open** · fact parity · applies to reg · In the first version the everyday wording said 'numb toes' where the fact and the medical wording say the left toes. (raised by Claude review session (a model's reading; not a clinician's or a patient-language reviewer's), 2026-11-12). Disposition: revised pending reread: Changed by the author's second version (9a495c763): every everyday text now says 'numb left toes'. Open until a person confirms it.
+Known concerns: 0 open, 1 closed.
+- `r10-01-c1` **closed** · fact parity · applies to reg · In the first version the everyday wording said 'numb toes' where the fact and the medical wording say the left toes. (raised by Claude review session (a model's reading; not a clinician's or a patient-language reviewer's), 2026-11-12). Disposition: resolved by revision, owner, 2026-11-17: The owner confirmed on 2026-11-17 that the revision resolves this concern. Changed by the author's second version (9a495c763): every everyday text now says 'numb left toes'. Open until a person confirms it.
 
 Software findings: none.
 

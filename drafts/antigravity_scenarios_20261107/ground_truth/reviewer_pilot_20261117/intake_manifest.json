@@ -87,9 +87,9 @@
       "admissible": true,
       "carrier_frame": "so I need to go to the",
       "concerns": {
-        "closed": 0,
+        "closed": 1,
         "note": "A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.",
-        "open": 1,
+        "open": 0,
         "records": [
           {
             "applies_to": [
@@ -97,15 +97,19 @@
             ],
             "concern_id": "r10-01-c1",
             "disposition": {
-              "note": "Changed by the author's second version (9a495c763): every everyday text now says 'numb left toes'. Open until a person confirms it.",
-              "status": "revised_pending_reread"
+              "by": "owner",
+              "by_kind": "human",
+              "date": "2026-11-17",
+              "note": "The owner confirmed on 2026-11-17 that the revision resolves this concern. Changed by the author's second version (9a495c763): every everyday text now says 'numb left toes'. Open until a person confirms it.",
+              "resolved_in_review_basis_sha256": "6c2badbd2c264a7ef3f152ad721d4e470b08a5f8383e335bf3bb84d9d6253d05",
+              "status": "resolved_by_revision"
             },
             "family_changed_since_raised": true,
             "kind": "fact_parity",
             "raised_by": "Claude review session (a model's reading; not a clinician's or a patient-language reviewer's)",
             "raised_by_kind": "model",
             "raised_on": "2026-11-12",
-            "state": "open",
+            "state": "closed",
             "text": "In the first version the everyday wording said 'numb toes' where the fact and the medical wording say the left toes."
           }
         ]
@@ -119,9 +123,7 @@
           "bottom_sha256": "005a35e3926aaa669592eae4e37e624232bd6a828848c0161ab4412a350d7d9b",
           "holds_constant": "the reference facts",
           "id": "r10-01-reg",
-          "open_concerns": [
-            "r10-01-c1"
-          ],
+          "open_concerns": [],
           "role": "contrast",
           "stratum": "register",
           "top": "medical",
@@ -270,8 +272,7 @@
             "patient_language_review_missing",
             "domain_review_not_passed",
             "split_unassigned",
-            "stem_not_named",
-            "open_concern_on_register_pair:r10-01-c1"
+            "stem_not_named"
           ],
           "controls_with_open_concerns": {},
           "eligible": false
@@ -2431,7 +2432,7 @@
     "concerns": [
       {
         "name": "concerns_pilot8.json",
-        "sha256": "7e3603403578e11878553a805a12b3a2e5288fd9bf4326f5fd2e074e1c58e9c1"
+        "sha256": "8b5c70358d81c85a3145fae80c3339d4cc36147d33f82607e9e152d57ed7eef3"
       }
     ],
     "lexicon": {
@@ -2495,21 +2496,18 @@
       "prompts": 56
     },
     "concerns": {
-      "closed": 0,
-      "open": 9,
+      "closed": 1,
+      "open": 8,
       "open_by_disposition": {
         "pending_clinical_review": 2,
-        "pending_patient_language_review": 6,
-        "revised_pending_reread": 1
+        "pending_patient_language_review": 6
       },
       "open_by_kind": {
         "control_adds_fact": 1,
         "control_level_disputed": 1,
-        "fact_parity": 1,
         "stated_negative": 6
       },
       "owner_kept_families_with_open_concerns": [
-        "r10-01",
         "r10-03",
         "r10-10",
         "r10-14",

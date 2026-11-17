@@ -142,9 +142,9 @@
       "admissible": true,
       "carrier_frame": "so I need to go to the",
       "concerns": {
-        "closed": 0,
+        "closed": 1,
         "note": "A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.",
-        "open": 1,
+        "open": 0,
         "records": [
           {
             "applies_to": [
@@ -152,15 +152,19 @@
             ],
             "concern_id": "r10-01-c1",
             "disposition": {
-              "note": "Changed by the author's second version (9a495c763): every everyday text now says 'numb left toes'. Open until a person confirms it.",
-              "status": "revised_pending_reread"
+              "by": "owner",
+              "by_kind": "human",
+              "date": "2026-11-17",
+              "note": "The owner confirmed on 2026-11-17 that the revision resolves this concern. Changed by the author's second version (9a495c763): every everyday text now says 'numb left toes'. Open until a person confirms it.",
+              "resolved_in_review_basis_sha256": "6c2badbd2c264a7ef3f152ad721d4e470b08a5f8383e335bf3bb84d9d6253d05",
+              "status": "resolved_by_revision"
             },
             "family_changed_since_raised": true,
             "kind": "fact_parity",
             "raised_by": "Claude review session (a model's reading; not a clinician's or a patient-language reviewer's)",
             "raised_by_kind": "model",
             "raised_on": "2026-11-12",
-            "state": "open",
+            "state": "closed",
             "text": "In the first version the everyday wording said 'numb toes' where the fact and the medical wording say the left toes."
           }
         ]
@@ -174,9 +178,7 @@
           "bottom_sha256": "005a35e3926aaa669592eae4e37e624232bd6a828848c0161ab4412a350d7d9b",
           "holds_constant": "the reference facts",
           "id": "r10-01-reg",
-          "open_concerns": [
-            "r10-01-c1"
-          ],
+          "open_concerns": [],
           "role": "contrast",
           "stratum": "register",
           "top": "medical",
@@ -325,8 +327,7 @@
             "patient_language_review_missing",
             "domain_review_not_passed",
             "split_unassigned",
-            "stem_not_named",
-            "open_concern_on_register_pair:r10-01-c1"
+            "stem_not_named"
           ],
           "controls_with_open_concerns": {},
           "eligible": false
@@ -1888,7 +1889,7 @@
             ],
             "concern_id": "r10-07-c1",
             "disposition": {
-              "note": "Changed by the author's second version (9a495c763): the expression is now supported by a quote from older heart-failure patients (PMID 41393075), which fits a 67 year old with fluid overload. Open until a person confirms it.",
+              "note": "Changed by the author's second version (9a495c763): the expression is now supported by a quote from older heart-failure patients (PMID 41393075), which fits a 67 year old with fluid overload. Open until a person confirms it. On 2026-11-17 the owner chose to leave this open for the reviewers.",
               "status": "revised_pending_reread"
             },
             "family_changed_since_raised": true,
@@ -3121,7 +3122,7 @@
             ],
             "concern_id": "r10-11-c1",
             "disposition": {
-              "note": "Revised in round10_20261112_rev1: 'after 2 different prescribed clinic medicines' and 'did not improve on 2 different medicines prescribed by his doctor'. Open until the owner's read confirms it.",
+              "note": "Revised in round10_20261112_rev1: 'after 2 different prescribed clinic medicines' and 'did not improve on 2 different medicines prescribed by his doctor'. Open until the owner's read confirms it. On 2026-11-17 the owner chose to leave this open for the reviewers.",
               "status": "revised_pending_reread"
             },
             "family_changed_since_raised": true,
@@ -3426,9 +3427,9 @@
       "admissible": true,
       "carrier_frame": "so I should see a",
       "concerns": {
-        "closed": 0,
+        "closed": 1,
         "note": "A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.",
-        "open": 4,
+        "open": 3,
         "records": [
           {
             "applies_to": [
@@ -3436,15 +3437,19 @@
             ],
             "concern_id": "r10-12-c1",
             "disposition": {
-              "note": "Revised in round10_20261112_rev1: 'nightmares every night with flashbacks in the day that stop me driving and I startle easily'. Open until the owner's read confirms it.",
-              "status": "revised_pending_reread"
+              "by": "owner",
+              "by_kind": "human",
+              "date": "2026-11-17",
+              "note": "The owner confirmed on 2026-11-17 that the revision resolves this concern. Revised in round10_20261112_rev1: 'nightmares every night with flashbacks in the day that stop me driving and I startle easily'. Open until the owner's read confirms it.",
+              "resolved_in_review_basis_sha256": "7bf0415205ce5f6bd3efd8af9438646bdb6fcc6db85143b01131fa0712b9ffcc",
+              "status": "resolved_by_revision"
             },
             "family_changed_since_raised": true,
             "kind": "fact_parity",
             "raised_by": "Claude review session (a model's reading; not a clinician's or a patient-language reviewer's)",
             "raised_by_kind": "model",
             "raised_on": "2026-11-12",
-            "state": "open",
+            "state": "closed",
             "text": "The second everyday wording said 'avoidance of reminders in traffic' where fact f3 is driving avoidance, and did not say that the nightmares are nightly or the flashbacks by day."
           },
           {
@@ -3554,9 +3559,7 @@
           "bottom_sha256": "431366677479e477b56ae29b069feb1ff1f650acc57a1c0ed22171cb086efa66",
           "holds_constant": "the reference facts and the register",
           "id": "r10-12-epar",
-          "open_concerns": [
-            "r10-12-c1"
-          ],
+          "open_concerns": [],
           "role": "paraphrase_control",
           "stratum": "register_with_dialect",
           "top": "everyday",
@@ -3627,11 +3630,7 @@
             "stem_not_named",
             "open_concern_on_register_pair:r10-12-c2,r10-12-c4"
           ],
-          "controls_with_open_concerns": {
-            "r10-12-epar": [
-              "r10-12-c1"
-            ]
-          },
+          "controls_with_open_concerns": {},
           "eligible": false
         },
         "publication": {
@@ -5539,9 +5538,9 @@
       "admissible": true,
       "carrier_frame": "so I need to go to the",
       "concerns": {
-        "closed": 0,
+        "closed": 2,
         "note": "A concern is closed only by its own recorded disposition. The owner keeping a family does not close it, and a review does not close it.",
-        "open": 4,
+        "open": 2,
         "records": [
           {
             "applies_to": [
@@ -5551,15 +5550,19 @@
             ],
             "concern_id": "r10-20-c1",
             "disposition": {
-              "note": "Revised in round10_20261112_rev1: everyday 'spoon shaped nails' (the wording of fact f2), second everyday wording 'nails curved like spoons'. Open until the owner's read confirms it.",
-              "status": "revised_pending_reread"
+              "by": "owner",
+              "by_kind": "human",
+              "date": "2026-11-17",
+              "note": "The owner confirmed on 2026-11-17 that the revision resolves this concern. Revised in round10_20261112_rev1: everyday 'spoon shaped nails' (the wording of fact f2), second everyday wording 'nails curved like spoons'. Open until the owner's read confirms it.",
+              "resolved_in_review_basis_sha256": "17a376192d1373f2aaa04a657dea584b5ed3dcdb38f0e19d38da1c6ccaf6a81b",
+              "status": "resolved_by_revision"
             },
             "family_changed_since_raised": true,
             "kind": "wording",
             "raised_by": "Claude review session (a model's reading; not a clinician's or a patient-language reviewer's)",
             "raised_by_kind": "model",
             "raised_on": "2026-11-12",
-            "state": "open",
+            "state": "closed",
             "text": "'Spooned nails' (and 'scooped nails' in the second everyday wording) is unlikely patient wording."
           },
           {
@@ -5569,15 +5572,19 @@
             ],
             "concern_id": "r10-20-c2",
             "disposition": {
-              "note": "Revised in round10_20261112_rev1: 'brittle' removed from both second wordings, so every variant states the qualities of fact f2 and no other. If brittleness is meant to be a fact, it belongs in fact f2 and in all five texts; that is the author's or the owner's call.",
-              "status": "revised_pending_reread"
+              "by": "owner",
+              "by_kind": "human",
+              "date": "2026-11-17",
+              "note": "The owner confirmed on 2026-11-17 that the revision resolves this concern. Revised in round10_20261112_rev1: 'brittle' removed from both second wordings, so every variant states the qualities of fact f2 and no other. If brittleness is meant to be a fact, it belongs in fact f2 and in all five texts; that is the author's or the owner's call.",
+              "resolved_in_review_basis_sha256": "17a376192d1373f2aaa04a657dea584b5ed3dcdb38f0e19d38da1c6ccaf6a81b",
+              "status": "resolved_by_revision"
             },
             "family_changed_since_raised": true,
             "kind": "fact_parity",
             "raised_by": "Claude review session (a model's reading; not a clinician's or a patient-language reviewer's)",
             "raised_by_kind": "model",
             "raised_on": "2026-11-12",
-            "state": "open",
+            "state": "closed",
             "text": "The author's second version removed 'brittle' from fact f2, and the main pair never stated it, but both second wordings still said 'brittle'."
           },
           {
@@ -5626,7 +5633,6 @@
           "holds_constant": "the reference facts",
           "id": "r10-20-reg",
           "open_concerns": [
-            "r10-20-c1",
             "r10-20-c3"
           ],
           "role": "contrast",
@@ -5649,9 +5655,7 @@
           "bottom_sha256": "8b2d3402861aaaa67bc36dab04d533d14631152cecb656216e4cdd50e9665e71",
           "holds_constant": "the reference facts and the register",
           "id": "r10-20-mpar",
-          "open_concerns": [
-            "r10-20-c2"
-          ],
+          "open_concerns": [],
           "role": "paraphrase_control",
           "stratum": "register_with_dialect",
           "top": "medical",
@@ -5672,10 +5676,7 @@
           "bottom_sha256": "fb589d191bab419d75dfc9d93f9b7f9f9ee26d578c5cf8104c5c944e7a655f25",
           "holds_constant": "the reference facts and the register",
           "id": "r10-20-epar",
-          "open_concerns": [
-            "r10-20-c1",
-            "r10-20-c2"
-          ],
+          "open_concerns": [],
           "role": "paraphrase_control",
           "stratum": "register_with_dialect",
           "top": "everyday",
@@ -5696,9 +5697,7 @@
           "bottom_sha256": "8b9ea81e3c67b84a1e33282bff545de652b765f9e88f348dd41e92d253e78ef0",
           "holds_constant": "the register and every reference fact but one",
           "id": "r10-20-chg",
-          "open_concerns": [
-            "r10-20-c1"
-          ],
+          "open_concerns": [],
           "role": "changed_fact_control",
           "stratum": "register_with_dialect",
           "top": "everyday",
@@ -5723,20 +5722,9 @@
             "exploratory_stratum:register_with_dialect",
             "split_unassigned",
             "stem_not_named",
-            "open_concern_on_register_pair:r10-20-c1,r10-20-c3,r10-20-c4"
+            "open_concern_on_register_pair:r10-20-c3,r10-20-c4"
           ],
-          "controls_with_open_concerns": {
-            "r10-20-chg": [
-              "r10-20-c1"
-            ],
-            "r10-20-epar": [
-              "r10-20-c1",
-              "r10-20-c2"
-            ],
-            "r10-20-mpar": [
-              "r10-20-c2"
-            ]
-          },
+          "controls_with_open_concerns": {},
           "eligible": false
         },
         "publication": {
@@ -6937,7 +6925,7 @@
     "concerns": [
       {
         "name": "concerns_r10_20261112.json",
-        "sha256": "b9fe733981dbdd15adb791ac6d7687a2ac8d5d8b37285058569395520798322b"
+        "sha256": "4b237a092bbbc7877acd63c566772a1623ed8ecd1d786d162ab160a010793800"
       }
     ],
     "lexicon": {
@@ -7007,24 +6995,23 @@
       "prompts": 150
     },
     "concerns": {
-      "closed": 0,
-      "open": 35,
+      "closed": 4,
+      "open": 31,
       "open_by_disposition": {
         "pending_clinical_review": 8,
         "pending_patient_language_review": 21,
-        "revised_pending_reread": 6
+        "revised_pending_reread": 2
       },
       "open_by_kind": {
         "control_adds_fact": 1,
         "control_level_disputed": 3,
-        "fact_parity": 4,
+        "fact_parity": 1,
         "other": 5,
         "source_fit": 4,
         "stated_negative": 15,
-        "wording": 3
+        "wording": 2
       },
       "owner_kept_families_with_open_concerns": [
-        "r10-01",
         "r10-03",
         "r10-04",
         "r10-06",
