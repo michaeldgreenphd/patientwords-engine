@@ -57,6 +57,7 @@ def test_the_file_is_a_2panel_batch_the_lanes_can_read() -> None:
 
 def test_each_scenario_has_one_experiential_and_one_named_wording() -> None:
     gens = [p["generation"] for p in _pairs()]
+    assert all(g["pair_kind"] == "wording_type_variant" for g in gens)
     assert Counter(g["wording_type"] for g in gens) == {"experiential": 20, "named": 20}
     by_scenario = Counter(g["variant_of"] for g in gens)
     assert len(by_scenario) == 20 and set(by_scenario.values()) == {2}
@@ -71,6 +72,7 @@ def test_owner_verdicts_and_sidecar() -> None:
     assert report["excluded_by_owner"] == [] and report["retiered_by_owner"] == {}
     assert report["cost_usd"] == 0.0 and "run_timestamp" not in report
     assert "not outcome-blind" in report["selection"]
+    assert "do not skip agscen_" in report["publication"]
 
 
 def test_each_clinical_side_is_its_originals_and_each_variant_differs_only_by_its_span() -> None:
