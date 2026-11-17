@@ -1522,7 +1522,7 @@ def test_ordinary_text_with_hyphens_and_short_codes_is_not_read_as_an_id(tmp_pat
 NOT_METHOD_FIELDS = {"batch", "batch index", "index", "start index", "clinical prompt", "patient prompt", "clinical term",
                      "patient term", "intended target", "term", "prompts", "outputs", "html", "png", "trace url",
                      "topic", "topics", "rationale", "urgency", "models", "mode", "backend", "completed", "partial",
-                     "pairs requested", "environment", "inference", "variants", "multiples", "continuations",
+                     "pairs requested", "indices requested", "environment", "inference", "variants", "multiples", "continuations",
                      "held fixed", "results"}
 ORDINARY_METHOD_WORDS = {"flipped", "screening", "steered", "steering", "patching"}
 
