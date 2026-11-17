@@ -178,6 +178,61 @@ def test_lenspairs_dirs_excluded_from_census(tmp_path):
     assert len(per_model["gemma-2-2b"]) == 1
 
 
+# --- hand-authored exploratory sets (agscen_; publication_hold.is_exploratory_run_dir) -------
+EXPLORATORY = "agscen_20990101"
+HIJACK = ([(None, "x"), (1, "y"), (1, "y"), (1, "y")], [(None, "x"), (5, "y"), (4, "y"), (None, "z")])
+
+
+def _study_and_exploratory(root):
+    """One study pair per model, plus an exploratory set whose readable rows would
+    change every count (and supply hijack exemplars) if it were read."""
+    write_summary(root, "setA", "gemma-2-2b", [result(1, [(1, "y")] * 3, [(2, "y")] * 3)])
+    write_summary(root, "setA", "gemma-2-2b-it", [result(1, [(1, "y")] * 3, [(2, "y")] * 3)])
+    write_summary(root, EXPLORATORY, "gemma-2-2b", [result(i, *HIJACK) for i in (1, 2, 3)])
+    write_summary(root, EXPLORATORY, "gemma-2-2b-it", [result(1, *HIJACK)])
+
+
+def test_collect_skips_an_exploratory_set(tmp_path):
+    root = tmp_path / "trace_out"
+    _study_and_exploratory(root)
+    skipped = []
+    per_model, _holdout_excluded = collect(root, skipped)
+    assert {m: [r["dataset"] for r in rows] for m, rows in per_model.items()} == {
+        "gemma-2-2b": ["setA"], "gemma-2-2b-it": ["setA"]}
+    assert sorted(Path(p).parent.name for p in skipped) == [
+        f"{EXPLORATORY}__jlens_gemma-2-2b", f"{EXPLORATORY}__jlens_gemma-2-2b-it"]
+    assert collect(root)[0] == per_model           # the skip does not depend on passing a list
+
+
+def test_main_output_carries_no_exploratory_row_and_prints_the_skip(tmp_path, capsys):
+    root = tmp_path / "trace_out"
+    _study_and_exploratory(root)
+    out = tmp_path / "census.json"
+    site = tmp_path / "site"
+    (site / "data").mkdir(parents=True)
+    assert ji.main(["--trace-root", str(root), "--out", str(out), "--site", str(site)]) in (None, 0)
+    assert "2 exploratory-set part(s) not read" in capsys.readouterr().out
+    for written in (out, site / "data" / "jlens_insights.json"):
+        text = written.read_text(encoding="utf-8")
+        assert "agscen" not in text
+        payload = json.loads(text)
+        assert payload["n_pairs"] == 1
+        assert {k: v["n"] for k, v in payload["taxonomy"].items()} == {"held": 1}   # no exploratory hijack
+        assert payload["instruction_tuning"]["n_paired"] == 1
+
+
+def test_main_refuses_when_only_an_exploratory_set_is_on_disk(tmp_path, capsys):
+    # an exploratory set alone never becomes the census: the F-H08 refusal applies (exit 3)
+    root = tmp_path / "trace_out"
+    write_summary(root, EXPLORATORY, "gemma-2-2b", [result(1, *HIJACK)])
+    out = tmp_path / "census.json"
+    out.write_text('{"n_pairs": 42}', encoding="utf-8")
+    assert ji.main(["--trace-root", str(root), "--out", str(out)]) == 3
+    printed = capsys.readouterr().out
+    assert "1 exploratory-set part(s) not read" in printed and "refused" in printed
+    assert out.read_text(encoding="utf-8") == '{"n_pairs": 42}'
+
+
 # --- holdout seal wiring (tierb_split.sealed_pair), synthetic prompts only ---------------
 # tests/test_tierb_split.py pins these hashes: symptom 4 and 13 hash holdout, 0 and 1 explore.
 HOLD_A, HOLD_B = "The patient reports symptom 4.", "The patient reports symptom 13."

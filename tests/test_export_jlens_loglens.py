@@ -90,11 +90,11 @@ def test_join_lenses_only_common_indices():
     assert ext.join_lenses(jac, log) == []
 
 
-def _write_summary(root, kind, model, batch, results):
+def _write_summary(root, kind, model, batch, results, credit="credit-from-data"):
     d = root / f"{batch}__{kind}_{model}"
     d.mkdir(parents=True, exist_ok=True)
     (d / "jlens_summary.part_01.json").write_text(
-        json.dumps({"method_credit": "credit-from-data", "results": results}),
+        json.dumps({"method_credit": credit, "results": results}),
         encoding="utf-8")
 
 
@@ -172,3 +172,67 @@ def test_main_refuses_without_overwriting(tmp_path, capsys):
     assert rc == 3
     assert "refused" in capsys.readouterr().out
     assert out.read_text() == '{"kept": 1}'
+
+
+# --- hand-authored exploratory sets (agscen_; publication_hold.is_exploratory_run_dir) -------
+EXPLORATORY = "agscen_20990101"
+
+
+def _study_and_exploratory(root):
+    """Study batch b: two pairs under both lenses. The exploratory set sorts before b,
+    carries its own method_credit and three disagreeing pairs under both lenses, so
+    reading it would change the batches, the counts, the agreement and the credit."""
+    study = [_result(1, {2, 3}, {2, 3}), _result(2, {2, 3}, set())]
+    _write_summary(root, "jlens", "gemma-2-2b", "b", study)
+    _write_summary(root, "loglens", "gemma-2-2b", "b", study)
+    _write_summary(root, "jlens", "gemma-2-2b", EXPLORATORY,
+                   [_result(i, {2, 3}, set()) for i in (1, 2, 3)], credit="credit-from-agscen")
+    _write_summary(root, "loglens", "gemma-2-2b", EXPLORATORY,
+                   [_result(i, set(), set()) for i in (1, 2, 3)], credit="credit-from-agscen")
+
+
+def test_build_payload_skips_an_exploratory_set_under_both_lenses(tmp_path, monkeypatch):
+    monkeypatch.setattr(ext, "sealed_pair", lambda batch, index, prompt: False)
+    root = tmp_path / "trace_out"
+    _study_and_exploratory(root)
+    skipped = []
+    payload = ext.build_payload(str(root), "gemma-2-2b", skipped)
+    assert payload["batches"] == ["b"]
+    assert {p["batch"] for p in payload["per_pair"]} == {"b"}
+    assert payload["agreement"] == {"n_paired": 2, "class_agree": 2, "formed_agree": 2}
+    for lens in ("jacobian", "logit"):                         # pair 1 forms, pair 2 never does
+        assert payload[lens]["formation"]["n"] == 1 and payload[lens]["never_formed"] == 1
+    assert payload["method_credit"] == "credit-from-data"      # load_credit skips the set too
+    assert "agscen" not in json.dumps(payload)
+    assert sorted(Path(p).parent.name for p in skipped) == [
+        f"{EXPLORATORY}__jlens_gemma-2-2b", f"{EXPLORATORY}__loglens_gemma-2-2b"]
+    assert ext.collect_rows("loglens", "gemma-2-2b", str(root)).keys() == {"b"}   # no list needed
+
+
+def test_main_prints_the_skip_and_writes_no_exploratory_row(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(ext, "sealed_pair", lambda batch, index, prompt: False)
+    root = tmp_path / "trace_out"
+    _study_and_exploratory(root)
+    out = tmp_path / "jlens_loglens.json"
+    site = tmp_path / "site"
+    (site / "data").mkdir(parents=True)
+    assert ext.main(["--trace-root", str(root), "--out", str(out), "--site", str(site)]) == 0
+    assert "2 exploratory-set part(s) not read" in capsys.readouterr().out
+    for written in (out, site / "data" / "jlens_loglens.json"):
+        text = written.read_text(encoding="utf-8")
+        assert "agscen" not in text
+        assert json.loads(text)["agreement"]["n_paired"] == 2
+
+
+def test_main_refuses_when_the_only_logit_lens_run_is_exploratory(tmp_path, monkeypatch, capsys):
+    # an exploratory logit-lens fire alone never becomes the robustness arm (exit 3, nothing written)
+    monkeypatch.setattr(ext, "sealed_pair", lambda batch, index, prompt: False)
+    root = tmp_path / "trace_out"
+    _write_summary(root, "jlens", "gemma-2-2b", EXPLORATORY, [_result(1, {2, 3}, {2, 3})])
+    _write_summary(root, "loglens", "gemma-2-2b", EXPLORATORY, [_result(1, {2, 3}, {2, 3})])
+    out = tmp_path / "jlens_loglens.json"
+    out.write_text('{"kept": 1}', encoding="utf-8")
+    assert ext.main(["--trace-root", str(root), "--out", str(out), "--site", ""]) == 3
+    printed = capsys.readouterr().out
+    assert "1 exploratory-set part(s) not read" in printed and "refused" in printed
+    assert out.read_text(encoding="utf-8") == '{"kept": 1}'

@@ -11,7 +11,9 @@ Input (the robustness arm's backfill lane). Reads the committed lens SUMMARIES
 trace_out/*__loglens_<model>/jlens_summary.part_*.json (and the matching
 *__jlens_<model>/ Jacobian summaries), NOT the raw dumps - so a logit-lens
 readout does NOT need --save-raw; a plain --lens-type LOGIT_LENS jlens-readout
-fire on each batch is enough to feed this arm.
+fire on each batch is enough to feed this arm. Hand-authored exploratory sets
+(agscen_; publication_hold.is_exploratory_run_dir) are never read under either
+lens, and main prints how many of their parts it skipped.
 
 For every pair with both readouts committed: the patient-side formation layer
 and failure class under each lens, whether the two lenses agree, and the class
@@ -44,6 +46,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import jlens_insights as ji  # noqa: E402  (formation_layer, classify, quantiles, PERSISTENCE)
+from publication_hold import is_exploratory_run_dir  # noqa: E402
 from tierb_split import SealError, seal_config_error, sealed_pair  # noqa: E402
 
 METHOD_CREDIT_FALLBACK = (
@@ -138,13 +141,20 @@ def summarize_agreement(per_pair):
 # --------------------------------------------------------------------------- #
 
 
-def collect_rows(kind, model, trace_root):
+def collect_rows(kind, model, trace_root, skipped=None):
     """{batch: {index: row}} across every committed summary for a lens kind
     ('jlens' = Jacobian, 'loglens' = logit), sealed holdout pairs dropped by
-    tierb_split.sealed_pair (stamp_rows' rule; SealError when it cannot apply)."""
+    tierb_split.sealed_pair (stamp_rows' rule; SealError when it cannot apply).
+    A part in a hand-authored exploratory set (agscen_) is not read; its path is
+    appended to `skipped` when a list is given."""
     by_batch = {}
     marker = f"__{kind}_"
     for part in sorted(Path(trace_root).glob(f"*{marker}{model}/jlens_summary.part_*.json")):
+        if is_exploratory_run_dir(part.parent.name):
+            # traced for inspection only: no analysis membership includes the hand-authored sets
+            if skipped is not None:
+                skipped.append(str(part))
+            continue
         batch = part.parent.name.split(marker, 1)[0]
         try:
             summary = json.loads(part.read_text(encoding="utf-8"))
@@ -160,9 +170,12 @@ def collect_rows(kind, model, trace_root):
 
 
 def load_credit(trace_root, model):
-    """method_credit from any committed loglens or jlens summary; fallback."""
+    """method_credit from any committed loglens or jlens summary outside the
+    exploratory sets (collect_rows already counted those parts); fallback."""
     for kind in ("loglens", "jlens"):
         for part in sorted(Path(trace_root).glob(f"*__{kind}_{model}/jlens_summary.part_*.json")):
+            if is_exploratory_run_dir(part.parent.name):
+                continue
             try:
                 summary = json.loads(part.read_text(encoding="utf-8"))
             except (OSError, ValueError):
@@ -172,13 +185,14 @@ def load_credit(trace_root, model):
     return METHOD_CREDIT_FALLBACK
 
 
-def build_payload(trace_root, model):
+def build_payload(trace_root, model, skipped=None):
     """The data/jlens_loglens.json payload, or None when no logit-lens run is
-    committed yet (caller refuses rather than publish an empty arm)."""
-    log_by_batch = collect_rows("loglens", model, trace_root)
+    committed yet (caller refuses rather than publish an empty arm). Exploratory
+    parts both lenses skipped are appended to `skipped` when a list is given."""
+    log_by_batch = collect_rows("loglens", model, trace_root, skipped)
     if not log_by_batch:
         return None
-    jac_by_batch = collect_rows("jlens", model, trace_root)
+    jac_by_batch = collect_rows("jlens", model, trace_root, skipped)
 
     per_pair, jac_rows_all, log_rows_all = [], [], []
     for batch, log_rows in sorted(log_by_batch.items()):
@@ -231,10 +245,14 @@ def main(argv=None):
     parser.add_argument("--site", default="../patientwords", help="'' skips the site copy")
     args = parser.parse_args(argv)
 
+    skipped = []
     try:
-        payload = build_payload(args.trace_root, args.model)
+        payload = build_payload(args.trace_root, args.model, skipped)
     except SealError as exc:
         return seal_config_error(exc)  # exit 2: the publish chain stops
+    if skipped:
+        print(f"jlens loglens: {len(skipped)} exploratory-set part(s) not read "
+              "(scripts/results_policy.py)")
     if payload is None:
         print(f"refused: no committed logit-lens (__loglens_{args.model}) runs under "
               f"{args.trace_root} - not writing the robustness arm")
