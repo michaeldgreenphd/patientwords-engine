@@ -61,6 +61,10 @@ def test_each_scenario_has_one_experiential_and_one_named_wording() -> None:
     assert Counter(g["wording_type"] for g in gens) == {"experiential": 20, "named": 20}
     by_scenario = Counter(g["variant_of"] for g in gens)
     assert len(by_scenario) == 20 and set(by_scenario.values()) == {2}
+    kinds: dict[str, set[str]] = {}
+    for g in gens:
+        kinds.setdefault(g["variant_of"], set()).add(g["wording_type"])
+    assert all(v == {"experiential", "named"} for v in kinds.values())
     assert all({"x": "experiential", "n": "named"}[g["variant"]] == g["wording_type"] for g in gens)
 
 
