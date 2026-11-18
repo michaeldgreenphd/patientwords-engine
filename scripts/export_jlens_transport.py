@@ -29,9 +29,11 @@ them dominated the file; the frontend parses compact and indented identically.
 
 Graceful partial coverage (mirrors export_jlens_depth F-H08). Reads only
 committed trace_out/*__jlens_<model>/jlens_raw/*.json.gz (runs fired with
---save-raw). With no committed raw, a census batch with no committed coverage,
-or no drawable exemplar, it REFUSES (returns None) and leaves the published
-payload untouched - never overwrites a good file with a degraded one.
+--save-raw), never those of hand-authored exploratory sets (agscen_; the scan
+skips them and main prints how many). With no committed raw, a census batch
+with no committed coverage, or no drawable exemplar, it REFUSES (returns None)
+and leaves the published payload untouched - never overwrites a good file with
+a degraded one.
 
 EXPLORATORY: the Jacobian lens is a correlational readout, not causal evidence;
 nothing here is an intervention. Method credit is pulled from the summary's
@@ -425,7 +427,7 @@ def build_exemplar(trace_root, batch, index, model, topn, target):
 
 def build_payload(trace_root, model, exemplar_batch=None, exemplar_index=None,
                   max_exemplars=5, render_map=None, census_batch=None,
-                  exemplar_pins=None):
+                  exemplar_pins=None, skipped=None):
     """The data/jlens_transport.json payload, or None when the committed raw is
     too sparse to publish honestly (no raw at all, a census batch with no
     coverage, or no drawable exemplar) - the caller then leaves the published
@@ -436,8 +438,11 @@ def build_payload(trace_root, model, exemplar_batch=None, exemplar_index=None,
     that cohort. Exemplars come from `exemplar_pins` (an ordered committed list,
     pins without raw skipped) when given, else from deterministic score-ranking
     over pairs that carry a committed circuit-tracer render (`render_map`);
-    either way each answer token can deep-link to the real trace."""
-    scan_result = jps.scan(Path(trace_root))
+    either way each answer token can deep-link to the real trace.
+
+    jps.scan never reads a hand-authored exploratory set (agscen_); the raw dirs
+    it skipped are appended to `skipped` when a list is given."""
+    scan_result = jps.scan(Path(trace_root), skipped)
     all_pairs = collect_pairs(scan_result, model)
     if not all_pairs:
         return None
@@ -544,14 +549,19 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     render_map = load_render_map(args.scenarios) if args.scenarios else {}
+    skipped = []
     try:
         payload = build_payload(args.trace_root, args.model,
                                 args.exemplar_batch, args.exemplar_index,
                                 max_exemplars=args.max_exemplars,
                                 render_map=render_map, census_batch=args.census_batch,
-                                exemplar_pins=_parse_pins(args.exemplar_pins))
+                                exemplar_pins=_parse_pins(args.exemplar_pins),
+                                skipped=skipped)
     except SealError as exc:
         return seal_config_error(exc)  # exit 2: the publish chain stops
+    if skipped:
+        print(f"jlens transport: {len(skipped)} exploratory-set part(s) not read "
+              "(scripts/results_policy.py)")
     if payload is None:
         # Mirror jlens_insights F-H08: a sparse checkout with no committed raw
         # must never overwrite the published transport payload with an empty one.
