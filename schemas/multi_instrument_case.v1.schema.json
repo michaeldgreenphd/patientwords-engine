@@ -1,0 +1,750 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "patientwords.multi-instrument-case/1",
+  "title": "Per-case multi-instrument record from trace_out summaries",
+  "description": "Read-only per-case alignment record joining landed trace_out summary parts without merging values across instruments, choosing duplicate-part winners, or emitting prompt text. Structural subset validated by scripts/frontend_contract_schema.py.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "engine_commit",
+    "counts",
+    "cases"
+  ],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "engine_commit": {"type": ["string", "null"]},
+    "counts": {"$ref": "#/definitions/summary_counts"},
+    "cases": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/case_record"}
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "int_map": {
+      "type": "object",
+      "additionalProperties": {"type": "integer"}
+    },
+    "nullable_float_map": {
+      "type": "object",
+      "additionalProperties": {"type": ["number", "null"]}
+    },
+    "nullable_string_map": {
+      "type": "object",
+      "additionalProperties": {"type": ["string", "null"]}
+    },
+    "nullable_int_map": {
+      "type": "object",
+      "additionalProperties": {"type": ["integer", "null"]}
+    },
+    "nullable_bool_map": {
+      "type": "object",
+      "additionalProperties": {"type": ["boolean", "null"]}
+    },
+    "flag_tallies": {
+      "type": "object",
+      "required": ["true", "false", "null"],
+      "properties": {
+        "true": {"type": "integer"},
+        "false": {"type": "integer"},
+        "null": {"type": "integer"}
+      },
+      "additionalProperties": false
+    },
+    "summary_counts": {
+      "type": "object",
+      "required": [
+        "part_files_read",
+        "non_summary_json_skipped",
+        "sealed_pairs_excluded",
+        "sealed_cases_excluded",
+        "case_count",
+        "derived_cases_with_source_key",
+        "by_instrument_count",
+        "by_instrument",
+        "by_model",
+        "by_stem",
+        "flags"
+      ],
+      "properties": {
+        "part_files_read": {"type": "integer"},
+        "non_summary_json_skipped": {"type": "integer"},
+        "sealed_pairs_excluded": {"type": "integer"},
+        "sealed_cases_excluded": {"type": "integer"},
+        "case_count": {"type": "integer"},
+        "derived_cases_with_source_key": {"type": "integer"},
+        "by_instrument_count": {"$ref": "#/definitions/int_map"},
+        "by_instrument": {"$ref": "#/definitions/int_map"},
+        "by_model": {"$ref": "#/definitions/int_map"},
+        "by_stem": {"$ref": "#/definitions/int_map"},
+        "flags": {
+          "type": "object",
+          "additionalProperties": {"$ref": "#/definitions/flag_tallies"}
+        }
+      },
+      "additionalProperties": false
+    },
+    "case_key": {
+      "type": "object",
+      "required": ["stem", "index", "model"],
+      "properties": {
+        "stem": {"type": "string"},
+        "index": {"type": "integer"},
+        "model": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "source_key_ref": {
+      "type": "object",
+      "required": ["stem", "index", "model", "via"],
+      "properties": {
+        "stem": {"type": "string"},
+        "index": {"type": "integer"},
+        "model": {"type": "string"},
+        "via": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "derived_from_link": {
+      "type": "object",
+      "required": ["batch", "raw_batch", "index", "variant", "quadrant"],
+      "properties": {
+        "batch": {"type": "string"},
+        "raw_batch": {"type": "string"},
+        "index": {"type": "integer"},
+        "variant": {"type": ["integer", "null"]},
+        "quadrant": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "downgrade_source_link": {
+      "type": "object",
+      "required": ["batch", "raw_batch", "index", "models"],
+      "properties": {
+        "batch": {"type": "string"},
+        "raw_batch": {"type": "string"},
+        "index": {"type": "integer"},
+        "models": {
+          "type": ["array", "null"],
+          "items": {"type": "string"}
+        }
+      },
+      "additionalProperties": false
+    },
+    "case_checks": {
+      "type": "object",
+      "required": [
+        "prompt_sha256_match",
+        "prompt_missing_on_instrument",
+        "target_label_match",
+        "target_label_raw_match",
+        "target_label_missing_on_instrument",
+        "hosted_target_read_recorded",
+        "revision_recorded",
+        "any_revision_recorded",
+        "revisions_match",
+        "duplicate_parts_present",
+        "duplicate_value_conflict"
+      ],
+      "properties": {
+        "prompt_sha256_match": {"type": ["boolean", "null"]},
+        "prompt_missing_on_instrument": {"type": "boolean"},
+        "target_label_match": {"type": ["boolean", "null"]},
+        "target_label_raw_match": {"type": ["boolean", "null"]},
+        "target_label_missing_on_instrument": {"type": "boolean"},
+        "hosted_target_read_recorded": {"type": ["boolean", "null"]},
+        "revision_recorded": {"type": "boolean"},
+        "any_revision_recorded": {"type": "boolean"},
+        "revisions_match": {"type": ["boolean", "null"]},
+        "duplicate_parts_present": {"type": "boolean"},
+        "duplicate_value_conflict": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "candidate_provenance": {
+      "type": "object",
+      "required": [
+        "part_path",
+        "part_sha256",
+        "run_dir",
+        "backend",
+        "mode",
+        "lens_type",
+        "revision",
+        "dtype",
+        "device",
+        "environment",
+        "prompt_sha256",
+        "target_label_recorded",
+        "target_label_raw_sha256",
+        "target_label_sha256",
+        "target_has_output_wrapper"
+      ],
+      "properties": {
+        "part_path": {"type": "string"},
+        "part_sha256": {"type": "string"},
+        "run_dir": {"type": "string"},
+        "backend": {"type": "string"},
+        "mode": {"type": "string"},
+        "lens_type": {"type": ["string", "null"]},
+        "revision": {"type": ["string", "null"]},
+        "dtype": {"type": ["string", "null"]},
+        "device": {"type": ["string", "null"]},
+        "environment": {"type": ["string", "null"]},
+        "prompt_sha256": {
+          "type": ["object", "null"],
+          "additionalProperties": {"type": "string"}
+        },
+        "target_label_recorded": {"type": "boolean"},
+        "target_label_raw_sha256": {"type": ["string", "null"]},
+        "target_label_sha256": {"type": ["string", "null"]},
+        "target_has_output_wrapper": {"type": ["boolean", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "dialect_variant_prob": {
+      "type": "object",
+      "required": ["dialect", "probability", "delta_vs_baseline"],
+      "properties": {
+        "dialect": {"type": "string"},
+        "probability": {"type": ["number", "null"]},
+        "delta_vs_baseline": {"type": ["number", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "target_read_info": {
+      "type": "object",
+      "required": [
+        "rule",
+        "match",
+        "substituted",
+        "reference_side",
+        "intended_target_sha256",
+        "measured_token_sha256"
+      ],
+      "properties": {
+        "rule": {"type": ["string", "null"]},
+        "match": {"type": ["string", "null"]},
+        "substituted": {"type": ["boolean", "null"]},
+        "reference_side": {"type": ["string", "null"]},
+        "intended_target_sha256": {"type": ["string", "null"]},
+        "measured_token_sha256": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "hosted_graph_values": {
+      "type": "object",
+      "required": [
+        "row_mode",
+        "source_set",
+        "probabilities",
+        "dialect_variants",
+        "language_penalty",
+        "flipped",
+        "clinical_mass",
+        "error_share",
+        "circuit_diff",
+        "top_path_sha256",
+        "screening_status",
+        "anchor_fallback",
+        "target_read_recorded",
+        "target_read",
+        "has_feature_steering",
+        "mitigation_recovery"
+      ],
+      "properties": {
+        "row_mode": {"type": ["string", "null"]},
+        "source_set": {"type": ["string", "null"]},
+        "probabilities": {
+          "type": ["object", "null"],
+          "additionalProperties": {"type": ["number", "null"]}
+        },
+        "dialect_variants": {
+          "type": ["array", "null"],
+          "items": {"$ref": "#/definitions/dialect_variant_prob"}
+        },
+        "language_penalty": {"type": ["number", "null"]},
+        "flipped": {"type": ["boolean", "null"]},
+        "clinical_mass": {
+          "type": ["object", "null"],
+          "additionalProperties": {"type": ["number", "null"]}
+        },
+        "error_share": {
+          "type": ["object", "null"],
+          "additionalProperties": {"type": ["number", "null"]}
+        },
+        "circuit_diff": {
+          "type": ["object", "null"],
+          "additionalProperties": {"type": ["integer", "number", "null"]}
+        },
+        "top_path_sha256": {
+          "type": ["object", "null"],
+          "additionalProperties": {"type": ["string", "null"]}
+        },
+        "screening_status": {"type": ["string", "null"]},
+        "anchor_fallback": {"type": ["boolean", "null"]},
+        "target_read_recorded": {"type": "boolean"},
+        "target_read": {
+          "type": ["object", "null"],
+          "required": [
+            "rule",
+            "match",
+            "substituted",
+            "reference_side",
+            "intended_target_sha256",
+            "measured_token_sha256"
+          ],
+          "properties": {
+            "rule": {"type": ["string", "null"]},
+            "match": {"type": ["string", "null"]},
+            "substituted": {"type": ["boolean", "null"]},
+            "reference_side": {"type": ["string", "null"]},
+            "intended_target_sha256": {"type": ["string", "null"]},
+            "measured_token_sha256": {"type": ["string", "null"]}
+          },
+          "additionalProperties": false
+        },
+        "has_feature_steering": {"type": "boolean"},
+        "mitigation_recovery": {"type": ["number", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "hosted_graph_candidate": {
+      "type": "object",
+      "required": ["provenance", "values"],
+      "properties": {
+        "provenance": {"$ref": "#/definitions/candidate_provenance"},
+        "values": {"$ref": "#/definitions/hosted_graph_values"}
+      },
+      "additionalProperties": false
+    },
+    "hosted_graph_block": {
+      "type": "object",
+      "required": ["duplicate_parts", "value_conflict", "candidates"],
+      "properties": {
+        "duplicate_parts": {"type": "boolean"},
+        "value_conflict": {"type": "boolean"},
+        "candidates": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/hosted_graph_candidate"}
+        }
+      },
+      "additionalProperties": false
+    },
+    "logits_values": {
+      "type": "object",
+      "required": [
+        "probabilities",
+        "language_penalty",
+        "flipped",
+        "anchor_fallback",
+        "spread_counts",
+        "top1_token_sha256",
+        "top1_prob",
+        "token_parity"
+      ],
+      "properties": {
+        "probabilities": {"$ref": "#/definitions/nullable_float_map"},
+        "language_penalty": {"type": ["number", "null"]},
+        "flipped": {"type": ["boolean", "null"]},
+        "anchor_fallback": {"type": ["boolean", "null"]},
+        "spread_counts": {"$ref": "#/definitions/int_map"},
+        "top1_token_sha256": {"$ref": "#/definitions/nullable_string_map"},
+        "top1_prob": {"$ref": "#/definitions/nullable_float_map"},
+        "token_parity": {
+          "type": ["object", "null"],
+          "additionalProperties": {"type": ["boolean", "null"]}
+        }
+      },
+      "additionalProperties": false
+    },
+    "logits_candidate": {
+      "type": "object",
+      "required": ["provenance", "values"],
+      "properties": {
+        "provenance": {"$ref": "#/definitions/candidate_provenance"},
+        "values": {"$ref": "#/definitions/logits_values"}
+      },
+      "additionalProperties": false
+    },
+    "logits_block": {
+      "type": "object",
+      "required": ["duplicate_parts", "value_conflict", "candidates"],
+      "properties": {
+        "duplicate_parts": {"type": "boolean"},
+        "value_conflict": {"type": "boolean"},
+        "candidates": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/logits_candidate"}
+        }
+      },
+      "additionalProperties": false
+    },
+    "patch_position": {
+      "type": "object",
+      "required": ["index", "aligned_clean_index", "token_sha256"],
+      "properties": {
+        "index": {"type": "integer"},
+        "aligned_clean_index": {"type": ["integer", "null"]},
+        "token_sha256": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "patch_values": {
+      "type": "object",
+      "required": [
+        "probabilities",
+        "language_penalty",
+        "hook_point",
+        "metric",
+        "placeholder",
+        "align",
+        "clean_prob",
+        "corrupt_prob",
+        "layers",
+        "positions",
+        "recovery",
+        "patched_prob"
+      ],
+      "properties": {
+        "probabilities": {"$ref": "#/definitions/nullable_float_map"},
+        "language_penalty": {"type": ["number", "null"]},
+        "hook_point": {"type": ["string", "null"]},
+        "metric": {"type": ["string", "null"]},
+        "placeholder": {"type": "boolean"},
+        "align": {"type": ["string", "null"]},
+        "clean_prob": {"type": ["number", "null"]},
+        "corrupt_prob": {"type": ["number", "null"]},
+        "layers": {
+          "type": "array",
+          "items": {"type": "integer"}
+        },
+        "positions": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/patch_position"}
+        },
+        "recovery": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {"type": ["number", "null"]}
+          }
+        },
+        "patched_prob": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {"type": ["number", "null"]}
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "patch_candidate": {
+      "type": "object",
+      "required": ["provenance", "values"],
+      "properties": {
+        "provenance": {"$ref": "#/definitions/candidate_provenance"},
+        "values": {"$ref": "#/definitions/patch_values"}
+      },
+      "additionalProperties": false
+    },
+    "patch_block": {
+      "type": "object",
+      "required": ["duplicate_parts", "value_conflict", "candidates"],
+      "properties": {
+        "duplicate_parts": {"type": "boolean"},
+        "value_conflict": {"type": "boolean"},
+        "candidates": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/patch_candidate"}
+        }
+      },
+      "additionalProperties": false
+    },
+    "lens_layer_entry": {
+      "type": "object",
+      "required": ["layer", "target_rank", "match", "top1_sha256"],
+      "properties": {
+        "layer": {"type": "integer"},
+        "target_rank": {"type": ["integer", "null"]},
+        "match": {"type": ["string", "null"]},
+        "top1_sha256": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "lens_values": {
+      "type": "object",
+      "required": [
+        "top_n",
+        "parse_status",
+        "first_layer",
+        "last_layer_rank",
+        "patient_depth_class",
+        "depth"
+      ],
+      "properties": {
+        "top_n": {"type": ["integer", "null"]},
+        "parse_status": {"$ref": "#/definitions/nullable_string_map"},
+        "first_layer": {"$ref": "#/definitions/nullable_int_map"},
+        "last_layer_rank": {"$ref": "#/definitions/nullable_int_map"},
+        "patient_depth_class": {"type": ["string", "null"]},
+        "depth": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {"$ref": "#/definitions/lens_layer_entry"}
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "lens_candidate": {
+      "type": "object",
+      "required": ["provenance", "values"],
+      "properties": {
+        "provenance": {"$ref": "#/definitions/candidate_provenance"},
+        "values": {"$ref": "#/definitions/lens_values"}
+      },
+      "additionalProperties": false
+    },
+    "lens_block": {
+      "type": "object",
+      "required": ["duplicate_parts", "value_conflict", "candidates"],
+      "properties": {
+        "duplicate_parts": {"type": "boolean"},
+        "value_conflict": {"type": "boolean"},
+        "candidates": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/lens_candidate"}
+        }
+      },
+      "additionalProperties": false
+    },
+    "steer_call_entry": {
+      "type": "object",
+      "required": ["first_layer", "final_rank", "parse_status", "completion_sha256"],
+      "properties": {
+        "first_layer": {"type": ["integer", "null"]},
+        "final_rank": {"type": ["integer", "null"]},
+        "parse_status": {"type": ["string", "null"]},
+        "completion_sha256": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "steer_values": {
+      "type": "object",
+      "required": [
+        "spec",
+        "spec_row_index",
+        "trajectory_class",
+        "layers",
+        "strengths",
+        "top_n",
+        "winner_label_sha256",
+        "calls"
+      ],
+      "properties": {
+        "spec": {"type": ["string", "null"]},
+        "spec_row_index": {"type": ["integer", "null"]},
+        "trajectory_class": {"type": ["string", "null"]},
+        "layers": {
+          "type": "array",
+          "items": {"type": "integer"}
+        },
+        "strengths": {
+          "type": "array",
+          "items": {"type": "number"}
+        },
+        "top_n": {"type": ["integer", "null"]},
+        "winner_label_sha256": {"type": ["string", "null"]},
+        "calls": {
+          "type": "object",
+          "additionalProperties": {"$ref": "#/definitions/steer_call_entry"}
+        }
+      },
+      "additionalProperties": false
+    },
+    "steer_candidate": {
+      "type": "object",
+      "required": ["provenance", "values"],
+      "properties": {
+        "provenance": {"$ref": "#/definitions/candidate_provenance"},
+        "values": {"$ref": "#/definitions/steer_values"}
+      },
+      "additionalProperties": false
+    },
+    "steer_block": {
+      "type": "object",
+      "required": ["duplicate_parts", "value_conflict", "candidates"],
+      "properties": {
+        "duplicate_parts": {"type": "boolean"},
+        "value_conflict": {"type": "boolean"},
+        "candidates": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/steer_candidate"}
+        }
+      },
+      "additionalProperties": false
+    },
+    "depth_curve_entry": {
+      "type": "object",
+      "required": ["layer", "expected_tier", "coverage", "top_sha256"],
+      "properties": {
+        "layer": {"type": "integer"},
+        "expected_tier": {"type": ["number", "null"]},
+        "coverage": {"type": ["number", "null"]},
+        "top_sha256": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "depth_probe_values": {
+      "type": "object",
+      "required": [
+        "topk",
+        "min_coverage",
+        "divergence_threshold",
+        "first_divergence_layer",
+        "final_gap",
+        "max_abs_gap",
+        "layers_informative",
+        "layers_measured",
+        "gap",
+        "curves"
+      ],
+      "properties": {
+        "topk": {"type": "integer"},
+        "min_coverage": {"type": ["number", "null"]},
+        "divergence_threshold": {"type": ["number", "null"]},
+        "first_divergence_layer": {"type": ["integer", "null"]},
+        "final_gap": {"type": ["number", "null"]},
+        "max_abs_gap": {"type": ["number", "null"]},
+        "layers_informative": {"type": ["integer", "null"]},
+        "layers_measured": {"type": ["integer", "null"]},
+        "gap": {
+          "type": "array",
+          "items": {"type": ["number", "null"]}
+        },
+        "curves": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {"$ref": "#/definitions/depth_curve_entry"}
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "depth_probe_candidate": {
+      "type": "object",
+      "required": ["provenance", "values"],
+      "properties": {
+        "provenance": {"$ref": "#/definitions/candidate_provenance"},
+        "values": {"$ref": "#/definitions/depth_probe_values"}
+      },
+      "additionalProperties": false
+    },
+    "depth_probe_topk_slot": {
+      "type": "object",
+      "required": ["topk", "duplicate_parts", "value_conflict", "candidates"],
+      "properties": {
+        "topk": {"type": "integer"},
+        "duplicate_parts": {"type": "boolean"},
+        "value_conflict": {"type": "boolean"},
+        "candidates": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/depth_probe_candidate"}
+        }
+      },
+      "additionalProperties": false
+    },
+    "depth_probe_block": {
+      "type": "object",
+      "required": ["duplicate_parts", "value_conflict", "by_topk"],
+      "properties": {
+        "duplicate_parts": {"type": "boolean"},
+        "value_conflict": {"type": "boolean"},
+        "by_topk": {
+          "type": "object",
+          "additionalProperties": {"$ref": "#/definitions/depth_probe_topk_slot"}
+        }
+      },
+      "additionalProperties": false
+    },
+    "instruments_object": {
+      "type": "object",
+      "properties": {
+        "hosted_graph": {"$ref": "#/definitions/hosted_graph_block"},
+        "cpu_logits": {"$ref": "#/definitions/logits_block"},
+        "activation_patching": {"$ref": "#/definitions/patch_block"},
+        "jacobian_lens": {"$ref": "#/definitions/lens_block"},
+        "logit_lens": {"$ref": "#/definitions/lens_block"},
+        "lens_steering": {"$ref": "#/definitions/steer_block"},
+        "depth_probe": {"$ref": "#/definitions/depth_probe_block"},
+        "float32_verify": {"$ref": "#/definitions/logits_block"}
+      },
+      "additionalProperties": false
+    },
+    "case_record": {
+      "type": "object",
+      "required": [
+        "key",
+        "source_key",
+        "derived_from",
+        "downgrade_source",
+        "instrument_count",
+        "instruments_present",
+        "checks",
+        "instruments"
+      ],
+      "properties": {
+        "key": {"$ref": "#/definitions/case_key"},
+        "source_key": {
+          "type": ["object", "null"],
+          "required": ["stem", "index", "model", "via"],
+          "properties": {
+            "stem": {"type": "string"},
+            "index": {"type": "integer"},
+            "model": {"type": "string"},
+            "via": {"type": "string"}
+          },
+          "additionalProperties": false
+        },
+        "derived_from": {
+          "type": ["object", "null"],
+          "required": ["batch", "raw_batch", "index", "variant", "quadrant"],
+          "properties": {
+            "batch": {"type": "string"},
+            "raw_batch": {"type": "string"},
+            "index": {"type": "integer"},
+            "variant": {"type": ["integer", "null"]},
+            "quadrant": {"type": ["string", "null"]}
+          },
+          "additionalProperties": false
+        },
+        "downgrade_source": {
+          "type": ["object", "null"],
+          "required": ["batch", "raw_batch", "index", "models"],
+          "properties": {
+            "batch": {"type": "string"},
+            "raw_batch": {"type": "string"},
+            "index": {"type": "integer"},
+            "models": {
+              "type": ["array", "null"],
+              "items": {"type": "string"}
+            }
+          },
+          "additionalProperties": false
+        },
+        "instrument_count": {"type": "integer"},
+        "instruments_present": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "checks": {"$ref": "#/definitions/case_checks"},
+        "instruments": {"$ref": "#/definitions/instruments_object"}
+      },
+      "additionalProperties": false
+    }
+  }
+}
