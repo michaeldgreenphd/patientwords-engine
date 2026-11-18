@@ -29,11 +29,12 @@ them dominated the file; the frontend parses compact and indented identically.
 
 Graceful partial coverage (mirrors export_jlens_depth F-H08). Reads only
 committed trace_out/*__jlens_<model>/jlens_raw/*.json.gz (runs fired with
---save-raw), except hand-authored exploratory sets (agscen_), which are skipped
-both in the scan and as explicit exemplar picks, and counted on stdout. With no
-committed raw, a census batch with no committed coverage,
-or no drawable exemplar, it REFUSES (returns None) and leaves the published
-payload untouched - never overwrites a good file with a degraded one.
+--save-raw), never those of hand-authored exploratory sets (agscen_; the scan
+skips them, an explicit exemplar pick naming one is dropped, and main prints
+both). With no committed raw, a census batch
+with no committed coverage, or no drawable exemplar, it REFUSES (returns None)
+and leaves the published payload untouched - never overwrites a good file with
+a degraded one.
 
 EXPLORATORY: the Jacobian lens is a correlational readout, not causal evidence;
 nothing here is an intervention. Method credit is pulled from the summary's
@@ -441,12 +442,12 @@ def build_payload(trace_root, model, exemplar_batch=None, exemplar_index=None,
     over pairs that carry a committed circuit-tracer render (`render_map`);
     either way each answer token can deep-link to the real trace.
 
-    Hand-authored exploratory sets (agscen_) never enter the payload: the scan
-    skips their raw dirs (appended to `skipped`), and an explicit exemplar pick
-    (a pin, or exemplar_batch/exemplar_index) naming such a set is dropped
-    (appended to `skipped_picks` as 'batch:index'), because build_exemplar reads
-    raw by (batch, index) and would otherwise bypass the scan."""
-    scan_result = jps.scan(Path(trace_root), skipped=skipped)
+    jps.scan never reads a hand-authored exploratory set (agscen_); the raw dirs
+    it skipped are appended to `skipped` when a list is given. An explicit
+    exemplar pick (a pin, or exemplar_batch/exemplar_index) naming such a set is
+    dropped too, and appended to `skipped_picks` as 'batch:index': build_exemplar
+    reads raw by (batch, index), so a pick would otherwise bypass the scan."""
+    scan_result = jps.scan(Path(trace_root), skipped)
     all_pairs = collect_pairs(scan_result, model)
     if not all_pairs:
         return None
@@ -572,7 +573,7 @@ def main(argv=None):
     except SealError as exc:
         return seal_config_error(exc)  # exit 2: the publish chain stops
     if skipped:
-        print(f"jlens transport: {len(skipped)} exploratory-set raw dir(s) not read "
+        print(f"jlens transport: {len(skipped)} exploratory-set part(s) not read "
               "(scripts/results_policy.py)")
     if skipped_picks:
         print(f"jlens transport: exploratory-set exemplar pick(s) dropped: {', '.join(skipped_picks)}")

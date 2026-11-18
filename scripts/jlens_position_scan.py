@@ -12,9 +12,9 @@ they keep only the final-position top-8 profile:
    not failure to represent the concept mid-sentence.
 
 Reads every trace_out/*__jlens_*/jlens_raw/pair_*.json.gz (raw responses are
-committed only for runs fired with save_raw), except hand-authored exploratory
-sets (agscen_; publication_hold.is_exploratory_run_dir), whose skipped
-directories main counts on stdout. Targets come from the batch file
+committed only for runs fired with save_raw) except those of hand-authored
+exploratory sets (agscen_; publication_hold.is_exploratory_run_dir), which are
+never read; main prints how many it skipped. Targets come from the batch file
 in data/simulated/. Writes ops/jlens_position_scan.json. Offline, $0. The lens
 is a correlational readout; nothing here is causal evidence.
 """
@@ -101,15 +101,20 @@ def _batch_targets(stem: str) -> dict[int, dict]:
 
 
 def scan(trace_root: Path, skipped: list[str] | None = None) -> dict:
-    """Per-response transport and window records across the committed raw lens
-    responses. A raw directory in a hand-authored exploratory set (agscen_) is not
-    read: no analysis membership includes those sets. Its path is appended to
-    `skipped` when a list is given, so a caller can print the count."""
+    """The ops/jlens_position_scan.json payload over every committed jlens_raw dir.
+
+    A raw dir in a hand-authored exploratory set (agscen_; is_exploratory_run_dir)
+    is never read: no analysis membership includes those sets, and their batch
+    files in data/simulated/ would otherwise resolve targets for them. Its path is
+    appended to `skipped` when a list is given, so callers can print the count;
+    the returned payload's shape does not change.
+    """
     scans = []
     for raw_dir in sorted(trace_root.glob("*__jlens_*/jlens_raw")):
         run_dir = raw_dir.parent.name
         if is_exploratory_run_dir(run_dir):
-            # traced for inspection only: its pairs never passed the study's generator or Tier B split
+            # a hand-authored exploratory set (agscen_) is traced for inspection only: its pairs never
+            # passed the study's generator or Tier B split, so they stay out of the scan and the transport payload
             if skipped is not None:
                 skipped.append(str(raw_dir))
             continue
@@ -159,7 +164,7 @@ def main() -> None:
     skipped: list[str] = []
     result = scan(Path(args.trace_root), skipped)
     if skipped:
-        print(f"jlens position scan: {len(skipped)} exploratory-set raw dir(s) not read "
+        print(f"jlens position scan: {len(skipped)} exploratory-set part(s) not read "
               "(scripts/results_policy.py)")
     Path(args.out).write_text(json.dumps(result, indent=1) + "\n", encoding="utf-8")
     for s in result["scans"]:

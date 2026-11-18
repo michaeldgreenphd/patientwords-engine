@@ -7,6 +7,7 @@ choice, and the empty-input refusal (a sparse checkout must never overwrite the
 published transport payload with an empty one).
 """
 
+import gzip
 import importlib.util
 import json
 from pathlib import Path
@@ -355,86 +356,101 @@ def test_main_refuses_without_overwriting(tmp_path, monkeypatch, capsys):
 
 
 # --- hand-authored exploratory sets (agscen_; publication_hold.is_exploratory_run_dir) -------
-STUDY, EXPLORATORY = "pairs_20990101T000000Z", "agscen_20990101"
+# Through the real jps.scan: the agscen_ batch files in data/simulated/ resolve targets, so
+# only the scan's skip keeps a save_raw lens fire on such a set out of the payload.
+EXPLORATORY = "agscen_20990101"
 
 
-def _write_raw(root, batch, index, model="gemma-2-2b"):
-    """Both sides of one pair as committed save_raw responses (the confirmed schema)."""
-    import gzip
-    d = root / f"{batch}__jlens_{model}" / "jlens_raw"
-    d.mkdir(parents=True, exist_ok=True)
-    resp = _resp([[[" a"], [" tgt"]], [[" tgt"], [" tgt"]]], [(0, "<bos>"), (1, " x")])
-    for side in ("clinical", "patient"):
-        with gzip.open(d / f"pair_{index:03d}_{side}.json.gz", "wt", encoding="utf-8") as fh:
-            json.dump(resp, fh)
+def _write_raw(root, stem, index, side, response):
+    raw_dir = root / f"{stem}__jlens_gemma-2-2b" / "jlens_raw"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    with gzip.open(raw_dir / f"pair_{index:03d}_{side}.json.gz", "wt", encoding="utf-8") as fh:
+        json.dump(response, fh)
 
 
-def _study_and_exploratory(tmp_path, monkeypatch):
-    """A study pair and two exploratory pairs on disk; every stem resolves a target
-    (data/simulated holds agscen_ batch files too), so only the skip keeps them out."""
+def _study_and_exploratory(root, monkeypatch, study=True):
+    """One study pair (clinical reads at the answer, patient never) and an exploratory
+    set of two transport-gap pairs that would add census rows and outrank the study
+    exemplar if read. Every stem resolves a target; the seal is open (synthetic stems)."""
+    reads = _resp([[[" a"], [" a"]], [[" a"], [" tgt"]]], [(0, "x"), (1, " y")])
+    never = _resp([[[" a"], [" a"]], [[" a"], [" a"]]], [(0, "x"), (1, " y")])
+    gap = _resp([[[" a"], [" tgt"]], [[" a"], [" a"]]], [(0, "x"), (1, " y")])
+    if study:
+        _write_raw(root, "setA", 1, "clinical", reads)
+        _write_raw(root, "setA", 1, "patient", never)
+    for index in (1, 2):
+        _write_raw(root, EXPLORATORY, index, "clinical", reads)
+        _write_raw(root, EXPLORATORY, index, "patient", gap)
+    targets = {i: {"target_clinical_token": "tgt"} for i in (1, 2)}
+    monkeypatch.setattr(ext.jps, "_batch_targets", lambda stem: targets)
     monkeypatch.setattr(ext, "sealed_pair", lambda batch, index, prompt: False)
-    monkeypatch.setattr(ext.jps, "_batch_targets",
-                        lambda stem: {1: {"target_clinical_token": " tgt"}, 2: {"target_clinical_token": " tgt"}})
+
+
+def test_build_payload_never_reads_an_exploratory_set(tmp_path, monkeypatch):
     root = tmp_path / "trace_out"
-    _write_raw(root, STUDY, 1)
-    _write_raw(root, EXPLORATORY, 1)
-    _write_raw(root, EXPLORATORY, 2)
-    return root
-
-
-def test_scan_skips_an_exploratory_set(tmp_path, monkeypatch):
-    root = _study_and_exploratory(tmp_path, monkeypatch)
+    _study_and_exploratory(root, monkeypatch)
     skipped = []
-    result = ext.jps.scan(root, skipped)
-    assert {s["batch"] for s in result["scans"]} == {STUDY} and result["n_responses"] == 2
-    assert [Path(p).parent.name for p in skipped] == [f"{EXPLORATORY}__jlens_gemma-2-2b"]
-    assert ext.jps.scan(root) == result                 # the skip does not depend on passing a list
+    payload = ext.build_payload(str(root), "gemma-2-2b", census_batch=None, skipped=skipped)
+    assert payload["n_pairs"] == 1
+    assert [(e["batch"], e["index"]) for e in payload["per_pair"]] == [("setA", 1)]
+    assert [(e["batch"], e["index"]) for e in payload["exemplars"]] == [("setA", 1)]
+    assert payload["census"]["patient"]["transport_gap"] == 0
+    assert [p.split("/")[-2] for p in skipped] == [f"{EXPLORATORY}__jlens_gemma-2-2b"]
 
 
-def test_position_scan_main_prints_the_skip(tmp_path, monkeypatch, capsys):
-    root = _study_and_exploratory(tmp_path, monkeypatch)
-    out = tmp_path / "jlens_position_scan.json"
-    monkeypatch.setattr("sys.argv", ["jlens_position_scan.py", "--trace-root", str(root), "--out", str(out)])
-    ext.jps.main()
-    assert "1 exploratory-set raw dir(s) not read" in capsys.readouterr().out
-    assert "agscen" not in out.read_text(encoding="utf-8")
-
-
-def test_build_payload_drops_an_exploratory_pin_and_scan_rows(tmp_path, monkeypatch):
-    # build_exemplar reads raw by (batch, index), so a pin would bypass the scan's skip
-    root = _study_and_exploratory(tmp_path, monkeypatch)
-    skipped, picks = [], []
-    payload = ext.build_payload(str(root), "gemma-2-2b", census_batch=STUDY,
-                                exemplar_pins=[(EXPLORATORY, 1), (STUDY, 1), (EXPLORATORY, 2)],
-                                skipped=skipped, skipped_picks=picks)
-    assert [(e["batch"], e["index"]) for e in payload["exemplars"]] == [(STUDY, 1)]
-    assert [(e["batch"], e["index"]) for e in payload["per_pair"]] == [(STUDY, 1)]
-    assert picks == [f"{EXPLORATORY}:1", f"{EXPLORATORY}:2"]
-    assert [Path(p).parent.name for p in skipped] == [f"{EXPLORATORY}__jlens_gemma-2-2b"]
-    assert "agscen" not in json.dumps(payload)
-
-
-def test_build_payload_refuses_an_explicit_exploratory_exemplar(tmp_path, monkeypatch):
-    # --exemplar-batch/--exemplar-index naming an exploratory pair leaves no drawable exemplar
-    root = _study_and_exploratory(tmp_path, monkeypatch)
-    picks = []
-    assert ext.build_payload(str(root), "gemma-2-2b", exemplar_batch=EXPLORATORY, exemplar_index=1,
-                             census_batch=STUDY, skipped_picks=picks) is None
-    assert picks == [f"{EXPLORATORY}:1"]
-
-
-def test_main_prints_both_skips_and_writes_no_exploratory_row(tmp_path, monkeypatch, capsys):
-    root = _study_and_exploratory(tmp_path, monkeypatch)
+def test_main_output_carries_no_exploratory_row_and_prints_the_skip(tmp_path, monkeypatch, capsys):
+    root = tmp_path / "trace_out"
+    _study_and_exploratory(root, monkeypatch)
     out = tmp_path / "jlens_transport.json"
     site = tmp_path / "site"
     (site / "data").mkdir(parents=True)
-    rc = ext.main(["--trace-root", str(root), "--scenarios", "", "--census-batch", STUDY,
-                   "--exemplar-pins", f"{EXPLORATORY}:1,{STUDY}:1", "--out", str(out), "--site", str(site)])
+    rc = ext.main(["--trace-root", str(root), "--model", "gemma-2-2b", "--census-batch", "",
+                   "--scenarios", "", "--out", str(out), "--site", str(site)])
     assert rc == 0
-    printed = capsys.readouterr().out
-    assert "1 exploratory-set raw dir(s) not read" in printed
-    assert f"exemplar pick(s) dropped: {EXPLORATORY}:1" in printed
+    assert "1 exploratory-set part(s) not read (scripts/results_policy.py)" in capsys.readouterr().out
     for written in (out, site / "data" / "jlens_transport.json"):
         text = written.read_text(encoding="utf-8")
         assert "agscen" not in text
         assert json.loads(text)["n_pairs"] == 1
+
+
+def test_main_refuses_when_only_an_exploratory_set_is_on_disk(tmp_path, monkeypatch, capsys):
+    # an exploratory set alone never becomes the payload: the F-H08 refusal applies (exit 3)
+    root = tmp_path / "trace_out"
+    _study_and_exploratory(root, monkeypatch, study=False)
+    out = tmp_path / "jlens_transport.json"
+    out.write_text('{"n_pairs": 7}', encoding="utf-8")
+    rc = ext.main(["--trace-root", str(root), "--model", "gemma-2-2b", "--census-batch", "",
+                   "--scenarios", "", "--out", str(out), "--site", ""])
+    assert rc == 3
+    printed = capsys.readouterr().out
+    assert "1 exploratory-set part(s) not read" in printed and "refused" in printed
+    assert out.read_text(encoding="utf-8") == '{"n_pairs": 7}'
+
+
+def test_build_payload_drops_an_exploratory_exemplar_pin(tmp_path, monkeypatch):
+    # build_exemplar reads raw by (batch, index), so a pin would bypass the scan's skip
+    root = tmp_path / "trace_out"
+    _study_and_exploratory(root, monkeypatch)
+    picks = []
+    payload = ext.build_payload(str(root), "gemma-2-2b", census_batch=None,
+                                exemplar_pins=[(EXPLORATORY, 1), ("setA", 1), (EXPLORATORY, 2)],
+                                skipped_picks=picks)
+    assert [(e["batch"], e["index"]) for e in payload["exemplars"]] == [("setA", 1)]
+    assert picks == [f"{EXPLORATORY}:1", f"{EXPLORATORY}:2"]
+    assert "agscen" not in json.dumps(payload)
+
+
+def test_main_drops_an_explicit_exploratory_exemplar_and_refuses(tmp_path, monkeypatch, capsys):
+    # --exemplar-batch/--exemplar-index naming an exploratory pair leaves no drawable exemplar (exit 3)
+    root = tmp_path / "trace_out"
+    _study_and_exploratory(root, monkeypatch)
+    out = tmp_path / "jlens_transport.json"
+    out.write_text('{"n_pairs": 7}', encoding="utf-8")
+    rc = ext.main(["--trace-root", str(root), "--model", "gemma-2-2b", "--census-batch", "",
+                   "--scenarios", "", "--exemplar-batch", EXPLORATORY, "--exemplar-index", "1",
+                   "--out", str(out), "--site", ""])
+    assert rc == 3
+    printed = capsys.readouterr().out
+    assert f"exemplar pick(s) dropped: {EXPLORATORY}:1" in printed and "refused" in printed
+    assert out.read_text(encoding="utf-8") == '{"n_pairs": 7}'

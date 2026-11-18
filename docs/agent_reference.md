@@ -169,13 +169,14 @@ through a named membership. Every collector that pools `trace_out/*` into a publ
 `data/publication_release/logits_parts.json` pins their sha256), and prints what it skipped (a new collector
 must too). Hand-authored sets (`agscen_`) are examples: no analysis membership includes them, and the
 collectors that pool without `Gate` (`scripts/export_tag_mass.py`, `scripts/retrace_consistency.py`) skip
-them with `is_exploratory_run_dir`. The lens consumers that glob every `__jlens_`/`__loglens_` dir skip them
-the same way and print the count: `scripts/jlens_insights.py` and `scripts/export_jlens_loglens.py` (since
-2026-11-17), and `scripts/jlens_position_scan.py` with `scripts/export_jlens_transport.py` (since
-2026-11-18), which also drops an explicit exemplar pick naming such a set, because its exemplar grids read raw
-by (batch, index). The other lens readers open only named or prefix-scoped stems (`txcorpus_`,
-`drift_sentinel_`, `pairs_`, a fixed `pabharvest_` stem, or stems given on the command line).
-A published statistic changes only through a versioned
+them with `is_exploratory_run_dir`. The lens-summary consumers (`scripts/jlens_insights.py`,
+`scripts/export_jlens_loglens.py`), which read only `__jlens_`/`__loglens_` dirs, skip them the same way and
+print the count (since 2026-11-17). `scripts/jlens_position_scan.py`, which reads every `*__jlens_*/jlens_raw`
+for itself and for `scripts/export_jlens_transport.py`, skips them the same way, and both scripts print the
+count (since 2026-11-18). The transport exporter also drops an explicit exemplar pick naming such a set,
+because its exemplar grids read raw by (batch, index). The other lens readers open only named or
+prefix-scoped stems (`txcorpus_`, `drift_sentinel_`, `pairs_`, a fixed `pabharvest_` stem, or stems given on
+the command line). A published statistic changes only through a versioned
 snapshot (`scripts/results_snapshot.py`); `scripts/results_snapshot.py check-release` must exit 0 before a
 publish pushes anything, and `check-release --published` is run after the site push; advancing the study pin is `scripts/publication_release.py
 --release`, refused in the Routine while the policy file's `analysis_pin.auto_advance` is false.
