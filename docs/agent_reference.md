@@ -172,8 +172,8 @@ collectors that pool without `Gate` (`scripts/export_tag_mass.py`, `scripts/retr
 them with `is_exploratory_run_dir`. The lens-summary consumers (`scripts/jlens_insights.py`,
 `scripts/export_jlens_loglens.py`), which read only `__jlens_`/`__loglens_` dirs, skip them the same way and
 print the count (since 2026-11-17). `scripts/jlens_position_scan.py`, which reads every `*__jlens_*/jlens_raw`
-for itself and for `scripts/export_jlens_transport.py`, does not yet: add its skip before a `save_raw` lens
-fire on such a set. A published statistic changes only through a versioned
+for itself and for `scripts/export_jlens_transport.py`, skips them the same way, and both scripts print the
+count (since 2026-11-18). A published statistic changes only through a versioned
 snapshot (`scripts/results_snapshot.py`); `scripts/results_snapshot.py check-release` must exit 0 before a
 publish pushes anything, and `check-release --published` is run after the site push; advancing the study pin is `scripts/publication_release.py
 --release`, refused in the Routine while the policy file's `analysis_pin.auto_advance` is false.
