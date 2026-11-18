@@ -220,7 +220,7 @@ def test_main_exit_2_when_seal_cannot_be_evaluated(tmp_path, monkeypatch, capsys
               "target_token": " t", "final_readable": True,
               "n_non_final_readable_positions": 0, "transport_gap": False,
               "windows_first_layer": {}}]
-    monkeypatch.setattr(ext.jps, "scan", lambda root: {"scans": scans, "windows": ["1"]})
+    monkeypatch.setattr(ext.jps, "scan", lambda root, skipped=None: {"scans": scans, "windows": ["1"]})
     out = tmp_path / "jlens_transport.json"
     rc = ext.main(["--trace-root", str(tmp_path), "--scenarios", "", "--out", str(out), "--site", ""])
     assert rc == 2
@@ -259,7 +259,7 @@ def test_build_payload_census_batch_and_render_restriction(monkeypatch):
         {"batch": "rep", "index": 2, "target": "b", "clinical": side(True, 0), "patient": side(True, 0)},
         {"batch": "trace", "index": 1, "target": "c", "clinical": side(True, 2), "patient": side(False, 0)},
     ]
-    monkeypatch.setattr(ext.jps, "scan", lambda root: {"scans": [], "windows": ["1"]})
+    monkeypatch.setattr(ext.jps, "scan", lambda root, skipped=None: {"scans": [], "windows": ["1"]})
     monkeypatch.setattr(ext, "collect_pairs", lambda scan, model: per_pair)
     monkeypatch.setattr(ext, "load_summary_meta", lambda tr, b, m: ("credit", 8))
     monkeypatch.setattr(ext, "build_exemplar",
@@ -284,7 +284,7 @@ def test_build_payload_pins_override_ranking_and_skip_missing_raw(monkeypatch):
         {"batch": "trace", "index": 5, "target": "c", "clinical": _side(True, 2), "patient": _side(False, 0)},
         {"batch": "trace", "index": 9, "target": "d", "clinical": _side(True, 3), "patient": _side(True, 0)},
     ]
-    monkeypatch.setattr(ext.jps, "scan", lambda root: {"scans": [], "windows": ["1"]})
+    monkeypatch.setattr(ext.jps, "scan", lambda root, skipped=None: {"scans": [], "windows": ["1"]})
     monkeypatch.setattr(ext, "collect_pairs", lambda scan, model: per_pair)
     monkeypatch.setattr(ext, "load_summary_meta", lambda tr, b, m: ("credit", 8))
     # pair 5 has no committed raw (build_exemplar returns None) -> skipped
@@ -299,7 +299,7 @@ def test_build_payload_pins_override_ranking_and_skip_missing_raw(monkeypatch):
 def test_build_payload_refuses_when_census_batch_uncovered(monkeypatch):
     per_pair = [{"batch": "trace", "index": 1, "target": "c",
                  "clinical": _side(True, 2), "patient": _side(False, 0)}]
-    monkeypatch.setattr(ext.jps, "scan", lambda root: {"scans": [], "windows": ["1"]})
+    monkeypatch.setattr(ext.jps, "scan", lambda root, skipped=None: {"scans": [], "windows": ["1"]})
     monkeypatch.setattr(ext, "collect_pairs", lambda scan, model: per_pair)
     # census batch has no committed coverage -> refuse rather than widen to every batch
     assert ext.build_payload("trace_out", "gemma-2-2b", census_batch="missing") is None
@@ -339,12 +339,12 @@ def test_answer_readout_open_vocab_ladder():
 
 
 def test_build_payload_refuses_empty(monkeypatch):
-    monkeypatch.setattr(ext.jps, "scan", lambda root: {"scans": [], "windows": ["1"]})
+    monkeypatch.setattr(ext.jps, "scan", lambda root, skipped=None: {"scans": [], "windows": ["1"]})
     assert ext.build_payload("trace_out", "gemma-2-2b") is None
 
 
 def test_main_refuses_without_overwriting(tmp_path, monkeypatch, capsys):
-    monkeypatch.setattr(ext.jps, "scan", lambda root: {"scans": [], "windows": ["1"]})
+    monkeypatch.setattr(ext.jps, "scan", lambda root, skipped=None: {"scans": [], "windows": ["1"]})
     out = tmp_path / "jlens_transport.json"
     out.write_text('{"n_pairs": 7}', encoding="utf-8")
     rc = ext.main(["--trace-root", str(tmp_path / "missing"), "--model", "gemma-2-2b",
@@ -352,3 +352,89 @@ def test_main_refuses_without_overwriting(tmp_path, monkeypatch, capsys):
     assert rc == 3
     assert "refused" in capsys.readouterr().out
     assert out.read_text() == '{"n_pairs": 7}'      # untouched
+
+
+# --- hand-authored exploratory sets (agscen_; publication_hold.is_exploratory_run_dir) -------
+STUDY, EXPLORATORY = "pairs_20990101T000000Z", "agscen_20990101"
+
+
+def _write_raw(root, batch, index, model="gemma-2-2b"):
+    """Both sides of one pair as committed save_raw responses (the confirmed schema)."""
+    import gzip
+    d = root / f"{batch}__jlens_{model}" / "jlens_raw"
+    d.mkdir(parents=True, exist_ok=True)
+    resp = _resp([[[" a"], [" tgt"]], [[" tgt"], [" tgt"]]], [(0, "<bos>"), (1, " x")])
+    for side in ("clinical", "patient"):
+        with gzip.open(d / f"pair_{index:03d}_{side}.json.gz", "wt", encoding="utf-8") as fh:
+            json.dump(resp, fh)
+
+
+def _study_and_exploratory(tmp_path, monkeypatch):
+    """A study pair and two exploratory pairs on disk; every stem resolves a target
+    (data/simulated holds agscen_ batch files too), so only the skip keeps them out."""
+    monkeypatch.setattr(ext, "sealed_pair", lambda batch, index, prompt: False)
+    monkeypatch.setattr(ext.jps, "_batch_targets",
+                        lambda stem: {1: {"target_clinical_token": " tgt"}, 2: {"target_clinical_token": " tgt"}})
+    root = tmp_path / "trace_out"
+    _write_raw(root, STUDY, 1)
+    _write_raw(root, EXPLORATORY, 1)
+    _write_raw(root, EXPLORATORY, 2)
+    return root
+
+
+def test_scan_skips_an_exploratory_set(tmp_path, monkeypatch):
+    root = _study_and_exploratory(tmp_path, monkeypatch)
+    skipped = []
+    result = ext.jps.scan(root, skipped)
+    assert {s["batch"] for s in result["scans"]} == {STUDY} and result["n_responses"] == 2
+    assert [Path(p).parent.name for p in skipped] == [f"{EXPLORATORY}__jlens_gemma-2-2b"]
+    assert ext.jps.scan(root) == result                 # the skip does not depend on passing a list
+
+
+def test_position_scan_main_prints_the_skip(tmp_path, monkeypatch, capsys):
+    root = _study_and_exploratory(tmp_path, monkeypatch)
+    out = tmp_path / "jlens_position_scan.json"
+    monkeypatch.setattr("sys.argv", ["jlens_position_scan.py", "--trace-root", str(root), "--out", str(out)])
+    ext.jps.main()
+    assert "1 exploratory-set raw dir(s) not read" in capsys.readouterr().out
+    assert "agscen" not in out.read_text(encoding="utf-8")
+
+
+def test_build_payload_drops_an_exploratory_pin_and_scan_rows(tmp_path, monkeypatch):
+    # build_exemplar reads raw by (batch, index), so a pin would bypass the scan's skip
+    root = _study_and_exploratory(tmp_path, monkeypatch)
+    skipped, picks = [], []
+    payload = ext.build_payload(str(root), "gemma-2-2b", census_batch=STUDY,
+                                exemplar_pins=[(EXPLORATORY, 1), (STUDY, 1), (EXPLORATORY, 2)],
+                                skipped=skipped, skipped_picks=picks)
+    assert [(e["batch"], e["index"]) for e in payload["exemplars"]] == [(STUDY, 1)]
+    assert [(e["batch"], e["index"]) for e in payload["per_pair"]] == [(STUDY, 1)]
+    assert picks == [f"{EXPLORATORY}:1", f"{EXPLORATORY}:2"]
+    assert [Path(p).parent.name for p in skipped] == [f"{EXPLORATORY}__jlens_gemma-2-2b"]
+    assert "agscen" not in json.dumps(payload)
+
+
+def test_build_payload_refuses_an_explicit_exploratory_exemplar(tmp_path, monkeypatch):
+    # --exemplar-batch/--exemplar-index naming an exploratory pair leaves no drawable exemplar
+    root = _study_and_exploratory(tmp_path, monkeypatch)
+    picks = []
+    assert ext.build_payload(str(root), "gemma-2-2b", exemplar_batch=EXPLORATORY, exemplar_index=1,
+                             census_batch=STUDY, skipped_picks=picks) is None
+    assert picks == [f"{EXPLORATORY}:1"]
+
+
+def test_main_prints_both_skips_and_writes_no_exploratory_row(tmp_path, monkeypatch, capsys):
+    root = _study_and_exploratory(tmp_path, monkeypatch)
+    out = tmp_path / "jlens_transport.json"
+    site = tmp_path / "site"
+    (site / "data").mkdir(parents=True)
+    rc = ext.main(["--trace-root", str(root), "--scenarios", "", "--census-batch", STUDY,
+                   "--exemplar-pins", f"{EXPLORATORY}:1,{STUDY}:1", "--out", str(out), "--site", str(site)])
+    assert rc == 0
+    printed = capsys.readouterr().out
+    assert "1 exploratory-set raw dir(s) not read" in printed
+    assert f"exemplar pick(s) dropped: {EXPLORATORY}:1" in printed
+    for written in (out, site / "data" / "jlens_transport.json"):
+        text = written.read_text(encoding="utf-8")
+        assert "agscen" not in text
+        assert json.loads(text)["n_pairs"] == 1

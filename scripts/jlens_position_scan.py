@@ -12,7 +12,9 @@ they keep only the final-position top-8 profile:
    not failure to represent the concept mid-sentence.
 
 Reads every trace_out/*__jlens_*/jlens_raw/pair_*.json.gz (raw responses are
-committed only for runs fired with save_raw). Targets come from the batch file
+committed only for runs fired with save_raw), except hand-authored exploratory
+sets (agscen_; publication_hold.is_exploratory_run_dir), whose skipped
+directories main counts on stdout. Targets come from the batch file
 in data/simulated/. Writes ops/jlens_position_scan.json. Offline, $0. The lens
 is a correlational readout; nothing here is causal evidence.
 """
@@ -28,6 +30,9 @@ import sys
 from pathlib import Path
 
 ENGINE = Path(__file__).resolve().parents[1]
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from publication_hold import is_exploratory_run_dir  # noqa: E402  (script-style module)
 
 _JR_SPEC = importlib.util.spec_from_file_location(
     "jlens_readout", ENGINE / "scripts" / "jlens_readout.py")
@@ -95,10 +100,19 @@ def _batch_targets(stem: str) -> dict[int, dict]:
     return {i: p for i, p in enumerate(pairs, start=1)}
 
 
-def scan(trace_root: Path) -> dict:
+def scan(trace_root: Path, skipped: list[str] | None = None) -> dict:
+    """Per-response transport and window records across the committed raw lens
+    responses. A raw directory in a hand-authored exploratory set (agscen_) is not
+    read: no analysis membership includes those sets. Its path is appended to
+    `skipped` when a list is given, so a caller can print the count."""
     scans = []
     for raw_dir in sorted(trace_root.glob("*__jlens_*/jlens_raw")):
         run_dir = raw_dir.parent.name
+        if is_exploratory_run_dir(run_dir):
+            # traced for inspection only: its pairs never passed the study's generator or Tier B split
+            if skipped is not None:
+                skipped.append(str(raw_dir))
+            continue
         stem, model = run_dir.split("__jlens_", 1)
         pairs = _batch_targets(stem)
         for raw_path in sorted(raw_dir.iterdir()):
@@ -142,7 +156,11 @@ def main() -> None:
     parser.add_argument("--trace-root", default=str(ENGINE / "trace_out"))
     parser.add_argument("--out", default=str(ENGINE / "ops/jlens_position_scan.json"))
     args = parser.parse_args()
-    result = scan(Path(args.trace_root))
+    skipped: list[str] = []
+    result = scan(Path(args.trace_root), skipped)
+    if skipped:
+        print(f"jlens position scan: {len(skipped)} exploratory-set raw dir(s) not read "
+              "(scripts/results_policy.py)")
     Path(args.out).write_text(json.dumps(result, indent=1) + "\n", encoding="utf-8")
     for s in result["scans"]:
         print(f"{s['batch']} pair {s['index']} {s['side']}: "
