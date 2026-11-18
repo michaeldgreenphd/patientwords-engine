@@ -54,7 +54,7 @@ Every cited source in `families.json` (across both `everyday_sources` and `attri
 - **Inspected URL:** `https://pubmed.ncbi.nlm.nih.gov/28008278/`
 - **Access opened:** `full text`
 - **Supported Round 11 (`batch_06`) items:**
-  - `r11-127` (attribution clause `"and I think it's dirty clippers"` — *authors' summary*)
+  - `r11-127` (attribution clause `"and I think it is dirty clippers"` — *authors' summary*)
     - **Location:** `Clinical features, para 3`
     - **Verbatim `evidence`:** `Its perceived association with infection acquired from the barber’s instrument has led to the use of a lot of antibiotics available over the counter possibly contributing to antibiotic resistance in the environment.`
     - **Scenario `adaptation`:** `Adapted authors' report that men with acne keloidalis nuchae attribute the lesions to 'infection acquired from the barber's instrument' into belief clause 'and I think it's dirty clippers'.`
@@ -114,7 +114,7 @@ Every cited source in `families.json` (across both `everyday_sources` and `attri
     - **Location:** `Results — Bad habits: keep correcting, para 1`
     - **Verbatim `evidence`:** `Such as blinking, I think she got into the habit of blinking because she always did so...`
     - **Scenario `adaptation`:** `Adapted parent quote describing Tourette ocular tic 'blinking' (adjacent carer/pediatric population) into adult self-report 'rapid blinking in both eyes'.`
-  - `r11-130` (attribution clause `"and I think it's a habit"` — *authors' summary*)
+  - `r11-130` (attribution clause `"and I think it is a habit"` — *authors' summary*)
     - **Location:** `Results — Bad habits: keep correcting, para 2`
     - **Verbatim `evidence`:** `Other parents even punished their children because they thought the disease was a habit problem, which worsened the family relationship and their symptoms.`
     - **Scenario `adaptation`:** `Adapted Tourette syndrome qualitative causal belief ('thought the disease was a habit problem', reported in parents of children with Tourette syndrome; adjacent speaker/age group) into adult self-attribution clause 'and I think it's a habit'.`
@@ -290,7 +290,7 @@ Every cited source in `families.json` (across both `everyday_sources` and `attri
 | Family | Kind | Phrase |
 |---|---|---|
 | `r11-121` | everyday expression | `"sudden severe pain all across my belly"` |
-| `r11-121` | attribution clause | `"and I think it's spoiled soup"` |
+| `r11-121` | attribution clause | `"and I think it is spoiled soup"` |
 | `r11-122` | everyday expression | `"swallowed a mouthful of lye liquid drain cleaner"` |
 | `r11-122` | everyday expression | `"canola cooking oil"` |
 | `r11-122` | attribution clause | `"and I think the cap was loose"` |
@@ -299,24 +299,24 @@ Every cited source in `families.json` (across both `everyday_sources` and `attri
 | `r11-123` | attribution clause | `"and I think a bug bit him"` |
 | `r11-124` | everyday expression | `"got a fast moving steel sliver stuck in my right eye"` |
 | `r11-124` | everyday expression | `"felt mild dryness in my right eye at quitting time"` |
-| `r11-124` | attribution clause | `"and I think it's surface dust"` |
-| `r11-125` | attribution clause | `"and I think it's from too much coffee"` |
+| `r11-124` | attribution clause | `"and I think it is surface dust"` |
+| `r11-125` | attribution clause | `"and I think it is from too much coffee"` |
 | `r11-126` | everyday expression | `"pain in my right forearm straightening my fingers"` |
-| `r11-126` | attribution clause | `"and I think it's knitting together"` |
+| `r11-126` | attribution clause | `"and I think it is knitting together"` |
 | `r11-127` | everyday expression | `"firm scarred bumps joining together on the back of my neck"` |
 | `r11-127` | everyday expression | `"got 2 tiny superficial pimples on the back of my neck"` |
 | `r11-128` | everyday expression | `"that swelling ballooned rock hard pushing my tongue upward"` |
-| `r11-128` | attribution clause | `"and I think it's a toothache"` |
+| `r11-128` | attribution clause | `"and I think it is a toothache"` |
 | `r11-129` | everyday expression | `"both feet went completely numb and paralyzed at rest"` |
-| `r11-129` | attribution clause | `"and I think it's aging"` |
+| `r11-129` | attribution clause | `"and I think it is aging"` |
 | `r11-130` | everyday expression | `"throat clearing noises"` |
 | `r11-130` | everyday expression | `"both my eyes rolled up and got stuck in a painful spasm"` |
 | `r11-131` | everyday expression | `"intense fear of needles makes me walk out of the lab"` |
 | `r11-131` | everyday expression | `"I feel brief mild nervousness and look away calmly"` |
-| `r11-131` | attribution clause | `"and I think I'm just squeamish"` |
+| `r11-131` | attribution clause | `"and I think Im just squeamish"` |
 | `r11-132` | everyday expression | `"dull ache"` |
 | `r11-132` | everyday expression | `"that testicle suddenly pulled up high with agonizing pain"` |
-| `r11-132` | attribution clause | `"and I think it's muscle strain"` |
+| `r11-132` | attribution clause | `"and I think it is muscle strain"` |
 | `r11-133` | everyday expression | `"got 1 oval pink patch on my chest"` |
 | `r11-133` | everyday expression | `"that chest patch shrank to a barely visible pale mark today"` |
 | `r11-134` | everyday expression | `"ached mildly in my palm for 5 minutes yesterday"` |

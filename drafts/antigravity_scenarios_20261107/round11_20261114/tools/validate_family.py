@@ -821,8 +821,9 @@ def validate_family_dict(
             errors.append(f"{fid_str}.{tname}: must be single-spaced with no leading/trailing whitespace or newlines")
 
         # Active first-person opening
-        if not (tval.startswith("I ") or tval.startswith("I'm ") or tval.startswith("My ")):
-            errors.append(f"{fid_str}.{tname}: must start in active first person ('I ', 'I\\'m ', or 'My ')")
+        # "Im " added 2026-11-18: the owner chose "Im" in place of "I'm" (decision page, contraction-form).
+        if not (tval.startswith("I ") or tval.startswith("I'm ") or tval.startswith("Im ") or tval.startswith("My ")):
+            errors.append(f"{fid_str}.{tname}: must start in active first person ('I ', 'Im ', or 'My ')")
         tlow = tval.lower()
         for pphrase in PASSIVE_CHART_PHRASES:
             if pphrase in tlow:

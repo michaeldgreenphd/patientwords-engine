@@ -66,7 +66,7 @@ Every cited source in `families.json` (across both `everyday_sources` and `attri
 - **Inspected URL:** `https://pubmed.ncbi.nlm.nih.gov/38905212/`
 - **Access opened:** `full text`
 - **Supported Round 11 (`batch_02`) items:**
-  - `r11-034` (attribution clause `"and I think I'm lazy"` — *authors' summary*)
+  - `r11-034` (attribution clause `"and I think Im lazy"` — *authors' summary*)
     - **Location:** `Results — Gains in treatment — Insight and understanding, para 1`
     - **Verbatim `evidence`:** `Many participants reported that they often felt they were lazy and stupid and ought to perform as if they didn’t have a neurodevelopmental disorder:`
     - **Scenario `adaptation`:** `Adapted authors' summary of adult inattentive-ADHD participants' self-attribution 'felt they were lazy' into first-person causal belief clause 'and I think I'm lazy'.`

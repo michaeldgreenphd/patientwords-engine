@@ -215,3 +215,18 @@ Two corrections to the report's wording, for the record:
 - It names Merriam-Webster among the dictionaries consulted. Every cited dictionary row in the six batches is Wiktionary.
 
 Section 9 of the report proposes moving rules A, B and D, the withdrawal rule and the level-concern standard into the specification. A future round should start from a specification that includes them.
+
+## Owner's contraction decision, applied 2026-11-18
+
+The owner chose, on the decision page, "Im" in place of "I'm" in every wording of a family, and the same treatment for the other contractions, with the note "for the patient speak it should not have contractions". The Claude review session applied it mechanically to the 144 passed families. This is a correction to pushed families, so each one is logged in `revisions.json` with the fields before and after.
+
+- "I'm" becomes "Im" in every text, including the clinical ones, because the opening is shared.
+- "it's", "I've", "can't" and "they're" are expanded to "it is", "I have", "cannot" and "they are".
+- Two explanation clauses would reach 41 words if expanded (r11-057 "and I think it's stress", r11-075 "and I think it's her diet"). They lose the apostrophe instead ("its"), which the owner's note allows.
+- r11-115 keeps "can't catch my breath": it is the family's dialect lexicon form, the manipulation that family tests.
+- Possessives ("doctor's", "baby's", "infant's") are unchanged. Evidence quotes are unchanged, because they are verbatim source text.
+- Fields edited: the texts, `swap_spans`, `changed_fact.from` and `.to`, `attribution.clause`, `everyday_sources[].expression` and `swap_note`.
+- 71 families changed. `tools/validate_family.py` now also accepts an "Im " opening; that is its only change.
+- Gates G1 to G3 rerun with the batch tools: every batch rebuilt, 0 checker errors (warnings unchanged: number warnings only), intake 0 errors. The intake command of SPEC section 8 also returns 0 errors for each batch against rounds 9 and 10 and every earlier round 11 batch.
+
+These families changed after the owner's sample read and need a re-read before their verdicts count: r11-051, -059, -067, -077, -083, -096, -098, -108, -117, -129 and -144.

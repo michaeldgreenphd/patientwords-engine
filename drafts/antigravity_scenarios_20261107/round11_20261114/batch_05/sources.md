@@ -66,7 +66,7 @@ Every cited source in `families.json` (across both `everyday_sources` and `attri
     - **Location:** `Results — Facing illness: Not recognising oneself, Participant 11 quote`
     - **Verbatim `evidence`:** `I was trembling so much.`
     - **Scenario `adaptation`:** `null` *(exact case-sensitive verbatim substring in `evidence`)*
-  - `r11-105` (attribution clause `"and I think it's stress"` — *authors' summary*)
+  - `r11-105` (attribution clause `"and I think it is stress"` — *authors' summary*)
     - **Location:** `Results — Facing illness: Not recognising oneself, para 2`
     - **Verbatim `evidence`:** `The participants found it challenging to determine whether their symptoms were a result of life stressors, such as family or work pressures, or indicative of an underlying medical condition.`
     - **Scenario `adaptation`:** `Adapted Graves' disease qualitative interview report that patients wondered whether their symptoms resulted from life stressors into present-tense belief clause 'and I think it's stress'.`
@@ -98,7 +98,7 @@ Every cited source in `families.json` (across both `everyday_sources` and `attri
     - **Location:** `Results — Demographic Characteristics, para 3`
     - **Verbatim `evidence`:** `At baseline, on average, participants reported 101 minutes to fall asleep, 92 minutes staying awake at night, and 24.5 minutes to fall back to sleep after awakening at night.`
     - **Scenario `adaptation`:** `null` *(exact case-sensitive verbatim substring in `evidence`)*
-  - `r11-107` (attribution clause `"and I think it's work stress"` — *direct patient quote*)
+  - `r11-107` (attribution clause `"and I think it is work stress"` — *direct patient quote*)
     - **Location:** `Results — Open-Ended Qualitative Data, para 1`
     - **Verbatim `evidence`:** `But then, when I would go to bed, all of a sudden, I would feel awake and then I just kept having racing thoughts, for a very long time to be about work.`
     - **Scenario `adaptation`:** `Adapted adult sleep-onset insomnia patient quote describing bedtime racing thoughts 'to be about work' into present-tense causal belief clause 'and I think it's work stress'.`
@@ -207,29 +207,29 @@ Every cited source in `families.json` (across both `everyday_sources` and `attri
 |---|---|---|
 | `r11-097` | everyday expression | `"blood pressure pills"` |
 | `r11-097` | everyday expression | `"she has forgotten scheduled appointment dates more often over 9 months"` |
-| `r11-097` | attribution clause | `"and I think it's from waking up early"` |
+| `r11-097` | attribution clause | `"and I think it is from waking up early"` |
 | `r11-098` | everyday expression | `"every swallow of my own spit comes straight back up"` |
 | `r11-098` | everyday expression | `"I have had mild hiccups off and on"` |
 | `r11-098` | attribution clause | `"and I think I chewed too fast"` |
 | `r11-099` | everyday expression | `"aching and swelling in my right knee"` |
 | `r11-099` | everyday expression | `"my thermometer read"` |
-| `r11-099` | attribution clause | `"and I think it's from gardening"` |
+| `r11-099` | attribution clause | `"and I think it is from gardening"` |
 | `r11-100` | everyday expression | `"thrown up 6 times"` |
 | `r11-100` | everyday expression | `"have gained 12 pounds around my waist over 4 months"` |
-| `r11-100` | attribution clause | `"and I think it's something I ate last night"` |
+| `r11-100` | attribution clause | `"and I think it is something I ate last night"` |
 | `r11-101` | everyday expression | `"unable to pee at all"` |
 | `r11-101` | everyday expression | `"noticed my pee stream has been slower than usual"` |
-| `r11-101` | attribution clause | `"and I think it's hot weather"` |
+| `r11-101` | attribution clause | `"and I think it is hot weather"` |
 | `r11-102` | everyday expression | `"feel mild itching along the dry healing scar over that collarbone"` |
-| `r11-102` | attribution clause | `"and I think it's indigestion"` |
+| `r11-102` | attribution clause | `"and I think it is indigestion"` |
 | `r11-103` | everyday expression | `"a slight even sun tan"` |
-| `r11-103` | attribution clause | `"and I think it's sun damage"` |
+| `r11-103` | attribution clause | `"and I think it is sun damage"` |
 | `r11-104` | everyday expression | `"painful raw sore on the roof of my mouth"` |
 | `r11-104` | everyday expression | `"it lodged stuck across the back of my throat"` |
 | `r11-104` | attribution clause | `"and I think my gums shrank"` |
 | `r11-105` | everyday expression | `"192"` |
 | `r11-106` | everyday expression | `"glanced at my nose in the mirror for 2 minutes each morning before heading to work"` |
-| `r11-106` | attribution clause | `"and I think it's vanity"` |
+| `r11-106` | attribution clause | `"and I think it is vanity"` |
 | `r11-107` | everyday expression | `"on the past 2 nights"` |
 | `r11-108` | everyday expression | `"monthly period"` |
 | `r11-108` | everyday expression | `"29 days ago"` |

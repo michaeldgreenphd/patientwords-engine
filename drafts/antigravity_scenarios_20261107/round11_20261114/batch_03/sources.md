@@ -26,7 +26,7 @@ Every cited source in `families.json` (across both `everyday_sources` and `attri
 - **Inspected URL:** `https://pubmed.ncbi.nlm.nih.gov/38891151/`
 - **Access opened:** `full text`
 - **Supported Round 11 (`batch_03`) items:**
-  - `r11-050` (attribution clause `"and I think it's the flu"` — *direct patient quote*)
+  - `r11-050` (attribution clause `"and I think it is the flu"` — *direct patient quote*)
     - **Location:** `Section 3 (Results) — Table 2, Theme 2 (Reliance on social support for emergency care access, quote P1)`
     - **Verbatim `evidence`:** `I was like no, no I’m fine, it’s just the flu.`
     - **Scenario `adaptation`:** `Adapted verbatim invasive-meningococcal-disease patient causal self-attribution 'it’s just the flu' (recounted alongside parental care-seeking) into parent-carer belief clause 'and I think it's the flu'.`
@@ -130,7 +130,7 @@ Every cited source in `families.json` (across both `everyday_sources` and `attri
     - **Location:** `Results — Impact of delayed diagnosis on mental health, quote (F, aged 22 years, CD)`
     - **Verbatim `evidence`:** `When you feel ill every single day it’s really draining and when someone is not listening to you and just keeps sending you away it’s really very frustrating, I think my mum was just getting more and more worried because I’d just lose more weight, “you look worse, you are anaemic”, it wasn’t good, it wasn’t a good time.`
     - **Scenario `adaptation`:** `Adapted young-adult Crohn's disease patient phrase 'lose more weight' into quantified 'lost 6 kg' matching reference fact f3.`
-  - `r11-060` (attribution clause `"and I think it's stress at work"` — *direct patient quote*)
+  - `r11-060` (attribution clause `"and I think it is stress at work"` — *direct patient quote*)
     - **Location:** `Results — Normalising symptoms, quote (F, aged 45 years, CD)`
     - **Verbatim `evidence`:** `I did put it down to just like stress at work, you know, [inspection at work] and stuff like that, I assumed because I’d never been ill, I’d hardly ever been ill before … I thought I’d just go back to how I was and I think maybe there is a bit of burying your head in the sand sometimes as well, you know, maybe knowing things aren’t quite right but hoping they’d just sort themselves out on their own.`
     - **Scenario `adaptation`:** `Adapted verbatim Crohn's disease patient causal normalization 'put it down to just like stress at work' into present-tense belief clause 'and I think it's stress at work'.`
@@ -202,7 +202,7 @@ Every cited source in `families.json` (across both `everyday_sources` and `attri
 - **Inspected URL:** `https://en.wiktionary.org/wiki/smother`
 - **Access opened:** `full text`
 - **Supported Round 11 (`batch_03`) items:**
-  - `r11-067` (everyday expression `"feel like I'm smothering"` — *dictionary definition*)
+  - `r11-067` (everyday expression `"feel like Im smothering"` — *dictionary definition*)
     - **Location:** `English — Etymology 1, Verb, sense 7`
     - **Verbatim `evidence`:** `# {{lb|en|intransitive}} To [[breathe]] with great difficulty by reason of smoke, dust, close covering or wrapping, or the like.`
     - **Scenario `adaptation`:** `Inflected intransitive present-participle verb form 'smothering' in first-person 'feel like I'm smothering' (matching core entry 'smothering / I'm smothering' in dialect_lexicon_20261109.json); Wiktionary entry attests lexical sense only and states no specific community.`
@@ -269,18 +269,18 @@ Every cited source in `families.json` (across both `everyday_sources` and `attri
 | `r11-054` | everyday expression | `"noticed new pink stretch marks across my lower belly this week"` |
 | `r11-054` | attribution clause | `"and I think it is my mucus plug"` |
 | `r11-055` | everyday expression | `"my finger skin got tight and shiny"` |
-| `r11-055` | attribution clause | `"and I think it's poor circulation"` |
+| `r11-055` | attribution clause | `"and I think it is poor circulation"` |
 | `r11-056` | everyday expression | `"scrapes the left side of my tongue when I chew"` |
 | `r11-056` | everyday expression | `"sliced a deep heavily bleeding gash into the left side of my tongue when I chewed"` |
 | `r11-056` | attribution clause | `"and I think I bit something hard"` |
 | `r11-057` | everyday expression | `"got a widening smooth bald patch on my crown"` |
 | `r11-057` | everyday expression | `"noticed mild dry white flaking on my scalp"` |
-| `r11-057` | attribution clause | `"and I think it's stress"` |
+| `r11-057` | attribution clause | `"and I think its stress"` |
 | `r11-058` | everyday expression | `"feel driven to check my baby's breathing 30 times"` |
 | `r11-058` | everyday expression | `"calmly check my baby's breathing once before bed"` |
-| `r11-058` | attribution clause | `"and I think it's new mom nerves"` |
+| `r11-058` | attribution clause | `"and I think it is new mom nerves"` |
 | `r11-059` | everyday expression | `"I feel brief mild pressure for 5 seconds during the exam"` |
-| `r11-059` | attribution clause | `"and I think I'm just too tense"` |
+| `r11-059` | attribution clause | `"and I think Im just too tense"` |
 | `r11-060` | everyday expression | `"passed large maroon blood clots into the toilet 4 times this hour"` |
 | `r11-061` | everyday expression | `"coin shaped red patches"` |
 | `r11-061` | everyday expression | `"stayed dry and itchy"` |

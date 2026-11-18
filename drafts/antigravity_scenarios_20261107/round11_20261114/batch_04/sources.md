@@ -30,7 +30,7 @@ Every cited source in `families.json` (across both `everyday_sources` and `attri
     - **Location:** `Results of the interviews — Deficient disease-related knowledge, para 4 (Respondent P13)`
     - **Verbatim `evidence`:** `I would feel bloated and uncomfortable after eating greasy food, but it usually went away after a few days.`
     - **Scenario `adaptation`:** `null` *(exact case-sensitive verbatim substring in `evidence`)*
-  - `r11-076` (attribution clause `"and I think it's indigestion"` — *direct patient quote*)
+  - `r11-076` (attribution clause `"and I think it is indigestion"` — *direct patient quote*)
     - **Location:** `Results of the interviews — Deficient disease-related knowledge, para 4 (Respondent P13)`
     - **Verbatim `evidence`:** `I had just thought it was indigestion and hadn’t taken it seriously.`
     - **Scenario `adaptation`:** `Adapted cholelithiasis patient Respondent P13's retrospective causal belief 'I had just thought it was indigestion' into present-tense first-person attribution clause 'and I think it's indigestion'.`
@@ -50,7 +50,7 @@ Every cited source in `families.json` (across both `everyday_sources` and `attri
     - **Location:** `Results — Theme 2: Adaptation and Coping, Patient 4 quote`
     - **Verbatim `evidence`:** `the clicking is still there, but it’s not painful anymore.`
     - **Scenario `adaptation`:** `null` *(exact case-sensitive verbatim substring in `evidence`)*
-  - `r11-080` (attribution clause `"and I think it's stress"` — *direct patient quote*)
+  - `r11-080` (attribution clause `"and I think it is stress"` — *direct patient quote*)
     - **Location:** `Results — Theme 4: Triggered by Stress or Emotional States, Patient 6 quote`
     - **Verbatim `evidence`:** `Maybe there was stress in my life.`
     - **Scenario `adaptation`:** `Adapted verbatim adult temporomandibular-disorder patient causal attribution 'Maybe there was stress in my life' into present-tense belief clause 'and I think it's stress'.`
@@ -152,12 +152,12 @@ Every cited source in `families.json` (across both `everyday_sources` and `attri
 | `r11-073` | everyday expression | `"a dull headache across my forehead"` |
 | `r11-073` | everyday expression | `"running a portable gas generator inside the closed garage"` |
 | `r11-073` | everyday expression | `"staring at spreadsheets on my laptop"` |
-| `r11-073` | attribution clause | `"and I think it's dehydration"` |
+| `r11-073` | attribution clause | `"and I think it is dehydration"` |
 | `r11-074` | everyday expression | `"got strong lye drain cleaner splashed into my right eye"` |
 | `r11-074` | everyday expression | `"clean lukewarm faucet water"` |
 | `r11-074` | attribution clause | `"and I think trapped air made it splash"` |
 | `r11-075` | everyday expression | `"been peeing a lot"` |
-| `r11-075` | attribution clause | `"and I think it's her diet"` |
+| `r11-075` | attribution clause | `"and I think its her diet"` |
 | `r11-076` | everyday expression | `"brief aches under my right ribs"` |
 | `r11-076` | everyday expression | `"the whites of my eyes turned yellow"` |
 | `r11-076` | everyday expression | `"had 3 of those 20 minute aches this week"` |
@@ -167,20 +167,20 @@ Every cited source in `families.json` (across both `everyday_sources` and `attri
 | `r11-078` | everyday expression | `"a loud harsh squeak on every breath in while resting"` |
 | `r11-078` | everyday expression | `"a mild watery runny nose"` |
 | `r11-078` | everyday expression | `"gave 3 brief dry coughs after lying down"` |
-| `r11-078` | attribution clause | `"and I think it's bedroom dust"` |
+| `r11-078` | attribution clause | `"and I think it is bedroom dust"` |
 | `r11-079` | everyday expression | `"recurring painful draining tunnels under my armpit skin"` |
 | `r11-079` | everyday expression | `"got brief mild razor sting on my armpit skin"` |
-| `r11-079` | attribution clause | `"and I think they're ingrown hairs"` |
+| `r11-079` | attribution clause | `"and I think they are ingrown hairs"` |
 | `r11-080` | everyday expression | `"my jaw joint locked rigid wide open when I opened my mouth wide"` |
 | `r11-081` | everyday expression | `"slow shuffling steps"` |
 | `r11-081` | everyday expression | `"both my legs suddenly went limp under me when walking"` |
-| `r11-081` | attribution clause | `"and I think it's old age"` |
+| `r11-081` | attribution clause | `"and I think it is old age"` |
 | `r11-082` | everyday expression | `"make myself throw up my meal right after"` |
 | `r11-082` | everyday expression | `"I threw up a bowlful of fresh red blood right after eating"` |
-| `r11-082` | attribution clause | `"and I think it's college stress"` |
+| `r11-082` | attribution clause | `"and I think it is college stress"` |
 | `r11-083` | everyday expression | `"intense fear of speaking in front of coworkers makes me skip every meeting"` |
 | `r11-083` | everyday expression | `"I feel brief mild butterflies right before speaking in front of coworkers"` |
-| `r11-083` | attribution clause | `"and I think I'm just shy"` |
+| `r11-083` | attribution clause | `"and I think Im just shy"` |
 | `r11-084` | everyday expression | `"for 2 months"` |
 | `r11-085` | everyday expression | `"on the outer side of my right elbow"` |
 | `r11-085` | everyday expression | `"felt slight soreness on the outer side of my right elbow for 10 minutes after gripping tools yesterday"` |
