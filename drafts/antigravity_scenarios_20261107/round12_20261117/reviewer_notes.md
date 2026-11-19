@@ -97,3 +97,61 @@ Its section 9 proposals are sound and cheap to adopt in any later specification:
 - look up sources with the built-in web search, not shell `curl`;
 - use one fixed wrapper command for G2 and G3;
 - write each family's file to disk as soon as it is finished.
+
+## Owner's decisions, 2026-11-19, and the fix round
+
+The owner answered two cards on the decision page.
+
+- **Card r12-fixes: "Gemini fixes the 6 controls and 2 clauses".** A short fix round, specified below. The review then checks the result.
+- **Card r12-repeats: "Keep both, in the same split as the earlier family".** r12-033 and r12-036 stay. The links are recorded in `ground_truth/linked_families_20261119.json`.
+  - r9-10 is already in `fresh_test` (seed 20261111). r10-11 has no split yet.
+  - The current split method, a seeded draw per batch, cannot place a family in another family's split. The owner decides how to enforce the link (card r12-split-links). The fix round does not touch splits.
+
+The review's concerns for families outside the fix round are in `ground_truth/concerns_r12_batch_01_review_20261119.json` and `ground_truth/concerns_r12_batch_02_review_20261119.json`. Their ids end in `-rN`, so they cannot collide with the team's `-cN` concerns.
+
+### Fix round: what to change
+
+Change only the 8 items below. Every other family, and every other field of these 8, stays as pushed.
+
+**Six controls.** Rewrite `texts.changed_fact` and `changed_fact` (`from`, `to`, `right_care_after`). Also update the `everyday_sources` rows that belong to the old control's expression.
+
+| Family | Level | Why it is being rewritten | What the new control changes |
+|---|---|---|---|
+| r12-021 | 2 | The blocked-artery control (cold, gray foot) leaves the case and repeats round 11's foot-colour control | One property of the burning pain and pins and needles: how often, how long, how far it spreads, or how strong |
+| r12-043 | 2 | 104 F is 40 C, the round 11 stock value; it also adds rigors and "cannot stand up", and the intensity word "violent" | One property of the night sweats or of the weight loss. No fever |
+| r12-024 | 2 | Hot swelling that locks the fingers is a different condition and replaces the itch | One property of the itch or of the wavy lines |
+| r12-048 | 2 | A trapped foreskin is a different condition and replaces the discharge and the burning | One property of the discharge or of the burning |
+| r12-011 | 3 | A lower-airway emergency replaces mouth breathing, in a clinician's phrase | One property of the nasal symptoms, in a patient's words |
+| r12-015 | 3 | "ashy" is labelled African American Vernacular English (Wiktionary). The control also changes duration, symptom and severity at once | One property of the itchy bumps, with no dialect-labelled word |
+
+**Two explanation clauses.** Rewrite `attribution` (the clause and its source fields) and `texts.everyday_attribution`.
+
+| Family | Why it is being rewritten |
+|---|---|
+| r12-027 | "And I think it is steam" contradicts the stated hot oil |
+| r12-003 | "And I think it looked like candy" explains why the child swallowed the battery, not what the speaker thinks is happening |
+
+Round 11 clauses that work in injury families: r11-077 "and I think that piece is gravel" and r11-124 "and I think it is surface dust". Each is a belief about what is happening that makes it seem less serious. r11-122's "and I think the cap was loose" has the same weakness as r12-003's clause. The round 11 review accepted it, and it is outside this fix round.
+
+### Fix round: rules
+
+These are stricter than SPEC section 4 and apply only to the 6 new controls.
+
+1. Change exactly one property of the symptom the family is about: its onset, duration, frequency, severity, count, extent, side, or a measured value. Do not change it into a different symptom or condition.
+2. Change as few words as that property needs. Aim for 5 or fewer words differing between `everyday` and `changed_fact`. If the property needs more, say why in `design_note`.
+3. Do not write the control as a mild, brief version of the symptom that lasts minutes ("felt mildly teary for 10 minutes"). Round 12 already uses that pattern in 13 controls.
+4. The control's level differs from the family's, and no red flag remains at the control's level (SPEC section 4).
+5. Rule D also covers other units and other words for the same stock value. So no 40 C or 104 F fever, and no limb that changes colour or turns cold.
+6. Use no word that the dialect lexicon lists, or that a dictionary labels as belonging to a regional or ethnic variety.
+
+Every other rule of `SPEC.md` holds. That includes the writing rules, sourcing and rule B (search before marking a row `none`), and the explanation-clause rule of section 5, item 8.
+
+### Fix round: process
+
+- Use the same roles as SPEC section 6. The family's author rewrites. `@sources` checks any new citation. `@facts`, `@language`, `@level` and `@adversary` audit each changed family. `@builder` rebuilds the batch and reruns G1 to G3.
+- Keep every family id, person and case. Log each change in `revisions.json` with the text before and after, and the reason "Owner decision 2026-11-19, card r12-fixes".
+- If a family fails the same gate twice, leave its pushed version unchanged. Record it in `fix_report.md` and do not drop it; the owner decides.
+- If no control that meets the rules exists for a case, say so in `fix_report.md` and leave that family unchanged.
+- Write `fix_report.md`: each family's change, its audit verdicts, what you verified and what you assumed.
+- Make one commit, "Round 12 fix round: N families revised", and push to the draft branch.
+- Do not edit `SPEC.md`, this file, `final_report.md`, any earlier round, or anything in `ground_truth/`.
