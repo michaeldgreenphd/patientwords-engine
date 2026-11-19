@@ -426,3 +426,31 @@ def test_main_refuses_when_only_an_exploratory_set_is_on_disk(tmp_path, monkeypa
     printed = capsys.readouterr().out
     assert "1 exploratory-set part(s) not read" in printed and "refused" in printed
     assert out.read_text(encoding="utf-8") == '{"n_pairs": 7}'
+
+
+def test_build_payload_drops_an_exploratory_exemplar_pin(tmp_path, monkeypatch):
+    # build_exemplar reads raw by (batch, index), so a pin would bypass the scan's skip
+    root = tmp_path / "trace_out"
+    _study_and_exploratory(root, monkeypatch)
+    picks = []
+    payload = ext.build_payload(str(root), "gemma-2-2b", census_batch=None,
+                                exemplar_pins=[(EXPLORATORY, 1), ("setA", 1), (EXPLORATORY, 2)],
+                                skipped_picks=picks)
+    assert [(e["batch"], e["index"]) for e in payload["exemplars"]] == [("setA", 1)]
+    assert picks == [f"{EXPLORATORY}:1", f"{EXPLORATORY}:2"]
+    assert "agscen" not in json.dumps(payload)
+
+
+def test_main_drops_an_explicit_exploratory_exemplar_and_refuses(tmp_path, monkeypatch, capsys):
+    # --exemplar-batch/--exemplar-index naming an exploratory pair leaves no drawable exemplar (exit 3)
+    root = tmp_path / "trace_out"
+    _study_and_exploratory(root, monkeypatch)
+    out = tmp_path / "jlens_transport.json"
+    out.write_text('{"n_pairs": 7}', encoding="utf-8")
+    rc = ext.main(["--trace-root", str(root), "--model", "gemma-2-2b", "--census-batch", "",
+                   "--scenarios", "", "--exemplar-batch", EXPLORATORY, "--exemplar-index", "1",
+                   "--out", str(out), "--site", ""])
+    assert rc == 3
+    printed = capsys.readouterr().out
+    assert f"exemplar pick(s) dropped: {EXPLORATORY}:1" in printed and "refused" in printed
+    assert out.read_text(encoding="utf-8") == '{"n_pairs": 7}'

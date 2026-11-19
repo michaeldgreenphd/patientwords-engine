@@ -30,7 +30,8 @@ them dominated the file; the frontend parses compact and indented identically.
 Graceful partial coverage (mirrors export_jlens_depth F-H08). Reads only
 committed trace_out/*__jlens_<model>/jlens_raw/*.json.gz (runs fired with
 --save-raw), never those of hand-authored exploratory sets (agscen_; the scan
-skips them and main prints how many). With no committed raw, a census batch
+skips them, an explicit exemplar pick naming one is dropped, and main prints
+both). With no committed raw, a census batch
 with no committed coverage, or no drawable exemplar, it REFUSES (returns None)
 and leaves the published payload untouched - never overwrites a good file with
 a degraded one.
@@ -59,6 +60,7 @@ from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import jlens_position_scan as jps  # noqa: E402  (script-style; imports jlens_readout as jps.jr)
+from publication_hold import is_exploratory_run_dir  # noqa: E402
 from tierb_split import SealError, seal_config_error, sealed_pair  # noqa: E402
 
 METHOD_CREDIT_FALLBACK = (
@@ -427,7 +429,7 @@ def build_exemplar(trace_root, batch, index, model, topn, target):
 
 def build_payload(trace_root, model, exemplar_batch=None, exemplar_index=None,
                   max_exemplars=5, render_map=None, census_batch=None,
-                  exemplar_pins=None, skipped=None):
+                  exemplar_pins=None, skipped=None, skipped_picks=None):
     """The data/jlens_transport.json payload, or None when the committed raw is
     too sparse to publish honestly (no raw at all, a census batch with no
     coverage, or no drawable exemplar) - the caller then leaves the published
@@ -441,7 +443,10 @@ def build_payload(trace_root, model, exemplar_batch=None, exemplar_index=None,
     either way each answer token can deep-link to the real trace.
 
     jps.scan never reads a hand-authored exploratory set (agscen_); the raw dirs
-    it skipped are appended to `skipped` when a list is given."""
+    it skipped are appended to `skipped` when a list is given. An explicit
+    exemplar pick (a pin, or exemplar_batch/exemplar_index) naming such a set is
+    dropped too, and appended to `skipped_picks` as 'batch:index': build_exemplar
+    reads raw by (batch, index), so a pick would otherwise bypass the scan."""
     scan_result = jps.scan(Path(trace_root), skipped)
     all_pairs = collect_pairs(scan_result, model)
     if not all_pairs:
@@ -469,6 +474,14 @@ def build_payload(trace_root, model, exemplar_batch=None, exemplar_index=None,
         if not chosen:
             fallback = pick_exemplar_index(candidates)
             chosen = [fallback] if fallback else []
+    kept = []
+    for batch, index in chosen:
+        if is_exploratory_run_dir(batch):
+            if skipped_picks is not None:
+                skipped_picks.append(f"{batch}:{index}")
+            continue
+        kept.append((batch, index))
+    chosen = kept
 
     by_key = {(e["batch"], e["index"]): e for e in all_pairs}
     exemplars = []
@@ -549,19 +562,21 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     render_map = load_render_map(args.scenarios) if args.scenarios else {}
-    skipped = []
+    skipped, skipped_picks = [], []
     try:
         payload = build_payload(args.trace_root, args.model,
                                 args.exemplar_batch, args.exemplar_index,
                                 max_exemplars=args.max_exemplars,
                                 render_map=render_map, census_batch=args.census_batch,
                                 exemplar_pins=_parse_pins(args.exemplar_pins),
-                                skipped=skipped)
+                                skipped=skipped, skipped_picks=skipped_picks)
     except SealError as exc:
         return seal_config_error(exc)  # exit 2: the publish chain stops
     if skipped:
         print(f"jlens transport: {len(skipped)} exploratory-set part(s) not read "
               "(scripts/results_policy.py)")
+    if skipped_picks:
+        print(f"jlens transport: exploratory-set exemplar pick(s) dropped: {', '.join(skipped_picks)}")
     if payload is None:
         # Mirror jlens_insights F-H08: a sparse checkout with no committed raw
         # must never overwrite the published transport payload with an empty one.

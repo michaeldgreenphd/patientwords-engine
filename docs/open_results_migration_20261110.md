@@ -190,6 +190,16 @@ Lens readers (`jlens_insights.py`, `export_jlens_loglens.py`,
 lens directory today. The skip must be added before any lens fire on such a set; this
 is unchanged from before and still open.
 
+**Update 2026-11-18:** closed. All four readers now skip hand-authored sets with
+`is_exploratory_run_dir` and print the count: `jlens_insights.py` and
+`export_jlens_loglens.py` from pull request 186 (2026-11-17), `jlens_position_scan.py`
+and `export_jlens_transport.py` from pull request 188 (2026-11-18). Pull request 189
+(2026-11-18) made the transport exporter also drop an explicit exemplar pick that names
+such a set. No hand-authored set had a lens directory when any of these changes
+landed, so no published lens payload
+changed. The paragraph above is left as recorded on 2026-11-10; the current rule is in
+[agent_reference.md](agent_reference.md).
+
 ## 7. Compatibility
 
 - Public URLs and existing payloads are unchanged. The catalogue is a new directory,
