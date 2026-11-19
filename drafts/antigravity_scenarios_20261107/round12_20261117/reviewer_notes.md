@@ -17,8 +17,8 @@ Batch 01 was not reviewed before batch 02 started, so no reviewer notes existed 
 - **Stated negatives and bleeding.** None of either.
 - **Citations.** 37 PubMed rows and 11 dictionary rows.
   - 36 PubMed records match their cited title and DOI. The 37th is r12-019, corrected below.
-  - Of those 36, the evidence sentence was found word for word in the abstract or the PubMed Central full text for 34. The other 2 (r12-004, PMID 30304171) have their full text only on SciELO, which this session cannot reach, so they are unverified, not wrong.
-  - All 10 Wiktionary rows verify. The one Cambridge row (r12-047, "gnawing") could not be reached from this session.
+  - Of those 36, the evidence sentence was found word for word in the abstract or the PubMed Central full text for 34. The other 2 (r12-004, PMID 30304171) have their full text only on SciELO, which answers automated requests with a browser check. They are unverified, not wrong.
+  - All 10 Wiktionary rows verify, and so does the one Cambridge row (r12-047, "gnawing").
 - **Rule B.** Every cited row shows patients using the wording, or the authors reporting that they do. No row cites a sentence in which patients did not use the wording, or in which a patient rejected the explanation.
 - **Totals.** The final report's totals match the files: 48 families, 48 cited rows, 110 unsourced rows and 14 level concerns.
 
