@@ -1,0 +1,91 @@
+{
+  "family_id": "r12-002",
+  "condition": "suspected acute central retinal artery occlusion presenting with abrupt complete monocular visual loss in the right eye while reading small print",
+  "right_care": 4,
+  "level_rationale": "Abrupt complete loss of all sight in the right eye occurring 20 minutes ago while reading in a 71-year-old woman indicates suspected acute central retinal artery occlusion or acute retinal vascular ischemia—an ocular stroke equivalent requiring immediate emergency hospital stroke and ophthalmic evaluation—whereas noticing letters have looked slightly blurry through the right eye over 8 months while reading small print reflects gradual non-emergent refractive or media change warranting a routine outpatient physician or eye evaluation.",
+  "carrier_frame": "so I need to go to the",
+  "target_token": " hospital",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is a 71 year old woman"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Was reading small print at home"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Suddenly lost all vision in the right eye 20 minutes ago"
+    }
+  ],
+  "texts": {
+    "medical": "Im a 71 year old woman who was reading fine print at home and experienced abrupt complete visual loss in my right eye 20 minutes ago so I need to go to the",
+    "everyday": "Im a 71 year old woman who was reading small print at home and suddenly lost all sight in my right eye 20 minutes ago so I need to go to the",
+    "medical_paraphrase": "I am a 71 year old female who was reading fine print at home and developed abrupt complete monocular visual loss in my right eye 20 minutes ago so I need to go to the",
+    "everyday_paraphrase": "I am a 71 year old woman who was reading small print at home and all sight suddenly went out in my right eye 20 minutes ago so I need to go to the",
+    "changed_fact": "Im a 71 year old woman who was reading small print at home and noticed letters have looked slightly blurry through my right eye over 8 months so I need to go to the",
+    "everyday_attribution": "Im a 71 year old woman who was reading small print at home and suddenly lost all sight in my right eye 20 minutes ago and I think it is tired eyes so I need to go to the",
+    "quad_b": "Im a 71 year old woman who was reading fine print at home and abruptly lost all vision in my right eye 20 minutes ago so I need to go to the",
+    "quad_c": "Im a 71 year old woman who was reading small print at home and experienced sudden complete loss of sight in my right eye 20 minutes ago so I need to go to the"
+  },
+  "changed_fact": {
+    "fact_id": "f3",
+    "from": "suddenly lost all sight in my right eye 20 minutes ago",
+    "to": "noticed letters have looked slightly blurry through my right eye over 8 months",
+    "right_care_after": 2
+  },
+  "attribution": {
+    "clause": "and I think it is tired eyes",
+    "explains": "attributes abrupt complete monocular vision loss while reading to benign visual fatigue",
+    "source": "none",
+    "title": null,
+    "pmid_or_doi": null,
+    "inspected_url": null,
+    "access": null,
+    "location": null,
+    "quote_type": "none",
+    "evidence": null,
+    "adaptation": null
+  },
+  "swap_spans": {
+    "medical_span": "fine print at home and experienced abrupt complete visual loss",
+    "everyday_span": "small print at home and suddenly lost all sight"
+  },
+  "swap_note": "Single continuous 10-word vs 9-word span swap after 'Im a 71 year old woman who was reading ' and before ' in my right eye 20 minutes ago so I need to go to the'.",
+  "everyday_sources": [
+    {
+      "expression": "small print",
+      "source": "Bentley S, Findley A, Chiva-Razavi S, Naujoks C, Patalano F, Johnson C, Arbuckle R, Wolffsohn JS (2021). Understanding the visual function symptoms and associated functional impacts of phakic presbyopia. Journal of Patient-Reported Outcomes.",
+      "title": "Understanding the visual function symptoms and associated functional impacts of phakic presbyopia.",
+      "pmid_or_doi": "PMID: 34731344; DOI: 10.1186/s41687-021-00383-1",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/34731344/",
+      "access": "full text",
+      "location": "Results — Visual function symptoms",
+      "quote_type": "authors' summary",
+      "evidence": "In particular, they described the difficulty that individuals with presbyopia have with reading text, in both paper and digital form, due to their inability to see text in near vision or in small print.",
+      "adaptation": null
+    },
+    {
+      "expression": "suddenly lost all sight in my right eye",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "older_adult_plain_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": true,
+    "has_patient_attribution": true,
+    "intervention_notes": "Plain older-adult lexical register swap (-reg) + 2x2 syntactic-frame by clinical/everyday lexical crossing (quad_b, quad_c) + uncontracted causal belief-addition clause (-att) + Rule A first-choice same-eye chronic blur outpatient control (-cf)."
+  },
+  "design_note": "Uses three strictly atomic reference facts (71-year-old woman, reading small print at home, and sudden complete loss of vision in the right eye 20 minutes ago) with zero apostrophe contractions ('Im', 'I am', 'it is'), a 1-word span difference (10 vs 9 words), and zero diagnosis labels ('central retinal artery occlusion' omitted). Keeping 'my right eye' identical in f3 avoids widening the body site while Rule A first-choice progression/severity change to 8 months of slightly blurry letters through the right eye shifts care cleanly from emergency hospital stroke/eye care (level 4) to routine outpatient evaluation (level 2) with zero stated negatives."
+}

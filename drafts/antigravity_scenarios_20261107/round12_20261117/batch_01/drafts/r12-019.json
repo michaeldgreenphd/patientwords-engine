@@ -1,0 +1,87 @@
+{
+  "family_id": "r12-019",
+  "condition": "calcium-channel-blocker associated bilateral afternoon pitting ankle swelling leaving thumb indentations for 2 weeks after starting daily amlodipine",
+  "right_care": 2,
+  "level_rationale": "Two weeks of daily afternoon swelling in both ankles that leaves a thumb dent when pressed starting shortly after initiating daily amlodipine 3 weeks ago in a 56-year-old adult describes classic dihydropyridine calcium-channel-blocker peripheral pitting edema warranting a routine outpatient physician visit to confirm benign drug-induced vasodilatory edema and adjust antihypertensive therapy rather than unguided self-care or emergency care, whereas noticing slight puffiness around both ankles for 10 minutes on 1 afternoon last week after starting daily amlodipine represents a trivial transient observation needing only routine home self-care.",
+  "carrier_frame": "so I should see a",
+  "target_token": " doctor",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is 56 years old"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Started taking daily amlodipine 3 weeks ago"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Has had afternoon swelling in both ankles for 2 weeks that leaves a thumb dent when pressed"
+    }
+  ],
+  "texts": {
+    "medical": "I am 56 and started daily amlodipine 3 weeks ago and have developed afternoon bilateral malleolar edema for 2 weeks that leaves a thumb indentation when I press each ankle so I should see a",
+    "everyday": "I am 56 and started daily amlodipine 3 weeks ago and have had afternoon swelling in both my ankles for 2 weeks leaving a thumb dent when I press them so I should see a",
+    "medical_paraphrase": "Im 56 and initiated daily amlodipine 3 weeks ago and over the past 2 weeks have developed afternoon bilateral malleolar edema leaving a thumb indentation upon pressing each ankle so I should see a",
+    "everyday_paraphrase": "Im 56 and started taking amlodipine every day 3 weeks ago and for 2 weeks I have had afternoon swelling in both my ankles that leaves a thumb dent when I press them so I should see a",
+    "changed_fact": "I am 56 and started daily amlodipine 3 weeks ago and noticed slight puffiness around both ankles for 10 minutes on 1 afternoon last week so I should see a"
+  },
+  "changed_fact": {
+    "fact_id": "f3",
+    "from": "have had afternoon swelling in both my ankles for 2 weeks leaving a thumb dent when I press them",
+    "to": "noticed slight puffiness around both ankles for 10 minutes on 1 afternoon last week",
+    "right_care_after": 1
+  },
+  "swap_spans": {
+    "medical_span": "developed afternoon bilateral malleolar edema for 2 weeks that leaves a thumb indentation when I press each ankle",
+    "everyday_span": "had afternoon swelling in both my ankles for 2 weeks leaving a thumb dent when I press them"
+  },
+  "swap_note": "Single continuous 18-word vs 18-word span swap after 'I am 56 and started daily amlodipine 3 weeks ago and have ' and before ' so I should see a'.",
+  "everyday_sources": [
+    {
+      "expression": "swelling in both my ankles",
+      "source": "Carter SA, Teng C, Gutman T, et al. (2022). A Focus Group Study of Self-Management in Patients With Glomerular Disease. Kidney International Reports.",
+      "title": "A Focus Group Study of Self-Management in Patients With Glomerular Disease",
+      "pmid_or_doi": "PMID: 35005435; DOI: 10.1016/j.ekir.2021.10.011",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/35005435/",
+      "access": "full text",
+      "location": "Results - Striving for stability and normalcy - Attentiveness to bodily signs",
+      "quote_type": "direct patient quote",
+      "evidence": "I start checking the swelling in my ankles and feet, and if I can press in, I react.",
+      "adaptation": "Inserted 'both' into the verbatim patient phrase 'swelling in my ankles' as 'swelling in both my ankles' to match bilateral malleolar involvement."
+    },
+    {
+      "expression": "leaving a thumb dent when I press them",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "noticed slight puffiness around both ankles for 10 minutes on 1 afternoon last week",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "adult_patient_plain_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": false,
+    "intervention_notes": "Plain adult everyday lexical register swap (-reg) + Rule A first-choice ankle swelling severity and duration de-escalation control (-cf, L2 to L1), written without apostrophe contractions."
+  },
+  "design_note": "Three atomic reference facts cover age 56, starting daily amlodipine 3 weeks ago, and 2 weeks of bilateral afternoon ankle swelling leaving a thumb dent when pressed, with an exact 0-word span difference (18 vs 18 words) and zero contractions. Under Rule A first choice and Rule D, reducing f3 at the exact same bilateral ankles to 10 minutes of slight puffiness on 1 afternoon last week preserves coherent medication-monitoring context while shifting care cleanly from doctor review (level 2) to routine self-care (level 1)."
+}

@@ -1,0 +1,87 @@
+{
+  "family_id": "r12-022",
+  "condition": "persistent painful fissured sores at both corners of the mouth with a smooth red burning tongue over 4 weeks despite plain lip balm",
+  "right_care": 2,
+  "level_rationale": "Four weeks of painful cracked sores at both corners of the mouth accompanied by a smooth red tongue with a burning sensation despite using plain lip balm in a 39-year-old adult points to persistent angular commissural fissuring with atrophic glossodynia warranting a non-urgent outpatient clinic visit for iron, folate, and vitamin B12 evaluation and targeted antifungal or nutritional therapy rather than emergency care, whereas mild dry chapping at both corners of the mouth for 1 day last week while using plain lip balm represents minor self-limited lip dryness needing only routine self-care.",
+  "carrier_frame": "so I need to go to the",
+  "target_token": " clinic",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is 39 years old"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Uses plain lip balm"
+    },
+    {
+      "fact_id": "f3",
+      "text": "For 4 weeks has had painful cracked sores at both corners of the mouth and a smooth red tongue with a burning sensation"
+    }
+  ],
+  "texts": {
+    "medical": "Im 39 and use plain lip balm and have developed painful fissured lesions at both labial commissures of my mouth and a smooth erythematous tongue with glossodynia for 4 weeks so I need to go to the",
+    "everyday": "Im 39 and use plain lip balm and have had painful cracked sores at both corners of my mouth and a smooth red tongue with a burning sensation for 4 weeks so I need to go to the",
+    "medical_paraphrase": "I am 39 and use plain lip balm and over 4 weeks have developed painful fissured lesions at both labial commissures of my mouth and a smooth erythematous tongue with glossodynia so I need to go to the",
+    "everyday_paraphrase": "I am 39 and use plain lip balm and for 4 weeks I have had painful cracked sores at both corners of my mouth and a smooth red tongue with a burning sensation so I need to go to the",
+    "changed_fact": "Im 39 and use plain lip balm and had mild dry chapping at both corners of my mouth for 1 day last week so I need to go to the"
+  },
+  "changed_fact": {
+    "fact_id": "f3",
+    "from": "have had painful cracked sores at both corners of my mouth and a smooth red tongue with a burning sensation for 4 weeks",
+    "to": "had mild dry chapping at both corners of my mouth for 1 day last week",
+    "right_care_after": 1
+  },
+  "swap_spans": {
+    "medical_span": "developed painful fissured lesions at both labial commissures of my mouth and a smooth erythematous tongue with glossodynia",
+    "everyday_span": "had painful cracked sores at both corners of my mouth and a smooth red tongue with a burning sensation"
+  },
+  "swap_note": "Single continuous 18-word vs 19-word span swap after 'Im 39 and use plain lip balm and have ' and before ' for 4 weeks so I need to go to the'.",
+  "everyday_sources": [
+    {
+      "expression": "burning sensation",
+      "source": "Bhaiyya PS, Sonar PR, Paul P, Gabhane SS, Rathi A, Dhole PD (2024). Burning Mouth Syndrome in Association With Angular Cheilitis: A Case Report. Cureus.",
+      "title": "Burning Mouth Syndrome in Association With Angular Cheilitis: A Case Report.",
+      "pmid_or_doi": "PMID: 39310405; DOI: 10.7759/cureus.67407",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/39310405/",
+      "access": "abstract only",
+      "location": "Abstract",
+      "quote_type": "authors' summary",
+      "evidence": "The patient described the prolonged heat or burning sensation in the anterior two-thirds of her tongue.",
+      "adaptation": null
+    },
+    {
+      "expression": "painful cracked sores at both corners of my mouth",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "had mild dry chapping at both corners of my mouth for 1 day last week",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "adult_patient_plain_low_literacy_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": false,
+    "intervention_notes": "Plain low-literacy adult everyday lexical register swap (-reg) + Rule A first-choice oral corner severity and duration de-escalation control (-cf, L2 to L1), written without apostrophe contractions."
+  },
+  "design_note": "Three atomic reference facts cover age 39, plain lip balm use, and 4 weeks of painful cracked sores at both mouth corners with a smooth red burning tongue without naming angular cheilitis or glossitis, with a 1-word span difference (18 vs 19 words) and zero contractions (check everyday_paraphrase length <= 40 words). Under Rule A first choice and Rule D, reducing f3 at the exact same mouth corners to 1 day of mild dry chapping last week shifts care cleanly from clinic workup (level 2) to routine self-care (level 1)."
+}

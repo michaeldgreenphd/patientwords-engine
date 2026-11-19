@@ -1,0 +1,105 @@
+{
+  "family_id": "r12-011",
+  "condition": "bilateral pale intranasal growths with loss of smell and obligate mouth breathing over 7 months despite steroid nasal spray in an adult woman",
+  "right_care": 3,
+  "level_rationale": "Seven months of visible pale bilateral intranasal growths with loss of smell and obligate mouth breathing refractory to steroid nasal spray in a 41-year-old woman indicates severe refractory bilateral nasal polyposis warranting otolaryngology specialist nasal endoscopy, CT imaging, and biologic or endoscopic surgical management, whereas barely speaking 2 words per breath while sitting still indicates acute severe resting respiratory distress requiring immediate emergency department airway and respiratory stabilization.",
+  "carrier_frame": "so I should see a",
+  "target_token": " specialist",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is a 41 year old woman"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Has pale growths inside both nostrils and loss of smell for 7 months"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Symptoms persisted despite steroid nasal spray"
+    },
+    {
+      "fact_id": "f4",
+      "text": "Breathes through her mouth"
+    }
+  ],
+  "texts": {
+    "medical": "Im a 41 year old woman with a 7 month history of pale masses in both nasal cavities and anosmia despite corticosteroid nasal spray alongside obligate oral breathing so I should see a",
+    "everyday": "Im a 41 year old woman with 7 months of pale growths in both nostrils and loss of smell despite steroid nose spray and I breathe through my mouth so I should see a",
+    "medical_paraphrase": "I am a 41 year old woman reporting 7 months of pale masses in both nasal cavities and anosmia refractory to corticosteroid nasal spray alongside obligate oral breathing so I should see a",
+    "everyday_paraphrase": "I am a 41 year old woman and over 7 months I have had pale growths in both nostrils and loss of smell even with steroid nose spray while breathing through my mouth so I should see a",
+    "changed_fact": "Im a 41 year old woman with 7 months of pale growths in both nostrils and loss of smell despite steroid nose spray and I can barely speak 2 words per breath sitting still so I should see a",
+    "everyday_attribution": "Im a 41 year old woman with 7 months of pale growths in both nostrils and loss of smell despite steroid nose spray and I breathe through my mouth and I think it is dust so I should see a"
+  },
+  "changed_fact": {
+    "fact_id": "f4",
+    "from": "breathe through my mouth",
+    "to": "can barely speak 2 words per breath sitting still",
+    "right_care_after": 4
+  },
+  "attribution": {
+    "clause": "and I think it is dust",
+    "explains": "attributes refractory bilateral intranasal growths, anosmia, and mouth breathing to ordinary dust",
+    "source": "none",
+    "title": null,
+    "pmid_or_doi": null,
+    "inspected_url": null,
+    "access": null,
+    "location": null,
+    "quote_type": "none",
+    "evidence": null,
+    "adaptation": null
+  },
+  "swap_spans": {
+    "medical_span": "with a 7 month history of pale masses in both nasal cavities and anosmia despite corticosteroid nasal spray alongside obligate oral breathing",
+    "everyday_span": "with 7 months of pale growths in both nostrils and loss of smell despite steroid nose spray and I breathe through my mouth"
+  },
+  "swap_note": "Single continuous 22-word vs 23-word span swap after 'Im a 41 year old woman ' and before ' so I should see a'.",
+  "everyday_sources": [
+    {
+      "expression": "loss of smell",
+      "source": "Hall R, Trennery C, Chan R, Gater A, Bradley H, Sikirica MV, et al. (2020). Understanding the Patient Experience of Severe, Recurrent, Bilateral Nasal Polyps: A Qualitative Interview Study in the United States and Germany. Value Health.",
+      "title": "Understanding the Patient Experience of Severe, Recurrent, Bilateral Nasal Polyps: A Qualitative Interview Study in the United States and Germany.",
+      "pmid_or_doi": "PMID: 32389229; DOI: 10.1016/j.jval.2019.11.005",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/32389229/",
+      "access": "abstract only",
+      "location": "Abstract — Results",
+      "quote_type": "authors' summary",
+      "evidence": "Thirty-six symptoms were identified, including 7 primary symptoms (nasal congestion [n = 27 of 27], breathing difficulties [n = 27 of 27], postnasal drip [n = 25 of 27], runny nose [n = 24 of 27], head/facial pressure [n = 23 of 27], loss of smell [n = 23 of 27], loss of taste [n = 22 of 27]) and 29 secondary symptoms (the most common were mucus/catarrh and nose bleeds [both n = 20 of 27]).",
+      "adaptation": null
+    },
+    {
+      "expression": "breathe through my mouth",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "can barely speak 2 words per breath sitting still",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "adult_patient_non_native_plain_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": true,
+    "intervention_notes": "Plain adult non-native English lexical register swap (-reg, Hall 2020) + uncontracted house-dust causal belief clause (-att) + Rule A single-fact resting speech-dyspnea escalation control (-cf), written without apostrophe contractions."
+  },
+  "design_note": "Uses four strictly atomic reference facts (41-year-old woman, 7 months of pale bilateral nostril growths with loss of smell, persistence despite prescribed nasal spray, and mouth breathing) with zero contractions and zero banned diagnosis labels ('polyposis' omitted). Under Rules A and D, escalating only f4 on breathing from simple mouth breathing to barely speaking 2 words per breath at rest shifts care cleanly from otolaryngology specialist evaluation (level 3) to emergency respiratory care (level 4) without bleeding."
+}
