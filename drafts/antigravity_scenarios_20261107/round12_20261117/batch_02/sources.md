@@ -264,7 +264,7 @@ Every cited source in `families.json` (across both `everyday_sources` and `attri
 | `r12-026` | attribution clause | `"and I think it is stress"` |
 | `r12-027` | everyday expression | `"all around my right hand and fingers making big tight blisters"` |
 | `r12-027` | everyday expression | `"got 1 tiny pink drop mark on my right hand from warm soup that stopped stinging in 1 minute"` |
-| `r12-027` | attribution clause | `"and I think it is steam"` |
+| `r12-027` | attribution clause | `"and I think they are superficial"` |
 | `r12-028` | everyday expression | `"felt warm to the touch"` |
 | `r12-028` | everyday expression | `"a temperature of 39 degrees Celsius in his bottom"` |
 | `r12-028` | attribution clause | `"and I think it is his blanket"` |

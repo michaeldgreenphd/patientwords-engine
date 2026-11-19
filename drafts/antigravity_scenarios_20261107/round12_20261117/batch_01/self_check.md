@@ -61,7 +61,7 @@
 
 ## 4. Source Fit and Unsourced Expressions
 
-- **Cited expressions and attributions (`source_fit.json`):** `25` cited out of `75` total rows (`33.3%`; everyday expressions `22/59` = `37.3%`, attributions `3/16` = `18.8%`) — `same`: `19` (`76.0%`), `adjacent`: `6`, `different`: `0` (target `>= 50%` `same`: `MET`).
+- **Cited expressions and attributions (`source_fit.json`):** `25` cited out of `75` total rows (`33.3%`; everyday expressions `22/59` = `37.3%`, attributions `3/16` = `18.8%`) — `same`: `19` (`76.0%`), `adjacent`: `6`, `different`: `0` (aim `>= 50%` `same`: `MET`).
 - **Unsourced expressions/attributions (`"source": "none"`):** `50` items across `24` families (full table in `sources.md`).
 
 ## 5. Stated Negatives (`<= 3` per batch)

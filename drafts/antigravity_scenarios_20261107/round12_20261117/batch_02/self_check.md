@@ -6,7 +6,7 @@
 
 - **Planned slots in `batch_02`:** `24`
 - **Passed all 8 gates (`G1`–`G8`):** `24`
-- **Returned once and revised during audit:** `5` (`r12-025`, `r12-026`, `r12-044`, `r12-046`, `r12-048`)
+- **Returned once and revised during audit:** `6` (`r12-025`, `r12-026`, `r12-027`, `r12-044`, `r12-046`, `r12-048`)
 - **Dropped:** `0`
 
 ### Passed Families by Care Level (100% Plain Register)

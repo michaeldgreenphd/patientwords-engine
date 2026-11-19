@@ -270,7 +270,7 @@ Every cited source in `families.json` (across both `everyday_sources` and `attri
 | `r12-002` | attribution clause | `"and I think it is tired eyes"` |
 | `r12-003` | everyday expression | `"swallowed a coin sized lithium button battery from the TV remote"` |
 | `r12-003` | everyday expression | `"1 soft ripe raspberry"` |
-| `r12-003` | attribution clause | `"and I think it looked like candy"` |
+| `r12-003` | attribution clause | `"and I think the battery is dead"` |
 | `r12-004` | attribution clause | `"and I think it is from cold air"` |
 | `r12-006` | everyday expression | `"a sudden big gush of clear fluid from my vagina"` |
 | `r12-006` | everyday expression | `"let out 3 drops of pee once when I laughed"` |
