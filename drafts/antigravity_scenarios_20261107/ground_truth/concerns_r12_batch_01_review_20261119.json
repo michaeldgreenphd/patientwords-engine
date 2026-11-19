@@ -2,7 +2,7 @@
  "schema": "patientwords.intake-concerns/1",
  "batch_id": "r12_b01",
  "source": "The Claude review session's reading of round12_20261117/batch_01/families.json after its review (reviewer_notes.md, 2026-11-19). Concern ids end in -rN so they cannot collide with the authoring team's -cN concerns in concerns_selfreported.json. Wording concerns are a model's reading and await the patient-language reviewer; level concerns await the clinician.",
- "not_exhaustive": "Families in the owner's fix round (r12-003, -011, -015, -021, -024, -027, -043, -048) get no concern here; their texts will change.",
+ "not_exhaustive": "Families in the owner's fix round (r12-003, -011, -015, -021, -024, -027, -043, -048) got no concern here before the fix round. After it (e2703d2cd) they get one where a problem remains: the six controls the fix round left as pushed, r12-015's level and r12-027's new clause. r12-003's new clause raised none.",
  "concerns": [
   {
    "concern_id": "r12-014-r1",
@@ -104,6 +104,91 @@
    "raised_by_kind": "model",
    "raised_on": "2026-11-19",
    "raised_on_review_basis_sha256": "d90db3ff2991498dfa2c566512cd351551e4e3757dfddd0ef13e8d41881a7f3b",
+   "disposition": {
+    "status": "open",
+    "note": ""
+   }
+  },
+  {
+   "concern_id": "r12-011-r1",
+   "family_id": "r12-011",
+   "kind": "control_adds_fact",
+   "applies_to": [
+    "chg"
+   ],
+   "text": "The control replaces mouth breathing with 'can barely speak 2 words per breath sitting still': a lower-airway emergency that nasal growths do not cause, in a clinician's phrase. The fix round found no control that met the fix-round rules (fix_report.md, e2703d2cd) and left this one as pushed.",
+   "raised_by": "Claude review session (a model's reading; not a clinician's or a patient-language reviewer's)",
+   "raised_by_kind": "model",
+   "raised_on": "2026-11-19",
+   "raised_on_review_basis_sha256": "4eeb9b50e3c273fd12a749a3514ac34ecc5981bfda113ac68f19944e5cfad758",
+   "disposition": {
+    "status": "open",
+    "note": ""
+   }
+  },
+  {
+   "concern_id": "r12-015-r1",
+   "family_id": "r12-015",
+   "kind": "wording",
+   "applies_to": [
+    "chg"
+   ],
+   "text": "'Ashy' is labelled African American Vernacular English by Wiktionary, and the dialect lexicon does not list it, so G2 does not catch it. The control also changes duration, symptom and severity at once. The fix round found no control that met the fix-round rules (fix_report.md, e2703d2cd) and left this one as pushed.",
+   "raised_by": "Claude review session (a model's reading; not a clinician's or a patient-language reviewer's)",
+   "raised_by_kind": "model",
+   "raised_on": "2026-11-19",
+   "raised_on_review_basis_sha256": "48aec9c5555b00a228a5065acdb66a7db00ed5ac9ad5177fb4fecb28a0ee5511",
+   "disposition": {
+    "status": "pending_patient_language_review",
+    "note": ""
+   }
+  },
+  {
+   "concern_id": "r12-015-r2",
+   "family_id": "r12-015",
+   "kind": "level_disputed",
+   "applies_to": [
+    "family"
+   ],
+   "text": "The fix report argues that level 2 and level 3 cannot be told apart for this case without a primary-care treatment that failed. The family states no earlier treatment, so by the same argument its own level 3 (a dermatologist rather than a doctor first) is arguable.",
+   "raised_by": "Claude review session (a model's reading; not a clinician's or a patient-language reviewer's)",
+   "raised_by_kind": "model",
+   "raised_on": "2026-11-19",
+   "raised_on_review_basis_sha256": "48aec9c5555b00a228a5065acdb66a7db00ed5ac9ad5177fb4fecb28a0ee5511",
+   "disposition": {
+    "status": "pending_clinical_review",
+    "note": ""
+   }
+  },
+  {
+   "concern_id": "r12-021-r1",
+   "family_id": "r12-021",
+   "kind": "control_adds_fact",
+   "applies_to": [
+    "chg"
+   ],
+   "text": "The control replaces 8 weeks of burning and pins and needles with a foot that turned ice cold and slate gray today: a different condition, and the foot-colour change that round 11 already uses. The fix round found no control that met the fix-round rules (fix_report.md, e2703d2cd) and left this one as pushed.",
+   "raised_by": "Claude review session (a model's reading; not a clinician's or a patient-language reviewer's)",
+   "raised_by_kind": "model",
+   "raised_on": "2026-11-19",
+   "raised_on_review_basis_sha256": "3f0c269d2c5b6a618d65e38ffb5597ad3667a67af8a8a893ec9b2dceee39d951",
+   "disposition": {
+    "status": "open",
+    "note": ""
+   }
+  },
+  {
+   "concern_id": "r12-024-r1",
+   "family_id": "r12-024",
+   "kind": "control_adds_fact",
+   "applies_to": [
+    "chg"
+   ],
+   "text": "The control replaces the night itch with hot swelling that locked the fingers bent today: a different condition. The fix round found no control that met the fix-round rules (fix_report.md, e2703d2cd) and left this one as pushed. The report's reason holds given the family's level: the shared rash and the wavy lines each set level 2 on their own, so changing one property of the itch or of the lines leaves level 2.",
+   "raised_by": "Claude review session (a model's reading; not a clinician's or a patient-language reviewer's)",
+   "raised_by_kind": "model",
+   "raised_on": "2026-11-19",
+   "raised_on_review_basis_sha256": "affaaf8337f7b9f52c2119def74d3a458733aae0cba8e22cb82e56cd979c627e",
    "disposition": {
     "status": "open",
     "note": ""

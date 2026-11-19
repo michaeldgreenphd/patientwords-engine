@@ -155,3 +155,50 @@ Every other rule of `SPEC.md` holds. That includes the writing rules, sourcing a
 - Write `fix_report.md`: each family's change, its audit verdicts, what you verified and what you assumed.
 - Make one commit, "Round 12 fix round: N families revised", and push to the draft branch.
 - Do not edit `SPEC.md`, this file, `final_report.md`, any earlier round, or anything in `ground_truth/`.
+
+## Review of the fix round (e2703d2cd), 2026-11-19
+
+Gemini's fix round revised the two explanation clauses and left the six controls as pushed. r12-003's new clause meets SPEC section 5 item 8; r12-027's gets a concern. For three of the six controls, the reason given for leaving them is right given the family's level. For the other three it is a reading of the levels that a clinician could disagree with. In all six, the problem the fix round was written for remains.
+
+### Checks
+
+- Scope. `git diff 5193f9b20 e2703d2cd` changes the drafts, sources and audit files of r12-003 and r12-027 and nothing else of the 48 families. In the two drafts it changes `attribution.clause`, `attribution.explains` and `texts.everyday_attribution`; the rebuilt `families.json`, `check_pairs.json`, `sources.md` and `intake_summary.json` follow from them. `revisions.json` logs both with the text before and after and the owner's reason. Two small edits fall outside the eight families: the returned-family count in `batch_02/self_check.md` (now correct), and "target" changed to "aim" in `batch_01/self_check.md` (harmless, unlogged).
+- G1. `tools/assemble_batch.py` rebuilds both batches with no difference from the commit.
+- G2. Both batches: 64 candidates, 0 errors, 28 and 44 number warnings, the same as before the fix round.
+- G3, with the team's and the review's concern files: `"status": "intake"` and 0 errors for both batches.
+- Citation. The r12-003 sources record says Girardi et al. 2024 found that 99% of surveyed parents knew a dead battery can still cause damage. Verified in the full text (PMID 39149183, PMC11322028): 172 of 174 respondents.
+
+### The two explanation clauses
+
+- **r12-003, "and I think the battery is dead": accepted.** It is a belief about the battery that makes the case seem less serious, like round 11's "and I think that piece is gravel", and it adds no symptom, duration, history or action. In the Girardi survey (174 Australian parents and carers recruited through social media) 172 knew a dead battery can still do harm, so the belief may be uncommon. That bears on how natural the clause is, which the patient-language reviewer judges; it does not break item 8.
+- **r12-027, "and I think they are superficial": concern r12-027-r1.** The clause no longer contradicts the hot oil. But "superficial" is the clinical word for a burn's depth, and the clause states a belief about how deep the burn is, not about its cause, which item 8 asks for. These notes described the round 11 examples as "a belief about what is happening that makes it seem less serious", which is looser than item 8 and allows this reading, so the fault is partly mine. Left for the patient-language reviewer.
+
+### The six controls
+
+| Family | Reason given for leaving it (fix_report.md) | This review's reading |
+|---|---|---|
+| r12-024 | The shared rash and the wavy lines keep level 2 whichever property of the itch or the lines changes | Right given the family's level |
+| r12-043 | The weight loss and the night sweats each keep level 2 when the other changes | Right given the family's level |
+| r12-048 | After a new partner, the discharge and the burning each keep level 2 when the other changes | Right given the family's level |
+| r12-011 | No property of the nasal symptoms moves the level clearly | A reading of the levels. Changing "despite steroid nose spray" (the treatment so far) might move the case to level 2, but treatment is not a property in rule 1's list. A clinician's question |
+| r12-015 | Flat-topped violet bumps never reach level 1; level 2 against level 3 is unclear without a failed treatment | A reading of the levels. By the same argument the family's own level 3 is arguable: concern r12-015-r2 |
+| r12-021 | At 66 on metformin, milder burning still needs a doctor | A reading of the levels |
+
+The fix-round table asked for a one-property control in three families whose level is set by two features, each enough on its own. Rules 1 and 4 together made those controls impossible. I did not check each family before writing the table; that check belonged in the review.
+
+The six pushed controls keep the problems the fix round was meant to remove: a different condition in all six, stock values in r12-021 (a cold, gray foot) and r12-043 (104 F), and the dialect-labelled "ashy" in r12-015. Each now carries a concern, so the intake lists them.
+
+### Sources records
+
+The fix round set `title_matches` and `evidence_found_verbatim` to null on the six unsourced rows of r12-003 and r12-027, which is correct for a row with no source. The other 104 unsourced rows in the two batches still record both as true.
+
+### Concerns added
+
+- `ground_truth/concerns_r12_batch_01_review_20261119.json`: r12-011-r1, r12-015-r1, r12-015-r2, r12-021-r1, r12-024-r1.
+- `ground_truth/concerns_r12_batch_02_review_20261119.json`: r12-043-r1, r12-048-r1, r12-027-r1.
+
+Earlier rows are unchanged. Open concerns after the fix round: 18 in each batch.
+
+### For the owner
+
+Two new cards on the decision page: what to do with the six controls (r12-controls-left), and whether to remove "ashy" from r12-015's control (r12-015-ashy). Card r12-split-links is still open.

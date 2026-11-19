@@ -2,7 +2,7 @@
  "schema": "patientwords.intake-concerns/1",
  "batch_id": "r12_b02",
  "source": "The Claude review session's reading of round12_20261117/batch_02/families.json after its review (reviewer_notes.md, 2026-11-19). Concern ids end in -rN so they cannot collide with the authoring team's -cN concerns in concerns_selfreported.json. Wording concerns are a model's reading and await the patient-language reviewer; level concerns await the clinician.",
- "not_exhaustive": "Families in the owner's fix round (r12-003, -011, -015, -021, -024, -027, -043, -048) get no concern here; their texts will change.",
+ "not_exhaustive": "Families in the owner's fix round (r12-003, -011, -015, -021, -024, -027, -043, -048) got no concern here before the fix round. After it (e2703d2cd) they get one where a problem remains: the six controls the fix round left as pushed, r12-015's level and r12-027's new clause. r12-003's new clause raised none.",
  "concerns": [
   {
    "concern_id": "r12-037-r1",
@@ -141,6 +141,57 @@
    "raised_on_review_basis_sha256": "1c07fb7f8f5c039625877a74826fdcda61628b591664d7d99a4ae69184b3da6a",
    "disposition": {
     "status": "open",
+    "note": ""
+   }
+  },
+  {
+   "concern_id": "r12-043-r1",
+   "family_id": "r12-043",
+   "kind": "control_adds_fact",
+   "applies_to": [
+    "chg"
+   ],
+   "text": "The control replaces the night sweats with a 104 F fever (40 C, the stock value round 11 already uses), violent shaking chills and being unable to stand: a new acute illness, with the intensity word 'violent'. The fix round found no control that met the fix-round rules (fix_report.md, e2703d2cd) and left this one as pushed. The report's reason holds given the family's level: the weight loss and the night sweats each set level 2 on their own.",
+   "raised_by": "Claude review session (a model's reading; not a clinician's or a patient-language reviewer's)",
+   "raised_by_kind": "model",
+   "raised_on": "2026-11-19",
+   "raised_on_review_basis_sha256": "1a9b3cc5ed966c241afad8f5496367add6e5ea5c7fbec06029ddbd944d82969a",
+   "disposition": {
+    "status": "open",
+    "note": ""
+   }
+  },
+  {
+   "concern_id": "r12-048-r1",
+   "family_id": "r12-048",
+   "kind": "control_adds_fact",
+   "applies_to": [
+    "chg"
+   ],
+   "text": "The control replaces the discharge and the burning with a foreskin trapped behind the head of the penis and a dark purple tip: a different condition. The fix round found no control that met the fix-round rules (fix_report.md, e2703d2cd) and left this one as pushed. The report's reason holds given the family's level: after a new partner, the discharge and the burning each set level 2 on their own.",
+   "raised_by": "Claude review session (a model's reading; not a clinician's or a patient-language reviewer's)",
+   "raised_by_kind": "model",
+   "raised_on": "2026-11-19",
+   "raised_on_review_basis_sha256": "4542a0dd9dbe64a148603897c33ce59394849c24a480f618170bcc6c705fb832",
+   "disposition": {
+    "status": "open",
+    "note": ""
+   }
+  },
+  {
+   "concern_id": "r12-027-r1",
+   "family_id": "r12-027",
+   "kind": "wording",
+   "applies_to": [
+    "attr"
+   ],
+   "text": "The fix round's new clause. 'Superficial' is a clinical word for burn depth, and the clause states a belief about how deep the burn is, not about its cause, which SPEC section 5 item 8 asks for. The reviewer notes described the round 11 examples as 'a belief about what is happening that makes it seem less serious', which is looser than item 8 and allows this reading.",
+   "raised_by": "Claude review session (a model's reading; not a clinician's or a patient-language reviewer's)",
+   "raised_by_kind": "model",
+   "raised_on": "2026-11-19",
+   "raised_on_review_basis_sha256": "ef2f932a4c40547347f24e7f5fbcc1ce560bb0dcf2b7fe556084291da7b8c29b",
+   "disposition": {
+    "status": "pending_patient_language_review",
     "note": ""
    }
   }
