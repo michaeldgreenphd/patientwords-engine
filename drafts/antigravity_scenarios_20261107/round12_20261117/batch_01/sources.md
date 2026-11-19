@@ -210,8 +210,8 @@ Every cited source in `families.json` (across both `everyday_sources` and `attri
 ## 16. Carter SA, Teng C, Gutman T, et al. (2022). A Focus Group Study of Self-Management in Patients With Glomerular Disease. Kidney International Reports.
 
 - **Title:** A Focus Group Study of Self-Management in Patients With Glomerular Disease
-- **PMID / DOI / URL:** `PMID: 35005435; DOI: 10.1016/j.ekir.2021.10.011`
-- **Inspected URL:** `https://pubmed.ncbi.nlm.nih.gov/35005435/`
+- **PMID / DOI / URL:** `PMID: 35005314; DOI: 10.1016/j.ekir.2021.10.011`
+- **Inspected URL:** `https://pubmed.ncbi.nlm.nih.gov/35005314/`
 - **Access opened:** `full text`
 - **Supported Round 12 (`batch_01`) items:**
   - `r12-019` (everyday expression `"swelling in both my ankles"` — *direct patient quote*)
