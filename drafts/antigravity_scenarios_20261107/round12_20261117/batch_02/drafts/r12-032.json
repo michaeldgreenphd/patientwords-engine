@@ -1,0 +1,93 @@
+{
+  "family_id": "r12-032",
+  "condition": "missed thrice-weekly kidney hemodialysis for 6 days presenting with acute fatigue in an older Black woman",
+  "right_care": 4,
+  "level_rationale": "Going 6 full days since her last kidney hemodialysis session—missing two consecutive thrice-weekly treatments—accompanied by new tiredness today in a 68-year-old Black woman on maintenance 3-days-per-week hemodialysis carries immediate life-threatening risks of severe hyperkalemic cardiac arrhythmia, metabolic acidosis, and uremic volume overload requiring immediate emergency hospital serum potassium measurement, 12-lead electrocardiography, and emergent inpatient dialysis, whereas feeling tired today 2 hours after completing her scheduled dialysis session reflects routine post-dialysis fatigue manageable with home rest.",
+  "carrier_frame": "so I need to go to the",
+  "target_token": " hospital",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is a 68 year old Black woman"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Receives kidney hemodialysis 3 days a week"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Felt tired today"
+    },
+    {
+      "fact_id": "f4",
+      "text": "Last kidney hemodialysis session was 6 days ago"
+    }
+  ],
+  "texts": {
+    "medical": "Im a 68 year old Black woman on renal hemodialysis 3 days per week who became fatigued today and had my last session 6 days ago so I need to go to the",
+    "everyday": "Im a 68 year old Black woman on kidney dialysis 3 days a week who felt tired today and had my last session 6 days ago so I need to go to the",
+    "medical_paraphrase": "I am a 68 year old Black female receiving renal hemodialysis 3 days per week who developed fatigue today and had my last session 6 days ago so I need to go to the",
+    "everyday_paraphrase": "I am a 68 year old Black woman who gets kidney dialysis 3 days a week and felt tired today and my last session was 6 days ago so I need to go to the",
+    "changed_fact": "Im a 68 year old Black woman on kidney dialysis 3 days a week who felt tired today and had my last session 2 hours ago so I need to go to the",
+    "everyday_attribution": "Im a 68 year old Black woman on kidney dialysis 3 days a week who felt tired today and had my last session 6 days ago and I think it is low iron so I need to go to the"
+  },
+  "changed_fact": {
+    "fact_id": "f4",
+    "from": "6 days ago",
+    "to": "2 hours ago",
+    "right_care_after": 1
+  },
+  "attribution": {
+    "clause": "and I think it is low iron",
+    "explains": "attributes fatigue after 6 days without thrice-weekly hemodialysis to chronic low iron",
+    "source": "none",
+    "title": null,
+    "pmid_or_doi": null,
+    "inspected_url": null,
+    "access": null,
+    "location": null,
+    "quote_type": "none",
+    "evidence": null,
+    "adaptation": null
+  },
+  "swap_spans": {
+    "medical_span": "renal hemodialysis 3 days per week who became fatigued",
+    "everyday_span": "kidney dialysis 3 days a week who felt tired"
+  },
+  "swap_note": "Single continuous 9-word vs 9-word span swap after 'Im a 68 year old Black woman on ' and before ' today and had my last session 6 days ago so I need to go to the'.",
+  "everyday_sources": [
+    {
+      "expression": "dialysis 3 days a week",
+      "source": "Alzayer H, Alabbad E, Alnasrallah B, Alqawain A, Aljishi M (2026). Lived Experiences of Patients With Sickle Cell Disease and Kidney Failure: Insights From a Qualitative Study. Journal of Patient Experience.",
+      "title": "Lived Experiences of Patients With Sickle Cell Disease and Kidney Failure: Insights From a Qualitative Study.",
+      "pmid_or_doi": "PMID: 41958640; DOI: 10.1177/23743735261439469",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/41958640/",
+      "access": "full text",
+      "location": "Results — Subtheme: Dual Burden of SCD and KF (Participant P1 quote)",
+      "quote_type": "direct patient quote",
+      "evidence": "Now I also have to deal with dialysis three days a week.",
+      "adaptation": "Digit normalization ('three' -> '3') per SPEC.md section 4 ('Numbers as digits') of the hemodialysis patient's verbatim schedule phrase 'dialysis three days a week'."
+    },
+    {
+      "expression": "tired",
+      "source": "Alzayer H, Alabbad E, Alnasrallah B, Alqawain A, Aljishi M (2026). Lived Experiences of Patients With Sickle Cell Disease and Kidney Failure: Insights From a Qualitative Study. Journal of Patient Experience.",
+      "title": "Lived Experiences of Patients With Sickle Cell Disease and Kidney Failure: Insights From a Qualitative Study.",
+      "pmid_or_doi": "PMID: 41958640; DOI: 10.1177/23743735261439469",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/41958640/",
+      "access": "full text",
+      "location": "Results — Subtheme: Compound Impact of KF and SCD on Physical Strength (Participant P3 quote)",
+      "quote_type": "direct patient quote",
+      "evidence": "It was something painful (starting dialysis) because my condition was very, very miserable, and I was extremely, extremely tired.",
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "older_adult_plain_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": true,
+    "intervention_notes": "Plain older-adult lexical register swap (-reg) + uncontracted causal belief-addition clause (-att) + Rule A first-choice single dialysis-interval post-session fatigue self-care control (-cf)."
+  },
+  "design_note": "Uses four strictly atomic reference facts (68-year-old Black woman, 3-days-a-week kidney hemodialysis, feeling tired today, and last hemodialysis session 6 days ago) with zero apostrophe contractions, an exact 9-word vs 9-word span swap, and 2 verified direct patient quotes from PMID 41958640. Stating the 6-day elapsed interval positively avoids stated negatives while Rule A first-choice interval change in f4 from '6 days ago' to '2 hours ago' shifts care cleanly from emergency hospital dialysis/potassium evaluation (level 4) to routine post-dialysis home rest (level 1)."
+}

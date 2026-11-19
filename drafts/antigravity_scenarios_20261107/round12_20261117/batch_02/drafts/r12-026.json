@@ -1,0 +1,95 @@
+{
+  "family_id": "r12-026",
+  "condition": "delayed postpartum severe hypertensive crisis at 5 days after delivery presenting with resting home blood pressure of 178 over 114 in a Black woman",
+  "right_care": 4,
+  "level_rationale": "A resting home upper-arm blood pressure of 178 over 114 at 5 days after giving birth in a 29-year-old Black woman exceeds the 160 over 110 severe-range obstetric hypertension threshold with immediate risk of hemorrhagic stroke, seizures, and cardiopulmonary decompensation requiring immediate emergency hospital intravenous antihypertensive therapy and maternal surveillance, whereas a resting reading of 116 over 74 on a home arm cuff at 5 days after giving birth is normal normotensive recovery requiring routine home self-care only.",
+  "carrier_frame": "so I need to go to the",
+  "target_token": " hospital",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is a 29 year old Black woman"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Gave birth 5 days ago"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Measured resting blood pressure on a home arm cuff"
+    },
+    {
+      "fact_id": "f4",
+      "text": "Blood pressure reading is 178 over 114"
+    }
+  ],
+  "texts": {
+    "medical": "Im a 29 year old Black woman 5 days postpartum and recorded a resting blood pressure of 178 over 114 on my home brachial cuff so I need to go to the",
+    "everyday": "Im a 29 year old Black woman 5 days after giving birth and my blood pressure on my home arm cuff is 178 over 114 at rest so I need to go to the",
+    "medical_paraphrase": "I am a 29 year old Black female 5 days postpartum who measured a resting blood pressure of 178 over 114 on my home brachial cuff so I need to go to the",
+    "everyday_paraphrase": "I am a 29 year old Black woman who gave birth 5 days ago and my blood pressure on my home arm cuff is 178 over 114 at rest so I need to go to the",
+    "changed_fact": "Im a 29 year old Black woman 5 days after giving birth and my blood pressure on my home arm cuff is 116 over 74 at rest so I need to go to the",
+    "everyday_attribution": "Im a 29 year old Black woman 5 days after giving birth and my blood pressure on my home arm cuff is 178 over 114 at rest and I think it is stress so I need to go to the",
+    "quad_b": "Im a 29 year old Black woman 5 days postpartum and my blood pressure on my home brachial cuff is 178 over 114 at rest so I need to go to the",
+    "quad_c": "Im a 29 year old Black woman 5 days after giving birth and recorded a resting blood pressure of 178 over 114 on my home arm cuff so I need to go to the"
+  },
+  "changed_fact": {
+    "fact_id": "f4",
+    "from": "178 over 114",
+    "to": "116 over 74",
+    "right_care_after": 1
+  },
+  "attribution": {
+    "clause": "and I think it is stress",
+    "explains": "attributes severe-range 5-day postpartum hypertension (178 over 114) to postpartum stress",
+    "source": "none",
+    "title": null,
+    "pmid_or_doi": null,
+    "inspected_url": null,
+    "access": null,
+    "location": null,
+    "quote_type": "none",
+    "evidence": null,
+    "adaptation": null
+  },
+  "swap_spans": {
+    "medical_span": "postpartum and recorded a resting blood pressure of 178 over 114 on my home brachial cuff",
+    "everyday_span": "after giving birth and my blood pressure on my home arm cuff is 178 over 114 at rest"
+  },
+  "swap_note": "Single continuous 16-word vs 18-word span swap after 'Im a 29 year old Black woman 5 days ' and before ' so I need to go to the'.",
+  "everyday_sources": [
+    {
+      "expression": "after giving birth",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "my blood pressure on my home arm cuff is 178 over 114 at rest",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "adult_patient_plain_low_literacy_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": true,
+    "has_patient_attribution": true,
+    "intervention_notes": "Plain low-literacy postpartum lexical register swap (-reg) + 2x2 syntactic-frame by clinical/everyday lexical crossing (quad_b, quad_c) + uncontracted causal belief-addition clause (-att) + Rule A first-choice measured blood-pressure self-care control (-cf)."
+  },
+  "design_note": "Uses four strictly atomic reference facts (29-year-old Black woman, 5 days after giving birth, resting blood pressure measured on a home arm cuff, and blood pressure reading 178 over 114) with zero apostrophe contractions, unstacked prepositional cuff phrasing ('my blood pressure on my home arm cuff'), a 2-word span difference (16 vs 18 words), and zero banned diagnosis words ('preeclampsia' and 'eclampsia' omitted). Under Rule A first choice and Rule D, changing only the measured blood pressure in f4 from '178 over 114' to '116 over 74' leaves zero stranded red flags while shifting care cleanly from emergency hospital obstetric care (level 4) to normal home recovery (level 1)."
+}

@@ -1,0 +1,87 @@
+{
+  "family_id": "r12-047",
+  "condition": "subacute gnawing mid-epigastric hunger-type ache waking patient at 2 am and easing briefly with crackers or milk over 4 weeks",
+  "right_care": 2,
+  "level_rationale": "Four weeks of waking at 2 am with a gnawing hunger-like ache in the upper middle stomach that eases briefly with crackers or milk in a 48-year-old man describes classic subacute nocturnal acid-peptic epigastric pain warranting a routine outpatient physician visit for Helicobacter pylori testing, medication review, and acid-suppressive therapy rather than unguided self-care alone or emergency care, whereas having the upper middle stomach rumble mildly with hunger right before evening dinner 1 time last week represents normal physiological pre-meal hunger needing no medical care.",
+  "carrier_frame": "so I should see a",
+  "target_token": " doctor",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is 48 years old"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Eats dinner each evening"
+    },
+    {
+      "fact_id": "f3",
+      "text": "For 4 weeks has woken at 2 am with a gnawing hunger ache in the upper middle stomach that eases briefly with crackers or milk"
+    }
+  ],
+  "texts": {
+    "medical": "Im 48 and eat dinner each evening and for 4 weeks I have awakened at 2 am with a gnawing hunger discomfort in my mid epigastric region transiently relieved by crackers or milk so I should see a",
+    "everyday": "Im 48 and eat dinner each evening and for 4 weeks I have woken at 2 am with a gnawing hunger ache in my upper middle stomach that eases briefly with crackers or milk so I should see a",
+    "medical_paraphrase": "I am 48 and eat dinner every evening and over 4 weeks have awakened at 2 am with a gnawing mid epigastric hunger discomfort briefly relieved by crackers or milk so I should see a",
+    "everyday_paraphrase": "I am 48 and eat dinner every evening and over 4 weeks have woken up at 2 am with a gnawing hunger ache in my upper middle stomach easing briefly with crackers or milk so I should see a",
+    "changed_fact": "Im 48 and eat dinner each evening and 1 evening last week my upper middle stomach rumbled mildly with hunger right before dinner so I should see a"
+  },
+  "changed_fact": {
+    "fact_id": "f3",
+    "from": "for 4 weeks I have woken at 2 am with a gnawing hunger ache in my upper middle stomach that eases briefly with crackers or milk",
+    "to": "1 evening last week my upper middle stomach rumbled mildly with hunger right before dinner",
+    "right_care_after": 1
+  },
+  "swap_spans": {
+    "medical_span": "awakened at 2 am with a gnawing hunger discomfort in my mid epigastric region transiently relieved by",
+    "everyday_span": "woken at 2 am with a gnawing hunger ache in my upper middle stomach that eases briefly with"
+  },
+  "swap_note": "Single continuous 17-word vs 18-word span swap after 'Im 48 and eat dinner each evening and for 4 weeks I have ' and before ' crackers or milk so I should see a'.",
+  "everyday_sources": [
+    {
+      "expression": "gnawing",
+      "source": "Cambridge Dictionary (verified 2026-11-19). Entry 'gnawing'. Cambridge University Press.",
+      "title": "Entry 'gnawing'",
+      "pmid_or_doi": "https://dictionary.cambridge.org/dictionary/english/gnawing",
+      "inspected_url": "https://dictionary.cambridge.org/dictionary/english/gnawing",
+      "access": "full text",
+      "location": "adjective",
+      "quote_type": "dictionary definition",
+      "evidence": "continuously uncomfortable, worrying, or painful",
+      "adaptation": null
+    },
+    {
+      "expression": "hunger ache in my upper middle stomach that eases briefly with crackers or milk",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "1 evening last week my upper middle stomach rumbled mildly with hunger right before dinner",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "adult_patient_plain_low_literacy_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": false,
+    "intervention_notes": "Plain adult low-literacy everyday lexical register swap (-reg) + Rule A first-choice upper middle stomach hunger sensation de-escalation control (-cf, L2 to L1), written without apostrophe contractions."
+  },
+  "design_note": "Three atomic reference facts cover age 48, eating evening dinner, and 4 weeks of waking at 2 am with a gnawing hunger ache in the upper middle stomach easing briefly with crackers or milk without naming peptic ulcer or gastritis and without contractions, with a 1-word span difference (17 vs 18 words). Under Rule A first choice and Rule D, replacing f3 at the exact same upper middle stomach with mild pre-dinner hunger rumbling 1 evening last week preserves the evening-dinner context with zero added food triggers and shifts care cleanly from doctor evaluation (level 2) to self-care (level 1)."
+}

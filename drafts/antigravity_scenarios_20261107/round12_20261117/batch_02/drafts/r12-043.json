@@ -1,0 +1,87 @@
+{
+  "family_id": "r12-043",
+  "condition": "subacute unexplained drenching night sweats soaking bedsheets 4 nights weekly with unintentional 5 kg weight loss over 6 weeks",
+  "right_care": 2,
+  "level_rationale": "Six weeks of unexplained 5 kg unintentional weight loss accompanied by drenching night sweats soaking the bedsheets 4 nights a week in a 44-year-old man describes classic subacute systemic B-symptoms warranting a prompt outpatient physician visit for targeted history, lymph-node and abdominal examination, laboratory workup, and chest imaging rather than self-care or immediate emergency resuscitation, whereas developing an acute 104 F fever tonight with violent shaking chills and inability to stand up on top of 6 weeks of unexplained weight loss signals acute febrile sepsis or hematologic decompensation requiring immediate emergency department evaluation.",
+  "carrier_frame": "so I should see a",
+  "target_token": " doctor",
+  "reference_facts": [
+    {
+      "fact_id": "f1",
+      "text": "Speaker is a 44 year old man"
+    },
+    {
+      "fact_id": "f2",
+      "text": "Over the past 6 weeks has lost 5 kg without trying"
+    },
+    {
+      "fact_id": "f3",
+      "text": "Over the past 6 weeks has had drenching night sweats soaking his bedsheets 4 nights a week"
+    }
+  ],
+  "texts": {
+    "medical": "I am a 44 year old man and over 6 weeks I have experienced 5 kg unintentional weight loss and drenching nocturnal hyperhidrosis saturating my bedsheets 4 nights a week so I should see a",
+    "everyday": "I am a 44 year old man and over 6 weeks I have lost 5 kg without trying and had drenching night sweats soaking my bedsheets 4 nights a week so I should see a",
+    "medical_paraphrase": "Im a 44 year old male and over the past 6 weeks have had 5 kg of unintentional weight loss accompanied by drenching nocturnal hyperhidrosis saturating my bedsheets 4 nights weekly so I should see a",
+    "everyday_paraphrase": "Im a 44 year old man and for the past 6 weeks I have lost 5 kg without trying and woken with drenching night sweats soaking my bedsheets 4 nights weekly so I should see a",
+    "changed_fact": "I am a 44 year old man and over 6 weeks I have lost 5 kg without trying and tonight I have a 104 F fever with violent shaking chills and cannot stand up so I should see a"
+  },
+  "changed_fact": {
+    "fact_id": "f3",
+    "from": "had drenching night sweats soaking my bedsheets 4 nights a week",
+    "to": "tonight I have a 104 F fever with violent shaking chills and cannot stand up",
+    "right_care_after": 4
+  },
+  "swap_spans": {
+    "medical_span": "experienced 5 kg unintentional weight loss and drenching nocturnal hyperhidrosis saturating my bedsheets",
+    "everyday_span": "lost 5 kg without trying and had drenching night sweats soaking my bedsheets"
+  },
+  "swap_note": "Single continuous 13-word vs 13-word span swap after 'I am a 44 year old man and over 6 weeks I have ' and before ' 4 nights a week so I should see a'.",
+  "everyday_sources": [
+    {
+      "expression": "night sweats",
+      "source": "McCarrier KP, Bull S, Fleming S, Simacek K, Wicks P, Cella D, Pierson R (2016). Concept Elicitation Within Patient-Powered Research Networks: A Feasibility Study in Chronic Lymphocytic Leukemia. Value in Health.",
+      "title": "Concept Elicitation Within Patient-Powered Research Networks: A Feasibility Study in Chronic Lymphocytic Leukemia",
+      "pmid_or_doi": "PMID: 26797235; DOI: 10.1016/j.jval.2015.10.013",
+      "inspected_url": "https://pubmed.ncbi.nlm.nih.gov/26797235/",
+      "access": "abstract only",
+      "location": "Abstract - Results",
+      "quote_type": "authors' summary",
+      "evidence": "These concepts were followed by night sweats (38%), swollen lymph nodes (32%), and frequent infections (28%).",
+      "adaptation": null
+    },
+    {
+      "expression": "lost 5 kg without trying",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    },
+    {
+      "expression": "tonight I have a 104 F fever with violent shaking chills and cannot stand up",
+      "source": "none",
+      "title": null,
+      "pmid_or_doi": null,
+      "inspected_url": null,
+      "access": null,
+      "location": null,
+      "quote_type": "none",
+      "evidence": null,
+      "adaptation": null
+    }
+  ],
+  "equity_dimension": "adult_patient_non_native_plain_english",
+  "lexicon_entries": [],
+  "protocol_flags": {
+    "has_dialect_lexicon": false,
+    "has_quad_2x2_syntax": false,
+    "has_patient_attribution": false,
+    "intervention_notes": "Plain adult non-native everyday lexical register swap (-reg) + Rule A constitutional B-symptom to acute febrile rigor and orthostatic collapse escalation control (-cf, L2 to L4), written without apostrophe contractions."
+  },
+  "design_note": "Three atomic reference facts cover a 44-year-old man, 5 kg unintentional weight loss over 6 weeks, and drenching night sweats soaking his bedsheets 4 nights a week over those 6 weeks without naming lymphoma or tuberculosis and without contractions, with an exact 0-word span difference (13 vs 13 words). Under Rules A and D, escalating f3 inside the same constitutional illness to an acute 104 F fever tonight with violent shaking chills and inability to stand up avoids leaving 5 kg unexplained weight loss stranded on a benign control and moves care cleanly from outpatient physician workup (level 2) to emergency evaluation (level 4)."
+}
