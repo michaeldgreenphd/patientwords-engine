@@ -202,3 +202,11 @@ Earlier rows are unchanged. Open concerns after the fix round: 18 in each batch.
 ### For the owner
 
 Two new cards on the decision page: what to do with the six controls (r12-controls-left), and whether to remove "ashy" from r12-015's control (r12-015-ashy). Card r12-split-links is still open.
+
+## Owner's decisions, 2026-11-20
+
+The owner answered three cards on the decision page.
+
+- **Card r12-split-links: "A: linked families take their relative's split".** Engine pull request: [michaeldgreenphd/patientwords-engine#191](https://github.com/michaeldgreenphd/patientwords-engine/pull/191). With it, the intake leaves a linked family out of its batch's seeded draw and gives it the earlier family's split, read from that batch's own split record (`--linked-families`, `--prior-split-record`). A split record that drew a linked family is refused, so the link must be in place before round 10 or round 12 is split. A trial run of the branch on `batch_02/families.json` with `ground_truth/linked_families_20261119.json` and round 9's record gave r12-033 `fresh_test` (r9-10's split, seed 20261111) and left r12-036 without a split until round 10 has one. The trial used a throwaway seed and stem, and its output was deleted; no split was recorded.
+- **Card r12-controls-left: "A: keep the six; report the control analysis with and without them".** The six controls (r12-011, -015, -021, -024, -043, -048) stay as pushed. Each concern's disposition note now records the decision; the concerns stay open, so the intake lists the six pairs under `controls_with_open_concerns`.
+- **Card r12-015-ashy: "B: keep it as pushed, with the concern recorded".** r12-015-r1 stays open for the patient-language reviewer.

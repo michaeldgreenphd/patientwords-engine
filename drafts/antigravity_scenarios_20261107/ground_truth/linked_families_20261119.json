@@ -27,8 +27,15 @@
     }
   ],
   "enforcement": {
-    "status": "not enforced",
-    "why": "The split method in data/experiments/intake_design.v1.json is a seeded draw over each batch's families, and the intake command accepts a split record only when it is exactly that draw. Neither has a way to place a family in another family's split. Round 10 and round 12 have no split yet.",
-    "next": "decision page, card r12-split-links"
+    "status": "pending: engine pull request open, not merged",
+    "decision": {
+      "where": "decision page, card r12-split-links",
+      "answered_utc": "2026-11-20T02:53:14Z",
+      "choice": "inherit",
+      "option_text": "A: linked families take their relative's split"
+    },
+    "how": "With the pull request, the intake reads this file (--linked-families), leaves each linked family out of its batch's seeded draw, and gives it the earlier family's split from that batch's split record (--prior-split-record). A split record that drew a linked family is refused, so neither round 10 nor round 12 is split before the pull request merges.",
+    "pull_request": "https://github.com/michaeldgreenphd/patientwords-engine/pull/191",
+    "before_the_decision": "The split method in data/experiments/intake_design.v1.json is a seeded draw over each batch's families, and the intake command accepts a split record only when it is exactly that draw. Neither has a way to place a family in another family's split. Round 10 and round 12 have no split yet."
   }
 }
