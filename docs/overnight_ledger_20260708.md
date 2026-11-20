@@ -844,3 +844,4 @@ patching smoke run 1 = failure; diagnosis below after log pull.
 - rewrite_colloquial_20261107T121655Z.report.json · $0.0169 · openrouter:anthropic/claude-sonnet-5 · accepted — · —
 - rewrite_colloquial_v2_20261107T231002Z.report.json · $0.3294 · openrouter:anthropic/claude-sonnet-5 · accepted — · —
 - agscen_r9_20261110.report.json · $0.0000 · alias · accepted — · —
+- agscen_r8_20261110.report.json · $0.0000 · alias · accepted — · —
