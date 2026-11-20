@@ -152,7 +152,17 @@ case together), per care level, from a recorded seed. A recorded split
 `split_conflict`. A split record is accepted, before or after measurement, only when it
 carries a seed and its splits are exactly the draw that seed gives over this batch's
 families and care levels (if it lists strata, they must be the batch's); a bare mapping or
-a hand-placed assignment refuses `split_record_unbound`.
+a hand-placed assignment refuses `split_record_unbound`. The draw leaves out two kinds of
+family. A family removed by review before the split is not drawn, and a record of that draw
+is read while the family stays removed. A family the owner links to a family of an earlier
+batch (`--linked-families`, a file with a `links` list of `family_id` and `linked_to`;
+decision of 2026-11-20) is not drawn either: it takes the earlier family's split, read from
+that batch's own record (`--prior-split-record LABEL=PATH`, where `LABEL` names a
+`--prior-batch`), which must be that batch's seeded draw. Until the earlier batch has a
+record, the linked family has no split. A link comes before its batch's split, so a record
+whose draw includes a linked family refuses `link_after_split`; a link the command cannot
+follow (a relative in no earlier batch or in two, a family linked twice, a link to a linked
+family) refuses `invalid_link`. The manifest lists the links in `splits.links`.
 When `trace_out/` already holds a directory for `--stem`, nothing is drawn: a new split
 refuses `split_after_measurement`. The command
 cannot see when a record was written: the commit that added it is the evidence, and the

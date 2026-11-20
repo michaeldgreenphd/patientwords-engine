@@ -217,6 +217,160 @@ def test_a_split_record_must_be_this_batchs_seeded_draw_before_and_after_measure
         assert refusal.value.code == "split_record_unbound"
 
 
+def _earlier() -> list[dict]:
+    """An earlier batch for links: ids and care levels only, so it shares no text with the fixture."""
+    return [{"family_id": f"p-{n:02d}", "right_care": f["right_care"]} for n, f in enumerate(_batch(), 1)]
+
+
+def _earlier_record(seed: int = 11) -> dict:
+    return {"seed": seed, "splits": intake.assign_splits({f["family_id"]: f["right_care"] for f in _earlier()}, seed)}
+
+
+def _links_doc(*pairs: tuple[str, str]) -> dict:
+    return {"links": [{"family_id": fid, "linked_to": to} for fid, to in pairs]}
+
+
+def test_a_linked_family_takes_its_relatives_recorded_split_and_is_left_out_of_the_draw() -> None:
+    earlier_record = _earlier_record()
+    relative = next(fid for fid, split in sorted(earlier_record["splits"].items()) if split == "fresh_test")
+    options = dict(prior_batches={"earlier": _earlier()}, prior_split_records={"earlier": earlier_record},
+                   links=[_links_doc(("s-02", relative))])
+    strata = {f["family_id"]: f["right_care"] for f in _batch()}
+    others = {fid: care for fid, care in strata.items() if fid != "s-02"}
+    manifest = _run(split_seed=7, **options)
+    row = _family(manifest, "s-02")
+    assert row["split"] == "fresh_test" and row["split_source"] == f"linked to {relative} of earlier: its recorded split"
+    assert "s-02" not in manifest["splits"]["newly_assigned"]
+    assert {fid: _family(manifest, fid)["split"] for fid in others} == intake.assign_splits(others, 7)   # drawn without it
+    assert manifest["splits"]["links"] == [{"family_id": "s-02", "linked_to": relative, "linked_batch": "earlier",
+                                            "split": "fresh_test", "source": row["split_source"]}]
+    assert manifest["splits"]["prior_records_checked"] == [{"label": "earlier", "seed": 11, "reproduces_from_its_seed": True}]
+    # The record of this draw is read back with the link, with or without its strata, before and after measurement.
+    record = {"seed": 7, "splits": intake.assign_splits(others, 7)}
+    for body in (record, {**record, "strata": others}, {"split_assignment": record}):
+        for stem in (None, LATER_STEM, MEASURED_STEM):
+            back = _run(split_records=[body], stem=stem, **options)
+            assert back["splits"]["newly_assigned"] == [] and _family(back, "s-02")["split"] == "fresh_test", stem
+    # A record that drew the linked family was made before the link, so it is not read with the link.
+    for drew in ({"seed": 7, "splits": intake.assign_splits(strata, 7)},
+                 {"seed": 7, "strata": strata, "splits": intake.assign_splits(strata, 7)}):
+        with pytest.raises(Refusal) as refusal:
+            _run(split_records=[drew], **options)
+        assert refusal.value.code == "link_after_split" and "s-02" in str(refusal.value)
+    # Without the earlier batch's split record the linked family has no split, and it is still not drawn.
+    pending = _run(split_seed=7, prior_batches={"earlier": _earlier()}, links=[_links_doc(("s-02", relative))])
+    row = _family(pending, "s-02")
+    assert row["split"] is None and "has no recorded split here" in row["split_source"]
+    assert "split_unassigned" in row["eligibility"]["confirmatory"]["blocked_by"]
+    assert {fid: _family(pending, fid)["split"] for fid in others} == intake.assign_splits(others, 7)
+    # Two link files in either order, one link in both, give one manifest. A link of a family that is in no batch
+    # given here is listed and not applied.
+    docs = [_links_doc(("s-02", relative)), _links_doc(("s-02", relative), ("z-01", "z-00"))]
+    both = [_run(split_seed=7, **{**options, "links": order}) for order in (docs, docs[::-1])]
+    assert both[0] == both[1] and both[0]["splits"]["links_elsewhere"] == ["z-01"]
+    assert both[0]["splits"]["links"] == manifest["splits"]["links"]
+    # A family of the earlier batch that is itself linked, to a family of an older batch, was left out of the
+    # earlier batch's draw: that batch's record is the draw without it, and the record of every family is refused.
+    rest = {f["family_id"]: f["right_care"] for f in _earlier() if f["family_id"] != "p-02"}
+    chain = dict(prior_batches={"earlier": _earlier(), "older": [{"family_id": "o-01", "right_care": 4}]},
+                 links=[_links_doc(("s-02", "p-01"), ("p-02", "o-01"))])
+    pruned = {"seed": 11, "splits": intake.assign_splits(rest, 11)}
+    row = _family(_run(prior_split_records={"earlier": pruned}, **chain), "s-02")
+    assert row["split"] == pruned["splits"]["p-01"] and row["split_source"].startswith("linked to p-01 of earlier")
+    with pytest.raises(Refusal) as refusal:
+        _run(prior_split_records={"earlier": _earlier_record()}, **chain)
+    assert refusal.value.code == "split_record_unbound"
+
+
+def test_a_link_that_cannot_be_followed_is_refused() -> None:
+    good = _earlier_record()
+    swapped = dict(good["splits"])
+    a, b = next((x, y) for x in swapped for y in swapped if swapped[x] != swapped[y])
+    swapped[a], swapped[b] = swapped[b], swapped[a]
+    rest = {f["family_id"]: f["right_care"] for f in _earlier() if f["family_id"] != "p-02"}
+    without_p02 = {"seed": 11, "splits": intake.assign_splits(rest, 11)}
+    cases: tuple = (
+        ("a relative in no earlier batch", dict(links=[_links_doc(("s-02", "p-99"))]), "invalid_link"),
+        ("a relative in this batch only", dict(links=[_links_doc(("s-02", "s-03"))]), "invalid_link"),
+        ("a relative in two earlier batches", dict(links=[_links_doc(("s-02", "p-01"))],
+                                                    prior_batches={"earlier": _earlier(), "again": _earlier()}), "invalid_link"),
+        ("one family linked to two families", dict(links=[_links_doc(("s-02", "p-01")), _links_doc(("s-02", "p-02"))]),
+         "invalid_link"),
+        ("a link to a linked family", dict(links=[_links_doc(("s-02", "p-01"), ("p-01", "q-01"))]), "invalid_link"),
+        ("a family linked to itself", dict(links=[_links_doc(("s-02", "s-02"))]), "invalid_link"),
+        ("a row without a relative", dict(links=[{"links": [{"family_id": "s-02"}]}]), "invalid_link"),
+        ("a file without a links list", dict(links=[{"family_id": "s-02", "linked_to": "p-01"}]), "invalid_link"),
+        ("an earlier record that is not that batch's draw",
+         dict(links=[_links_doc(("s-02", "p-01"))], prior_split_records={"earlier": {"seed": 11, "splits": swapped}}),
+         "split_record_unbound"),
+        ("an earlier record without a seed",
+         dict(links=[_links_doc(("s-02", "p-01"))], prior_split_records={"earlier": {"splits": good["splits"]}}),
+         "split_record_unbound"),
+        ("a split record of a batch not given", dict(prior_split_records={"elsewhere": good}), "invalid_input"),
+        ("an earlier batch without care levels", dict(prior_batches={"earlier": [{"family_id": "p-01"}]},
+                                                      prior_split_records={"earlier": good}), "invalid_input"),
+        # A link from a family of an earlier batch leaves that family out of the earlier draw, so it is checked
+        # too. Each record below is the seeded draw without p-02, which an unchecked link would let through.
+        ("a link from an earlier family to no batch",
+         dict(links=[_links_doc(("s-02", "p-01"), ("p-02", "x-01"))], prior_split_records={"earlier": without_p02}),
+         "invalid_link"),
+        ("a link inside an earlier batch",
+         dict(links=[_links_doc(("s-02", "p-01"), ("p-02", "p-03"))], prior_split_records={"earlier": without_p02}),
+         "invalid_link"),
+    )
+    for care in (0, 5):                                                         # care levels are 1 to 4, as in a batch
+        cases += ((f"an earlier batch with care level {care}",
+                   dict(prior_batches={"earlier": [{"family_id": "p-01", "right_care": care}]},
+                        prior_split_records={"earlier": {"seed": 3, "splits": intake.assign_splits({"p-01": care}, 3)}}),
+                   "invalid_input"),)
+    for label, options, code in cases:
+        options.setdefault("prior_batches", {"earlier": _earlier()})
+        with pytest.raises(Refusal) as refusal:
+            _run(**options)
+        assert refusal.value.code == code, label
+
+
+def test_a_split_drawn_after_a_removal_by_review_is_read_back_while_the_family_stays_removed() -> None:
+    """Regression: the record of the command's own draw was refused (split_record_unbound) when a review had
+    removed a family before the split, because the draw left that family out and the check put it back in."""
+    sha = {r["family_id"]: r["review_basis_sha256"] for r in _run()["families"]}
+    removed = {"schema": intake.REVIEWS_SCHEMA,
+               "reviews": [_review("s-06", "clinician", sha["s-06"], items={"severity": "different"})]}
+    drawn = _run(reviews=[removed], split_seed=5)
+    splits = {r["family_id"]: r["split"] for r in drawn["families"] if r["split"]}
+    kept = {f["family_id"]: f["right_care"] for f in _batch() if f["family_id"] != "s-06"}
+    assert "s-06" not in splits and splits == intake.assign_splits(kept, 5)
+    for record in ({"seed": 5, "splits": splits}, {"seed": 5, "strata": kept, "splits": splits}):
+        back = _run(reviews=[removed], split_records=[record])
+        assert back["splits"]["newly_assigned"] == []
+        assert [r["split"] for r in back["families"]] == [r["split"] for r in drawn["families"]]
+    everyone = {f["family_id"]: f["right_care"] for f in _batch()}             # a draw made before the removal
+    assert _run(reviews=[removed], split_records=[{"seed": 5, "splits": intake.assign_splits(everyone, 5)}])["splits"]["records_checked"]
+    with pytest.raises(Refusal) as refusal:                                     # once the family is back, it was left out
+        _run(split_records=[{"seed": 5, "splits": splits}])
+    assert refusal.value.code == "split_record_unbound"
+
+
+def test_the_command_reads_links_and_an_earlier_batchs_split_record(tmp_path: Path, capsys) -> None:
+    record = {"split_assignment": _earlier_record()}
+    paths = {}
+    for name, doc in (("earlier", _earlier()), ("record", record), ("links", _links_doc(("s-02", "p-01")))):
+        paths[name] = tmp_path / f"{name}.json"
+        paths[name].write_text(json.dumps(doc), encoding="utf-8")
+    out = tmp_path / "out"
+    base = ["intake", "--batch", str(FIXTURE), "--batch-id", "synthetic", "--prior-batch", f"earlier={paths['earlier']}",
+            "--linked-families", str(paths["links"]), "--prior-split-record", f"earlier={paths['record']}"]
+    assert cli.main(base + ["--out", str(out)]) == 0
+    summary = json.loads(capsys.readouterr().out)
+    manifest = json.loads((out / "intake_manifest.json").read_text(encoding="utf-8"))
+    assert summary["status"] == "intake"
+    assert _family(manifest, "s-02")["split"] == record["split_assignment"]["splits"]["p-01"]
+    assert [r["name"] for r in manifest["inputs"]["linked_families"]] == ["links.json"]
+    assert [(r["label"], r["name"]) for r in manifest["inputs"]["prior_split_records"]] == [("earlier", "record.json")]
+    assert cli.main(base + ["--no-write", "--prior-split-record", f"earlier={paths['record']}"]) == 2   # one label, once
+    assert json.loads(capsys.readouterr().out)["code"] == "invalid_input"
+
+
 def test_after_measurement_a_subset_is_restored_only_from_a_manifest_of_this_batch_and_stem_written_before(
         measured_root: Path) -> None:
     strata = {f["family_id"]: f["right_care"] for f in _batch()}
@@ -730,7 +884,8 @@ def test_a_clinicians_cannot_judge_does_not_pass_the_review_and_every_blocker_is
     for verdicts, status in (([_verdicts(**{held_out.replace("-", "_"): "excluded"})], "excluded"), ([], "not_read")):
         row = _family(run(verdicts=verdicts), held_out)
         assert row["review"]["owner_read"]["status"] == status and row["eligibility"]["confirmatory"]["eligible"] is True
-    assert "owner_read" not in named and [d["answer"] for d in signed["decisions"]][-1] == "record it, do not gate on it"
+    owner_read_decisions = [d["answer"] for d in signed["decisions"] if "review.layers.owner_read" in d["applies_to"]]
+    assert "owner_read" not in named and owner_read_decisions == ["record it, do not gate on it"]
 
 
 def test_repeated_inputs_are_merged_when_they_agree_and_refused_when_they_do_not() -> None:
@@ -909,6 +1064,7 @@ def test_every_list_input_reversed_gives_the_same_manifest() -> None:
         "concerns": [_concerns(_concern(f"e-{n}", "s-03", ["reg"])) for n in range(2)],
         "source_checks": checks,
         "split_records": [one, two],
+        "links": [_links_doc(("z-01", "z-00")), _links_doc(("z-02", "z-00"), ("z-01", "z-00"))],     # families elsewhere
         "models": ["qwen3-4b", "gemma-2-2b"],
         "tokenizations": [{**token, "source": "a second placeholder file"}, token,
                           {**token, "tokenizer_id": "fixture/other-tokenizer"}],
@@ -916,6 +1072,7 @@ def test_every_list_input_reversed_gives_the_same_manifest() -> None:
     priors = [("b_later", [{**_batch()[0], "family_id": "q-01"}]), ("a_earlier", [{**_batch()[0], "family_id": "p-01"}])]
     reference = _run(prior_batches=dict(priors), **inputs)
     assert reference["splits"]["records_checked"] and len(reference["tokenization"]) == 2      # the inputs were all read
+    assert reference["splits"]["links_elsewhere"] == ["z-01", "z-02"]
     for name in inputs:
         assert _run(prior_batches=dict(priors), **{**inputs, name: inputs[name][::-1]}) == reference, name
     assert _run(prior_batches=dict(priors[::-1]), **{name: docs[::-1] for name, docs in inputs.items()}) == reference
@@ -944,11 +1101,13 @@ def test_a_wrongly_shaped_or_missing_input_file_is_refused_for_every_input(tmp_p
     accounted_for = {("--pairs-file", "list"), ("--previous-manifest", "object"), ("--lexicon", "object")}
     base = ["intake", "--batch", str(FIXTURE), "--batch-id", "synthetic", "--no-write"]
     flags = ("--verdicts", "--read-batch", "--reviews", "--concerns", "--source-check", "--split-record",
-             "--tokenization", "--previous-manifest", "--pairs-file", "--lexicon", "--prior-batch")
+             "--tokenization", "--previous-manifest", "--pairs-file", "--lexicon", "--prior-batch",
+             "--linked-families", "--prior-split-record")
     for flag in flags:
         for shape in ("absent", "directory", *shapes):
             path = tmp_path if shape == "directory" else tmp_path / f"{shape}.json"
-            code = cli.main(base + [flag, f"earlier={path}" if flag == "--prior-batch" else str(path)])
+            labelled = flag in ("--prior-batch", "--prior-split-record")
+            code = cli.main(base + [flag, f"earlier={path}" if labelled else str(path)])
             out = json.loads(capsys.readouterr().out)
             if (flag, shape) in accounted_for:
                 assert code == 0 and out["status"] == "intake", (flag, shape)
