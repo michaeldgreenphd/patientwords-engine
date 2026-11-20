@@ -1,6 +1,6 @@
 {
   "schema_version": "patientwords.ecosystem/1",
-  "as_of": "2026-11-11",
+  "as_of": "2026-11-20",
   "description": "Repositories, forks and external services of the PatientWords project, with the exact artifact the engine consumes from each and the file that holds its pin. The latest source head of a repository and the pin the engine has executed are separate fields in every entry: a synced fork is not a migrated runtime. Structure is in schemas/ecosystem/repositories.v1.schema.json; vocabularies, commit formats and pin agreement are enforced by scripts/ecosystem_status.py and tests/test_ecosystem_manifest.py. The prose map is docs/ecosystem.md.",
   "vocabularies": {
     "group": [
@@ -252,24 +252,24 @@
         "note": "No engine script reads this checkout. The sibling path is a convention for the status command only."
       },
       "recorded_head": {
-        "commit": "103aadab71bdd2b0ed03e096574dc15854ff1aa5",
-        "recorded_utc_date": "2026-11-11",
-        "source": "the owner's merge commit of pull request #1 on the fork's main, dated 2026-11-11; confirmed equal to the local clone HEAD with git rev-parse and to the remote HEAD with git ls-remote on 2026-11-11"
+        "commit": "260f16a22ecdfb42cfe3c1d229949e691f50f77c",
+        "recorded_utc_date": "2026-11-20",
+        "source": "the owner's merge commit of liusida/ica-lens-paper main into the fork's main, dated 2026-11-20; read as the remote HEAD with git ls-remote on 2026-11-20 and inspected in a blobless clone of the fork fetched that day (full history, file contents fetched on demand); no owner-anchored local clone was read"
       },
       "upstream_relation": {
         "upstream_url": "https://github.com/liusida/ica-lens-paper",
-        "ahead": 2,
-        "behind": 2,
-        "as_of": "2026-11-11",
-        "basis": "verified by git ls-remote on 2026-11-10, run for this manifest, that the fork and the upstream were at the same tip, aa3b95c9e755. Verified on 2026-11-11 in the local clone that the fork is two commits ahead of that tip: aa3b95c9e755 is the first parent of the recorded head, and git rev-list --count aa3b95c9..HEAD is 2 (the README orientation note and its merge commit). Verified by git ls-remote on 2026-11-11 that the upstream tip is another commit, 9b7d1cbd0124e8f261053f22d5fcca15131324c5. Counted on 2026-11-12 between the two commits recorded on 2026-11-11, after fetching the upstream tip into the local clone: git merge-base of 9b7d1cbd0124 and the recorded head is aa3b95c9e755, so the upstream tip descends from the 2026-11-10 tip, and git rev-list --left-right --count 9b7d1cbd0124...103aadab71bd prints 2 and 2. The upstream side holds 7a1a446ae520 and 9b7d1cbd0124; the fork side holds the README orientation note and its merge commit. The fork is two commits ahead of the upstream tip and two behind it. The owner's review of the registry pull request reports the same counts from GitHub's comparison of the same two commits. git ls-remote on 2026-11-12 returned the same upstream tip, 9b7d1cbd0124.",
-        "note": "Owner-reported: already current before the 2026-11-10 preparation. The 2026-11-10 read found the fork and the upstream at the same tip. On 2026-11-11 the fork is two commits ahead of that tip: one README orientation note (6e4e840fd1f5) and the owner's merge commit for it, both of 2026-11-11. They change README.md, the one upstream file the fork modifies, and no code, dependency, lock file or pin. On 2026-11-11 git ls-remote returned 9b7d1cbd0124 for the upstream HEAD, which is not the 2026-11-10 tip. That tip descends from the 2026-11-10 tip and is two commits past it, so the fork is two commits behind (counted on 2026-11-12; see basis). The histories have diverged: bringing the fork up to date is a merge, and it is the owner's decision."
+        "ahead": 3,
+        "behind": 0,
+        "as_of": "2026-11-20",
+        "basis": "verified on 2026-11-20 in a blobless clone of the fork fetched that day, with the upstream HEAD fetched into it. The recorded head is a merge commit. Its first parent is 103aadab71bd, the head recorded on 2026-11-11; its second parent is 422e0959bf8e3590d09083437667d2e4d82aca92, the upstream HEAD that git ls-remote returned on 2026-11-20. git rev-list --left-right --count 422e0959bf8e...260f16a22ecd prints 0 and 3: the fork is three commits ahead of the upstream tip (the README orientation note, its merge commit and the merge of 2026-11-20) and none behind. git rev-list --count 103aadab71bd..422e0959bf8e is 15, the upstream commits the merge brought in, and git merge-base of the two parents is aa3b95c9e755, the tip both sides held on 2026-11-10. git diff --name-only between the upstream tip and the recorded head lists README.md only. Previous record, counted on 2026-11-12: two commits ahead of the upstream tip 9b7d1cbd0124 and two behind.",
+        "note": "The owner brought the fork up to date on 2026-11-20 by merging the upstream's main through GitHub (owner's sync report of that date; the merge commit and its parents are verified, see basis). It is a source sync only: the fork's own delta against the upstream is still the README orientation note of 2026-11-11 (6e4e840fd1f5), and no code of the owner's, dependency, lock file or pin changed. Owner-reported, not re-derived: the fork's test suite was not run after the merge. The 15 upstream commits raise the declared version from 0.4.0 to 0.4.2.dev1, change 13 files under src/icalens/ and add experiment outputs under experiments/ (git diff --stat between the two recorded heads). Evidence files that name the upstream commit aa3b95c9e755 are dated reads of that commit and are not edited."
       },
       "licence": {
         "code": "MIT (LICENSE: Sida Liu and Feijiang Han)",
         "data": "The licence of the released lens weights and fitting corpora is not stated in the checkout.",
         "notice_obligations": "Copied code carries the MIT notice. Code derived from src/icalens/_fastica.py also carries the FastICA_torch notice in THIRD_PARTY_NOTICES.md (Richard Hakim, MIT). Cite the paper with its version: Sida Liu, Feijiang Han, Sarah Wiegreffe and Furong Huang, \"Non-Gaussianity Reveals Interpretable Directions in Language Models\", arXiv:2606.11722v2 (version 2 submitted 2026-10-19; version 1 on 2026-06-10). Title, version, authors and dates were read on the arXiv abstract page on 2026-11-10 (record arxiv.2606.11722v2 in data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json). The fork's README citation block is still the v1 title with two authors."
       },
-      "maintenance": "Maintained upstream by the paper authors; the upstream commit the fork holds (aa3b95c9e755) is dated 2026-11-10. The fork's own change is one README orientation note, merged by the owner on 2026-11-11; it changes no code, dependency or pin.",
+      "maintenance": "Maintained upstream by the paper authors; the upstream commit the fork holds (422e0959bf8e) is dated 2026-11-18. The fork's own change is one README orientation note, merged by the owner on 2026-11-11; it changes no code, dependency or pin.",
       "entry_points": [
         "Python API: icalens.ICALens (fit, transform, save, load) and ActivationDataset",
         "CLI `icalens fit activations|text|chat`, `icalens capture` (all require CUDA)"
@@ -282,7 +282,7 @@
         ]
       },
       "tests_and_ci": {
-        "tests": "tests/ with 28 test files on synthetic data. Not run for this manifest: no interpreter in the dev container has torch or safetensors.",
+        "tests": "tests/ with 30 test files on synthetic data at the recorded head (28 at the head recorded on 2026-11-11). Not run for this manifest: no interpreter in the dev container has torch or safetensors.",
         "ci": ".github/workflows/release.yml only (builds and publishes to PyPI on a GitHub release). No workflow runs tests.",
         "lint": "ruff and mypy declared as dev tools; no workflow runs them"
       },
@@ -296,7 +296,7 @@
       ],
       "engine_writes": [],
       "head_vs_pin": {
-        "latest_source_head": "103aadab71bdd2b0ed03e096574dc15854ff1aa5",
+        "latest_source_head": "260f16a22ecdfb42cfe3c1d229949e691f50f77c",
         "tested_execution_pin": null,
         "relation": "not_executed_by_engine",
         "note": "No engine lane has executed icalens. A fixture test of the adapter is not evidence of parity with icalens on a real model. Pin an icalens version here before any run that imports it."
@@ -304,9 +304,9 @@
       "source_facts": [
         {
           "name": "icalens version declared by the source",
-          "value": "0.4.0",
+          "value": "0.4.2.dev1",
           "file": "pyproject.toml",
-          "text": "version = \"0.4.0\""
+          "text": "version = \"0.4.2.dev1\""
         },
         {
           "name": "exact transformers pin",
@@ -359,8 +359,8 @@
         "upstream_url": "https://github.com/safety-research/jpp_lens",
         "ahead": 9,
         "behind": 0,
-        "as_of": "2026-11-11",
-        "basis": "verified in two steps. On 2026-11-10, in a local clone that held full history (13 commits): the upstream tip d7efc0de372e, read with git ls-remote that day, was an ancestor of the fork head e74e72289966, and git rev-list --count d7efc0de..HEAD was 7 (five owner commits of 2026-10-15 and two merge commits). On 2026-11-11, in the local clone: e74e72289966 is the first parent of the recorded head, and git rev-list --count e74e7228..HEAD is 2. 7 + 2 = 9. The local clone of 2026-11-11 is shallow (11 commits reachable) and shows three of the five owner commits, so git rev-list --count d7efc0de..HEAD prints 7 there and cannot confirm 9. git ls-remote on 2026-11-11 returned the same upstream tip, d7efc0de372e. That commit is reachable from the recorded head in the local clone, so `behind` stays 0.",
+        "as_of": "2026-11-20",
+        "basis": "verified in two steps. On 2026-11-10, in a local clone that held full history (13 commits): the upstream tip d7efc0de372e, read with git ls-remote that day, was an ancestor of the fork head e74e72289966, and git rev-list --count d7efc0de..HEAD was 7 (five owner commits of 2026-10-15 and two merge commits). On 2026-11-11, in the local clone: e74e72289966 is the first parent of the recorded head, and git rev-list --count e74e7228..HEAD is 2. 7 + 2 = 9. The local clone of 2026-11-11 is shallow (11 commits reachable) and shows three of the five owner commits, so git rev-list --count d7efc0de..HEAD prints 7 there and cannot confirm 9. git ls-remote on 2026-11-11 returned the same upstream tip, d7efc0de372e. That commit is reachable from the recorded head in the local clone, so `behind` stays 0. git ls-remote on 2026-11-20 returned 2672473da44e for the fork HEAD, which is the recorded head, and d7efc0de372e for the upstream HEAD, the tip of the earlier reads, so both counts stand.",
         "note": "Owner-reported: the 2026-11-10 preparation merged one upstream README-only change and kept the local commits. pyproject.toml and README.md still name https://github.com/koayon/jpp_lens, which did not answer an anonymous git ls-remote on 2026-11-10. The two commits of 2026-11-11 are one README orientation note (b755eac9bbb4) and the owner's merge commit for it. They change README.md, now the one upstream file the fork modifies, and no code, dependency, lock file or pin. git ls-remote on 2026-11-11 returned the same upstream tip, d7efc0de372e."
       },
       "licence": {
@@ -522,8 +522,8 @@
         "upstream_url": "https://github.com/decoderesearch/interp-engine",
         "ahead": 2,
         "behind": 0,
-        "as_of": "2026-11-11",
-        "basis": "verified: git ls-remote <url> HEAD, run 2026-11-10 for this manifest returned 2afe000da14f for both the fork and the upstream. Fork side, verified on 2026-11-11 in the local clone: 2afe000da14f is the first parent of the recorded head, and git rev-list --count 2afe000d..HEAD is 2. git ls-remote on 2026-11-11 returned the same upstream tip, 2afe000da14f, so `behind` stays 0.",
+        "as_of": "2026-11-20",
+        "basis": "verified: git ls-remote <url> HEAD, run 2026-11-10 for this manifest returned 2afe000da14f for both the fork and the upstream. Fork side, verified on 2026-11-11 in the local clone: 2afe000da14f is the first parent of the recorded head, and git rev-list --count 2afe000d..HEAD is 2. git ls-remote on 2026-11-11 returned the same upstream tip, 2afe000da14f, so `behind` stays 0. git ls-remote on 2026-11-20 returned 758220c4ccf6 for the fork HEAD, which is the recorded head, and 2afe000da14f for the upstream HEAD, the tip of the earlier reads, so both counts stand.",
         "note": "Owner-reported, not re-derived: the 2026-11-10 preparation brought 55 upstream commits into the fork. The local clone is shallow (depth 1 on 2026-11-10; 7 commits reachable on 2026-11-11), so the count cannot be checked here. The fork's two own commits are of 2026-11-11: one README orientation note (aa23e85c57d8) and the owner's merge commit for it. They change README.md and visualizer-web/knowledge/bundle.generated.ts, a generated file that embeds the README. No hand-written code, dependency, lock file or pin changed, and nothing under interp_engine/. git ls-remote on 2026-11-11 returned the same upstream tip, 2afe000da14f."
       },
       "licence": {
@@ -667,24 +667,24 @@
         "note": "No engine script reads a local checkout. CI installs the harness from the git URL at the locked commit."
       },
       "recorded_head": {
-        "commit": "5ee1f54977350ae09009078bdc19910d300a307d",
-        "recorded_utc_date": "2026-11-11",
-        "source": "the owner's merge commit of pull request #1 on the fork's main, dated 2026-11-11; confirmed equal to the local clone HEAD with git rev-parse and to the remote HEAD with git ls-remote on 2026-11-11"
+        "commit": "da9693f01241d8d4e26f5742a815910f377b26ba",
+        "recorded_utc_date": "2026-11-20",
+        "source": "the owner's merge commit of meridianlabs-ai/inspect_petri main into the fork's main, dated 2026-11-20; read as the remote HEAD with git ls-remote on 2026-11-20 and inspected in a blobless clone of the fork fetched that day (full history, file contents fetched on demand); no owner-anchored local clone was read"
       },
       "upstream_relation": {
         "upstream_url": "https://github.com/meridianlabs-ai/inspect_petri",
-        "ahead": 2,
-        "behind": 2,
-        "as_of": "2026-11-11",
-        "basis": "verified by git ls-remote on 2026-11-10, run for this manifest, that the fork and the upstream were at the same tip, de5dad81b9af. Verified on 2026-11-11 in the local clone that the fork is two commits ahead of that tip: de5dad81b9af is the first parent of the recorded head, and git rev-list --count de5dad81..HEAD is 2 (the README orientation note and its merge commit). Verified by git ls-remote on 2026-11-11 that the upstream tip is another commit, and that it moved during that day: 797c7c12a7ebf1b66c37c2f8cd8561b04b54ce5b at 21:52 UTC, adf985b8685728b95b45e44d114a32a92e3855b2 at 21:54 UTC. Counted on 2026-11-12 between the later tip and the recorded head, after fetching that tip into the local clone: git merge-base of adf985b86857 and the recorded head is de5dad81b9af, so the tip descends from the 2026-11-10 tip, and git rev-list --left-right --count adf985b86857...5ee1f5497735 prints 2 and 2. The upstream side holds 797c7c12a7eb and adf985b86857, the two tips read on 2026-11-11; the fork side holds the README orientation note and its merge commit. The fork is two commits ahead of the upstream tip and two behind it. The owner's review of the registry pull request reports the same counts from GitHub's comparison of the same two commits. git ls-remote on 2026-11-12 returned the same upstream tip, adf985b86857.",
-        "note": "Owner-reported, not re-derived: the 2026-11-10 preparation brought 13 upstream commits into the fork. The local clone is shallow (depth 1 on 2026-11-10; 7 commits reachable on 2026-11-11), so the count and the locked commit e199ec1a cannot be read here. The 2026-11-10 read found the fork and the upstream at the same tip. On 2026-11-11 the fork is two commits ahead of that tip: one README orientation note (996d3578ce92) and the owner's merge commit for it, both of 2026-11-11. They change README.md, the one upstream file the fork modifies, and no code, dependency, lock file or pin. On 2026-11-11 git ls-remote returned 797c7c12a7eb for the upstream HEAD at 21:52 UTC and adf985b86857 at 21:54 UTC. Neither is the 2026-11-10 tip. Both descend from the 2026-11-10 tip: they are the two commits the upstream added, so the fork is two commits behind (counted on 2026-11-12; see basis). The histories have diverged: bringing the fork up to date is a merge, and it is the owner's decision."
+        "ahead": 3,
+        "behind": 0,
+        "as_of": "2026-11-20",
+        "basis": "verified on 2026-11-20 in a blobless clone of the fork fetched that day, with the upstream HEAD fetched into it. The recorded head is a merge commit. Its first parent is 5ee1f5497735, the head recorded on 2026-11-11; its second parent is 0727facedcd8fe21984700f9a2bc4a0589ee0a85, the upstream HEAD that git ls-remote returned on 2026-11-20. git rev-list --left-right --count 0727facedcd8...da9693f01241 prints 0 and 3: the fork is three commits ahead of the upstream tip (the README orientation note, its merge commit and the merge of 2026-11-20) and none behind. git rev-list --count 5ee1f5497735..0727facedcd8 is 17, the upstream commits the merge brought in, and git merge-base of the two parents is de5dad81b9af, the tip both sides held on 2026-11-10. git diff --name-only between the upstream tip and the recorded head lists README.md only. The locked commit e199ec1abcd1 is an ancestor of the recorded head (git merge-base --is-ancestor). Previous record, counted on 2026-11-12: two commits ahead of the upstream tip adf985b86857 and two behind.",
+        "note": "The owner brought the fork up to date on 2026-11-20 by merging the upstream's main through GitHub (owner's sync report of that date; the merge commit and its parents are verified, see basis). It is a source sync only: the fork's own delta against the upstream is still the README orientation note of 2026-11-11 (996d3578ce92), and no code of the owner's, dependency, lock file or pin changed. Owner-reported, not re-derived: the 2026-11-10 preparation brought 13 upstream commits into the fork; the fork's test suite was not run after the 2026-11-20 merge. The 17 commits of 2026-11-20 change pyproject.toml, uv.lock, five files under .github/ and 21 files under src/ (git diff --stat between the two recorded heads); the two Inspect floors and the release-please version read the same at the new head (source_facts)."
       },
       "licence": {
         "code": "MIT (LICENSE: 2025 Kai Fronsdal, 2026 Meridian Labs). No NOTICE file.",
         "data": "not applicable",
         "notice_obligations": "Copied code carries the MIT notice. The engine installs the package and copies no source."
       },
-      "maintenance": "Maintained upstream (Meridian Labs); release 3.1.1; the upstream commit the fork holds (de5dad81b9af) is dated 2026-11-09. The fork's own change at the recorded head is one README orientation note, merged by the owner on 2026-11-11; it changes no code, dependency or pin.",
+      "maintenance": "Maintained upstream (Meridian Labs); release 3.1.1; the upstream commit the fork holds (0727facedcd8) is dated 2026-11-20. The fork's own change is one README orientation note, merged by the owner on 2026-11-11; it changes no code, dependency or pin.",
       "entry_points": [
         "inspect_petri.audit_solver, target_agent, select_timeline",
         "inspect_petri.target.controller and ResponseOutput"
@@ -792,10 +792,10 @@
       ],
       "engine_writes": [],
       "head_vs_pin": {
-        "latest_source_head": "5ee1f54977350ae09009078bdc19910d300a307d",
+        "latest_source_head": "da9693f01241d8d4e26f5742a815910f377b26ba",
         "tested_execution_pin": "e199ec1abcd10267c60cd7eb03035a76567d9e52",
         "relation": "pin_is_older_source",
-        "note": "The fork head requires inspect-ai>=0.3.276 and inspect-scout>=0.5.3; the lock holds 0.3.237 and 0.4.39. The lock cannot host the head. The 2026-11-10 source sync changed neither the lock nor any run."
+        "note": "The fork head requires inspect-ai>=0.3.276 and inspect-scout>=0.5.3; the lock holds 0.3.237 and 0.4.39. The lock cannot host the head. The source syncs of 2026-11-10 and 2026-11-20 changed neither the lock nor any run."
       },
       "source_facts": [
         {
@@ -881,8 +881,8 @@
         "upstream_url": "https://github.com/anthropics/jacobian-lens",
         "ahead": 2,
         "behind": 0,
-        "as_of": "2026-11-11",
-        "basis": "verified: git ls-remote <url> HEAD, run 2026-11-10 for this manifest returned 581d398613e5 for both the fork and the upstream. Fork side, verified on 2026-11-11 in the local clone, which holds full history (3 commits): 581d398613e5 is the first parent of the recorded head, and git rev-list --count 581d3986..HEAD is 2. git ls-remote on 2026-11-11 returned the same upstream tip, 581d398613e5, so `behind` stays 0.",
+        "as_of": "2026-11-20",
+        "basis": "verified: git ls-remote <url> HEAD, run 2026-11-10 for this manifest returned 581d398613e5 for both the fork and the upstream. Fork side, verified on 2026-11-11 in the local clone, which holds full history (3 commits): 581d398613e5 is the first parent of the recorded head, and git rev-list --count 581d3986..HEAD is 2. git ls-remote on 2026-11-11 returned the same upstream tip, 581d398613e5, so `behind` stays 0. git ls-remote on 2026-11-20 returned 29ff70ea23f5 for the fork HEAD, which is the recorded head, and 581d398613e5 for the upstream HEAD, the tip of the earlier reads, so both counts stand.",
         "note": "Owner-reported: already current. The upstream has one commit, `Initial release` (581d398613e5). The fork's two own commits are of 2026-11-11: one README orientation note (510809573c35) and the owner's merge commit for it. They change README.md, the one upstream file the fork modifies, and no code, dependency, lock file or pin. git ls-remote on 2026-11-11 returned the same upstream tip, 581d398613e5."
       },
       "licence": {
@@ -1042,36 +1042,36 @@
         "note": "Identity resolved from engine source (data/exploratory/method_sources.v1.json). No local checkout existed on 2026-11-10. The workflow checks the fork out itself at the readiness file's commit."
       },
       "recorded_head": {
-        "commit": "1db3b8ce19bcee2cd2e6a7226ec9ec9d145481dc",
-        "recorded_utc_date": "2026-11-10",
-        "source": "git ls-remote <url> HEAD, run 2026-11-10 for this manifest; not an owner anchor; no local checkout"
+        "commit": "931c8efad465c8047d233a2658b1b980b7e5685a",
+        "recorded_utc_date": "2026-11-20",
+        "source": "the owner's merge commit of goodfire-ai/causalab main into the fork's main, dated 2026-11-20 (author and message read in a blobless clone fetched that day); read as the remote HEAD with git ls-remote on 2026-11-20; no owner-anchored local checkout"
       },
       "upstream_relation": {
         "upstream_url": "https://github.com/goodfire-ai/causalab",
-        "ahead": null,
-        "behind": null,
-        "as_of": "2026-11-11",
-        "basis": "verified by git ls-remote on 2026-11-10 that the tips differ: fork 1db3b8ce19bc, upstream 07cf9b9671e8. Read again with git ls-remote on 2026-11-11: both tips equal the record (fork 1db3b8ce19bc, upstream 07cf9b9671e8). Ahead and behind counts need history and were not derived.",
-        "note": "Not covered by the owner preparation note. The 2026-10-15 audit receipt recorded fork and upstream both at 8e8d5d1f8f9c."
+        "ahead": 9,
+        "behind": 0,
+        "as_of": "2026-11-20",
+        "basis": "verified on 2026-11-20 in a blobless clone of the fork fetched that day, with the upstream HEAD fetched into it. The recorded head is a merge commit. Its first parent is 1db3b8ce19bc, the head recorded on 2026-11-10; its second parent is 07cf9b9671e8, the upstream HEAD that git ls-remote returned on 2026-11-20 and the same upstream tip as on 2026-11-10 and 2026-11-11. git rev-list --left-right --count 07cf9b9671e8...931c8efad465 prints 0 and 9: the fork is nine commits ahead of the upstream tip and none behind. git rev-list --count 1db3b8ce19bc..07cf9b9671e8 is 1, the upstream commit the merge brought in, and git merge-base of the two parents is 8e8d5d1f8f9c. git diff --name-status between the two recorded heads lists one path, the deletion of .github/workflows/claude.yml. git diff --name-only between the upstream tip and the recorded head lists 12 paths: three files under causalab/, six under tests/, docs/paired_intervention_adapter.md and two workflow files.",
+        "note": "Not covered by the owner preparation note. The 2026-10-15 audit receipt recorded fork and upstream both at 8e8d5d1f8f9c. The owner brought the fork up to date on 2026-11-20. Owner-reported, not re-derived (sync report of that date): GitHub's browser sync could not resolve a conflict, so the merge was made in a temporary clone and pushed without force; it accepts the upstream's removal of claude.yml and keeps the fork's claude-code-review.yml; tests/test_workflow_ruff_scope.py passed 6 tests with Ruff 0.14.5. The merge commit's message states the same resolution. The three branches codex/paired-intervention-adapter, codex/paired-intervention-adapter-refreshed and codex/workflow-ruff-exclusions are ancestors of the recorded head."
       },
       "licence": {
         "code": "Unresolved for the Python distribution. The engine's record: no root LICENSE or COPYING and no Python project licence found; the Rust workspace declares Apache-2.0.",
         "data": "not applicable",
         "notice_obligations": "Do not copy or redistribute Causalab Python code until the licence is resolved (docs/exploratory/methods_integration.md). No upstream implementation is copied into the engine."
       },
-      "maintenance": "Upstream maintained by goodfire-ai. The owner fork holds adapter branches. Not inspected locally.",
+      "maintenance": "Upstream maintained by goodfire-ai; the upstream commit the fork holds (07cf9b9671e8) is dated 2026-11-06. The owner fork carries nine commits of its own (the paired-intervention adapter, its tests and document, and workflow changes). History and file names were read in a blobless clone on 2026-11-20; file contents were not inspected.",
       "entry_points": [
         "Python package `causalab` (causalab.neural.engines.pytorch_hooks, causalab.protocol), imported only with scripts/exploratory_baseline_preflight.py --backend causalab"
       ],
       "environment": {
         "python": "a separate virtual environment from the engine's; expected torch 2.9.0, transformers 5.16.1 and accelerate 1.14.0, per data/exploratory/baseline_ci_readiness.v1.json",
         "lock_or_constraints": [
-          "the fork's requirements.lock.txt, as named by the workflow; not read"
+          "the fork's requirements.lock.txt, as named by the workflow; present at the recorded head, contents not read"
         ]
       },
       "tests_and_ci": {
-        "tests": "not read: no local checkout",
-        "ci": "not read",
+        "tests": "tests/ holds the paired-adapter tests and tests/test_workflow_ruff_scope.py at the recorded head (file names only). Not run for this manifest. Owner-reported for 2026-11-20: tests/test_workflow_ruff_scope.py, 6 passed.",
+        "ci": ".github/workflows/claude-code-review.yml and test.yml at the recorded head (file names only; contents not read)",
         "lint": "not read"
       },
       "consumed_by_engine": [
@@ -1115,7 +1115,7 @@
       ],
       "engine_writes": [],
       "head_vs_pin": {
-        "latest_source_head": "1db3b8ce19bcee2cd2e6a7226ec9ec9d145481dc",
+        "latest_source_head": "931c8efad465c8047d233a2658b1b980b7e5685a",
         "tested_execution_pin": null,
         "relation": "no_execution_pin",
         "note": "Never executed by the engine. Causalab needs transformers >= 5.16; the engine pins 5.14.1, hence the separate environment."

@@ -10,6 +10,11 @@ was not a runtime migration: no runtime test was run against the new source, no 
 landed Petri run was produced by those pins. The map is [ecosystem.md](ecosystem.md); the machine-readable record
 is `data/ecosystem/repositories.v1.json`.
 
+**State on 2026-11-20.** The owner merged the upstream default branch into three forks: ICA Lens, Petri and
+Causalab. Again a source sync and not a runtime migration: neither pin file changed, the Petri pin `e199ec1a` is an
+ancestor of the new Petri head, and no engine lane ran the new source. Step 2.3 below is open for all three: the
+owner's report of that sync records six passing workflow tests for Causalab and no run of the Petri or ICA suite.
+
 What this checklist rests on. The interp-engine and Petri checks below come from reading both versions of each
 package on 2026-11-10. None of them was executed: the dev container has no model weights, no torch and no Inspect
 package. Treat each check as a thing to run, not as a result.
