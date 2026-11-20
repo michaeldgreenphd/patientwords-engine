@@ -858,7 +858,8 @@ def test_a_clinicians_cannot_judge_does_not_pass_the_review_and_every_blocker_is
     for verdicts, status in (([_verdicts(**{held_out.replace("-", "_"): "excluded"})], "excluded"), ([], "not_read")):
         row = _family(run(verdicts=verdicts), held_out)
         assert row["review"]["owner_read"]["status"] == status and row["eligibility"]["confirmatory"]["eligible"] is True
-    assert "owner_read" not in named and [d["answer"] for d in signed["decisions"]][-1] == "record it, do not gate on it"
+    owner_read_decisions = [d["answer"] for d in signed["decisions"] if "review.layers.owner_read" in d["applies_to"]]
+    assert "owner_read" not in named and owner_read_decisions == ["record it, do not gate on it"]
 
 
 def test_repeated_inputs_are_merged_when_they_agree_and_refused_when_they_do_not() -> None:
