@@ -1,7 +1,7 @@
 # Ecosystem map
 
-Current as of 2026-11-11. The five fork heads and every upstream tip were read on that date; the mapping pass is
-of 2026-11-10. The machine-readable form is
+Current as of 2026-11-20. Three fork heads moved that day (ICA, Petri, Causalab) and were read then; the other fork
+heads and every upstream tip were read again the same day. The mapping pass is of 2026-11-10. The machine-readable form is
 [`data/ecosystem/repositories.v1.json`](../data/ecosystem/repositories.v1.json); `python scripts/ecosystem_status.py`
 compares it with the checkouts and pin files on disk and writes nothing. Rules are not restated here: the
 invariants are in [AGENTS.md](../AGENTS.md), the checks in [verify.md](../verify.md), sharing and membership in
@@ -17,9 +17,9 @@ of its tests have run here.
 **The short answer.** The project is two core repositories, five method forks and three repositories whose identity
 is resolved from engine source. The engine executes code from two of the forks only, and in both cases not from
 the fork's current head: interp-engine as the PyPI distribution 1.5.1 (the fork source declares 1.14.3), and
-inspect_petri at commit `e199ec1a` (the fork head is `5ee1f549` and needs newer Inspect packages than the lock
-holds). The owner's fork sync of 2026-11-10 and README merges of 2026-11-11 changed source only. No pin moved and
-no run used the new source.
+inspect_petri at commit `e199ec1a` (the fork head is `da9693f0` and needs newer Inspect packages than the lock
+holds). The owner's fork syncs of 2026-11-10 and 2026-11-20 and README merges of 2026-11-11 changed source only. No
+pin moved and no run used the new source.
 
 How to read the status words. **VERIFIED (doc, read)**: the file was read at the cited line while writing this
 document. **VERIFIED (doc, ran)**: a read-only command was run for this document. **VERIFIED (map, read)** or
@@ -34,13 +34,13 @@ where they exist.
 |---|---|---|---|
 | `patientwords-engine` | generation, measurement, analysis, export | itself | `d8d0855d` (base of this change set) |
 | `patientwords` | public static site | `generated_files`: its `data/*.json`, read back by later publish steps; `source_checkout`: page HTML for the checkers. No pin | `b7da4530` |
-| `patientwords-ica-lens-paper` | ICA Lens paper (arXiv:2606.11722v2) and `icalens` library | `none` today. An optional offline adapter was added in this change set; fixtures only | `103aadab` |
+| `patientwords-ica-lens-paper` | ICA Lens paper (arXiv:2606.11722v2) and `icalens` library | `none` today. An optional offline adapter was added in this change set; fixtures only | `260f16a2` |
 | `patient-words-jpp_lens` | J++ Lens plus the owner's `lens_interop` contract | `fitted_artifact`: the released Qwen3-4B J++ file, sha256 `893f7da2…`, fit identity unknown, inspected and never used. `source_checkout`: `lens_interop` in one manual script, no pin | `2672473d` |
 | `patientwords-interp-engine` | interpretability runtime | `installed_distribution`: `interp-engine==1.5.1` from PyPI (`constraints.txt`). Not the fork source | `758220c4` |
-| `patientwords-inspect_petri` | conversation-audit harness | `source_checkout` at `e199ec1a`, installed from git under `docs/framework/petri_environment.lock.json` | `5ee1f549` |
+| `patientwords-inspect_petri` | conversation-audit harness | `source_checkout` at `e199ec1a`, installed from git under `docs/framework/petri_environment.lock.json` | `da9693f0` |
 | `jacobian-lens-patientwords` | original J-Lens reference | `none`: method description and credit strings | `29ff70ea` |
 | `patientwords-traces` (outside the seven) | public render site | `none` read back. The engine copies renders into it and stamps its URLs | `96bd3cd6` (remote tip, not an owner anchor) |
-| `patient-words-causalab` (outside the seven) | intervention library, staged | `source_checkout` at a commit that is not set (`causalab_commit: null`); never run | `1db3b8ce` (remote tip, not an owner anchor) |
+| `patient-words-causalab` (outside the seven) | intervention library, staged | `source_checkout` at a commit that is not set (`causalab_commit: null`); never run | `931c8efa` (the owner's merge commit, read as the remote tip) |
 | `patientwords-verify` (outside the seven) | private physician-rating app | `generated_files`: one ratings export, read from outside the checkout | not recorded (private) |
 
 Two things reach the engine without being one of these repositories. The J-Lens and logit-lens readouts come from
@@ -63,6 +63,15 @@ behind, with diverged histories. Bringing either fork up to date is a merge and 
 numbers of upstream commits the sync brought in (55 for interp-engine, 13 for Petri) are owner-reported: those
 two clones are shallow, so they cannot be re-derived. The default branches of the two core repositories had moved past the recorded heads
 by the time of the 2026-11-10 check (`61b33f96`, `f1504ce9`).
+
+On 2026-11-20 the owner made that merge for ICA and Petri, and merged the one new upstream commit into the Causalab
+fork. Each new head is a merge commit whose first parent is the head recorded before and whose second parent is the
+upstream tip of that day. Counted that day with `git rev-list --left-right --count` in blobless clones that hold full
+history: ICA is three commits ahead of its upstream and none behind (15 upstream commits brought in), Petri three ahead
+and none behind (17 brought in), Causalab nine ahead and none behind (1 brought in). The same day `git ls-remote`
+returned the recorded head and the earlier upstream tip for J++, interp-engine and J-Lens, so their counts stand.
+Neither pin file changed, and the Petri pin `e199ec1a` is an ancestor of the new Petri head. No fork suite was run for
+this record.
 
 ## 2. Each repository
 
@@ -103,15 +112,15 @@ Facts below were read in the engine or fork files for the manifest, or are marke
 
 ### patientwords-ica-lens-paper
 
-- **Purpose.** The ICA Lens paper repository around the installable library `icalens` 0.4.0. The paper is Sida Liu, Feijiang Han, Sarah Wiegreffe and Furong Huang, "Non-Gaussianity Reveals Interpretable Directions in Language Models", arXiv:2606.11722v2 (version 2 submitted 2026-10-19). VERIFIED (doc, ran): title, version, authors and date read on the arXiv abstract page on 2026-11-10 (record `arxiv.2606.11722v2` in `data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json`).
-- **Fork relationship.** Fork of `liusida/ica-lens-paper`. On 2026-11-10 the fork and the upstream were at the same tip, `aa3b95c9`. On 2026-11-11 the fork is two commits ahead of that tip: one README orientation note and the owner's merge commit for it, both of 2026-11-11. They change `README.md` only. On 2026-11-11 `git ls-remote` returned another upstream tip, `9b7d1cbd`. It descends from `aa3b95c9` and is two commits past it, so the fork is two ahead and two behind (counted 2026-11-12 with `git rev-list --left-right --count`). Project URLs and the model-framing registry URL still point upstream.
+- **Purpose.** The ICA Lens paper repository around the installable library `icalens` (the source declares 0.4.2.dev1 at the recorded head; 0.4.0 at the head recorded on 2026-11-11). The paper is Sida Liu, Feijiang Han, Sarah Wiegreffe and Furong Huang, "Non-Gaussianity Reveals Interpretable Directions in Language Models", arXiv:2606.11722v2 (version 2 submitted 2026-10-19). VERIFIED (doc, ran): title, version, authors and date read on the arXiv abstract page on 2026-11-10 (record `arxiv.2606.11722v2` in `data/experiments/neuronpedia_evidence/20261110_reference_pages/index.v1.json`).
+- **Fork relationship.** Fork of `liusida/ica-lens-paper`. On 2026-11-10 the fork and the upstream were at the same tip, `aa3b95c9`. On 2026-11-11 the fork is two commits ahead of that tip: one README orientation note and the owner's merge commit for it, both of 2026-11-11. They change `README.md` only. On 2026-11-11 `git ls-remote` returned another upstream tip, `9b7d1cbd`. It descends from `aa3b95c9` and is two commits past it, so the fork was two ahead and two behind (counted 2026-11-12 with `git rev-list --left-right --count`). On 2026-11-20 the owner merged the upstream tip `422e0959` into the fork (`260f16a2`): three ahead and none behind, and `README.md` is still the only file that differs from the upstream. Project URLs and the model-framing registry URL still point upstream.
 - **Runtime role.** None in any engine lane. The adapter `scripts/experiments/adapters/ica.py` applies a saved basis with numpy and uses `icalens` only where it imports. It fits nothing.
 - **Licence.** MIT. `THIRD_PARTY_NOTICES.md` carries the FastICA_torch notice for `_fastica.py`; copied code must carry both.
-- **Maintenance.** Upstream authors; the upstream commit the fork holds (`aa3b95c9`) is dated 2026-11-10.
+- **Maintenance.** Upstream authors; the upstream commit the fork holds (`422e0959`) is dated 2026-11-18.
 - **Entry points.** `icalens.ICALens` and `ActivationDataset`; the `icalens` CLI, whose fit and capture commands require CUDA.
 - **Formats.** ActivationDataset: `activations.json`, `samples.safetensors`, `layer_NN.safetensors`. Lens artifact: `icalens.json` plus per-layer safetensors. Site `resid_post` only; zero-based layers.
 - **Environment.** Python `>=3.10`; `transformers==5.14.1` exactly, equal to the engine's pin; `uv.lock`.
-- **Tests and CI.** 28 test files on synthetic data; none run here (no torch). The only workflow publishes to PyPI on a release; nothing runs tests.
+- **Tests and CI.** 30 test files on synthetic data at the recorded head (28 at the head recorded on 2026-11-11); none run here (no torch). The only workflow publishes to PyPI on a release; nothing runs tests.
 - **Active versus historical.** Commit `c4f3528` replaced the arXiv v1 implementation with v2. The README citation block is still the v1 title.
 - **Stable identifiers.** Hugging Face lens ids `sida/icalens-*`; component `C<index>` within one basis. A component index means nothing across two bases.
 - **Publication boundary.** Public upstream code. No PatientWords data is in it.
@@ -152,7 +161,7 @@ Facts below were read in the engine or fork files for the manifest, or are marke
 ### patientwords-inspect_petri
 
 - **Purpose.** Multi-turn audit harness on Inspect and Scout.
-- **Fork relationship.** Fork of `meridianlabs-ai/inspect_petri`. On 2026-11-10 the fork and the upstream were at the same tip, `de5dad81`. On 2026-11-11 the fork is two commits ahead of that tip: one README orientation note and the owner's merge commit for it, both of 2026-11-11. They change `README.md` only. On 2026-11-11 `git ls-remote` returned another upstream tip: `797c7c12` at 21:52 UTC, then `adf985b8` at 21:54 UTC. Both descend from `de5dad81`: they are the two commits the upstream added, so the fork is two ahead and two behind (counted 2026-11-12 with `git rev-list --left-right --count`).
+- **Fork relationship.** Fork of `meridianlabs-ai/inspect_petri`. On 2026-11-10 the fork and the upstream were at the same tip, `de5dad81`. On 2026-11-11 the fork is two commits ahead of that tip: one README orientation note and the owner's merge commit for it, both of 2026-11-11. They change `README.md` only. On 2026-11-11 `git ls-remote` returned another upstream tip: `797c7c12` at 21:52 UTC, then `adf985b8` at 21:54 UTC. Both descend from `de5dad81`: they are the two commits the upstream added, so the fork was two ahead and two behind (counted 2026-11-12 with `git rev-list --left-right --count`). On 2026-11-20 the owner merged the upstream tip `0727face` into the fork (`da9693f0`): three ahead and none behind, and `README.md` is still the only file that differs from the upstream. The locked commit `e199ec1a` is an ancestor of that head.
 - **Runtime role.** The Petri lane installs every package in the lock with `==`, then the harness with `--no-deps` from git at the locked commit, then runs `verify-lock` (`.github/workflows/petri_audit.yml:426-443`). The engine supplies its own scripted controller and attaches no Petri scorer.
 - **Licence.** MIT; no NOTICE file.
 - **Maintenance.** Upstream, active (release 3.1.1).
@@ -178,7 +187,7 @@ Facts below were read in the engine or fork files for the manifest, or are marke
 ### Outside the seven: identity resolved from engine source
 
 - **patientwords-traces.** A GitHub Pages site for per-scenario trace renders. URL scheme `<base>/t/<batch>/index_<NN>.html` from `batch` and `batch_index` (`scripts/export_traces_site.py:38`, `:69`). Writers: that repository's own build workflow, which copies engine renders (stated in `docs/README.md:151` and `docs/agent_reference.md:310`; the workflow file was not read), and `export_traces_site.py` without `--stamp-only`, which copies into a local checkout at `--traces-repo` (default `../patientwords-traces`) and returns 3 when it is absent (`:91`). Readers: `scenario.html` and `technical/index.html` use `trace_url` as a link target. The engine has no liveness check for those links (finding 22). No local checkout existed; its licence and tests were not read.
-- **patient-words-causalab.** Owner fork of `goodfire-ai/causalab`, named in `data/exploratory/method_sources.v1.json`. Planned as an independent second implementation in the one-case baseline preflight (`scripts/exploratory_baseline_preflight.py --backend causalab`). It has not run: `data/exploratory/baseline_ci_readiness.v1.json` has `status: blocked_not_authorized` and `causalab_commit: null`. The licence of the Python distribution is unresolved; the engine's record says the Rust workspace declares Apache-2.0 and no root licence file was found. On 2026-11-10 the fork tip (`1db3b8ce`) and the upstream tip (`07cf9b96`) differed; ahead and behind were not derived.
+- **patient-words-causalab.** Owner fork of `goodfire-ai/causalab`, named in `data/exploratory/method_sources.v1.json`. Planned as an independent second implementation in the one-case baseline preflight (`scripts/exploratory_baseline_preflight.py --backend causalab`). It has not run: `data/exploratory/baseline_ci_readiness.v1.json` has `status: blocked_not_authorized` and `causalab_commit: null`. The licence of the Python distribution is unresolved; the engine's record says the Rust workspace declares Apache-2.0 and no root licence file was found. On 2026-11-10 the fork tip (`1db3b8ce`) and the upstream tip (`07cf9b96`) differed; ahead and behind were not derived. On 2026-11-20 the owner merged that upstream tip into the fork (`931c8efa`): nine commits ahead and none behind, counted that day in a blobless clone. The merge removes one file from the fork, a Claude workflow the upstream had deleted as unused, and changes nothing else. `causalab_commit` is still null.
 - **patientwords-verify.** The private physician-rating app (`docs/verification_protocol.md`). `scripts/export_verification_tasks.py` writes `data/verification/tasks_<stamp>.json` (schema `patientwords-verification-tasks/1`), which the owner uploads. `scripts/import_verification_ratings.py` reads one export (schema `patientwords-verification-ratings/1`) from a path outside the checkout, refuses a path inside it, and writes summaries without note text. No summary has been imported. Nothing else about that repository is recorded here.
 
 ## 3. Trace A: one real result, from stimulus to page
