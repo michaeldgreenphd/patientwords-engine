@@ -183,6 +183,13 @@ def cmd_intake(args: argparse.Namespace) -> int:
         require(label not in prior, "invalid_input",
                 f"--prior-batch {label} is given twice; one label names one earlier batch, so give each file its own label")
         prior[label] = _load(Path(path), "prior batch")
+    prior_splits = {}
+    for item in args.prior_split_record:
+        label, _, path = item.partition("=")
+        require(bool(label) and bool(path), "invalid_input", "--prior-split-record takes LABEL=PATH")
+        require(label not in prior_splits, "invalid_input",
+                f"--prior-split-record {label} is given twice; one earlier batch has one split record")
+        prior_splits[label] = _load(Path(path), "prior split record")
     lexicon = None
     if args.lexicon:
         doc = _load(args.lexicon, "lexicon")
@@ -199,6 +206,7 @@ def cmd_intake(args: argparse.Namespace) -> int:
         concerns=[_load(p, "concerns") for p in args.concerns],
         source_checks=[_load(p, "source check") for p in args.source_check],
         split_records=[_load(p, "split record") for p in args.split_record], split_seed=args.split_seed,
+        links=[_load(p, "linked families") for p in args.linked_families], prior_split_records=prior_splits,
         models=args.model, tokenizations=[_load(p, "tokenization") for p in args.tokenization],
         mechanistic_families=args.mechanistic_families, mechanistic_seed=args.mechanistic_seed,
         previous_manifest=_load(args.previous_manifest, "previous manifest") if args.previous_manifest else None,
@@ -214,6 +222,11 @@ def cmd_intake(args: argparse.Namespace) -> int:
             "prior_batches": sorted(({"label": item.partition("=")[0], **file_record(Path(item.partition("=")[2]))}
                                      for item in args.prior_batch), key=lambda r: (r["label"], r["name"], r["sha256"])),
             "split_records": _records(args.split_record),
+            "linked_families": _records(args.linked_families),
+            "prior_split_records": sorted(({"label": item.partition("=")[0],
+                                            **file_record(Path(item.partition("=")[2]))}
+                                           for item in args.prior_split_record),
+                                          key=lambda r: (r["label"], r["name"], r["sha256"])),
             "tokenizations": _records(args.tokenization),
             "previous_manifest": file_record(args.previous_manifest) if args.previous_manifest else None,
             "pairs_file": file_record(args.pairs_file) if args.pairs_file else None,
@@ -306,6 +319,10 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_argument("--split-record", type=Path, action="append", default=[],
                      help="a recorded split assignment; its families keep their split")
     sub.add_argument("--split-seed", type=int, help="seed for families with no recorded split")
+    sub.add_argument("--linked-families", type=Path, action="append", default=[],
+                     help="families linked to a family of an earlier batch; each takes that family's split")
+    sub.add_argument("--prior-split-record", action="append", default=[], metavar="LABEL=PATH",
+                     help="the split record of the --prior-batch LABEL, read for the families linked to it")
     sub.add_argument("--model", action="append", default=[], help="study id of a model to plan for (repeatable)")
     sub.add_argument("--tokenization", type=Path, action="append", default=[], help="recorded token ids of the prompts")
     sub.add_argument("--mechanistic-families", type=int, default=0, help="size of the mechanistic subset")

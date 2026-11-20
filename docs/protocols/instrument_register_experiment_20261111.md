@@ -159,9 +159,11 @@ Families are split by underlying case, never by surface wording, into calibratio
 text in two splits (`split_leakage`). The Tier B holdout stays sealed.
 
 For an authored batch the split is drawn by the intake command: per family, per care level, from a recorded
-seed, once, before any measurement of the batch. A recorded split is read and never redrawn, and the
-command refuses to draw a split or a mechanistic subset for a batch whose stem already has a directory
-under `trace_out/`. The mechanistic subset (scaling plan, section 6) is a seeded draw from owner-kept,
+seed, once, before any measurement of the batch. A family that the owner records as the same underlying case
+as a family of an earlier batch is linked to it: it takes that family's recorded split and is not drawn
+(decision of 2026-11-20; `data/experiments/intake_design.v1.json`, `split.linked`). A recorded split is
+read and never redrawn, and the command refuses to draw a split or a mechanistic subset for a batch whose
+stem already has a directory under `trace_out/`. The mechanistic subset (scaling plan, section 6) is a seeded draw from owner-kept,
 unflagged discovery families; token alignment is recorded from real token ids as `position_aligned` or
 `suffix_aligned`, and a family is never rewritten to reach a class.
 

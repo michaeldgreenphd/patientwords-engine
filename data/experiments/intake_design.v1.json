@@ -148,7 +148,8 @@
       "fresh_test"
     ],
     "method": "python random.Random(seed); for each care level from highest to lowest: sort the family ids, rng.shuffle, first half discovery, next quarter validation, rest fresh_test",
-    "assigned": "per batch, once, before any measurement of the batch; a recorded assignment is never redrawn. A record is accepted, before or after measurement, only when it carries a seed and its splits are exactly the draw that seed gives over the batch's families and care levels; when it was written is shown by its commit, not by the intake command",
+    "assigned": "per batch, once, before any measurement of the batch; a recorded assignment is never redrawn. A record is accepted, before or after measurement, only when it carries a seed and its splits are exactly the draw that seed gives over the batch's families and care levels, leaving out linked families and families removed by review before the split; when it was written is shown by its commit, not by the intake command",
+    "linked": "A family the owner links to a family of an earlier batch, because the two are the same underlying case, is left out of its own batch's draw and takes the earlier family's split. That split is read from the earlier batch's split record, which is accepted only when it is that batch's seeded draw. While the earlier batch has no split record, the linked family has no split. A link is recorded before its batch's split: a record whose draw includes a linked family is refused. A family is linked to one family, and never to a family that is itself linked.",
     "open": "families per split is not fixed in the protocol (its section 14)"
   },
   "mechanistic_subset": {
@@ -273,6 +274,13 @@
       "answer": "record it, do not gate on it",
       "applies_to": "eligibility.confirmatory_blockers, review.layers.owner_read",
       "source": "the owner's answer on the session's decision page, 2026-11-13"
+    },
+    {
+      "date": "2026-11-20",
+      "question": "How should a kept family that repeats an earlier family's case share that family's split?",
+      "answer": "linked families take their relative's split",
+      "applies_to": "split.linked",
+      "source": "the owner's answer on the session's decision page, 2026-11-20 (card r12-split-links, about r12-033 and r12-036)"
     }
   ]
 }

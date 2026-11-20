@@ -38,7 +38,9 @@ its register contrast in an exploratory stratum of its own.
 
 Splits are per family, by a seeded draw recorded before any measurement of the batch. A recorded assignment is
 read back and never redrawn; a new one is refused once ``trace_out/<stem>*`` exists. The same holds for the
-mechanistic subset.
+mechanistic subset. A family the owner links to a family of an earlier batch (``--linked-families``: the same
+underlying case) is left out of the draw and takes that family's recorded split, read from the earlier batch's
+own split record (``--prior-split-record``).
 
 Outputs are deterministic (no clock value), so a rerun with the same inputs writes the same bytes. An existing
 output with other bytes is never overwritten: the command refuses and names the file.
@@ -475,8 +477,91 @@ def assign_splits(strata: Mapping[str, int], seed: int) -> dict[str, str]:
     return out
 
 
+def _drawn_over(body: Mapping[str, Any], populations: Sequence[Mapping[str, int]]) -> Mapping[str, int] | None:
+    """The population, among ``populations``, whose seeded draw a record is, or None. A record need not list its
+    strata, since the draw is recomputed; when it lists them, they must be that population's."""
+    if not integer(body.get("seed")):
+        return None
+    for strata in populations:
+        if body.get("strata", strata) == strata and assign_splits(strata, body["seed"]) == body["splits"]:
+            return strata
+    return None
+
+
+def _split_body(record: Any, what: str) -> Mapping[str, Any]:
+    body = record.get("split_assignment", record) if isinstance(record, dict) else None
+    require(isinstance(body, dict) and isinstance(body.get("splits"), dict)
+            and set(body["splits"].values()) <= set(SPLITS), "invalid_split_record",
+            f"{what} needs a splits object with values from {list(SPLITS)}")
+    return body
+
+
+def _links(docs: Sequence[Any]) -> dict[str, str]:
+    """family id -> the id of the earlier family it is linked to. The same link in two files is one link; one
+    family linked to two families is refused, because a family takes one split."""
+    links: dict[str, str] = {}
+    for n, doc in enumerate(docs, 1):
+        require(isinstance(doc, dict) and isinstance(doc.get("links"), list) and all(
+            isinstance(row, dict) and text(row.get("family_id")) and text(row.get("linked_to"))
+            and row["family_id"] != row["linked_to"] for row in doc["links"]), "invalid_link",
+            f"linked-families file {n} needs a links list whose rows each name a family_id and a different linked_to")
+        for row in doc["links"]:
+            fid, to = row["family_id"], row["linked_to"]
+            require(links.setdefault(fid, to) == to, "invalid_link",
+                    f"{fid} is linked to {links[fid]} and to {to}; a linked family takes one family's split")
+    for fid, to in links.items():
+        require(to not in links, "invalid_link",
+                f"{fid} is linked to {to}, which is itself linked to {links.get(to)}; link {fid} to the family "
+                "whose split is recorded")
+    return links
+
+
+def _linked_splits(ids: Iterable[str], links: Mapping[str, str],
+                   prior_batches: Mapping[str, Sequence[Mapping[str, Any]]],
+                   prior_records: Mapping[str, Any]) -> dict[str, Any]:
+    """The split each linked family of this batch takes from its earlier relative. The relative's split is read
+    from its own batch's split record, which is accepted only when it is that batch's seeded draw (over its
+    families and care levels, leaving out that batch's own linked families). This command has no reviews of an
+    earlier batch, so a record of an earlier batch drawn after a removal by review is refused, not read."""
+    holders: dict[str, list[str]] = collections.defaultdict(list)
+    for label, families in sorted(prior_batches.items()):
+        for family in families:
+            holders[family["family_id"]].append(label)
+    recorded: dict[str, Mapping[str, str]] = {}
+    checked: list[dict[str, Any]] = []
+    for label, record in sorted(prior_records.items()):
+        require(label in prior_batches, "invalid_input",
+                f"--prior-split-record {str(label)[:12]}: no --prior-batch has this label; a split record is checked "
+                "against its own batch")
+        body = _split_body(record, f"the split record of {label}")
+        families = prior_batches[label]
+        require(all(integer(f.get("right_care")) for f in families), "invalid_input",
+                f"prior batch {label}: every family needs a right_care to check its split record")
+        strata = {f["family_id"]: f["right_care"] for f in families if f["family_id"] not in links}
+        require(_drawn_over(body, [strata]) is not None, "split_record_unbound",
+                f"the split record of {label} is not the draw its seed gives over that batch's families and care "
+                "levels (leaving out its linked families); a linked family's split is read only from a recorded "
+                "seeded draw")
+        recorded[label] = body["splits"]
+        checked.append({"label": label, "seed": body["seed"], "reproduces_from_its_seed": True})
+    rows: dict[str, dict[str, Any]] = {}
+    for fid in sorted(set(ids) & set(links)):
+        to = links[fid]
+        where = holders.get(to, [])
+        require(len(where) == 1, "invalid_link",
+                f"{fid} is linked to {to}, which is in {'no' if not where else 'more than one'} earlier batch given "
+                "with --prior-batch; a link names a family of exactly one earlier batch")
+        split = recorded.get(where[0], {}).get(to)
+        rows[fid] = {"family_id": fid, "linked_to": to, "linked_batch": where[0], "split": split,
+                     "source": f"linked to {to} of {where[0]}: its recorded split" if split else
+                     f"linked to {to} of {where[0]}, which has no recorded split here; the family has none until it does"}
+    return {"rows": rows, "prior_records_checked": checked,
+            "elsewhere": sorted(fid for fid in links if fid not in rows and fid not in holders)}
+
+
 def _splits(families: Sequence[Mapping[str, Any]], records: Sequence[Mapping[str, Any]], seed: int | None,
-            removed: set[str], measured: bool, stem: str | None) -> dict[str, Any]:
+            removed: set[str], measured: bool, stem: str | None,
+            linked: Mapping[str, Mapping[str, Any]] | None = None) -> dict[str, Any]:
     """Recorded splits are read, never redrawn. A record is accepted only if it is bound to this batch (its strata
     are exactly this batch's families and care levels) and is the seeded draw its own seed gives, whether or not
     the batch has measurements: a bare mapping, a record of another batch or a hand-chosen assignment is refused,
@@ -484,25 +569,36 @@ def _splits(families: Sequence[Mapping[str, Any]], records: Sequence[Mapping[str
     was written. That a record predates the measurements is shown by the commit that added it, not by this
     command, and the manifest says so.
 
+    The draw leaves out two kinds of family. A linked family takes its earlier relative's split, so it is never
+    drawn, and a record that drew it is refused (``link_after_split``): a link comes before its batch's split. A
+    family removed by review before the split is not drawn either; a record of that draw is accepted while the
+    family is still removed, and a record drawn before the removal still reproduces over every family.
+
     A refusal names a record by its position among the arguments. The manifest numbers the accepted records by
     seed (then by content), so the same records give the same manifest in any argument order."""
+    linked = linked or {}
     recorded: dict[str, str] = {}
     sources: dict[str, str] = {}
     reproduced: list[dict[str, Any]] = []
     batch_strata = {f["family_id"]: f["right_care"] for f in families}
+    unlinked = {fid: care for fid, care in batch_strata.items() if fid not in linked}
+    populations = [{fid: care for fid, care in unlinked.items() if fid not in removed}, unlinked]
     accepted: list[Mapping[str, Any]] = []
     for n, record in enumerate(records, 1):
-        body = record.get("split_assignment", record)
-        require(isinstance(body.get("splits"), dict) and set(body["splits"].values()) <= set(SPLITS), "invalid_split_record",
-                f"split record {n} needs a splits object with values from {list(SPLITS)}")
-        # The draw is recomputed over this batch's own families and care levels, so a record need not repeat them;
-        # when it does, they must be the batch's.
-        require(integer(body.get("seed")) and body.get("strata", batch_strata) == batch_strata
-                and assign_splits(batch_strata, body["seed"]) == body["splits"], "split_record_unbound",
+        body = _split_body(record, f"split record {n}")
+        if _drawn_over(body, populations) is None and linked:
+            drew = _drawn_over(body, [{fid: care for fid, care in batch_strata.items() if fid not in removed},
+                                      batch_strata])
+            require(drew is None, "link_after_split",
+                    f"split record {n} is the seeded draw of this batch with {sorted(set(linked) & set(drew or {}))} "
+                    "in it. A linked family takes its relative's split and is left out of the draw, so a link is "
+                    "recorded before its batch's split; a record drawn without the link cannot be read with it")
+        require(_drawn_over(body, populations) is not None, "split_record_unbound",
                 f"split record {n}: a record is accepted only when it carries a seed and its splits are exactly the "
-                "draw that seed gives over this batch's families and care levels (and its strata, if it lists them, "
-                "are the batch's). This one is not; a hand-chosen assignment or a record of another batch is not a "
-                "recorded split of this batch")
+                "draw that seed gives over this batch's families and care levels, leaving out linked families and "
+                "families removed by review before the split (and its strata, if it lists them, are those). This "
+                "one is not; a hand-chosen assignment or a record of another batch is not a recorded split of this "
+                "batch")
         accepted.append(body)
     accepted.sort(key=lambda body: (body["seed"], json_bytes(body)))
     for n, body in enumerate(accepted, 1):
@@ -512,21 +608,27 @@ def _splits(families: Sequence[Mapping[str, Any]], records: Sequence[Mapping[str
             sources.setdefault(fid, f"record {n}")
         reproduced.append({"record": n, "seed": body["seed"], "reproduces_from_its_seed": True,
                            "lists_its_strata": isinstance(body.get("strata"), dict)})
-    strata = {f["family_id"]: f["right_care"] for f in families}
-    new = {fid: care for fid, care in strata.items() if fid not in recorded and fid not in removed}
+    strata = batch_strata
+    new = {fid: care for fid, care in strata.items() if fid not in recorded and fid not in removed and fid not in linked}
     assigned: dict[str, str] = {}
     if new and seed is not None:
         require(not measured, "split_after_measurement",
                 f"{sorted(new)} have no recorded split and the batch already has measurements; a split is assigned "
                 "before measurement or not at all")
         assigned = assign_splits(new, seed)
-    per_family = {fid: recorded.get(fid) or assigned.get(fid) for fid in strata}
+    per_family = {fid: linked[fid]["split"] if fid in linked else recorded.get(fid) or assigned.get(fid)
+                  for fid in strata}
     return {"per_family": per_family,
-            "source": {fid: sources.get(fid) or ("assigned by this run" if fid in assigned else
-                                                 "removed by review before the split" if fid in removed else "unassigned")
+            "source": {fid: linked[fid]["source"] if fid in linked else sources.get(fid) or (
+                "assigned by this run" if fid in assigned else
+                "removed by review before the split" if fid in removed else "unassigned")
                        for fid in strata},
             "seed_for_new_assignments": seed if assigned else None, "newly_assigned": sorted(assigned),
             "records_checked": reproduced,
+            "links": [linked[fid] for fid in sorted(linked)],
+            "links_timing": ("Links are read as given. A split record of this batch that drew a linked family is "
+                             "refused (link_after_split); that a link was written before the batch's split is "
+                             "otherwise shown by the commit that added it." if linked else None),
             "records_timing": ("Not verified by this command. The batch has measurements; each record matches this "
                                "batch's families and care levels and reproduces from its seed. That it was written "
                                "before the measurements is shown by the commit that added it."
@@ -696,6 +798,7 @@ def run_intake(batch: Any, *, batch_id: str, batch_sha256: str, source_ref: str,
                reviews: Sequence[Mapping[str, Any]] = (), prior_batches: Mapping[str, Sequence[Mapping[str, Any]]] | None = None,
                concerns: Sequence[Mapping[str, Any]] = (), source_checks: Sequence[Mapping[str, Any]] = (),
                split_records: Sequence[Mapping[str, Any]] = (), split_seed: int | None = None,
+               links: Sequence[Mapping[str, Any]] = (), prior_split_records: Mapping[str, Any] | None = None,
                models: Sequence[str] = (), tokenizations: Sequence[Mapping[str, Any]] = (),
                mechanistic_families: int = 0, mechanistic_seed: int | None = None,
                previous_manifest: Mapping[str, Any] | None = None, stem: str | None = None,
@@ -717,6 +820,9 @@ def run_intake(batch: Any, *, batch_id: str, batch_sha256: str, source_ref: str,
     require(all(isinstance(doc, dict) for doc in verdicts), "invalid_verdicts", "A verdicts file is a JSON object")
     require(all(isinstance(record, dict) and isinstance(record.get("split_assignment", record), dict)
                 for record in split_records), "invalid_split_record", "A split record is a JSON object")
+    link_of = _links(links)
+    require(all(isinstance(record, dict) for record in (prior_split_records or {}).values()), "invalid_split_record",
+            "A split record of an earlier batch is a JSON object")
     require(pairs_file is None or isinstance(pairs_file, list), "invalid_input", "A pairs file is a JSON list of pairs")
     require(previous_manifest is None or isinstance(previous_manifest, dict), "invalid_input",
             "A previous manifest is a JSON object")
@@ -792,7 +898,9 @@ def run_intake(batch: Any, *, batch_id: str, batch_sha256: str, source_ref: str,
     checks = _source_checks(source_checks)
     review_status = {fid: _review_status(domain[fid], design) for fid in texts_sha}
     removed = {fid for fid, status in review_status.items() if status == "removed_by_review"}
-    splits = _splits(usable, split_records, split_seed, removed, measured, stem)
+    linked = _linked_splits((f["family_id"] for f in usable), link_of, prior_batches or {}, prior_split_records or {})
+    splits = _splits(usable, split_records, split_seed, removed, measured, stem, linked["rows"])
+    splits.update(prior_records_checked=linked["prior_records_checked"], links_elsewhere=linked["elsewhere"])
     tokenizers = _tokenizers(tokenizations)
     identities = model_identities(models)
     signed = bool(re.match(r"signed\b", str(design["protocol"].get("status", ""))))    # "not signed" is not signed
