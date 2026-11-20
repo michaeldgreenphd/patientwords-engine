@@ -269,6 +269,17 @@ def test_a_linked_family_takes_its_relatives_recorded_split_and_is_left_out_of_t
     both = [_run(split_seed=7, **{**options, "links": order}) for order in (docs, docs[::-1])]
     assert both[0] == both[1] and both[0]["splits"]["links_elsewhere"] == ["z-01"]
     assert both[0]["splits"]["links"] == manifest["splits"]["links"]
+    # A family of the earlier batch that is itself linked, to a family of an older batch, was left out of the
+    # earlier batch's draw: that batch's record is the draw without it, and the record of every family is refused.
+    rest = {f["family_id"]: f["right_care"] for f in _earlier() if f["family_id"] != "p-02"}
+    chain = dict(prior_batches={"earlier": _earlier(), "older": [{"family_id": "o-01", "right_care": 4}]},
+                 links=[_links_doc(("s-02", "p-01"), ("p-02", "o-01"))])
+    pruned = {"seed": 11, "splits": intake.assign_splits(rest, 11)}
+    row = _family(_run(prior_split_records={"earlier": pruned}, **chain), "s-02")
+    assert row["split"] == pruned["splits"]["p-01"] and row["split_source"].startswith("linked to p-01 of earlier")
+    with pytest.raises(Refusal) as refusal:
+        _run(prior_split_records={"earlier": _earlier_record()}, **chain)
+    assert refusal.value.code == "split_record_unbound"
 
 
 def test_a_link_that_cannot_be_followed_is_refused() -> None:
@@ -276,7 +287,9 @@ def test_a_link_that_cannot_be_followed_is_refused() -> None:
     swapped = dict(good["splits"])
     a, b = next((x, y) for x in swapped for y in swapped if swapped[x] != swapped[y])
     swapped[a], swapped[b] = swapped[b], swapped[a]
-    cases = (
+    rest = {f["family_id"]: f["right_care"] for f in _earlier() if f["family_id"] != "p-02"}
+    without_p02 = {"seed": 11, "splits": intake.assign_splits(rest, 11)}
+    cases: tuple = (
         ("a relative in no earlier batch", dict(links=[_links_doc(("s-02", "p-99"))]), "invalid_link"),
         ("a relative in this batch only", dict(links=[_links_doc(("s-02", "s-03"))]), "invalid_link"),
         ("a relative in two earlier batches", dict(links=[_links_doc(("s-02", "p-01"))],
@@ -296,7 +309,20 @@ def test_a_link_that_cannot_be_followed_is_refused() -> None:
         ("a split record of a batch not given", dict(prior_split_records={"elsewhere": good}), "invalid_input"),
         ("an earlier batch without care levels", dict(prior_batches={"earlier": [{"family_id": "p-01"}]},
                                                       prior_split_records={"earlier": good}), "invalid_input"),
+        # A link from a family of an earlier batch leaves that family out of the earlier draw, so it is checked
+        # too. Each record below is the seeded draw without p-02, which an unchecked link would let through.
+        ("a link from an earlier family to no batch",
+         dict(links=[_links_doc(("s-02", "p-01"), ("p-02", "x-01"))], prior_split_records={"earlier": without_p02}),
+         "invalid_link"),
+        ("a link inside an earlier batch",
+         dict(links=[_links_doc(("s-02", "p-01"), ("p-02", "p-03"))], prior_split_records={"earlier": without_p02}),
+         "invalid_link"),
     )
+    for care in (0, 5):                                                         # care levels are 1 to 4, as in a batch
+        cases += ((f"an earlier batch with care level {care}",
+                   dict(prior_batches={"earlier": [{"family_id": "p-01", "right_care": care}]},
+                        prior_split_records={"earlier": {"seed": 3, "splits": intake.assign_splits({"p-01": care}, 3)}}),
+                   "invalid_input"),)
     for label, options, code in cases:
         options.setdefault("prior_batches", {"earlier": _earlier()})
         with pytest.raises(Refusal) as refusal:

@@ -527,6 +527,18 @@ def _linked_splits(ids: Iterable[str], links: Mapping[str, str],
     for label, families in sorted(prior_batches.items()):
         for family in families:
             holders[family["family_id"]].append(label)
+
+    def relative_batch(fid: str, own: str | None) -> str:
+        """The one earlier batch that holds ``fid``'s relative. A link is checked wherever it is used: to give a
+        family of this batch its split, and to leave a family of an earlier batch out of that batch's draw."""
+        where = holders.get(links[fid], [])
+        place = ("in no batch given with --prior-batch" if not where else
+                 "in more than one batch given with --prior-batch" if len(where) > 1 else f"in {own} itself")
+        require(len(where) == 1 and where[0] != own, "invalid_link",
+                f"{fid}{f' of {own}' if own else ''} is linked to {links[fid]}, which is {place}; a link names a "
+                "family of exactly one earlier batch")
+        return where[0]
+
     recorded: dict[str, Mapping[str, str]] = {}
     checked: list[dict[str, Any]] = []
     for label, record in sorted(prior_records.items()):
@@ -535,8 +547,10 @@ def _linked_splits(ids: Iterable[str], links: Mapping[str, str],
                 "against its own batch")
         body = _split_body(record, f"the split record of {label}")
         families = prior_batches[label]
-        require(all(integer(f.get("right_care")) for f in families), "invalid_input",
-                f"prior batch {label}: every family needs a right_care to check its split record")
+        require(all(integer(f.get("right_care"), 1) and f["right_care"] <= 4 for f in families), "invalid_input",
+                f"prior batch {label}: every family needs a right_care, a care level 1 to 4, to check its split record")
+        for fid in sorted(f["family_id"] for f in families if f["family_id"] in links):
+            relative_batch(fid, label)
         strata = {f["family_id"]: f["right_care"] for f in families if f["family_id"] not in links}
         require(_drawn_over(body, [strata]) is not None, "split_record_unbound",
                 f"the split record of {label} is not the draw its seed gives over that batch's families and care "
@@ -546,15 +560,11 @@ def _linked_splits(ids: Iterable[str], links: Mapping[str, str],
         checked.append({"label": label, "seed": body["seed"], "reproduces_from_its_seed": True})
     rows: dict[str, dict[str, Any]] = {}
     for fid in sorted(set(ids) & set(links)):
-        to = links[fid]
-        where = holders.get(to, [])
-        require(len(where) == 1, "invalid_link",
-                f"{fid} is linked to {to}, which is in {'no' if not where else 'more than one'} earlier batch given "
-                "with --prior-batch; a link names a family of exactly one earlier batch")
-        split = recorded.get(where[0], {}).get(to)
-        rows[fid] = {"family_id": fid, "linked_to": to, "linked_batch": where[0], "split": split,
-                     "source": f"linked to {to} of {where[0]}: its recorded split" if split else
-                     f"linked to {to} of {where[0]}, which has no recorded split here; the family has none until it does"}
+        to, batch = links[fid], relative_batch(fid, None)
+        split = recorded.get(batch, {}).get(to)
+        rows[fid] = {"family_id": fid, "linked_to": to, "linked_batch": batch, "split": split,
+                     "source": f"linked to {to} of {batch}: its recorded split" if split else
+                     f"linked to {to} of {batch}, which has no recorded split here; the family has none until it does"}
     return {"rows": rows, "prior_records_checked": checked,
             "elsewhere": sorted(fid for fid in links if fid not in rows and fid not in holders)}
 
