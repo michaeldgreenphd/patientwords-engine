@@ -12,6 +12,9 @@ Safety properties, matching the other site exporters:
 - verifies the archive hash chain first and REFUSES (exit 3, site file untouched)
   on any break — a tampered or truncated archive can never reach the site;
 - refuses when there are no advice records (a partial cycle cannot blank the page);
+- refuses when judged tiers exist but the rubric they were coded with cannot be read
+  (missing --rubric file, another version, or no tier ids): the tier order is never
+  published as a silent null;
 - publishes response text, tiers, and run metadata only — never judge raw output,
   never provider API keys (none exist in the archive), never stimuli meta beyond
   the topic label;
@@ -23,6 +26,7 @@ Usage:
   python scripts/export_advice_scenarios.py \
       --stimuli data/advice/stimuli_<STAMP>.json \
       [--sample-k 1] [--max-scenarios 0] [--archive-url <release url>] \
+      [--rubric data/advice_rubric.draft.json] \
       --out data/advice_scenarios.json --site ../patientwords
 """
 
@@ -35,6 +39,10 @@ import re
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+# The rubric the advice lane judges with (.github/workflows/advice_evaluation.yml passes this
+# path to `advice_eval.py judge`); each judgment records its `version` as rubric_version.
+DEFAULT_RUBRIC = REPO_ROOT / "data" / "advice_rubric.draft.json"
 
 # One display row per model family when a provider's arm changed access path mid-run
 # (pre-registration access amendments name each reroute). Keys are the rerouted spec,
@@ -59,6 +67,25 @@ def _load_advice_eval():
 def _refuse(reason: str) -> "SystemExit":
     print(f"refused: {reason} (site file left untouched)")
     return SystemExit(3)
+
+
+def _tier_order(rubric_path: Path, rubric_version: str | None) -> list[str]:
+    """Tier ids, least to most urgent, from the rubric the published judgments were coded with.
+
+    Called only when judged tiers exist. Refuses rather than leaving tier_order null: the page
+    derives its tier figures and interim sentence from this order.
+    """
+    if not rubric_path.is_file():
+        raise _refuse(f"judged tiers exist but the rubric file {rubric_path} does not; pass --rubric "
+                      "with the rubric the judgments were coded with")
+    rubric = json.loads(rubric_path.read_text(encoding="utf-8"))
+    if rubric.get("version") != rubric_version:
+        raise _refuse(f"the rubric {rubric_path} is version {rubric.get('version')!r} but the judgments "
+                      f"record rubric_version {rubric_version!r}")
+    order = [t["id"] for t in rubric.get("tiers", [])]
+    if not order:
+        raise _refuse(f"the rubric {rubric_path} lists no tier ids")
+    return order
 
 
 def _families_of_source(source: dict) -> set[str]:
@@ -514,8 +541,9 @@ def main(argv=None) -> None:
     parser.add_argument("--max-scenarios", type=int, default=0)
     parser.add_argument("--archive-url", default=None,
                         help="GitHub Release URL for the full archive, if one exists")
-    parser.add_argument("--rubric", default="data/advice_rubric.json",
-                        help="rubric path, used only to publish tier_order when judgments exist")
+    parser.add_argument("--rubric", default=str(DEFAULT_RUBRIC),
+                        help="rubric the judgments were coded with; read only when judged tiers exist, "
+                             "and then required (a missing file is refused)")
     parser.add_argument("--out", default="data/advice_scenarios.json")
     parser.add_argument("--site", default=None, help="frontend checkout; copies the payload into <site>/data/")
     parser.add_argument("--exclude-models", default=None,
@@ -530,9 +558,10 @@ def main(argv=None) -> None:
                             exclude_models=[p.strip() for p in args.exclude_models.split(",") if p.strip()]
                                            if args.exclude_models else None,
                             exclude_note=args.exclude_note)
-    if payload["rubric_version"] and Path(args.rubric).is_file():
-        rubric = json.loads(Path(args.rubric).read_text(encoding="utf-8"))
-        payload["tier_order"] = [t["id"] for t in rubric.get("tiers", [])] or None
+    judged = payload["rubric_version"] or any(
+        m[arm].get("tier_counts") for m in payload["model_summary"] for arm in ("clinical", "patient"))
+    if judged:
+        payload["tier_order"] = _tier_order(Path(args.rubric), payload["rubric_version"])
     if payload["tier_order"]:
         ranks = {t: i + 1 for i, t in enumerate(payload["tier_order"])}
         for m in payload["model_summary"]:
