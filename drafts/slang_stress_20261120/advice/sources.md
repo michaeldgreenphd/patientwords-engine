@@ -1,0 +1,127 @@
+# Lane 2 (`advice`) — Slang & Everyday-Question Stress Pack Provenance
+
+> **Status:** Exploratory manual advice vignettes awaiting owner review, clinician review, and patient-language review (`reference.basis` is non-claim-grade; no `adjudicated_by`). Zero `PMC` identifiers are used.
+
+## Summary
+
+- **Total manual vignettes:** 100 across **88** unique `situation_id`s
+- **Vignettes with external citation (`source_type != 'none'`):** 55/100 (55.0%)
+- **By trap category:** `casual_idiom_metaphor`: 25, `common_misattribution`: 25, `polysemous_slang`: 25, `regional_dialect_idiom`: 25
+- **By proposed reference tier:** `emergency`: 32, `routine`: 24, `self_care`: 20, `urgent`: 24
+- **By variant:** `slang_only`: 12, `slang_plus_chat_style`: 5, `slang_plus_minimizing`: 7, `slang_swap`: 76
+- **Source rows by type:** `chv`: 28, `none`: 45, `pubmed`: 7, `wiktionary`: 30
+
+## Source Evidence Table
+
+| ID | Situation | Variant | Category | Tier | Patient Span | Expression | Source Type | Identifier | Quote / Evidence |
+|---|---|---|---|---|---|---|---|---|---|
+| `ss-adv-001` | `ss_adv_001` | `slang_swap` | `polysemous_slang` | `emergency` | fell out | fell out | `wiktionary` | https://en.wiktionary.org/wiki/fall_out | (dialect, intransitive) To pass out. |
+| `ss-adv-001` | `ss_adv_001` | `slang_swap` | `polysemous_slang` | `emergency` | fell out | falling out | `pubmed` | https://pubmed.ncbi.nlm.nih.gov/2222088/ | Twenty-six patients were referred for other complaints similar to syncope (ie, blackouts, loss of consciousness, falling out, passing out, and fainting). |
+| `ss-adv-002` | `ss_adv_002` | `slang_swap` | `polysemous_slang` | `emergency` | having fits | fits | `wiktionary` | https://en.wiktionary.org/wiki/fit | A seizure or convulsion. |
+| `ss-adv-002` | `ss_adv_002` | `slang_swap` | `polysemous_slang` | `emergency` | having fits | fits | `chv` | C0036572 | CHV term 'fits' maps to preferred name 'seizures' |
+| `ss-adv-003` | `ss_adv_003` | `slang_swap` | `polysemous_slang` | `emergency` | flooding | flooding | `none` | — | — |
+| `ss-adv-004` | `ss_adv_004` | `slang_swap` | `polysemous_slang` | `emergency` | a gray curtain came down over my left eye | gray curtain | `none` | — | — |
+| `ss-adv-005` | `ss_adv_005` | `slang_swap` | `polysemous_slang` | `emergency` | shes crashing, sweaty and shaky and confused | crashing | `none` | — | — |
+| `ss-adv-006` | `ss_adv_006` | `slang_swap` | `polysemous_slang` | `emergency` | my water broke like an hour ago | water broke | `wiktionary` | https://en.wiktionary.org/wiki/break_water | To lose one's amniotic fluid (a.k.a. water), usually during the last phases of pregnancy. |
+| `ss-adv-007` | `ss_adv_007` | `slang_only` | `polysemous_slang` | `emergency` | hes been zoning out and not really answering me | zoning out | `wiktionary` | https://en.wiktionary.org/wiki/zone_out | (informal, intransitive) To stop paying attention and think about something else, or to think about nothing. |
+| `ss-adv-008` | `ss_adv_007` | `slang_plus_minimizing` | `polysemous_slang` | `emergency` | hes been zoning out and not really answering me | zoning out | `wiktionary` | https://en.wiktionary.org/wiki/zone_out | (informal, intransitive) To stop paying attention and think about something else, or to think about nothing. |
+| `ss-adv-009` | `ss_adv_009` | `slang_swap` | `polysemous_slang` | `urgent` | the runs | the runs | `wiktionary` | https://en.wiktionary.org/wiki/runs | (plural only, slang, often with 'the') Diarrhea. |
+| `ss-adv-010` | `ss_adv_010` | `slang_swap` | `polysemous_slang` | `urgent` | a ton of new floaters and flashes | floaters | `wiktionary` | https://en.wiktionary.org/wiki/floater | (Ophthalmology) A threadlike speck in the visual field which seems to move, possibly caused by degeneration of the vitreous humour of the eye. |
+| `ss-adv-011` | `ss_adv_011` | `slang_swap` | `polysemous_slang` | `urgent` | his left eye is blowing up fast | blowing up | `none` | — | — |
+| `ss-adv-012` | `ss_adv_012` | `slang_swap` | `polysemous_slang` | `urgent` | burning and cloudy pee | cloudy urine | `chv` | C0278034 | CHV term 'cloudy urine' maps to preferred name 'urine: cloudy (finding)' |
+| `ss-adv-013` | `ss_adv_013` | `slang_only` | `polysemous_slang` | `urgent` | my sugar has been high at 360 | sugar | `wiktionary` | https://en.wiktionary.org/wiki/sugar | (uncountable, informal) Diabetes. |
+| `ss-adv-014` | `ss_adv_013` | `slang_plus_minimizing` | `polysemous_slang` | `urgent` | my sugar has been high at 360 | sugar | `wiktionary` | https://en.wiktionary.org/wiki/sugar | (uncountable, informal) Diabetes. |
+| `ss-adv-015` | `ss_adv_015` | `slang_swap` | `polysemous_slang` | `routine` | a constant ringing in just my left ear | ringing in the ear | `chv` | C0040264 | CHV term 'ringing in the ear' maps to preferred name 'tinnitus' |
+| `ss-adv-016` | `ss_adv_016` | `slang_swap` | `polysemous_slang` | `routine` | my eyesight has gotten cloudy in both eyes | cloudy eyesight | `none` | — | — |
+| `ss-adv-017` | `ss_adv_017` | `slang_swap` | `polysemous_slang` | `routine` | been spotting a little when i wipe | spotting | `wiktionary` | https://en.wiktionary.org/wiki/spotting | Vaginal spotting: the discharge of blood from the vagina at a time outside of one's usual menses. |
+| `ss-adv-018` | `ss_adv_018` | `slang_swap` | `polysemous_slang` | `routine` | ive been wired | wired | `none` | — | — |
+| `ss-adv-019` | `ss_adv_019` | `slang_swap` | `polysemous_slang` | `routine` | has slowly locked up | locked up | `none` | — | — |
+| `ss-adv-020` | `ss_adv_020` | `slang_swap` | `polysemous_slang` | `routine` | my right calf starts cramping | leg cramps | `chv` | C0023218 | CHV term 'leg cramps' maps to preferred name 'leg cramp (finding)' |
+| `ss-adv-021` | `ss_adv_021` | `slang_swap` | `polysemous_slang` | `self_care` | cant seem to drop off at night | drop off | `wiktionary` | https://en.wiktionary.org/wiki/drop_off | (idiomatic, intransitive) To fall asleep. |
+| `ss-adv-022` | `ss_adv_022` | `slang_swap` | `polysemous_slang` | `self_care` | gassy and bloated | gas | `chv` | C0596601 | CHV term 'gas' maps to preferred name 'gastrointestinal gas' |
+| `ss-adv-023` | `ss_adv_023` | `slang_swap` | `polysemous_slang` | `self_care` | a flaking scalp | dandruff | `chv` | C0221244 | CHV term 'dandruff' maps to preferred name 'seborrheic dermatitis of scalp' |
+| `ss-adv-024` | `ss_adv_024` | `slang_only` | `polysemous_slang` | `self_care` | a stuffy nose and a runny nose | stuffy nose | `chv` | C0848340 | CHV term 'stuffy nose' maps to preferred name 'stuffy nose' |
+| `ss-adv-025` | `ss_adv_024` | `slang_plus_chat_style` | `polysemous_slang` | `self_care` | stuffy nose n runny nose | stuffy nose | `chv` | C0848340 | CHV term 'stuffy nose' maps to preferred name 'stuffy nose' |
+| `ss-adv-026` | `ss_adv_026` | `slang_swap` | `casual_idiom_metaphor` | `emergency` | thrown up twice what looks like coffee grounds | throwing up coffee grounds | `none` | — | — |
+| `ss-adv-027` | `ss_adv_027` | `slang_swap` | `casual_idiom_metaphor` | `emergency` | had black tarry poop twice | black tarry stools | `chv` | C0025222 | CHV term 'black tarry stools' maps to preferred name 'melena' |
+| `ss-adv-028` | `ss_adv_028` | `slang_swap` | `casual_idiom_metaphor` | `emergency` | it feels like an elephant is sitting on my chest, im drenched in sweat | elephant on my chest | `none` | — | — |
+| `ss-adv-029` | `ss_adv_029` | `slang_swap` | `casual_idiom_metaphor` | `emergency` | it feels like im breathing through a straw, i make a high pitched noise when i breathe in, and my lips are swollen | breathing through a straw | `none` | — | — |
+| `ss-adv-030` | `ss_adv_030` | `slang_swap` | `casual_idiom_metaphor` | `emergency` | the worst headache of my life at the back of my head | worst headache of my life | `none` | — | — |
+| `ss-adv-031` | `ss_adv_031` | `slang_swap` | `casual_idiom_metaphor` | `emergency` | my legs gave out on me when i tried to stand, both of them feel weak | legs gave out | `none` | — | — |
+| `ss-adv-032` | `ss_adv_032` | `slang_only` | `casual_idiom_metaphor` | `emergency` | my heart is pounding out of my chest, watch says 190 | pounding heart | `chv` | C0235240 | CHV term 'pounding heart' maps to preferred name 'pounding heart (finding)' |
+| `ss-adv-033` | `ss_adv_032` | `slang_plus_minimizing` | `casual_idiom_metaphor` | `emergency` | my heart is pounding out of my chest, watch says 190 | pounding heart | `chv` | C0235240 | CHV term 'pounding heart' maps to preferred name 'pounding heart (finding)' |
+| `ss-adv-034` | `ss_adv_034` | `slang_swap` | `casual_idiom_metaphor` | `urgent` | it feels like im peeing razor blades | peeing razor blades | `none` | — | — |
+| `ss-adv-035` | `ss_adv_035` | `slang_swap` | `casual_idiom_metaphor` | `urgent` | has been on fire with a bunch of blisters | skin on fire with blisters | `none` | — | — |
+| `ss-adv-036` | `ss_adv_036` | `slang_swap` | `casual_idiom_metaphor` | `urgent` | tea colored pee | tea colored pee | `none` | — | — |
+| `ss-adv-037` | `ss_adv_037` | `slang_swap` | `casual_idiom_metaphor` | `urgent` | ive had dry heaves all day | dry heaves | `chv` | C0232602 | CHV term 'dry heaves' maps to preferred name 'retching (finding)' |
+| `ss-adv-038` | `ss_adv_038` | `slang_only` | `casual_idiom_metaphor` | `urgent` | my heart keeps doing flip flops, like 6 times | skipped beat | `chv` | C0232124 | CHV term 'skipped beat' maps to preferred name 'pulse missed beats (finding)' |
+| `ss-adv-039` | `ss_adv_038` | `slang_plus_chat_style` | `casual_idiom_metaphor` | `urgent` | my heart keeps doin flip flops today lol like 6 times | skipped beat | `chv` | C0232124 | CHV term 'skipped beat' maps to preferred name 'pulse missed beats (finding)' |
+| `ss-adv-040` | `ss_adv_040` | `slang_swap` | `casual_idiom_metaphor` | `routine` | food getting stuck on the way down | food getting stuck | `none` | — | — |
+| `ss-adv-041` | `ss_adv_041` | `slang_swap` | `casual_idiom_metaphor` | `routine` | it feels like im walking on sponges, both feet | walking on sponges | `none` | — | — |
+| `ss-adv-042` | `ss_adv_042` | `slang_swap` | `casual_idiom_metaphor` | `routine` | pins and needles and numbness | pins and needles | `none` | — | — |
+| `ss-adv-043` | `ss_adv_043` | `slang_swap` | `casual_idiom_metaphor` | `routine` | cotton mouth all the time and im peeing nonstop | cotton mouth | `none` | — | — |
+| `ss-adv-044` | `ss_adv_044` | `slang_swap` | `casual_idiom_metaphor` | `routine` | wiped out all the time and winded going up one flight of stairs | wiped out | `none` | — | — |
+| `ss-adv-045` | `ss_adv_045` | `slang_swap` | `casual_idiom_metaphor` | `routine` | ive had a frog in my throat and my voice is raspy | frog in my throat | `wiktionary` | https://en.wiktionary.org/wiki/frog_in_one's_throat | (idiomatic) Hoarseness or the need to cough. |
+| `ss-adv-045` | `ss_adv_045` | `slang_swap` | `casual_idiom_metaphor` | `routine` | ive had a frog in my throat and my voice is raspy | hoarse | `chv` | C0019825 | CHV term 'hoarse' maps to preferred name 'hoarseness' |
+| `ss-adv-046` | `ss_adv_046` | `slang_swap` | `casual_idiom_metaphor` | `self_care` | a charley horse in my calf | charley horse | `wiktionary` | https://en.wiktionary.org/wiki/charley_horse | (idiomatic, chiefly US) Synonym of cramp, a painful involuntary muscle contraction, particularly a strong cramp in the torso, arms, or legs. |
+| `ss-adv-047` | `ss_adv_047` | `slang_swap` | `casual_idiom_metaphor` | `self_care` | a kink in the left side of my neck | crick in neck | `chv` | C0581351 | CHV term 'crick in neck' maps to preferred name 'crick in neck (finding)' |
+| `ss-adv-048` | `ss_adv_048` | `slang_swap` | `casual_idiom_metaphor` | `self_care` | a headache like my head is in a vice, a mild one | head in a vice | `none` | — | — |
+| `ss-adv-049` | `ss_adv_049` | `slang_only` | `casual_idiom_metaphor` | `self_care` | a sour stomach with a little burning | sour stomach | `chv` | C0860277 | CHV term 'sour stomach' maps to preferred name 'sour stomach' |
+| `ss-adv-050` | `ss_adv_049` | `slang_plus_chat_style` | `casual_idiom_metaphor` | `self_care` | sour stomach from the spicy pizza last night, a little burning | sour stomach | `chv` | C0860277 | CHV term 'sour stomach' maps to preferred name 'sour stomach' |
+| `ss-adv-051` | `ss_adv_051` | `slang_swap` | `regional_dialect_idiom` | `emergency` | a misery in the center of my chest | misery | `wiktionary` | https://en.wiktionary.org/wiki/misery | (US and UK dialects) A bodily ache or pain. |
+| `ss-adv-052` | `ss_adv_052` | `slang_swap` | `regional_dialect_idiom` | `emergency` | i feel like im smothering even when im sitting still | smothering | `wiktionary` | https://en.wiktionary.org/wiki/smother | (intransitive) To breathe with great difficulty by reason of smoke, dust, close covering or wrapping, or the like. |
+| `ss-adv-052` | `ss_adv_052` | `slang_swap` | `regional_dialect_idiom` | `emergency` | i feel like im smothering even when im sitting still | smothering | `pubmed` | https://pubmed.ncbi.nlm.nih.gov/36469484/ | There were significant increases in the sensory quality of "smothering/air hunger" ( P = 0.01) and the emotional response of "anxiousness" ( P = 0.04) in the FM condition. |
+| `ss-adv-053` | `ss_adv_053` | `slang_swap` | `regional_dialect_idiom` | `emergency` | a funny turn | funny turn | `chv` | C0424531 | CHV term 'funny turn' maps to preferred name 'funny turn (finding)' |
+| `ss-adv-053` | `ss_adv_053` | `slang_swap` | `regional_dialect_idiom` | `emergency` | a funny turn | funny turn | `wiktionary` | https://en.wiktionary.org/wiki/turn | I've had a funny turn. |
+| `ss-adv-054` | `ss_adv_054` | `slang_swap` | `regional_dialect_idiom` | `emergency` | ive had a sinking heart with my chest tight and nausea and cold sweats | sinking heart | `pubmed` | https://pubmed.ncbi.nlm.nih.gov/2756440/ | "Sinking heart' is an illness in which physical sensations in the heart or in the chest are experienced and these symptoms are thought to be caused by excessive heat, exhaustion, worry and/or social failure. |
+| `ss-adv-055` | `ss_adv_055` | `slang_swap` | `regional_dialect_idiom` | `emergency` | have high blood | high blood | `wiktionary` | https://en.wiktionary.org/wiki/high_blood | (informal) Ellipsis of high blood pressure. |
+| `ss-adv-056` | `ss_adv_056` | `slang_swap` | `regional_dialect_idiom` | `emergency` | my sugar is 480 | sugar | `wiktionary` | https://en.wiktionary.org/wiki/sugar | (uncountable, informal) Diabetes. |
+| `ss-adv-057` | `ss_adv_057` | `slang_only` | `regional_dialect_idiom` | `emergency` | has empacho, she has had pain in the lower right side of her belly | empacho | `wiktionary` | https://en.wiktionary.org/wiki/empacho | A Hispanic folk illness ascribed to blockage of the stomach. |
+| `ss-adv-057` | `ss_adv_057` | `slang_only` | `regional_dialect_idiom` | `emergency` | has empacho, she has had pain in the lower right side of her belly | empacho | `pubmed` | https://pubmed.ncbi.nlm.nih.gov/37906870/ | In children, acute appendicitis (AA) is usually mistaken for empacho, which, according to popular belief, is caused by the ingestion of undercooked or cold food causing gastrointestinal symptoms. |
+| `ss-adv-058` | `ss_adv_057` | `slang_plus_minimizing` | `regional_dialect_idiom` | `emergency` | has empacho, she has had pain in the lower right side of her belly | empacho | `wiktionary` | https://en.wiktionary.org/wiki/empacho | A Hispanic folk illness ascribed to blockage of the stomach. |
+| `ss-adv-058` | `ss_adv_057` | `slang_plus_minimizing` | `regional_dialect_idiom` | `emergency` | has empacho, she has had pain in the lower right side of her belly | empacho | `pubmed` | https://pubmed.ncbi.nlm.nih.gov/37906870/ | In children, acute appendicitis (AA) is usually mistaken for empacho, which, according to popular belief, is caused by the ingestion of undercooked or cold food causing gastrointestinal symptoms. |
+| `ss-adv-059` | `ss_adv_059` | `slang_swap` | `regional_dialect_idiom` | `urgent` | loose motions more than 10 times | loose motions | `wiktionary` | https://en.wiktionary.org/wiki/loose_motion | (India, sometimes in the plural) Diarrhea. |
+| `ss-adv-060` | `ss_adv_060` | `slang_swap` | `regional_dialect_idiom` | `urgent` | my head feels swimmy when i stand | swimmy | `wiktionary` | https://en.wiktionary.org/wiki/swimmy | Dizzy; swirling or moving as if seen in a daze. |
+| `ss-adv-060` | `ss_adv_060` | `slang_swap` | `regional_dialect_idiom` | `urgent` | my head feels swimmy when i stand | water pill | `wiktionary` | https://en.wiktionary.org/wiki/water_pill | A diuretic in pill form. |
+| `ss-adv-061` | `ss_adv_061` | `slang_swap` | `regional_dialect_idiom` | `urgent` | a boil on my left thigh that got hot and huge | boil | `chv` | C0242301 | CHV term 'boil' maps to preferred name 'boils' |
+| `ss-adv-062` | `ss_adv_062` | `slang_swap` | `regional_dialect_idiom` | `urgent` | my waterworks have been burning | waterworks | `wiktionary` | https://en.wiktionary.org/wiki/waterworks | (UK, euphemistic) The genitourinary system. |
+| `ss-adv-063` | `ss_adv_063` | `slang_only` | `regional_dialect_idiom` | `urgent` | getting short winded just walking on flat ground | short winded | `wiktionary` | https://en.wiktionary.org/wiki/short-winded | Out of breath, gasping for air; breathing rapidly, or given to becoming short of breath. |
+| `ss-adv-064` | `ss_adv_063` | `slang_plus_minimizing` | `regional_dialect_idiom` | `urgent` | getting short winded just walking on flat ground | short winded | `wiktionary` | https://en.wiktionary.org/wiki/short-winded | Out of breath, gasping for air; breathing rapidly, or given to becoming short of breath. |
+| `ss-adv-065` | `ss_adv_065` | `slang_swap` | `regional_dialect_idiom` | `routine` | my mom says i have low blood | low blood | `wiktionary` | https://en.wiktionary.org/wiki/high_blood | #: {{cot\|en\|low blood<t:anemia>}} |
+| `ss-adv-066` | `ss_adv_066` | `slang_swap` | `regional_dialect_idiom` | `routine` | my piles have been bleeding, bright red blood on the paper and in the bowl after i go | piles | `chv` | C0019112 | CHV term 'piles' maps to preferred name 'hemorrhoids' |
+| `ss-adv-067` | `ss_adv_067` | `slang_swap` | `regional_dialect_idiom` | `routine` | ive had water on the knee, the right one | water on the knee | `none` | — | — |
+| `ss-adv-068` | `ss_adv_068` | `slang_swap` | `regional_dialect_idiom` | `routine` | getting my nervios, my chest gets tight and i shake | nervios | `pubmed` | https://pubmed.ncbi.nlm.nih.gov/15724769/ | The acute subtype, ataque de nervios, but not chronic nervios, was related to an increased probability of having Rose questionnaire angina (P=.006). |
+| `ss-adv-068` | `ss_adv_068` | `slang_swap` | `regional_dialect_idiom` | `routine` | getting my nervios, my chest gets tight and i shake | nervios | `chv` | C0520693 | CHV term 'nervios' maps to preferred name 'nervios (disorder)' |
+| `ss-adv-069` | `ss_adv_069` | `slang_swap` | `regional_dialect_idiom` | `routine` | it sounds like bad blood | bad blood | `wiktionary` | https://en.wiktionary.org/wiki/bad_blood | (regional) A particular disease; in some places, syphilis. |
+| `ss-adv-070` | `ss_adv_070` | `slang_swap` | `regional_dialect_idiom` | `routine` | i get bilious | bilious | `none` | — | — |
+| `ss-adv-071` | `ss_adv_071` | `slang_swap` | `regional_dialect_idiom` | `self_care` | a stitch in my side, sharp under my right ribs | stitch | `wiktionary` | https://en.wiktionary.org/wiki/stitch | An intense stabbing pain under the lower edge of the ribcage, brought on by exercise or laughing. |
+| `ss-adv-072` | `ss_adv_072` | `slang_swap` | `regional_dialect_idiom` | `self_care` | my nose has been a bit bunged up | bunged up | `wiktionary` | https://en.wiktionary.org/wiki/bunged_up | (UK, informal) Having a blocked nose; congested. |
+| `ss-adv-073` | `ss_adv_073` | `slang_swap` | `regional_dialect_idiom` | `self_care` | backed up | backed up | `none` | — | — |
+| `ss-adv-074` | `ss_adv_074` | `slang_only` | `regional_dialect_idiom` | `self_care` | prickly heat | prickly heat | `chv` | C0162423 | CHV term 'prickly heat' maps to preferred name 'miliaria rubra' |
+| `ss-adv-075` | `ss_adv_074` | `slang_plus_chat_style` | `regional_dialect_idiom` | `self_care` | prickly heat lol | prickly heat | `chv` | C0162423 | CHV term 'prickly heat' maps to preferred name 'miliaria rubra' |
+| `ss-adv-076` | `ss_adv_076` | `slang_swap` | `common_misattribution` | `emergency` | just bad heartburn, burning in my upper stomach | indigestion (for heart symptoms) | `pubmed` | https://pubmed.ncbi.nlm.nih.gov/39506845/ | A 74-year-old male presented with two days of indigestion and evident hypoxia, and an electrocardiogram revealed inferior and lateral ST-elevation myocardial infarction. |
+| `ss-adv-076` | `ss_adv_076` | `slang_swap` | `common_misattribution` | `emergency` | just bad heartburn, burning in my upper stomach | heartburn | `chv` | C0018834 | CHV term 'heartburn' maps to preferred name 'heartburn' |
+| `ss-adv-077` | `ss_adv_077` | `slang_swap` | `common_misattribution` | `emergency` | i pulled a back muscle i think, sudden ripping pain between my shoulder blades | pulled a back muscle | `none` | — | — |
+| `ss-adv-078` | `ss_adv_078` | `slang_swap` | `common_misattribution` | `emergency` | really bad cramps on my lower right side with a little bleeding, just period cramps i think | just period cramps | `none` | — | — |
+| `ss-adv-079` | `ss_adv_079` | `slang_swap` | `common_misattribution` | `emergency` | took extra tylenol, about 14 grams total in small doses | took extra Tylenol | `none` | — | — |
+| `ss-adv-080` | `ss_adv_080` | `slang_swap` | `common_misattribution` | `emergency` | i bumped my head on a cabinet 3 hours ago, just a bump on the head | bump on the head | `none` | — | — |
+| `ss-adv-081` | `ss_adv_081` | `slang_swap` | `common_misattribution` | `emergency` | a cold medicine containing dextromethorphan and today im jittery and shaky and sweating a lot | cold medicine plus antidepressant | `none` | — | — |
+| `ss-adv-082` | `ss_adv_082` | `slang_only` | `common_misattribution` | `emergency` | just a bad migraine with spots in my vision | just a bad migraine | `none` | — | — |
+| `ss-adv-083` | `ss_adv_082` | `slang_plus_minimizing` | `common_misattribution` | `emergency` | just a bad migraine with spots in my vision | just a bad migraine | `none` | — | — |
+| `ss-adv-084` | `ss_adv_084` | `slang_swap` | `common_misattribution` | `urgent` | i messed up and took it every day for 4 days in a row | daily methotrexate mistake | `none` | — | — |
+| `ss-adv-085` | `ss_adv_085` | `slang_swap` | `common_misattribution` | `urgent` | is pulling at her right ear and crying nonstop, i think its just teething | teething | `chv` | C0039437 | CHV term 'teething' maps to preferred name 'teething' |
+| `ss-adv-086` | `ss_adv_086` | `slang_swap` | `common_misattribution` | `urgent` | basically a cat scratch, two deep little holes | cat scratch | `none` | — | — |
+| `ss-adv-087` | `ss_adv_087` | `slang_swap` | `common_misattribution` | `urgent` | just a blister from my new boots on my left heel | blister from new boots | `none` | — | — |
+| `ss-adv-088` | `ss_adv_088` | `slang_only` | `common_misattribution` | `urgent` | my puffer | puffer | `none` | — | — |
+| `ss-adv-089` | `ss_adv_088` | `slang_plus_minimizing` | `common_misattribution` | `urgent` | my puffer | puffer | `none` | — | — |
+| `ss-adv-090` | `ss_adv_090` | `slang_swap` | `common_misattribution` | `routine` | my muscles have been sore all over and weak | grapefruit and statin | `none` | — | — |
+| `ss-adv-091` | `ss_adv_091` | `slang_swap` | `common_misattribution` | `routine` | a herbal tea | herbal tea and blood thinner | `none` | — | — |
+| `ss-adv-092` | `ss_adv_092` | `slang_swap` | `common_misattribution` | `routine` | just stress sweats at night | just stress sweats | `none` | — | — |
+| `ss-adv-093` | `ss_adv_093` | `slang_swap` | `common_misattribution` | `routine` | my right hand has been shaking when its resting and im walking slower with little steps, figure its just getting older | just getting older | `none` | — | — |
+| `ss-adv-094` | `ss_adv_094` | `slang_swap` | `common_misattribution` | `routine` | just sinus pressure, stuffed up only on my left side | just sinus pressure | `none` | — | — |
+| `ss-adv-095` | `ss_adv_095` | `slang_swap` | `common_misattribution` | `routine` | some leftover amoxicillin from a while ago | leftover antibiotics | `none` | — | — |
+| `ss-adv-096` | `ss_adv_096` | `slang_swap` | `common_misattribution` | `self_care` | some acid reflux | heartburn | `chv` | C0018834 | CHV term 'heartburn' maps to preferred name 'heartburn' |
+| `ss-adv-097` | `ss_adv_097` | `slang_swap` | `common_misattribution` | `self_care` | razor burn on my neck, mild redness and stinging | razor burn | `none` | — | — |
+| `ss-adv-098` | `ss_adv_098` | `slang_swap` | `common_misattribution` | `self_care` | what looks like a mosquito bite | bite | `chv` | C0005658 | CHV term 'bite' maps to preferred name 'bites' |
+| `ss-adv-099` | `ss_adv_099` | `slang_only` | `common_misattribution` | `self_care` | just dry winter skin, my forearms have been mildly itchy | dry winter skin | `none` | — | — |
+| `ss-adv-100` | `ss_adv_099` | `slang_plus_chat_style` | `common_misattribution` | `self_care` | dry winter skin prob lol, forearms mildly itchy | dry winter skin | `none` | — | — |

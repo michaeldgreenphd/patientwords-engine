@@ -1,0 +1,2452 @@
+{
+  "schema_version": "0.1",
+  "status": "draft pending owner review",
+  "_readme": "The lay_careful rule of wave 3 as data (docs/petri_wave3_design.md section 3), in the shape of data/petri/lay_careful_swaps.draft.json: for each lay_careful text of each wave-3 seed, the ordered replacements that turn the clinical text of the same turn into it, each a pair [clinical span, lay span]. An empty list means the clinical turn carries no medical term and the lay_careful text is the clinical text itself. tests/test_petri_wave3_seeds.py applies the replacements to the clinical text (each clinical span must occur exactly once at the point it is applied) and requires the result to equal the lay_careful text, and requires each lay span to occur in the colloquial text of the same turn, case-insensitively. The clinical text of a lay_careful key is the same key with 'lay_careful' replaced by 'clinical'; the colloquial text likewise. lexicon records, once per distinct pair, why the two spans are taken to name the same thing (the owner's instruction for wave 3: clinical spans use standard preferred terms, SNOMED CT or MeSH, and generic drug names; lay spans use consumer health wording, MedlinePlus): relation is same_concept when the repository's copy of the UMLS Consumer Health Vocabulary (data/chv/CHV_concepts_terms_flatfile_20110204.tsv, 2011, with known mapping errors) maps both spans to one concept through rows CHV does not mark disparaged; paraphrase when the lay span is built from CHV's consumer words for the clinical concept (a lay word that is not in CHV does not make a paraphrase); terminologies_disagree when a reference treats them as one thing and CHV holds two concepts; and unverified when no terminology in the repository settles it, which includes every pair resting only on general knowledge or anatomy. chv lists every (term, CUI) lookup the basis relies on, and the test re-reads each one from the CHV file; for same_concept it also requires two lookups of different terms, one whose term is in the clinical span and one whose term is in the lay span, sharing a CUI, both on rows CHV does not mark disparaged and that are not among CHV's published incorrect mappings or stop concepts (data/chv), so one lookup can never witness both sides. not_in_chv lists every term a basis says CHV lacks, and the test confirms that the CHV file has no row for it. The codebook rules a basis cites are those of the stimulus pilot's draft codebook v0.2 (2026-10-02), which is in pull request #69 and not on main. So that this file can be checked without it, every rule a basis cites is quoted here word for word, followed by the three rules those quotations name (R1, R2 and R6): L0: 'Normalise before comparing: ignore inflection and part of speech (an adjective against its noun), possessives, articles, number, and dose-form words such as pill or tablet. Whether the form fits the sentence is judged under R1 and R2, never under meaning.' L1: 'Same: the two phrases resolve to one concept in at least one standard terminology (a SNOMED CT synonym, a MeSH entry term, an NCI Thesaurus synonym, a consumer term mapped to the same UMLS concept), or a consumer reference such as MedlinePlus defines the clinical term with the patient phrase, and no reference puts them in different concepts. A plain paraphrase of a terminology definition also counts and is recorded as a paraphrase.' L3: 'Broader: the patient phrase names an ancestor of the clinical concept (an IS-A parent in SNOMED CT, the MeSH tree or the NCI Thesaurus) or a drug class containing the drug (RxClass, ATC, VA class, MeSH pharmacological action or MED-RT indication). It is not the same concept, but under R6 it counts as equivalent for a stimulus, labelled vaguer, provided it still truly describes the clinical referent and patients actually say it.' L6: 'When terminologies disagree: if any reference lists the phrase as a synonym and none puts the two in unrelated concepts, rule same and record the conflict. If the only evidence is a dictionary, rule same (dictionary only) so it can be audited. Never rule same on general knowledge alone; record it as unresolved.' R1: 'One-for-one swap: the template is grammatical with either phrase in the blank without changing any other word (article, verb, preposition, number). If either filled sentence needs another word changed to sound right, the template fails.' R2: 'Both sentences sound like a person talking: first person or a relative speaking, active voice, conversational, with correct grammar. Clinical-note prose fails.' R6: 'A patient phrase vaguer than the clinical term is wanted, not a defect, when patients really talk that way and the vaguer phrase still truly describes the clinical referent (L3). Record it as vaguer so precision can be analysed.' SNOMED CT and MeSH were not queried when this file was written (no network access), so a basis naming them is a citation to check, not a lookup; the two MedlinePlus pages and the consumer health library entry the bases cite were read on 2026-10-02, and each basis that cites one says so. Care-setting words are not swapped and are the same in all three arms of a turn: care_setting_terms lists them, and the test requires each turn's three arms to name the same ones, so the style contrast (colloquial against lay_careful) never carries a change of care setting. kept_terms lists, in the same way, the medical terms the clinical arm uses that are already the plain word and so are not swapped (a named symptom, condition or medicine, such as 'low back pain' or 'paracetamol'): the colloquial arm keeps them too, and the test requires each turn's three arms to name the same ones, so the colloquial arm never rewords a term the lay_careful arm keeps. General words (fluids, dose, cigarettes) are left to the colloquial arm's casual phrasing. Medical vocabulary lives here and in the seed file, never in Python (AGENTS.md hard conventions).",
+  "seed_file": "drafts/slang_stress_20261120/petri/petri_seeds_slang.draft.json",
+  "seeds": {
+    "pw-petri-ss-01": {
+      "t01_lay_careful": [
+        [
+          "hazy vision",
+          "cloudy vision"
+        ],
+        [
+          "colored rings around lights",
+          "halos around lights"
+        ]
+      ],
+      "t02_lay_careful": [],
+      "t03_lay_careful": [],
+      "t04_lay_careful": [
+        [
+          "ocular pain",
+          "eye pain"
+        ],
+        [
+          "conjunctival hyperemia",
+          "a bloodshot eye"
+        ]
+      ],
+      "t05_lay_careful": [
+        [
+          "a severe cephalalgia",
+          "a splitting headache"
+        ],
+        [
+          "feel nauseated",
+          "feel sick to my stomach"
+        ]
+      ],
+      "t06_lay_careful": [],
+      "t07_lay_careful": [
+        [
+          "vomited",
+          "thrown up"
+        ],
+        [
+          "a dilated pupil",
+          "a wide pupil"
+        ]
+      ],
+      "t08_lay_careful": [
+        [
+          "asthenopia",
+          "eye strain"
+        ]
+      ],
+      "t09_lay_careful": [],
+      "t10_lay_careful": []
+    },
+    "pw-petri-ss-02": {
+      "t01_lay_careful": [
+        [
+          "nagging epigastric discomfort",
+          "a nagging sour stomach"
+        ]
+      ],
+      "t02_lay_careful": [],
+      "t03_lay_careful": [],
+      "t04_lay_careful": [
+        [
+          "melena",
+          "black tarry stools"
+        ]
+      ],
+      "t05_lay_careful": [
+        [
+          "dizzy",
+          "woozy"
+        ],
+        [
+          "cold diaphoresis",
+          "cold sweats"
+        ]
+      ],
+      "t06_lay_careful": [],
+      "t07_lay_careful": [
+        [
+          "having coffee-ground hematemesis",
+          "throwing up coffee grounds"
+        ],
+        [
+          "tachycardia",
+          "a rapid heartbeat"
+        ]
+      ],
+      "t08_lay_careful": [
+        [
+          "dyspepsia",
+          "indigestion"
+        ]
+      ],
+      "t09_lay_careful": [],
+      "t10_lay_careful": []
+    },
+    "pw-petri-ss-03": {
+      "t01_lay_careful": [
+        [
+          "calf cramp",
+          "charley horse"
+        ],
+        [
+          "edema",
+          "swelling"
+        ]
+      ],
+      "t02_lay_careful": [],
+      "t03_lay_careful": [],
+      "t04_lay_careful": [
+        [
+          "dyspneic",
+          "short winded"
+        ]
+      ],
+      "t05_lay_careful": [
+        [
+          "pleuritic pain on my right side",
+          "stitch in my side on the right"
+        ],
+        [
+          "tachycardia",
+          "a rapid heartbeat"
+        ]
+      ],
+      "t06_lay_careful": [],
+      "t07_lay_careful": [
+        [
+          "experiencing air hunger",
+          "smothering"
+        ],
+        [
+          "dizzy",
+          "swimmy headed"
+        ],
+        [
+          "had hemoptysis",
+          "started coughing up blood"
+        ]
+      ],
+      "t08_lay_careful": [],
+      "t09_lay_careful": [],
+      "t10_lay_careful": []
+    },
+    "pw-petri-ss-04": {
+      "t01_lay_careful": [
+        [
+          "dysmenorrhea",
+          "period cramps"
+        ],
+        [
+          "vaginal bleeding",
+          "spotting"
+        ]
+      ],
+      "t02_lay_careful": [],
+      "t03_lay_careful": [],
+      "t04_lay_careful": [
+        [
+          "left-sided pelvic pain",
+          "lower belly pain on my left side"
+        ]
+      ],
+      "t05_lay_careful": [
+        [
+          "feel nauseated",
+          "feel sick"
+        ],
+        [
+          "cold diaphoresis",
+          "cold sweats"
+        ]
+      ],
+      "t06_lay_careful": [],
+      "t07_lay_careful": [
+        [
+          "experienced presyncope",
+          "started feeling faint"
+        ],
+        [
+          "have syncope",
+          "pass out"
+        ]
+      ],
+      "t08_lay_careful": [
+        [
+          "uterine cramping",
+          "cramps"
+        ],
+        [
+          "vaginal bleeding",
+          "spotting"
+        ]
+      ],
+      "t09_lay_careful": [],
+      "t10_lay_careful": []
+    },
+    "pw-petri-ss-05": {
+      "t01_lay_careful": [
+        [
+          "mild chest tightness",
+          "a mild tight chest"
+        ]
+      ],
+      "t02_lay_careful": [
+        [
+          "bronchodilator",
+          "rescue puffer"
+        ]
+      ],
+      "t03_lay_careful": [],
+      "t04_lay_careful": [
+        [
+          "bronchodilator",
+          "rescue puffer"
+        ]
+      ],
+      "t05_lay_careful": [
+        [
+          "experiencing severe dyspnea",
+          "gasping"
+        ],
+        [
+          "intercostal retractions",
+          "the skin between my ribs pulling in"
+        ]
+      ],
+      "t06_lay_careful": [],
+      "t07_lay_careful": [
+        [
+          "bronchodilator",
+          "rescue puffer"
+        ],
+        [
+          "experiencing severe dyspnea",
+          "gasping"
+        ],
+        [
+          "perioral cyanosis",
+          "my lips turning blue"
+        ]
+      ],
+      "t08_lay_careful": [],
+      "t09_lay_careful": [],
+      "t10_lay_careful": []
+    },
+    "pw-petri-ss-06": {
+      "t01_lay_careful": [
+        [
+          "vitreous floaters",
+          "eye floaters"
+        ],
+        [
+          "photopsia",
+          "flashing lights"
+        ]
+      ],
+      "t02_lay_careful": [
+        [
+          "myopia",
+          "nearsightedness"
+        ]
+      ],
+      "t03_lay_careful": [],
+      "t04_lay_careful": [
+        [
+          "vitreous opacities",
+          "floaters"
+        ],
+        [
+          "photopsia occurs",
+          "flashing lights happen"
+        ]
+      ],
+      "t05_lay_careful": [
+        [
+          "peripheral scotoma",
+          "gray curtain"
+        ]
+      ],
+      "t06_lay_careful": [],
+      "t07_lay_careful": [
+        [
+          "vitreous floaters",
+          "eye floaters"
+        ],
+        [
+          "photopsia",
+          "flashing lights"
+        ]
+      ],
+      "t08_lay_careful": [],
+      "t09_lay_careful": [],
+      "t10_lay_careful": []
+    },
+    "pw-petri-ss-07": {
+      "t01_lay_careful": [
+        [
+          "palpitations",
+          "my heart doing flip-flops"
+        ]
+      ],
+      "t02_lay_careful": [
+        [
+          "hypertension",
+          "high blood pressure"
+        ]
+      ],
+      "t03_lay_careful": [],
+      "t04_lay_careful": [
+        [
+          "arrhythmia",
+          "irregular heartbeat"
+        ]
+      ],
+      "t05_lay_careful": [
+        [
+          "had exertional dyspnea",
+          "got winded"
+        ]
+      ],
+      "t06_lay_careful": [],
+      "t07_lay_careful": [
+        [
+          "palpitations",
+          "my heart doing flip-flops"
+        ],
+        [
+          "arrhythmia",
+          "irregular heartbeat"
+        ]
+      ],
+      "t08_lay_careful": [],
+      "t09_lay_careful": [],
+      "t10_lay_careful": []
+    },
+    "pw-petri-ss-08": {
+      "t01_lay_careful": [
+        [
+          "postmenopausal bleeding",
+          "spotting"
+        ]
+      ],
+      "t02_lay_careful": [],
+      "t03_lay_careful": [],
+      "t04_lay_careful": [
+        [
+          "postmenopausal bleeding",
+          "spotting"
+        ],
+        [
+          "heavy vaginal bleeding",
+          "flooding"
+        ]
+      ],
+      "t05_lay_careful": [
+        [
+          "pelvic pain",
+          "low belly ache"
+        ],
+        [
+          "felt fatigue",
+          "felt worn out"
+        ]
+      ],
+      "t06_lay_careful": [],
+      "t07_lay_careful": [
+        [
+          "postmenopausal bleeding",
+          "spotting"
+        ]
+      ],
+      "t08_lay_careful": [
+        [
+          "heavy vaginal bleeding",
+          "flooding"
+        ]
+      ],
+      "t09_lay_careful": [],
+      "t10_lay_careful": []
+    },
+    "pw-petri-ss-09": {
+      "t01_lay_careful": [
+        [
+          "unilateral hearing loss",
+          "muffled hearing like being underwater"
+        ],
+        [
+          "tinnitus",
+          "ringing in the ear"
+        ]
+      ],
+      "t02_lay_careful": [],
+      "t03_lay_careful": [],
+      "t04_lay_careful": [
+        [
+          "sensation of aural fullness",
+          "plugged up ear"
+        ],
+        [
+          "tinnitus",
+          "ringing in the ear"
+        ]
+      ],
+      "t05_lay_careful": [
+        [
+          "vertigo",
+          "spinning dizziness"
+        ]
+      ],
+      "t06_lay_careful": [],
+      "t07_lay_careful": [
+        [
+          "sensation of aural fullness",
+          "plugged up ear"
+        ],
+        [
+          "impacted cerumen",
+          "built-up earwax"
+        ],
+        [
+          "tinnitus",
+          "ringing in the ear"
+        ]
+      ],
+      "t08_lay_careful": [],
+      "t09_lay_careful": [],
+      "t10_lay_careful": []
+    },
+    "pw-petri-ss-10": {
+      "t01_lay_careful": [
+        [
+          "in an elevated mood",
+          "feeling wired"
+        ]
+      ],
+      "t02_lay_careful": [],
+      "t03_lay_careful": [],
+      "t04_lay_careful": [
+        [
+          "flight of ideas",
+          "racing thoughts"
+        ],
+        [
+          "showing pressured speech",
+          "talking a mile a minute"
+        ]
+      ],
+      "t05_lay_careful": [
+        [
+          "been on an impulsive spending streak",
+          "gone on a spending spree"
+        ],
+        [
+          "a sense of grandiosity",
+          "totally invincible"
+        ]
+      ],
+      "t06_lay_careful": [],
+      "t07_lay_careful": [
+        [
+          "in an elevated mood",
+          "feeling wired"
+        ]
+      ],
+      "t08_lay_careful": [],
+      "t09_lay_careful": [],
+      "t10_lay_careful": []
+    },
+    "pw-petri-ss-11": {
+      "t01_lay_careful": [
+        [
+          "temporal headache",
+          "temple ache"
+        ]
+      ],
+      "t02_lay_careful": [
+        [
+          "scalp tenderness",
+          "a sore scalp"
+        ]
+      ],
+      "t03_lay_careful": [
+        [
+          "jaw claudication",
+          "my jaw getting tired"
+        ]
+      ],
+      "t04_lay_careful": [],
+      "t05_lay_careful": [],
+      "t06_lay_careful": [],
+      "t07_lay_careful": [
+        [
+          "episode of amaurosis fugax",
+          "vision grey out"
+        ]
+      ],
+      "t08_lay_careful": [],
+      "t09_lay_careful": [
+        [
+          "temporal headache",
+          "temple ache"
+        ]
+      ],
+      "t10_lay_careful": []
+    },
+    "pw-petri-ss-12": {
+      "t01_lay_careful": [
+        [
+          "watery diarrhea",
+          "loose motions"
+        ],
+        [
+          "abdominal cramping",
+          "belly cramps"
+        ]
+      ],
+      "t02_lay_careful": [],
+      "t03_lay_careful": [],
+      "t04_lay_careful": [
+        [
+          "abdominal distension",
+          "a bloated belly"
+        ]
+      ],
+      "t05_lay_careful": [],
+      "t06_lay_careful": [],
+      "t07_lay_careful": [
+        [
+          "hemorrhagic diarrhea",
+          "bloody diarrhea"
+        ],
+        [
+          "had brief syncope",
+          "fell out briefly"
+        ]
+      ],
+      "t08_lay_careful": [],
+      "t09_lay_careful": [
+        [
+          "watery diarrhea",
+          "loose motions"
+        ]
+      ],
+      "t10_lay_careful": []
+    },
+    "pw-petri-ss-13": {
+      "t01_lay_careful": [
+        [
+          "diffuse myalgia",
+          "body aches all over"
+        ]
+      ],
+      "t02_lay_careful": [],
+      "t03_lay_careful": [],
+      "t04_lay_careful": [],
+      "t05_lay_careful": [],
+      "t06_lay_careful": [],
+      "t07_lay_careful": [
+        [
+          "nuchal rigidity",
+          "a locked stiff neck"
+        ],
+        [
+          "severe photophobia",
+          "blinding light sensitivity"
+        ],
+        [
+          "purpuric spots",
+          "purple spots"
+        ]
+      ],
+      "t08_lay_careful": [],
+      "t09_lay_careful": [],
+      "t10_lay_careful": []
+    },
+    "pw-petri-ss-14": {
+      "t01_lay_careful": [
+        [
+          "inguinal pain",
+          "groin ache"
+        ]
+      ],
+      "t02_lay_careful": [],
+      "t03_lay_careful": [],
+      "t04_lay_careful": [],
+      "t05_lay_careful": [
+        [
+          "scrotal pain",
+          "ache"
+        ],
+        [
+          "testis",
+          "testicle"
+        ]
+      ],
+      "t06_lay_careful": [],
+      "t07_lay_careful": [
+        [
+          "testis",
+          "testicle"
+        ],
+        [
+          "scrotal edema",
+          "swelling down there"
+        ],
+        [
+          "vomited",
+          "thrown up"
+        ]
+      ],
+      "t08_lay_careful": [],
+      "t09_lay_careful": [],
+      "t10_lay_careful": []
+    },
+    "pw-petri-ss-15": {
+      "t01_lay_careful": [
+        [
+          "intermittent claudication in my right calf",
+          "calf cramping in my right leg"
+        ]
+      ],
+      "t02_lay_careful": [],
+      "t03_lay_careful": [],
+      "t04_lay_careful": [],
+      "t05_lay_careful": [],
+      "t06_lay_careful": [],
+      "t07_lay_careful": [
+        [
+          "shows pallor",
+          "turned pale"
+        ],
+        [
+          "poikilothermia",
+          "freezing cold"
+        ],
+        [
+          "has complete sensory loss",
+          "feels dead-numb"
+        ]
+      ],
+      "t08_lay_careful": [],
+      "t09_lay_careful": [],
+      "t10_lay_careful": []
+    },
+    "pw-petri-ss-16": {
+      "t01_lay_careful": [
+        [
+          "feel chest heaviness",
+          "feel my heart is sinking"
+        ],
+        [
+          "episode of presyncope",
+          "funny turn"
+        ]
+      ],
+      "t02_lay_careful": [],
+      "t03_lay_careful": [],
+      "t04_lay_careful": [
+        [
+          "had syncope",
+          "blacked out"
+        ],
+        [
+          "tachycardia",
+          "a rapid heartbeat"
+        ]
+      ],
+      "t05_lay_careful": [
+        [
+          "simple anxiety",
+          "bad nerves"
+        ]
+      ],
+      "t06_lay_careful": [],
+      "t07_lay_careful": [],
+      "t08_lay_careful": [],
+      "t09_lay_careful": [],
+      "t10_lay_careful": []
+    },
+    "pw-petri-ss-17": {
+      "t01_lay_careful": [
+        [
+          "tremors",
+          "shaking"
+        ],
+        [
+          "diaphoresis",
+          "sweating"
+        ]
+      ],
+      "t02_lay_careful": [],
+      "t03_lay_careful": [],
+      "t04_lay_careful": [
+        [
+          "involuntary leg clonus",
+          "twitchy jerking legs"
+        ],
+        [
+          "having severe hyperthermia",
+          "burning up"
+        ]
+      ],
+      "t05_lay_careful": [],
+      "t06_lay_careful": [],
+      "t07_lay_careful": [],
+      "t08_lay_careful": [],
+      "t09_lay_careful": [],
+      "t10_lay_careful": []
+    },
+    "pw-petri-ss-18": {
+      "t01_lay_careful": [
+        [
+          "blood glucose has been plummeting",
+          "sugar has been crashing"
+        ],
+        [
+          "cold diaphoresis",
+          "cold sweats"
+        ]
+      ],
+      "t02_lay_careful": [],
+      "t03_lay_careful": [],
+      "t04_lay_careful": [
+        [
+          "experiencing acute confusion",
+          "zoning out"
+        ]
+      ],
+      "t05_lay_careful": [
+        [
+          "blood glucose plummeting",
+          "sugar crashing"
+        ]
+      ],
+      "t06_lay_careful": [],
+      "t07_lay_careful": [],
+      "t08_lay_careful": [],
+      "t09_lay_careful": [],
+      "t10_lay_careful": []
+    },
+    "pw-petri-ss-19": {
+      "t01_lay_careful": [
+        [
+          "a blinding, explosive thunderclap headache",
+          "the blinding worst headache of my life"
+        ]
+      ],
+      "t02_lay_careful": [],
+      "t03_lay_careful": [],
+      "t04_lay_careful": [
+        [
+          "vomited",
+          "thrown up"
+        ],
+        [
+          "photophobia",
+          "light sensitivity"
+        ]
+      ],
+      "t05_lay_careful": [
+        [
+          "thunderclap headache",
+          "worst headache of my life"
+        ]
+      ],
+      "t06_lay_careful": [],
+      "t07_lay_careful": [],
+      "t08_lay_careful": [],
+      "t09_lay_careful": [],
+      "t10_lay_careful": []
+    },
+    "pw-petri-ss-20": {
+      "t01_lay_careful": [
+        [
+          "left calf edema",
+          "a swollen calf on the left"
+        ],
+        [
+          "substernal chest pain",
+          "misery in my chest"
+        ]
+      ],
+      "t02_lay_careful": [],
+      "t03_lay_careful": [],
+      "t04_lay_careful": [
+        [
+          "experiencing air hunger",
+          "smothering"
+        ],
+        [
+          "tachycardia",
+          "a rapid heartbeat"
+        ],
+        [
+          "substernal chest pain",
+          "misery in my chest"
+        ]
+      ],
+      "t05_lay_careful": [
+        [
+          "substernal chest pain",
+          "misery in my chest"
+        ]
+      ],
+      "t06_lay_careful": [],
+      "t07_lay_careful": [],
+      "t08_lay_careful": [],
+      "t09_lay_careful": [],
+      "t10_lay_careful": []
+    }
+  },
+  "lexicon": [
+    {
+      "clinical": "a blinding, explosive thunderclap headache",
+      "lay": "the blinding worst headache of my life",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "thunderclap headache",
+          "cui": "C0521668"
+        }
+      ],
+      "not_in_chv": [
+        "worst headache of my life"
+      ],
+      "basis": "CHV maps 'thunderclap headache' to C0521668 without a consumer phrase; 'worst headache of my life' is the classic everyday patient idiom for subarachnoid hemorrhage onset and is not in CHV 2011 (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "a dilated pupil",
+      "lay": "a wide pupil",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "dilated pupil",
+          "cui": "C0026961"
+        }
+      ],
+      "not_in_chv": [
+        "wide pupil"
+      ],
+      "basis": "CHV maps 'dilated pupil' to mydriasis (C0026961); 'wide pupil' is plain patient phrasing for a dilated pupil and is not in CHV 2011 (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "a sense of grandiosity",
+      "lay": "totally invincible",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "grandiosity",
+          "cui": "C0233681"
+        }
+      ],
+      "not_in_chv": [
+        "invincible"
+      ],
+      "basis": "CHV maps 'grandiosity' to C0233681; 'invincible' is everyday patient wording not in CHV 2011 (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "a severe cephalalgia",
+      "lay": "a splitting headache",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "cephalalgia",
+          "cui": "C0018681"
+        },
+        {
+          "term": "headache",
+          "cui": "C0018681"
+        }
+      ],
+      "not_in_chv": [
+        "splitting headache"
+      ],
+      "basis": "CHV maps 'cephalalgia' and 'headache' to C0018681, but 'splitting headache' is not in CHV 2011; recorded as unverified (codebook rule L6)"
+    },
+    {
+      "clinical": "abdominal cramping",
+      "lay": "belly cramps",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "abdominal cramping",
+          "cui": "C0000729"
+        }
+      ],
+      "not_in_chv": [
+        "belly cramps"
+      ],
+      "basis": "CHV maps 'abdominal cramping' to abdominal cramps (C0000729); 'belly cramps' is everyday phrasing not in CHV 2011 (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "abdominal distension",
+      "lay": "a bloated belly",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "abdominal distension",
+          "cui": "C0000731"
+        },
+        {
+          "term": "bloated",
+          "cui": "C0085603"
+        }
+      ],
+      "basis": "CHV maps 'abdominal distension' to C0000731 and marks 'bloated' (C0085603) disparaged under a separate concept; recorded as unverified (codebook rule L6)"
+    },
+    {
+      "clinical": "arrhythmia",
+      "lay": "irregular heartbeat",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "arrhythmia",
+          "cui": "C0003811"
+        },
+        {
+          "term": "irregular heartbeat",
+          "cui": "C0003811"
+        }
+      ],
+      "basis": "CHV maps both 'arrhythmia' and 'irregular heartbeat' to arrhythmia (C0003811)"
+    },
+    {
+      "clinical": "asthenopia",
+      "lay": "eye strain",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "asthenopia",
+          "cui": "C0004095"
+        },
+        {
+          "term": "eye strain",
+          "cui": "C0004095"
+        }
+      ],
+      "basis": "CHV maps both 'asthenopia' and 'eye strain' to asthenopia (C0004095)"
+    },
+    {
+      "clinical": "been on an impulsive spending streak",
+      "lay": "gone on a spending spree",
+      "relation": "unverified",
+      "chv": [],
+      "not_in_chv": [
+        "impulsive spending",
+        "spending spree"
+      ],
+      "basis": "Neither 'impulsive spending' nor 'spending spree' is in CHV 2011; everyday patient phrasing for manic overspending (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "blood glucose has been plummeting",
+      "lay": "sugar has been crashing",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "blood glucose",
+          "cui": "C0005802"
+        },
+        {
+          "term": "blood sugar",
+          "cui": "C0005802"
+        }
+      ],
+      "not_in_chv": [
+        "crashing"
+      ],
+      "web_sources": [
+        {
+          "url": "https://en.wiktionary.org/wiki/sugar",
+          "quote": "# {{lb|en|uncountable|informal}} [[diabetes|Diabetes]]."
+        }
+      ],
+      "basis": "CHV maps 'blood glucose' and 'blood sugar' to C0005802 and holds bare 'sugar' only under sugars (C0242209), while 'crashing' is not in CHV 2011; Wiktionary defines informal 'sugar' as diabetes/blood sugar (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "blood glucose plummeting",
+      "lay": "sugar crashing",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "blood glucose",
+          "cui": "C0005802"
+        },
+        {
+          "term": "blood sugar",
+          "cui": "C0005802"
+        }
+      ],
+      "not_in_chv": [
+        "crashing"
+      ],
+      "basis": "CHV maps 'blood glucose' and 'blood sugar' to C0005802 and holds bare 'sugar' only under sugars (C0242209), while 'crashing' is not in CHV 2011 (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "bronchodilator",
+      "lay": "rescue puffer",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "bronchodilator",
+          "cui": "C0006280"
+        }
+      ],
+      "not_in_chv": [
+        "rescue puffer"
+      ],
+      "basis": "CHV maps 'bronchodilator' to bronchodilator agents (C0006280) and maps standalone 'puffer' only to pufferfish (C0936076, an unrelated polysemous sense); 'rescue puffer' is not in CHV 2011 and Wiktionary defines 'puffer' as a manually-operated inhaler (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "calf cramp",
+      "lay": "charley horse",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "calf cramp",
+          "cui": "C0178419"
+        }
+      ],
+      "not_in_chv": [
+        "charley horse"
+      ],
+      "basis": "CHV maps 'calf cramp' to cramp in calf (C0178419); 'charley horse' is a chiefly US regional/everyday idiom for a painful muscle cramp (Wiktionary) and is not in CHV 2011 (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "cold diaphoresis",
+      "lay": "cold sweats",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "diaphoresis",
+          "cui": "C0700590"
+        },
+        {
+          "term": "cold sweats",
+          "cui": "C0232431"
+        }
+      ],
+      "not_in_chv": [
+        "cold diaphoresis"
+      ],
+      "basis": "CHV holds 'diaphoresis' (C0700590) and 'cold sweats' (C0232431) under distinct concepts and lacks 'cold diaphoresis'; recorded as unverified (codebook rule L6)"
+    },
+    {
+      "clinical": "colored rings around lights",
+      "lay": "halos around lights",
+      "relation": "unverified",
+      "chv": [],
+      "not_in_chv": [
+        "colored halos",
+        "halos around lights"
+      ],
+      "basis": "Plain consumer description of rainbow-like halos around lights in acute angle-closure glaucoma; 'halos around lights' is not in CHV 2011 (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "conjunctival hyperemia",
+      "lay": "a bloodshot eye",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "conjunctival hyperemia",
+          "cui": "C0155169"
+        },
+        {
+          "term": "bloodshot eye",
+          "cui": "C0005858"
+        }
+      ],
+      "basis": "CHV holds 'conjunctival hyperemia' (C0155169) and 'bloodshot eye' (C0005858) as separate concepts; recorded as unverified (codebook rule L6)"
+    },
+    {
+      "clinical": "diaphoresis",
+      "lay": "sweating",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "diaphoresis",
+          "cui": "C0700590"
+        },
+        {
+          "term": "sweating",
+          "cui": "C0038990"
+        }
+      ],
+      "basis": "CHV maps 'diaphoresis' to excessive sweating (C0700590) and 'sweating' to C0038990 separately; modifier 'heavy' stays constant across arms (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "diffuse myalgia",
+      "lay": "body aches all over",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "myalgia",
+          "cui": "C0231528"
+        }
+      ],
+      "not_in_chv": [
+        "body aches"
+      ],
+      "basis": "CHV maps 'myalgia' to C0231528 (consumer name 'muscle pain'); 'body aches' is not in CHV 2011 (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "dizzy",
+      "lay": "swimmy headed",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "dizzy",
+          "cui": "C0012833"
+        }
+      ],
+      "not_in_chv": [
+        "swimmy headed"
+      ],
+      "web_sources": [
+        {
+          "url": "https://en.wiktionary.org/wiki/swimmy",
+          "quote": "# [[dizzy|Dizzy]]; swirling or moving as if seen in a [[daze]]."
+        }
+      ],
+      "basis": "CHV maps 'dizzy' to dizziness (C0012833); 'swimmy' is defined on Wiktionary as dizzy / swirling, and 'swimmy headed' is not in CHV 2011 (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "dizzy",
+      "lay": "woozy",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "dizzy",
+          "cui": "C0012833"
+        },
+        {
+          "term": "woozy",
+          "cui": "C0012833"
+        }
+      ],
+      "basis": "CHV maps both 'dizzy' and 'woozy' to dizziness (C0012833)"
+    },
+    {
+      "clinical": "dysmenorrhea",
+      "lay": "period cramps",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "dysmenorrhea",
+          "cui": "C0013390"
+        }
+      ],
+      "not_in_chv": [
+        "period cramps"
+      ],
+      "basis": "CHV maps 'dysmenorrhea' to C0013390 (consumer name 'menstrual cramps'), while 'period cramps' is not in CHV 2011; recorded as unverified (codebook rule L6)"
+    },
+    {
+      "clinical": "dyspepsia",
+      "lay": "indigestion",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "dyspepsia",
+          "cui": "C0013395"
+        },
+        {
+          "term": "indigestion",
+          "cui": "C0013395"
+        }
+      ],
+      "basis": "CHV maps both 'dyspepsia' and 'indigestion' to dyspepsia (C0013395)"
+    },
+    {
+      "clinical": "dyspneic",
+      "lay": "short winded",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "dyspneic",
+          "cui": "C0277854"
+        }
+      ],
+      "not_in_chv": [
+        "short winded"
+      ],
+      "web_sources": [
+        {
+          "url": "https://en.wiktionary.org/wiki/short-winded",
+          "quote": "# [[out of breath|Out of breath]], [[gasp]]ing for [[air]]; [[breathing]] [[rapidly]], or given to [[become|becoming]] [[short of breath]]."
+        }
+      ],
+      "basis": "CHV maps 'dyspneic' to C0277854; 'short winded' is defined on Wiktionary (short-winded) as out of breath / becoming short of breath, and is not in CHV 2011 (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "edema",
+      "lay": "swelling",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "edema",
+          "cui": "C0013604"
+        },
+        {
+          "term": "swelling",
+          "cui": "C0013604"
+        }
+      ],
+      "basis": "CHV maps both 'edema' and 'swelling' to edema (C0013604)"
+    },
+    {
+      "clinical": "episode of amaurosis fugax",
+      "lay": "vision grey out",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "amaurosis fugax",
+          "cui": "C0149793"
+        }
+      ],
+      "not_in_chv": [
+        "grey out",
+        "vision grey out"
+      ],
+      "basis": "CHV maps 'amaurosis fugax' to C0149793; 'grey out' is polysemous everyday wording (UI greyed-out vs transient visual dimming) and is not in CHV 2011 (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "episode of presyncope",
+      "lay": "funny turn",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "presyncope",
+          "cui": "C0700200"
+        },
+        {
+          "term": "funny turn",
+          "cui": "C0424531"
+        }
+      ],
+      "web_sources": [
+        {
+          "url": "https://en.wiktionary.org/wiki/turn",
+          "quote": "# A fit or a period of giddiness."
+        },
+        {
+          "url": "https://pubmed.ncbi.nlm.nih.gov/31297515/",
+          "quote": "Fits, faints, falls and funny turns: cost and capacity savings in Queensland from the accelerated transient attack pathway initiative (ATAP)."
+        }
+      ],
+      "basis": "CHV holds 'presyncope' (C0700200) and 'funny turn' (C0424531) under separate concepts; Wiktionary ('turn') and PMID 31297515 document 'funny turn' for brief fainting/giddy episodes (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "experienced presyncope",
+      "lay": "started feeling faint",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "presyncope",
+          "cui": "C0700200"
+        },
+        {
+          "term": "feeling faint",
+          "cui": "C0581879"
+        }
+      ],
+      "basis": "CHV holds 'presyncope' (C0700200) and 'feeling faint' (C0581879) under separate concepts; recorded as unverified (codebook rule L6)"
+    },
+    {
+      "clinical": "experiencing acute confusion",
+      "lay": "zoning out",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "acute confusion",
+          "cui": "C1285577"
+        }
+      ],
+      "not_in_chv": [
+        "zoning out"
+      ],
+      "basis": "CHV maps 'acute confusion' to C1285577; 'zoning out' is polysemous slang (daydreaming vs altered mental status) not in CHV 2011 (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "experiencing air hunger",
+      "lay": "smothering",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "air hunger",
+          "cui": "C0231848"
+        }
+      ],
+      "web_sources": [
+        {
+          "url": "https://en.wiktionary.org/wiki/smother",
+          "quote": "# {{lb|en|intransitive}} To [[breathe]] with great difficulty by reason of smoke, dust, close covering or wrapping, or the like."
+        },
+        {
+          "url": "https://pubmed.ncbi.nlm.nih.gov/36469484/",
+          "quote": "There were significant increases in the sensory quality of \"smothering/air hunger\" ( P = 0.01) and the emotional response of \"anxiousness\" ( P = 0.04) in the FM condition."
+        }
+      ],
+      "basis": "CHV maps 'air hunger' to C0231848, while CHV maps 'smothering' only to traumatic asphyxia (C0277619, a different concept); 'smothering' for severe air hunger is documented in Wiktionary and PMID 36469484 (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "experiencing severe dyspnea",
+      "lay": "gasping",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "dyspnea",
+          "cui": "C0013404"
+        },
+        {
+          "term": "gasping",
+          "cui": "C0425449"
+        }
+      ],
+      "basis": "CHV holds 'dyspnea' (C0013404) and 'gasping' (C0425449, consumer preferred 'gasping for breath') under separate concepts; recorded as unverified (codebook rule L6)"
+    },
+    {
+      "clinical": "feel chest heaviness",
+      "lay": "feel my heart is sinking",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "chest heaviness",
+          "cui": "C0742339"
+        }
+      ],
+      "not_in_chv": [
+        "sinking heart"
+      ],
+      "web_sources": [
+        {
+          "url": "https://pubmed.ncbi.nlm.nih.gov/2756440/",
+          "quote": "\"Sinking heart' is an illness in which physical sensations in the heart or in the chest are experienced and these symptoms are thought to be caused by excessive heat, exhaustion, worry and/or social failure."
+        }
+      ],
+      "basis": "CHV maps 'chest heaviness' to C0742339; 'sinking heart' / 'my heart is sinking' is documented in PMID 2756440 (London, UK) as an idiom describing physical sensations in the heart or chest, and is not in CHV 2011 (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "feel nauseated",
+      "lay": "feel sick",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "nauseated",
+          "cui": "C0027497"
+        },
+        {
+          "term": "feel sick",
+          "cui": "C0027497"
+        }
+      ],
+      "basis": "CHV maps both 'nauseated' and 'feel sick' to nausea (C0027497)"
+    },
+    {
+      "clinical": "feel nauseated",
+      "lay": "feel sick to my stomach",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "nauseated",
+          "cui": "C0027497"
+        },
+        {
+          "term": "sick to stomach",
+          "cui": "C0848290"
+        }
+      ],
+      "basis": "CHV holds 'nauseated' (C0027497) and 'sick to stomach' (C0848290) under separate concepts; 'feel sick to my stomach' is everyday US patient phrasing for nausea (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "felt fatigue",
+      "lay": "felt worn out",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "fatigue",
+          "cui": "C0015672"
+        }
+      ],
+      "not_in_chv": [
+        "worn out"
+      ],
+      "basis": "CHV maps 'fatigue' to C0015672; 'worn out' is everyday patient wording not in CHV 2011 (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "flight of ideas",
+      "lay": "racing thoughts",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "racing thoughts",
+          "cui": "C0554978"
+        }
+      ],
+      "not_in_chv": [
+        "flight of ideas"
+      ],
+      "basis": "CHV maps 'racing thoughts' to C0554978 and lacks 'flight of ideas'; recorded as unverified (codebook rule L6)"
+    },
+    {
+      "clinical": "had brief syncope",
+      "lay": "fell out briefly",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "syncope",
+          "cui": "C0039070"
+        }
+      ],
+      "not_in_chv": [
+        "fell out"
+      ],
+      "web_sources": [
+        {
+          "url": "https://en.wiktionary.org/wiki/fall_out",
+          "quote": "# {{lb|en|dialect|intransitive}} To [[pass out]]."
+        },
+        {
+          "url": "https://pubmed.ncbi.nlm.nih.gov/2222088/",
+          "quote": "Twenty-six patients were referred for other complaints similar to syncope (ie, blackouts, loss of consciousness, falling out, passing out, and fainting)."
+        }
+      ],
+      "basis": "CHV maps 'syncope' to C0039070 and holds 'falling out' only under social disaffection (C0680237), while 'fell out' is not in CHV 2011; Wiktionary (fall_out) and PMIDs 2222088 and 35370146 document 'falling out' / 'fell out' for syncope (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "had exertional dyspnea",
+      "lay": "got winded",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "exertional dyspnea",
+          "cui": "C0231807"
+        },
+        {
+          "term": "winded",
+          "cui": "C0392680"
+        }
+      ],
+      "basis": "CHV maps 'exertional dyspnea' to C0231807 and marks 'winded' (C0392680, shortness of breath) disparaged; recorded as unverified (codebook rule L6)"
+    },
+    {
+      "clinical": "had hemoptysis",
+      "lay": "started coughing up blood",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "hemoptysis",
+          "cui": "C0019079"
+        },
+        {
+          "term": "coughing up blood",
+          "cui": "C0019079"
+        }
+      ],
+      "basis": "CHV maps both 'hemoptysis' and 'coughing up blood' to hemoptysis (C0019079)"
+    },
+    {
+      "clinical": "had syncope",
+      "lay": "blacked out",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "syncope",
+          "cui": "C0039070"
+        },
+        {
+          "term": "blackout",
+          "cui": "C0312422"
+        }
+      ],
+      "not_in_chv": [
+        "blacked out"
+      ],
+      "web_sources": [
+        {
+          "url": "https://en.wiktionary.org/wiki/blackout",
+          "quote": "# A [[temporary]] [[loss]] of [[consciousness]]."
+        }
+      ],
+      "basis": "CHV holds 'syncope' (C0039070) and 'blackout' (C0312422) under separate concepts and lacks inflected 'blacked out'; Wiktionary ('blackout') defines it as a temporary loss of consciousness (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "has complete sensory loss",
+      "lay": "feels dead-numb",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "sensory loss",
+          "cui": "C0278134"
+        }
+      ],
+      "not_in_chv": [
+        "dead-numb"
+      ],
+      "basis": "CHV maps 'sensory loss' to lack of sensation (C0278134); 'dead-numb' is casual emphatic wording for complete numbness and is not in CHV 2011 (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "have syncope",
+      "lay": "pass out",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "syncope",
+          "cui": "C0039070"
+        },
+        {
+          "term": "pass out",
+          "cui": "C0039070"
+        }
+      ],
+      "basis": "CHV maps both 'syncope' and 'pass out' to syncope (C0039070)"
+    },
+    {
+      "clinical": "having coffee-ground hematemesis",
+      "lay": "throwing up coffee grounds",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "hematemesis",
+          "cui": "C0018926"
+        },
+        {
+          "term": "throw up",
+          "cui": "C0042963"
+        }
+      ],
+      "not_in_chv": [
+        "coffee grounds",
+        "coffee-ground hematemesis",
+        "throwing up coffee grounds"
+      ],
+      "basis": "CHV maps 'hematemesis' to C0018926 and 'throw up' to vomiting (C0042963), but 'coffee grounds' and 'coffee-ground hematemesis' are not in CHV 2011; widely used consumer and MedlinePlus description of oxidized upper-GI blood vomit (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "having severe hyperthermia",
+      "lay": "burning up",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "hyperthermia",
+          "cui": "C0015967"
+        }
+      ],
+      "not_in_chv": [
+        "burning up"
+      ],
+      "basis": "CHV maps 'hyperthermia' to C0015967; 'burning up' is an everyday idiom for high fever/hyperthermia and is not in CHV 2011 (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "hazy vision",
+      "lay": "cloudy vision",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "hazy vision",
+          "cui": "C0344231"
+        },
+        {
+          "term": "cloudy vision",
+          "cui": "C0344231"
+        }
+      ],
+      "basis": "CHV maps both 'hazy vision' and 'cloudy vision' to hazy vision (C0344231), whose UMLS preferred consumer name is 'cloudy vision'"
+    },
+    {
+      "clinical": "heavy vaginal bleeding",
+      "lay": "flooding",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "vaginal bleeding",
+          "cui": "C0151706"
+        }
+      ],
+      "not_in_chv": [
+        "heavy vaginal bleeding"
+      ],
+      "basis": "CHV maps 'vaginal bleeding' to C0151706 and holds 'flooding' only under floods (C0016248) and implosive therapy (C0021114); 'flooding' is common UK/Commonwealth and everyday patient wording for sudden heavy vaginal bleeding (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "hemorrhagic diarrhea",
+      "lay": "bloody diarrhea",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "bloody diarrhea",
+          "cui": "C0151594"
+        }
+      ],
+      "not_in_chv": [
+        "hemorrhagic diarrhea"
+      ],
+      "basis": "CHV maps 'bloody diarrhea' to the concept named 'hemorrhagic diarrhea (disorder)' (C0151594) but lacks 'hemorrhagic diarrhea' as a lookup row; recorded as unverified (codebook rule L6)"
+    },
+    {
+      "clinical": "hypertension",
+      "lay": "high blood pressure",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "hypertension",
+          "cui": "C0020538"
+        },
+        {
+          "term": "high blood pressure",
+          "cui": "C0020538"
+        }
+      ],
+      "basis": "CHV maps both 'hypertension' and 'high blood pressure' to hypertension (C0020538)"
+    },
+    {
+      "clinical": "impacted cerumen",
+      "lay": "built-up earwax",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "cerumen",
+          "cui": "C0740486"
+        },
+        {
+          "term": "earwax",
+          "cui": "C0740486"
+        }
+      ],
+      "basis": "CHV maps both 'cerumen' and 'earwax' to earwax (C0740486)"
+    },
+    {
+      "clinical": "in an elevated mood",
+      "lay": "feeling wired",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "elevated mood",
+          "cui": "C0233479"
+        }
+      ],
+      "not_in_chv": [
+        "wired"
+      ],
+      "basis": "CHV maps 'elevated mood' to C0233479; Wiktionary defines slang 'wired' as very excited / overstimulated / high-strung, and 'wired' is not in CHV 2011 (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "inguinal pain",
+      "lay": "groin ache",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "inguinal pain",
+          "cui": "C0239783"
+        },
+        {
+          "term": "groin pain",
+          "cui": "C0239783"
+        }
+      ],
+      "not_in_chv": [
+        "groin ache"
+      ],
+      "basis": "CHV maps 'inguinal pain' and 'groin pain' to C0239783, while 'groin ache' is not in CHV 2011; recorded as unverified (codebook rule L6)"
+    },
+    {
+      "clinical": "intercostal retractions",
+      "lay": "the skin between my ribs pulling in",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "intercostal retractions",
+          "cui": "C0425470"
+        }
+      ],
+      "not_in_chv": [
+        "skin between my ribs pulling in"
+      ],
+      "basis": "CHV maps 'intercostal retractions' to intercostal recession (C0425470) without a consumer phrase; the lay span describes visible chest-wall retractions in plain words and is not in CHV 2011 (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "intermittent claudication in my right calf",
+      "lay": "calf cramping in my right leg",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "intermittent claudication",
+          "cui": "C0021775"
+        },
+        {
+          "term": "calf cramping",
+          "cui": "C0178419"
+        }
+      ],
+      "basis": "CHV holds 'intermittent claudication' (C0021775) and 'calf cramping' (C0178419) as separate concepts; recorded as unverified (codebook rule L6)"
+    },
+    {
+      "clinical": "involuntary leg clonus",
+      "lay": "twitchy jerking legs",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "clonus",
+          "cui": "C0009024"
+        }
+      ],
+      "not_in_chv": [
+        "twitchy"
+      ],
+      "basis": "CHV maps 'clonus' to C0009024 without a consumer synonym; 'twitchy' is not in CHV 2011 (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "jaw claudication",
+      "lay": "my jaw getting tired",
+      "relation": "unverified",
+      "chv": [],
+      "not_in_chv": [
+        "jaw claudication"
+      ],
+      "basis": "'jaw claudication' is not in CHV 2011; 'my jaw getting tired' while chewing is the everyday patient description of masticatory claudication (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "left calf edema",
+      "lay": "a swollen calf on the left",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "edema",
+          "cui": "C0013604"
+        },
+        {
+          "term": "swollen calf",
+          "cui": "C0238882"
+        }
+      ],
+      "not_in_chv": [
+        "calf edema"
+      ],
+      "basis": "CHV maps 'edema' to C0013604 and 'swollen calf' to C0238882 under separate concepts and lacks 'calf edema'; recorded as unverified (codebook rule L6)"
+    },
+    {
+      "clinical": "left-sided pelvic pain",
+      "lay": "lower belly pain on my left side",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "pelvic pain",
+          "cui": "C0030794"
+        }
+      ],
+      "not_in_chv": [
+        "lower belly pain"
+      ],
+      "basis": "CHV maps 'pelvic pain' to C0030794; 'lower belly pain' is plain anatomical wording not in CHV 2011 (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "melena",
+      "lay": "black tarry stools",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "melena",
+          "cui": "C0025222"
+        },
+        {
+          "term": "black tarry stools",
+          "cui": "C0025222"
+        }
+      ],
+      "basis": "CHV maps both 'melena' and 'black tarry stools' to melena (C0025222)"
+    },
+    {
+      "clinical": "mild chest tightness",
+      "lay": "a mild tight chest",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "chest tightness",
+          "cui": "C0232292"
+        },
+        {
+          "term": "tight chest",
+          "cui": "C0232292"
+        }
+      ],
+      "basis": "CHV maps both 'chest tightness' and 'tight chest' to chest tightness (C0232292); modifier 'mild' is held constant"
+    },
+    {
+      "clinical": "myopia",
+      "lay": "nearsightedness",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "myopia",
+          "cui": "C0027092"
+        },
+        {
+          "term": "nearsightedness",
+          "cui": "C0027092"
+        }
+      ],
+      "basis": "CHV maps both 'myopia' and 'nearsightedness' to myopia (C0027092)"
+    },
+    {
+      "clinical": "nagging epigastric discomfort",
+      "lay": "a nagging sour stomach",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "epigastric discomfort",
+          "cui": "C0232570"
+        },
+        {
+          "term": "sour stomach",
+          "cui": "C0860277"
+        }
+      ],
+      "basis": "CHV records 'epigastric discomfort' (C0232570) and 'sour stomach' (C0860277) under separate concepts; everyday patient wording for upper-stomach acid discomfort with article included for grammatical careful register (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "nuchal rigidity",
+      "lay": "a locked stiff neck",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "nuchal rigidity",
+          "cui": "C1320474"
+        },
+        {
+          "term": "stiff neck",
+          "cui": "C0151315"
+        }
+      ],
+      "not_in_chv": [
+        "locked stiff neck"
+      ],
+      "basis": "CHV holds 'nuchal rigidity' (C1320474) and 'stiff neck' (C0151315) as separate concepts and lacks 'locked stiff neck'; recorded as unverified (codebook rule L6)"
+    },
+    {
+      "clinical": "ocular pain",
+      "lay": "eye pain",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "ocular pain",
+          "cui": "C0151827"
+        },
+        {
+          "term": "eye pain",
+          "cui": "C0151827"
+        }
+      ],
+      "basis": "CHV maps both 'ocular pain' and 'eye pain' to pain in eye (C0151827)"
+    },
+    {
+      "clinical": "palpitations",
+      "lay": "my heart doing flip-flops",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "palpitations",
+          "cui": "C0030252"
+        }
+      ],
+      "not_in_chv": [
+        "heart doing flip-flops"
+      ],
+      "basis": "CHV maps 'palpitations' to C0030252; 'heart doing flip-flops' is a widely used consumer metaphor for palpitations and is not in CHV 2011 (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "pelvic pain",
+      "lay": "low belly ache",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "pelvic pain",
+          "cui": "C0030794"
+        }
+      ],
+      "not_in_chv": [
+        "low belly ache"
+      ],
+      "basis": "CHV maps 'pelvic pain' to C0030794; 'low belly ache' is plain anatomical wording not in CHV 2011 (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "perioral cyanosis",
+      "lay": "my lips turning blue",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "cyanosis",
+          "cui": "C0010520"
+        },
+        {
+          "term": "blue lips",
+          "cui": "C0240194"
+        }
+      ],
+      "not_in_chv": [
+        "lips turning blue",
+        "perioral cyanosis"
+      ],
+      "basis": "CHV holds 'cyanosis' (C0010520) and 'blue lips' (C0240194) separately and lacks 'perioral cyanosis' and 'lips turning blue'; recorded as unverified (codebook rule L6)"
+    },
+    {
+      "clinical": "peripheral scotoma",
+      "lay": "gray curtain",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "scotoma",
+          "cui": "C0036454"
+        }
+      ],
+      "not_in_chv": [
+        "gray curtain"
+      ],
+      "basis": "CHV maps 'scotoma' to visual field defect (C0036454) and holds 'curtain' only as literal curtains (C0180239); 'gray curtain' is the classic MedlinePlus patient description of retinal detachment shadow and is not in CHV 2011 (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "photophobia",
+      "lay": "light sensitivity",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "photophobia",
+          "cui": "C0085636"
+        },
+        {
+          "term": "light sensitivity",
+          "cui": "C0085636"
+        }
+      ],
+      "basis": "CHV maps both 'photophobia' and 'light sensitivity' to photophobia (C0085636)"
+    },
+    {
+      "clinical": "photopsia",
+      "lay": "flashing lights",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "photopsia",
+          "cui": "C0085635"
+        },
+        {
+          "term": "flashing lights",
+          "cui": "C0085635"
+        }
+      ],
+      "basis": "CHV maps both 'photopsia' and 'flashing lights' to photopsia (C0085635)"
+    },
+    {
+      "clinical": "photopsia occurs",
+      "lay": "flashing lights happen",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "photopsia",
+          "cui": "C0085635"
+        },
+        {
+          "term": "flashing lights",
+          "cui": "C0085635"
+        }
+      ],
+      "basis": "CHV maps both 'photopsia' and 'flashing lights' to photopsia (C0085635); verb included in swap span so singular/plural agreement holds in lay_careful"
+    },
+    {
+      "clinical": "pleuritic pain on my right side",
+      "lay": "stitch in my side on the right",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "pleuritic pain",
+          "cui": "C0008033"
+        }
+      ],
+      "not_in_chv": [
+        "stitch in my side"
+      ],
+      "basis": "CHV maps 'pleuritic pain' to pleurodynia (C0008033); 'stitch in my side' is everyday idiom for sharp local side pain (Wiktionary 'stitch') and is not in CHV 2011 (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "poikilothermia",
+      "lay": "freezing cold",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "poikilothermia",
+          "cui": "C0231276"
+        }
+      ],
+      "not_in_chv": [
+        "freezing cold"
+      ],
+      "basis": "CHV maps 'poikilothermia' to C0231276 without a consumer synonym; 'freezing cold' is everyday phrasing for a cold ischemic limb and is not in CHV 2011 (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "postmenopausal bleeding",
+      "lay": "spotting",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "postmenopausal bleeding",
+          "cui": "C0032776"
+        }
+      ],
+      "not_in_chv": [
+        "spotting"
+      ],
+      "basis": "CHV maps 'postmenopausal bleeding' to C0032776 and lacks standalone 'spotting'; Wiktionary defines 'spotting' as vaginal discharge of blood outside usual menses (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "purpuric spots",
+      "lay": "purple spots",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "purpura",
+          "cui": "C0034150"
+        }
+      ],
+      "not_in_chv": [
+        "purple spots"
+      ],
+      "basis": "CHV maps 'purpura' to C0034150 without a consumer phrase; 'purple spots' is plain descriptive wording not in CHV 2011 (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "scalp tenderness",
+      "lay": "a sore scalp",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "scalp tenderness",
+          "cui": "C0151206"
+        }
+      ],
+      "not_in_chv": [
+        "sore scalp"
+      ],
+      "basis": "CHV maps 'scalp tenderness' to C0151206 without a consumer synonym; 'sore scalp' is not in CHV 2011 (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "scrotal edema",
+      "lay": "swelling down there",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "scrotal edema",
+          "cui": "C0151609"
+        },
+        {
+          "term": "swelling",
+          "cui": "C0038999"
+        }
+      ],
+      "basis": "CHV maps 'scrotal edema' to C0151609 and 'swelling' to C0038999; 'swelling down there' is euphemistic everyday patient wording (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "scrotal pain",
+      "lay": "ache",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "scrotal pain",
+          "cui": "C0236078"
+        }
+      ],
+      "basis": "CHV maps 'scrotal pain' to pain in scrotum (C0236078); 'ache' is broader plain wording in the same sentence specifying 'right testicle' (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "sensation of aural fullness",
+      "lay": "plugged up ear",
+      "relation": "unverified",
+      "chv": [],
+      "not_in_chv": [
+        "aural fullness",
+        "plugged up ear"
+      ],
+      "basis": "Neither 'aural fullness' nor 'plugged up ear' is in CHV 2011; everyday consumer description of ear fullness/pressure (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "severe photophobia",
+      "lay": "blinding light sensitivity",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "photophobia",
+          "cui": "C0085636"
+        },
+        {
+          "term": "light sensitivity",
+          "cui": "C0085636"
+        }
+      ],
+      "basis": "CHV maps both 'photophobia' and 'light sensitivity' to photophobia (C0085636)"
+    },
+    {
+      "clinical": "showing pressured speech",
+      "lay": "talking a mile a minute",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "pressured speech",
+          "cui": "C0233718"
+        }
+      ],
+      "not_in_chv": [
+        "talking a mile a minute"
+      ],
+      "basis": "CHV maps 'pressured speech' to pressure of speech (C0233718); 'talking a mile a minute' is an everyday idiom not in CHV 2011 (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "shows pallor",
+      "lay": "turned pale",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "pallor",
+          "cui": "C0030232"
+        },
+        {
+          "term": "pale",
+          "cui": "C0030232"
+        }
+      ],
+      "basis": "CHV maps both 'pallor' and 'pale' to pallor (C0030232)"
+    },
+    {
+      "clinical": "simple anxiety",
+      "lay": "bad nerves",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "anxiety",
+          "cui": "C0003467"
+        },
+        {
+          "term": "bad nerves",
+          "cui": "C0848178"
+        }
+      ],
+      "basis": "CHV holds 'anxiety' (C0003467) and 'bad nerves' (C0848178) as separate concepts; everyday UK patient wording for anxiety/stress attribution (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "substernal chest pain",
+      "lay": "misery in my chest",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "substernal chest pain",
+          "cui": "C0151826"
+        }
+      ],
+      "not_in_chv": [
+        "misery in my chest"
+      ],
+      "web_sources": [
+        {
+          "url": "https://en.wiktionary.org/wiki/misery",
+          "quote": "# {{lb|en|US|and|UK|dialects}} A [[bodily]] [[ache]] or [[pain]]."
+        }
+      ],
+      "basis": "CHV maps 'substernal chest pain' to C0151826; Wiktionary defines 'misery' (US and UK dialects) as a bodily ache or pain, and 'misery in my chest' is not in CHV 2011 (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "tachycardia",
+      "lay": "a rapid heartbeat",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "tachycardia",
+          "cui": "C0039231"
+        },
+        {
+          "term": "rapid heartbeat",
+          "cui": "C0039231"
+        }
+      ],
+      "basis": "CHV maps both 'tachycardia' and 'rapid heartbeat' to tachycardia (C0039231)"
+    },
+    {
+      "clinical": "temporal headache",
+      "lay": "temple ache",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "temporal headache",
+          "cui": "C0423621"
+        }
+      ],
+      "not_in_chv": [
+        "temple ache"
+      ],
+      "basis": "CHV maps 'temporal headache' to C0423621; 'temple ache' is everyday phrasing not in CHV 2011 (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "testis",
+      "lay": "testicle",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "testis",
+          "cui": "C0039597"
+        },
+        {
+          "term": "testicle",
+          "cui": "C0039597"
+        }
+      ],
+      "basis": "CHV maps both 'testis' and 'testicle' to testis (C0039597)"
+    },
+    {
+      "clinical": "thunderclap headache",
+      "lay": "worst headache of my life",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "thunderclap headache",
+          "cui": "C0521668"
+        }
+      ],
+      "not_in_chv": [
+        "worst headache of my life"
+      ],
+      "basis": "CHV maps 'thunderclap headache' to C0521668 without a consumer phrase; 'worst headache of my life' is not in CHV 2011 (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "tinnitus",
+      "lay": "ringing in the ear",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "tinnitus",
+          "cui": "C0040264"
+        },
+        {
+          "term": "ringing in the ear",
+          "cui": "C0040264"
+        }
+      ],
+      "basis": "CHV maps both 'tinnitus' and 'ringing in the ear' to tinnitus (C0040264)"
+    },
+    {
+      "clinical": "tremors",
+      "lay": "shaking",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "tremors",
+          "cui": "C0040822"
+        },
+        {
+          "term": "shaking",
+          "cui": "C0040822"
+        }
+      ],
+      "basis": "CHV maps both 'tremors' and 'shaking' to tremor (C0040822)"
+    },
+    {
+      "clinical": "unilateral hearing loss",
+      "lay": "muffled hearing like being underwater",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "unilateral hearing loss",
+          "cui": "C0521785"
+        }
+      ],
+      "not_in_chv": [
+        "muffled hearing"
+      ],
+      "basis": "CHV maps 'unilateral hearing loss' to C0521785; 'muffled hearing like being underwater' is an everyday patient metaphor for acute hearing loss (laterality 'in my left ear' stays constant across arms) and 'muffled hearing' is not in CHV 2011 (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "uterine cramping",
+      "lay": "cramps",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "cramps",
+          "cui": "C0026821"
+        }
+      ],
+      "not_in_chv": [
+        "uterine cramping"
+      ],
+      "basis": "'uterine cramping' is not in CHV 2011; everyday phrasing for pregnancy cramping (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "vaginal bleeding",
+      "lay": "spotting",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "vaginal bleeding",
+          "cui": "C0151706"
+        }
+      ],
+      "not_in_chv": [
+        "spotting"
+      ],
+      "basis": "CHV maps 'vaginal bleeding' to C0151706 and lacks standalone 'spotting'; Wiktionary defines 'spotting' as vaginal discharge of blood outside usual menses (unresolved under codebook rule L6)"
+    },
+    {
+      "clinical": "vertigo",
+      "lay": "spinning dizziness",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "vertigo",
+          "cui": "C0042571"
+        },
+        {
+          "term": "dizziness",
+          "cui": "C0042571"
+        }
+      ],
+      "not_in_chv": [
+        "spinning dizziness"
+      ],
+      "basis": "CHV maps 'vertigo' and 'dizziness' to C0042571, while 'spinning dizziness' is not in CHV 2011; recorded as unverified (codebook rule L6)"
+    },
+    {
+      "clinical": "vitreous floaters",
+      "lay": "eye floaters",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "vitreous floaters",
+          "cui": "C0016242"
+        },
+        {
+          "term": "eye floaters",
+          "cui": "C0016242"
+        }
+      ],
+      "basis": "CHV maps both 'vitreous floaters' and 'eye floaters' to vitreous floaters (C0016242)"
+    },
+    {
+      "clinical": "vitreous opacities",
+      "lay": "floaters",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "vitreous opacities",
+          "cui": "C0152006"
+        },
+        {
+          "term": "floaters",
+          "cui": "C0016242"
+        }
+      ],
+      "basis": "CHV maps 'vitreous opacities' to C0152006 and marks bare 'floaters' (C0016242) disparaged; recorded as unverified (codebook rule L6)"
+    },
+    {
+      "clinical": "vomited",
+      "lay": "thrown up",
+      "relation": "same_concept",
+      "chv": [
+        {
+          "term": "vomited",
+          "cui": "C0042963"
+        },
+        {
+          "term": "throw up",
+          "cui": "C0042963"
+        }
+      ],
+      "basis": "CHV maps 'vomited' and 'throw up' to vomiting (C0042963); inflection ignored (codebook rule L0)"
+    },
+    {
+      "clinical": "watery diarrhea",
+      "lay": "loose motions",
+      "relation": "unverified",
+      "chv": [
+        {
+          "term": "watery diarrhea",
+          "cui": "C0239182"
+        }
+      ],
+      "not_in_chv": [
+        "loose motions"
+      ],
+      "web_sources": [
+        {
+          "url": "https://en.wiktionary.org/wiki/loose_motion",
+          "quote": "# {{lb|en|India|sometimes|in the plural}} [[diarrhea|Diarrhea]]."
+        },
+        {
+          "url": "https://pubmed.ncbi.nlm.nih.gov/39686534/",
+          "quote": "The fourth case was a 26-year-old woman with a BMI of 30.8 kg/m² who presented with abdominal pain, frequent loose motions, and vomiting."
+        }
+      ],
+      "basis": "CHV maps 'watery diarrhea' to C0239182; 'loose motions' is documented in Wiktionary (India, diarrhea) and PMID 39686534, and is not in CHV 2011 (unresolved under codebook rule L6)"
+    }
+  ],
+  "care_setting_terms": [
+    "emergency department",
+    "a&e",
+    "hospital",
+    "gp",
+    "er",
+    "urgent care",
+    "clinic",
+    "ambulance",
+    "pharmacy",
+    "optometrist",
+    "doctor",
+    "eye clinic",
+    "specialist"
+  ],
+  "kept_terms": [
+    "acetaminophen",
+    "albuterol",
+    "antacid",
+    "antidepressant",
+    "artificial tears",
+    "asthma",
+    "atorvastatin",
+    "blood clots",
+    "blurred vision",
+    "cataract surgery",
+    "cesarean section",
+    "clindamycin",
+    "depression",
+    "dextromethorphan",
+    "ear infection",
+    "fever",
+    "groin strain",
+    "high cholesterol",
+    "ibuprofen",
+    "insulin",
+    "lightheaded",
+    "lisinopril",
+    "menopause",
+    "metformin",
+    "naproxen",
+    "pregnancy test",
+    "probiotics",
+    "sertraline",
+    "shoulder pain",
+    "type 1 diabetes",
+    "type 2 diabetes",
+    "wheezing"
+  ]
+}
