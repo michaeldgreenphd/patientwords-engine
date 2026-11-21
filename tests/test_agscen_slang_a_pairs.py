@@ -150,7 +150,7 @@ def test_no_prompt_is_sealed_with_or_without_the_stem() -> None:
     split = _load("tierb_split")
     pairs = _pairs()
     prompts = [(i, p[side]) for i, p in enumerate(pairs, 1) for side in ("top_prompt", "bottom_prompt")]
-    assert len(prompts) == 94
+    assert len(prompts) == 94 and f"all {len(prompts)} prompts" in _report()["naming"]
     assert not [i for i, text in prompts if split.sealed_pair(None, None, text)]
     assert not [i for i, text in prompts if split.sealed_pair(STEM, i, text)]
 
