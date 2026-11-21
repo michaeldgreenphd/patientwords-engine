@@ -1,0 +1,468 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 13,
+  "pairs_requested": 4,
+  "completed": true,
+  "screen_targets": null,
+  "environment": {
+    "python": "3.11.18",
+    "engine_sha": "7ed973700f43",
+    "runner_image": "20261116.202.1"
+  },
+  "results": [
+    {
+      "index": 13,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 62 and twice in the last hour have had dark hematemesis with dizziness when standing so I need to go to the",
+        "patient": "I am 62 and twice in the last hour have been throwing up coffee grounds with dizziness when standing so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.268,
+        "patient": 0.008
+      },
+      "language_penalty": -0.26,
+      "clinical_mass": {
+        "clinical": 0.31,
+        "patient": 0.1978
+      },
+      "error_share": {
+        "clinical": 0.1106,
+        "patient": 0.107
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.047)",
+        "patient": "[L17\u00b7S]  \u2192 [L18\u00b7O] mentions of restrooms and bathrooms | bathroom \u2192 [L25\u00b7O] words relating to plumbing | bathrooms and toilets \u2192 Output \" toilet\" (p=0.220)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ER\"",
+            0.268
+          ],
+          [
+            "Output \" bathroom\"",
+            0.236
+          ],
+          [
+            "Output \" hospital\"",
+            0.185
+          ],
+          [
+            "Output \" toilet\"",
+            0.087
+          ],
+          [
+            "Output \" emergency\"",
+            0.047
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" bathroom\"",
+            0.465
+          ],
+          [
+            "Output \" toilet\"",
+            0.22
+          ],
+          [
+            "Output \" loo\"",
+            0.081
+          ],
+          [
+            "Output \" restroom\"",
+            0.063
+          ],
+          [
+            "Output \" hospital\"",
+            0.023
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.268,
+            "rank": 1,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.008,
+            "rank": 8,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 924,
+        "unique_to_a": 559,
+        "unique_to_b": 495
+      },
+      "outputs": {
+        "html": "trace_out/agscen_slang_a1_20261121/index_13.html",
+        "png": "trace_out/agscen_slang_a1_20261121/index_13.png",
+        "diff_html": "trace_out/agscen_slang_a1_20261121/index_13_diff.html",
+        "diff_png": "trace_out/agscen_slang_a1_20261121/index_13_diff.png"
+      }
+    },
+    {
+      "index": 14,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 59 and since last night have passed melena stools 3 times with lightheadedness and a racing pulse so I need to go to the",
+        "patient": "I am 59 and since last night have passed black tarry poop 3 times with lightheadedness and a racing pulse so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.211,
+        "patient": 0.316
+      },
+      "language_penalty": 0.10500000000000001,
+      "clinical_mass": {
+        "clinical": 0.3239,
+        "patient": 0.2957
+      },
+      "error_share": {
+        "clinical": 0.1125,
+        "patient": 0.1145
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.146)",
+        "patient": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.049)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ER\"",
+            0.211
+          ],
+          [
+            "Output \" doctor\"",
+            0.146
+          ],
+          [
+            "Output \" hospital\"",
+            0.146
+          ],
+          [
+            "Output \" bathroom\"",
+            0.088
+          ],
+          [
+            "Output \" toilet\"",
+            0.078
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ER\"",
+            0.316
+          ],
+          [
+            "Output \" bathroom\"",
+            0.132
+          ],
+          [
+            "Output \" hospital\"",
+            0.132
+          ],
+          [
+            "Output \" doctor\"",
+            0.116
+          ],
+          [
+            "Output \" emergency\"",
+            0.049
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.211,
+            "rank": 1,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.316,
+            "rank": 1,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 1165,
+        "unique_to_a": 328,
+        "unique_to_b": 309
+      },
+      "outputs": {
+        "html": "trace_out/agscen_slang_a1_20261121/index_14.html",
+        "png": "trace_out/agscen_slang_a1_20261121/index_14.png",
+        "diff_html": "trace_out/agscen_slang_a1_20261121/index_14_diff.html",
+        "diff_png": "trace_out/agscen_slang_a1_20261121/index_14_diff.png"
+      }
+    },
+    {
+      "index": 15,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 68 and for 4 hours have had gross hematuria with thick clots and now cannot empty my bladder so I need to go to the",
+        "patient": "I am 68 and for 4 hours have been peeing pure blood with thick clots and now cannot empty my bladder so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.512,
+        "patient": 0.216
+      },
+      "language_penalty": -0.29600000000000004,
+      "clinical_mass": {
+        "clinical": 0.3609,
+        "patient": 0.3125
+      },
+      "error_share": {
+        "clinical": 0.1137,
+        "patient": 0.115
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.089)",
+        "patient": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.090)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ER\"",
+            0.512
+          ],
+          [
+            "Output \" hospital\"",
+            0.166
+          ],
+          [
+            "Output \" emergency\"",
+            0.089
+          ],
+          [
+            "Output \" er\"",
+            0.037
+          ],
+          [
+            "Output \" E\"",
+            0.033
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.355
+          ],
+          [
+            "Output \" ER\"",
+            0.216
+          ],
+          [
+            "Output \" emergency\"",
+            0.09
+          ],
+          [
+            "Output \" toilet\"",
+            0.062
+          ],
+          [
+            "Output \" bathroom\"",
+            0.062
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.512,
+            "rank": 1,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.216,
+            "rank": 2,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 980,
+        "unique_to_a": 421,
+        "unique_to_b": 419
+      },
+      "outputs": {
+        "html": "trace_out/agscen_slang_a1_20261121/index_15.html",
+        "png": "trace_out/agscen_slang_a1_20261121/index_15.png",
+        "diff_html": "trace_out/agscen_slang_a1_20261121/index_15_diff.html",
+        "diff_png": "trace_out/agscen_slang_a1_20261121/index_15_diff.png"
+      }
+    },
+    {
+      "index": 16,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 61 and for 2 months have had worsening solid esophageal dysphagia behind my breastbone with 5 kg weight loss so I need to see a",
+        "patient": "I am 61 and for 2 months have had worsening solid food getting stuck behind my breastbone with 5 kg weight loss so I need to see a"
+      },
+      "target_token": "Output \" specialist\"",
+      "probabilities": {
+        "clinical": 0.206,
+        "patient": 0.142
+      },
+      "language_penalty": -0.064,
+      "clinical_mass": {
+        "clinical": 0.4611,
+        "patient": 0.4055
+      },
+      "error_share": {
+        "clinical": 0.1073,
+        "patient": 0.1045
+      },
+      "top_path": {
+        "clinical": "[L17\u00b7S]  \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.182)",
+        "patient": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.301)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" specialist\"",
+            0.206
+          ],
+          [
+            "Output \" doctor\"",
+            0.182
+          ],
+          [
+            "Output \" gastroenter\"",
+            0.142
+          ],
+          [
+            "Output \" GI\"",
+            0.086
+          ],
+          [
+            "Output \" gastro\"",
+            0.076
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.301
+          ],
+          [
+            "Output \" specialist\"",
+            0.142
+          ],
+          [
+            "Output \" surgeon\"",
+            0.076
+          ],
+          [
+            "Output \" gastro\"",
+            0.067
+          ],
+          [
+            "Output \" gastroenter\"",
+            0.052
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " specialist",
+        "measured_token": "Output \" specialist\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" specialist\"",
+            "probability": 0.206,
+            "rank": 1,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" specialist\"",
+            "probability": 0.142,
+            "rank": 2,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 1000,
+        "unique_to_a": 413,
+        "unique_to_b": 490
+      },
+      "outputs": {
+        "html": "trace_out/agscen_slang_a1_20261121/index_16.html",
+        "png": "trace_out/agscen_slang_a1_20261121/index_16.png",
+        "diff_html": "trace_out/agscen_slang_a1_20261121/index_16_diff.html",
+        "diff_png": "trace_out/agscen_slang_a1_20261121/index_16_diff.png"
+      }
+    }
+  ]
+}
