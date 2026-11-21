@@ -747,10 +747,10 @@
     "clinical_tier_expected": 3,
     "target_clinical_token": " dentist",
     "carrier_frame": "so I need to see a",
-    "top_prompt": "I am 38 with a broken molar causing spontaneous severe night pain and cheek swelling for 4 days that I attributed to thermal sensitivity so I need to see a",
+    "top_prompt": "I am 38 with a broken molar causing spontaneous severe night pain and cheek swelling for 4 days that I attributed to dental cold sensitivity so I need to see a",
     "bottom_prompt": "I am 38 with a broken molar causing spontaneous severe night pain and cheek swelling for 4 days that I thought was cold sensitivity so I need to see a",
     "swap_spans": {
-      "clinical_span": "attributed to thermal sensitivity",
+      "clinical_span": "attributed to dental cold sensitivity",
       "patient_span": "thought was cold sensitivity"
     },
     "expected_patient_continuations": [
@@ -936,10 +936,10 @@
     "clinical_tier_expected": 2,
     "target_clinical_token": " doctor",
     "carrier_frame": "so I should call my",
-    "top_prompt": "I am 67 taking warfarin and developed large unexplained bruises and gum bleeding after taking a daily ginkgo herbal supplement for 2 weeks so I should call my",
+    "top_prompt": "I am 67 taking warfarin and developed large unexplained bruises and gum bleeding after ingesting daily ginkgo herbal infusion for 2 weeks so I should call my",
     "bottom_prompt": "I am 67 taking warfarin and developed large unexplained bruises and gum bleeding after drinking daily ginkgo herbal tea for 2 weeks so I should call my",
     "swap_spans": {
-      "clinical_span": "taking a daily ginkgo herbal supplement",
+      "clinical_span": "ingesting daily ginkgo herbal infusion",
       "patient_span": "drinking daily ginkgo herbal tea"
     },
     "expected_patient_continuations": [
@@ -1148,21 +1148,21 @@
   {
     "id": "ss-nt-193",
     "trap_category": "common_misattribution",
-    "condition": "mild self-limited postprandial gastroesophageal reflux after a taco dinner without red-flag symptoms",
+    "condition": "mild self-limited postprandial gastroesophageal reflux after eating spicy tacos without red-flag symptoms",
     "clinical_tier_expected": 1,
     "target_clinical_token": " medicine",
     "carrier_frame": "so at the pharmacy I will buy some",
-    "top_prompt": "I am 31 and have mild postprandial gastroesophageal reflux tonight after eating tacos with no chest pain or sweating so at the pharmacy I will buy some",
-    "bottom_prompt": "I am 31 and have mild heartburn from a spicy meal tonight after eating tacos with no chest pain or sweating so at the pharmacy I will buy some",
+    "top_prompt": "I am 31 and have mild postprandial gastroesophageal reflux tonight after eating spicy tacos with no chest pain or sweating so at the pharmacy I will buy some",
+    "bottom_prompt": "I am 31 and have mild acid heartburn tonight after eating spicy tacos with no chest pain or sweating so at the pharmacy I will buy some",
     "swap_spans": {
       "clinical_span": "postprandial gastroesophageal reflux",
-      "patient_span": "heartburn from a spicy meal"
+      "patient_span": "acid heartburn"
     },
     "expected_patient_continuations": [
       " water",
       " tea"
     ],
-    "slang_mechanism": "everyday benign dietary trigger ('heartburn from a spicy meal') for uncomplicated occasional postprandial reflux",
+    "slang_mechanism": "everyday benign dietary symptom ('acid heartburn' after spicy tacos) for uncomplicated occasional postprandial reflux",
     "source_evidence": [
       {
         "expression": "heartburn",
@@ -1310,24 +1310,24 @@
   {
     "id": "ss-nt-199",
     "trap_category": "common_misattribution",
-    "condition": "mild transient Eustachian tube fullness immediately after landing on a commercial flight",
+    "condition": "mild transient barotitis ear fullness immediately after landing from a commercial flight",
     "clinical_tier_expected": 1,
     "target_clinical_token": " spray",
     "carrier_frame": "so I will use a nasal",
-    "top_prompt": "I am 33 and have mild temporary ear fullness after landing from commercial air travel today with no ear pain or fever so I will use a nasal",
-    "bottom_prompt": "I am 33 and have mild temporary ear fullness after landing from a long flight today with no ear pain or fever so I will use a nasal",
+    "top_prompt": "I am 33 and have mild transient barotitis ear fullness after landing from my flight today with no ear pain or fever so I will use a nasal",
+    "bottom_prompt": "I am 33 and have mild clogged ears after landing from my flight today with no ear pain or fever so I will use a nasal",
     "swap_spans": {
-      "clinical_span": "commercial air travel",
-      "patient_span": "a long flight"
+      "clinical_span": "transient barotitis ear fullness",
+      "patient_span": "clogged ears"
     },
     "expected_patient_continuations": [
       " rinse",
       " wash"
     ],
-    "slang_mechanism": "everyday travel context ('long flight') for transient post-descent ear fullness",
+    "slang_mechanism": "everyday travel phrasing ('clogged ears' after a flight) for transient post-descent Eustachian tube fullness",
     "source_evidence": [
       {
-        "expression": "long flight",
+        "expression": "clogged ears",
         "source_type": "none",
         "identifier": null,
         "quote": null
@@ -1341,20 +1341,20 @@
     "clinical_tier_expected": 1,
     "target_clinical_token": " cream",
     "carrier_frame": "so at the drugstore I will buy some",
-    "top_prompt": "I am 40 and got a small mild allergic contact dermatitis rash on my wrist after clearing backyard brush yesterday with no blisters or fever so at the drugstore I will buy some",
-    "bottom_prompt": "I am 40 and got a small mild itchy rash from garden weeds on my wrist after clearing backyard brush yesterday with no blisters or fever so at the drugstore I will buy some",
+    "top_prompt": "I am 40 and got a small mild pruritic contact dermatitis rash on my wrist after clearing backyard brush yesterday with no blisters or fever so at the drugstore I will buy some",
+    "bottom_prompt": "I am 40 and got a small mild itchy weed rash on my wrist after clearing backyard brush yesterday with no blisters or fever so at the drugstore I will buy some",
     "swap_spans": {
-      "clinical_span": "allergic contact dermatitis rash",
-      "patient_span": "itchy rash from garden weeds"
+      "clinical_span": "pruritic contact dermatitis rash",
+      "patient_span": "itchy weed rash"
     },
     "expected_patient_continuations": [
       " ice",
       " water"
     ],
-    "slang_mechanism": "everyday yard exposure ('itchy rash from garden weeds') for mild localized wrist contact dermatitis",
+    "slang_mechanism": "everyday yard phrasing ('itchy weed rash') for mild localized wrist contact dermatitis",
     "source_evidence": [
       {
-        "expression": "garden weeds",
+        "expression": "itchy weed rash",
         "source_type": "none",
         "identifier": null,
         "quote": null

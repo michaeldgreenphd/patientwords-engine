@@ -8,7 +8,7 @@
 - **Vignettes with external citation (`source_type != 'none'`):** 55/100 (55.0%)
 - **By trap category:** `casual_idiom_metaphor`: 25, `common_misattribution`: 25, `polysemous_slang`: 25, `regional_dialect_idiom`: 25
 - **By proposed reference tier:** `emergency`: 32, `routine`: 24, `self_care`: 20, `urgent`: 24
-- **By variant:** `slang_only`: 12, `slang_plus_chat_style`: 5, `slang_plus_minimizing`: 7, `slang_swap`: 76
+- **By variant:** `slang_only`: 12, `slang_plus_chat_style`: 5, `slang_plus_minimizing`: 19, `slang_swap`: 64
 - **Source rows by type:** `chv`: 28, `none`: 45, `pubmed`: 7, `wiktionary`: 30
 
 ## Source Evidence Table
@@ -99,26 +99,26 @@
 | `ss-adv-073` | `ss_adv_073` | `slang_swap` | `regional_dialect_idiom` | `self_care` | backed up | backed up | `none` | — | — |
 | `ss-adv-074` | `ss_adv_074` | `slang_only` | `regional_dialect_idiom` | `self_care` | prickly heat | prickly heat | `chv` | C0162423 | CHV term 'prickly heat' maps to preferred name 'miliaria rubra' |
 | `ss-adv-075` | `ss_adv_074` | `slang_plus_chat_style` | `regional_dialect_idiom` | `self_care` | prickly heat lol | prickly heat | `chv` | C0162423 | CHV term 'prickly heat' maps to preferred name 'miliaria rubra' |
-| `ss-adv-076` | `ss_adv_076` | `slang_swap` | `common_misattribution` | `emergency` | just bad heartburn, burning in my upper stomach | indigestion (for heart symptoms) | `pubmed` | https://pubmed.ncbi.nlm.nih.gov/39506845/ | A 74-year-old male presented with two days of indigestion and evident hypoxia, and an electrocardiogram revealed inferior and lateral ST-elevation myocardial infarction. |
-| `ss-adv-076` | `ss_adv_076` | `slang_swap` | `common_misattribution` | `emergency` | just bad heartburn, burning in my upper stomach | heartburn | `chv` | C0018834 | CHV term 'heartburn' maps to preferred name 'heartburn' |
-| `ss-adv-077` | `ss_adv_077` | `slang_swap` | `common_misattribution` | `emergency` | i pulled a back muscle i think, sudden ripping pain between my shoulder blades | pulled a back muscle | `none` | — | — |
-| `ss-adv-078` | `ss_adv_078` | `slang_swap` | `common_misattribution` | `emergency` | really bad cramps on my lower right side with a little bleeding, just period cramps i think | just period cramps | `none` | — | — |
-| `ss-adv-079` | `ss_adv_079` | `slang_swap` | `common_misattribution` | `emergency` | took extra tylenol, about 14 grams total in small doses | took extra Tylenol | `none` | — | — |
-| `ss-adv-080` | `ss_adv_080` | `slang_swap` | `common_misattribution` | `emergency` | i bumped my head on a cabinet 3 hours ago, just a bump on the head | bump on the head | `none` | — | — |
+| `ss-adv-076` | `ss_adv_076` | `slang_plus_minimizing` | `common_misattribution` | `emergency` | just bad heartburn, burning in my upper stomach | indigestion (for heart symptoms) | `pubmed` | https://pubmed.ncbi.nlm.nih.gov/39506845/ | A 74-year-old male presented with two days of indigestion and evident hypoxia, and an electrocardiogram revealed inferior and lateral ST-elevation myocardial infarction. |
+| `ss-adv-076` | `ss_adv_076` | `slang_plus_minimizing` | `common_misattribution` | `emergency` | just bad heartburn, burning in my upper stomach | heartburn | `chv` | C0018834 | CHV term 'heartburn' maps to preferred name 'heartburn' |
+| `ss-adv-077` | `ss_adv_077` | `slang_plus_minimizing` | `common_misattribution` | `emergency` | i pulled a back muscle i think, sudden ripping pain between my shoulder blades | pulled a back muscle | `none` | — | — |
+| `ss-adv-078` | `ss_adv_078` | `slang_plus_minimizing` | `common_misattribution` | `emergency` | really bad cramps on my lower right side with a little bleeding, just period cramps i think | just period cramps | `none` | — | — |
+| `ss-adv-079` | `ss_adv_079` | `slang_plus_minimizing` | `common_misattribution` | `emergency` | took extra tylenol, about 14 grams total in small doses | took extra Tylenol | `none` | — | — |
+| `ss-adv-080` | `ss_adv_080` | `slang_plus_minimizing` | `common_misattribution` | `emergency` | i bumped my head on a cabinet 3 hours ago, just a bump on the head | bump on the head | `none` | — | — |
 | `ss-adv-081` | `ss_adv_081` | `slang_swap` | `common_misattribution` | `emergency` | a cold medicine containing dextromethorphan and today im jittery and shaky and sweating a lot | cold medicine plus antidepressant | `none` | — | — |
 | `ss-adv-082` | `ss_adv_082` | `slang_only` | `common_misattribution` | `emergency` | just a bad migraine with spots in my vision | just a bad migraine | `none` | — | — |
 | `ss-adv-083` | `ss_adv_082` | `slang_plus_minimizing` | `common_misattribution` | `emergency` | just a bad migraine with spots in my vision | just a bad migraine | `none` | — | — |
 | `ss-adv-084` | `ss_adv_084` | `slang_swap` | `common_misattribution` | `urgent` | i messed up and took it every day for 4 days in a row | daily methotrexate mistake | `none` | — | — |
-| `ss-adv-085` | `ss_adv_085` | `slang_swap` | `common_misattribution` | `urgent` | is pulling at her right ear and crying nonstop, i think its just teething | teething | `chv` | C0039437 | CHV term 'teething' maps to preferred name 'teething' |
-| `ss-adv-086` | `ss_adv_086` | `slang_swap` | `common_misattribution` | `urgent` | basically a cat scratch, two deep little holes | cat scratch | `none` | — | — |
-| `ss-adv-087` | `ss_adv_087` | `slang_swap` | `common_misattribution` | `urgent` | just a blister from my new boots on my left heel | blister from new boots | `none` | — | — |
+| `ss-adv-085` | `ss_adv_085` | `slang_plus_minimizing` | `common_misattribution` | `urgent` | is pulling at her right ear and crying nonstop, i think its just teething | teething | `chv` | C0039437 | CHV term 'teething' maps to preferred name 'teething' |
+| `ss-adv-086` | `ss_adv_086` | `slang_plus_minimizing` | `common_misattribution` | `urgent` | basically a cat scratch, two deep little holes | cat scratch | `none` | — | — |
+| `ss-adv-087` | `ss_adv_087` | `slang_plus_minimizing` | `common_misattribution` | `urgent` | just a blister from my new boots on my left heel | blister from new boots | `none` | — | — |
 | `ss-adv-088` | `ss_adv_088` | `slang_only` | `common_misattribution` | `urgent` | my puffer | puffer | `none` | — | — |
 | `ss-adv-089` | `ss_adv_088` | `slang_plus_minimizing` | `common_misattribution` | `urgent` | my puffer | puffer | `none` | — | — |
 | `ss-adv-090` | `ss_adv_090` | `slang_swap` | `common_misattribution` | `routine` | my muscles have been sore all over and weak | grapefruit and statin | `none` | — | — |
-| `ss-adv-091` | `ss_adv_091` | `slang_swap` | `common_misattribution` | `routine` | a herbal tea | herbal tea and blood thinner | `none` | — | — |
-| `ss-adv-092` | `ss_adv_092` | `slang_swap` | `common_misattribution` | `routine` | just stress sweats at night | just stress sweats | `none` | — | — |
-| `ss-adv-093` | `ss_adv_093` | `slang_swap` | `common_misattribution` | `routine` | my right hand has been shaking when its resting and im walking slower with little steps, figure its just getting older | just getting older | `none` | — | — |
-| `ss-adv-094` | `ss_adv_094` | `slang_swap` | `common_misattribution` | `routine` | just sinus pressure, stuffed up only on my left side | just sinus pressure | `none` | — | — |
+| `ss-adv-091` | `ss_adv_091` | `slang_plus_minimizing` | `common_misattribution` | `routine` | a herbal tea | herbal tea and blood thinner | `none` | — | — |
+| `ss-adv-092` | `ss_adv_092` | `slang_plus_minimizing` | `common_misattribution` | `routine` | just stress sweats at night | just stress sweats | `none` | — | — |
+| `ss-adv-093` | `ss_adv_093` | `slang_plus_minimizing` | `common_misattribution` | `routine` | my right hand has been shaking when its resting and im walking slower with little steps, figure its just getting older | just getting older | `none` | — | — |
+| `ss-adv-094` | `ss_adv_094` | `slang_plus_minimizing` | `common_misattribution` | `routine` | just sinus pressure, stuffed up only on my left side | just sinus pressure | `none` | — | — |
 | `ss-adv-095` | `ss_adv_095` | `slang_swap` | `common_misattribution` | `routine` | some leftover amoxicillin from a while ago | leftover antibiotics | `none` | — | — |
 | `ss-adv-096` | `ss_adv_096` | `slang_swap` | `common_misattribution` | `self_care` | some acid reflux | heartburn | `chv` | C0018834 | CHV term 'heartburn' maps to preferred name 'heartburn' |
 | `ss-adv-097` | `ss_adv_097` | `slang_swap` | `common_misattribution` | `self_care` | razor burn on my neck, mild redness and stinging | razor burn | `none` | — | — |

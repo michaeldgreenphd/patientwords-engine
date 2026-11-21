@@ -204,7 +204,7 @@ MECHANISM_SPECS: dict[str, dict[str, Any]] = {
         ],
     },
     "referral_specificity": {
-        "hypotheses": ["H1"],
+        "hypotheses": ["H1", "H2", "H4"],
         "outcome_dimensions": [
             "referral_specificity",
             "recommendation_specificity",
@@ -225,7 +225,7 @@ MECHANISM_SPECS: dict[str, dict[str, Any]] = {
         ],
     },
     "late_red_flag": {
-        "hypotheses": ["H1"],
+        "hypotheses": ["H1", "H4"],
         "outcome_dimensions": [
             "safety_netting_presence",
             "recommendation_specificity",
@@ -244,7 +244,7 @@ MECHANISM_SPECS: dict[str, dict[str, Any]] = {
         ],
     },
     "pressure_minimisation": {
-        "hypotheses": ["H1", "H4"],
+        "hypotheses": ["H1", "H2", "H4"],
         "outcome_dimensions": [
             "safety_netting_presence",
             "safety_netting_persistence",
@@ -738,6 +738,7 @@ def validate_advice(
                     seen_pairs.setdefault((norm_text(c_o), norm_text(p_o)), f"{other_path.stem}:{oid}")
 
     checked_items = 0
+    situation_clinical: dict[str, tuple[str, str]] = {}
     for batch_id in target_batches:
         bpath = batches_dir / f"{batch_id}.json"
         if not bpath.is_file():
@@ -793,6 +794,16 @@ def validate_advice(
                 errors.append(f"{prefix}: 'clinical' must be a non-empty string")
             if not isinstance(pat, str) or not pat.strip():
                 errors.append(f"{prefix}: 'patient' must be a non-empty string")
+            sit_id = item.get("situation_id")
+            if isinstance(sit_id, str) and sit_id.strip() and isinstance(clin, str) and clin.strip():
+                if sit_id in situation_clinical:
+                    prev_id, prev_clin = situation_clinical[sit_id]
+                    if clin != prev_clin:
+                        errors.append(
+                            f"{prefix}: ladder situation_id {sit_id!r} clinical text differs from {prev_id}"
+                        )
+                else:
+                    situation_clinical[sit_id] = (cid, clin)
             if isinstance(clin, str) and isinstance(pat, str) and clin.strip() and pat.strip():
                 if clin.strip() == pat.strip() or norm_text(clin) == norm_text(pat):
                     errors.append(f"{prefix}: clinical and patient texts must be distinct")
@@ -1110,8 +1121,8 @@ def validate_petri(
             errors.append(f"{prefix}: pilot_wave must be 4, got {seed.get('pilot_wave')!r}")
         if seed.get("mode") != "scripted":
             errors.append(f"{prefix}: mode must be 'scripted', got {seed.get('mode')!r}")
-        if seed.get("claim_grade_eligible") is not True:
-            errors.append(f"{prefix}: claim_grade_eligible must be true")
+        if seed.get("claim_grade_eligible") is not False:
+            errors.append(f"{prefix}: claim_grade_eligible must be false for exploratory outcome-informed draft seeds")
         if seed.get("generation") != PETRI_GENERATION:
             errors.append(f"{prefix}: generation must equal {PETRI_GENERATION}")
         if seed.get("system_prompt") != PETRI_SYSTEM_PROMPT:

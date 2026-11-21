@@ -91,7 +91,7 @@
 | `ss-nt-070` | `casual_idiom_metaphor` | 3 | have numbness in both feet | feel like I am walking on sponges | walking on sponges | `none` | — | — |
 | `ss-nt-071` | `casual_idiom_metaphor` | 3 | esophageal dysphagia | food getting stuck | food getting stuck | `none` | — | — |
 | `ss-nt-072` | `casual_idiom_metaphor` | 3 | vitreous opacities | cobwebs | cobwebs in my eye | `none` | — | — |
-| `ss-nt-073` | `casual_idiom_metaphor` | 3 | optical glare around lamps | halos around lights | halos around lights | `none` | — | — |
+| `ss-nt-073` | `casual_idiom_metaphor` | 3 | photic halos around lights | bright rainbow rings around lamps | rainbow rings around lamps | `none` | — | — |
 | `ss-nt-074` | `casual_idiom_metaphor` | 3 | paresthesias | pins and needles | pins and needles | `none` | — | — |
 | `ss-nt-075` | `casual_idiom_metaphor` | 3 | foot drop | a dead foot | dead foot | `none` | — | — |
 | `ss-nt-076` | `casual_idiom_metaphor` | 3 | severe neuropathic burning | my skin on fire | skin on fire | `none` | — | — |
@@ -132,8 +132,8 @@
 | `ss-nt-108` | `regional_dialect_idiom` | 4 | hypertension | high blood | high blood | `wiktionary` | https://en.wiktionary.org/wiki/high_blood | # {{lb\|en\|informal}} {{ellipsis of\|en\|high blood pressure}}. |
 | `ss-nt-109` | `regional_dialect_idiom` | 4 | anemia | low blood | low blood | `wiktionary` | https://en.wiktionary.org/wiki/high_blood | #: {{cot\|en\|low blood<t:anemia>}} |
 | `ss-nt-110` | `regional_dialect_idiom` | 4 | my blood glucose | my sugar | sugar | `wiktionary` | https://en.wiktionary.org/wiki/sugar | # {{lb\|en\|uncountable\|informal}} [[diabetes\|Diabetes]]. |
-| `ss-nt-111` | `regional_dialect_idiom` | 4 | a stomach blockage | empacho | empacho | `pubmed` | https://pubmed.ncbi.nlm.nih.gov/37906870/ | In children, acute appendicitis (AA) is usually mistaken for empacho, which, according to popular belief, is caused by the ingestion of undercooked or cold food causing gastrointestinal symptoms. |
-| `ss-nt-111` | `regional_dialect_idiom` | 4 | a stomach blockage | empacho | empacho | `wiktionary` | https://en.wiktionary.org/wiki/empacho | # A [[Hispanic]] [[folk illness]] ascribed to [[blockage]] of the [[stomach]]. |
+| `ss-nt-111` | `regional_dialect_idiom` | 4 | trapped stomach food | empacho | empacho | `pubmed` | https://pubmed.ncbi.nlm.nih.gov/37906870/ | In children, acute appendicitis (AA) is usually mistaken for empacho, which, according to popular belief, is caused by the ingestion of undercooked or cold food causing gastrointestinal symptoms. |
+| `ss-nt-111` | `regional_dialect_idiom` | 4 | trapped stomach food | empacho | empacho | `wiktionary` | https://en.wiktionary.org/wiki/empacho | # A [[Hispanic]] [[folk illness]] ascribed to [[blockage]] of the [[stomach]]. |
 | `ss-nt-112` | `regional_dialect_idiom` | 4 | a panic attack | an attack of nervios | nervios | `pubmed` | https://pubmed.ncbi.nlm.nih.gov/15724769/ | The acute subtype, ataque de nervios, but not chronic nervios, was related to an increased probability of having Rose questionnaire angina (P=.006). |
 | `ss-nt-112` | `regional_dialect_idiom` | 4 | a panic attack | an attack of nervios | ataque de nervios | `pubmed` | https://pubmed.ncbi.nlm.nih.gov/19691546/ | In addition, key ataque symptoms-mental incapacitation fears, shakiness, chest tightness, palpitations, and a sense of inner heat-were the best discriminators among levels of ataque severity. |
 | `ss-nt-113` | `regional_dialect_idiom` | 4 | watery diarrhea | loose motions | loose motions | `wiktionary` | https://en.wiktionary.org/wiki/loose_motion | # {{lb\|en\|India\|sometimes\|in the plural}} [[diarrhea\|Diarrhea]]. |
@@ -208,14 +208,14 @@
 | `ss-nt-175` | `common_misattribution` | 3 | attributed to footwear friction | blamed on new shoes | new shoes | `none` | — | — |
 | `ss-nt-176` | `common_misattribution` | 3 | attributed to neck support | blamed on a bad pillow | bad pillow | `none` | — | — |
 | `ss-nt-177` | `common_misattribution` | 3 | attributed to perimenopausal shifts | blamed on menopause mood | menopause mood | `none` | — | — |
-| `ss-nt-178` | `common_misattribution` | 3 | attributed to thermal sensitivity | thought was cold sensitivity | cold sensitivity | `none` | — | — |
+| `ss-nt-178` | `common_misattribution` | 3 | attributed to dental cold sensitivity | thought was cold sensitivity | cold sensitivity | `none` | — | — |
 | `ss-nt-179` | `common_misattribution` | 3 | solar lentigo | sun spot | sun spot | `none` | — | — |
 | `ss-nt-180` | `common_misattribution` | 3 | attributed to a past athletic injury | blamed on an old sports injury | old sports injury | `none` | — | — |
 | `ss-nt-181` | `common_misattribution` | 2 | remaining antibiotic capsules | leftover antibiotics | leftover antibiotics | `none` | — | — |
 | `ss-nt-182` | `common_misattribution` | 2 | levothyroxine together with calcium and iron tablets | my levothyroxine thyroid pill with calcium and iron vitamins | thyroid pill with calcium and iron vitamins | `none` | — | — |
 | `ss-nt-183` | `common_misattribution` | 2 | maculopapular rash | heat rash | heat rash | `none` | — | — |
 | `ss-nt-184` | `common_misattribution` | 2 | statin alongside daily grapefruit juice | cholesterol pill with grapefruit juice every morning | grapefruit juice | `none` | — | — |
-| `ss-nt-185` | `common_misattribution` | 2 | taking a daily ginkgo herbal supplement | drinking daily ginkgo herbal tea | herbal tea | `none` | — | — |
+| `ss-nt-185` | `common_misattribution` | 2 | ingesting daily ginkgo herbal infusion | drinking daily ginkgo herbal tea | herbal tea | `none` | — | — |
 | `ss-nt-186` | `common_misattribution` | 2 | decongestant tablets | cold pills | cold pills | `none` | — | — |
 | `ss-nt-187` | `common_misattribution` | 2 | taking 2 overlapping antiinflammatory medications | a painkiller mixup taking 2 pain pills | painkiller mixup | `none` | — | — |
 | `ss-nt-188` | `common_misattribution` | 2 | outdated rescue inhaler | expired inhaler | expired inhaler | `none` | — | — |
@@ -223,11 +223,11 @@
 | `ss-nt-190` | `common_misattribution` | 2 | attributed to iron deficiency | thought was just low iron | just low iron | `none` | — | — |
 | `ss-nt-191` | `common_misattribution` | 2 | attributed to tooth eruption | thought was just teething | just teething | `none` | — | — |
 | `ss-nt-192` | `common_misattribution` | 2 | attributed to tight footwear | blamed on tight boots | tight boots | `none` | — | — |
-| `ss-nt-193` | `common_misattribution` | 1 | postprandial gastroesophageal reflux | heartburn from a spicy meal | heartburn | `chv` | C0018834 | heartburn -> heartburn |
+| `ss-nt-193` | `common_misattribution` | 1 | postprandial gastroesophageal reflux | acid heartburn | heartburn | `chv` | C0018834 | heartburn -> heartburn |
 | `ss-nt-194` | `common_misattribution` | 1 | low winter humidity | dry winter air | dry winter air | `none` | — | — |
 | `ss-nt-195` | `common_misattribution` | 1 | high dietary sodium | too much salt | too much salt | `none` | — | — |
 | `ss-nt-196` | `common_misattribution` | 1 | an insect bite | a bug bite | bug bite | `chv` | C0417754 | bug bite -> bite of hemiptera species (finding) (bug bite) |
 | `ss-nt-197` | `common_misattribution` | 1 | superficial shaving irritation | razor burn | razor burn | `none` | — | — |
 | `ss-nt-198` | `common_misattribution` | 1 | of high decibel noise exposure | at a loud concert | loud concert | `none` | — | — |
-| `ss-nt-199` | `common_misattribution` | 1 | commercial air travel | a long flight | long flight | `none` | — | — |
-| `ss-nt-200` | `common_misattribution` | 1 | allergic contact dermatitis rash | itchy rash from garden weeds | garden weeds | `none` | — | — |
+| `ss-nt-199` | `common_misattribution` | 1 | transient barotitis ear fullness | clogged ears | clogged ears | `none` | — | — |
+| `ss-nt-200` | `common_misattribution` | 1 | pruritic contact dermatitis rash | itchy weed rash | itchy weed rash | `none` | — | — |
