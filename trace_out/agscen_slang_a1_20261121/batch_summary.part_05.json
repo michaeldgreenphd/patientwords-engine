@@ -1,0 +1,468 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 5,
+  "pairs_requested": 4,
+  "completed": true,
+  "screen_targets": null,
+  "environment": {
+    "python": "3.11.18",
+    "engine_sha": "7ed973700f43",
+    "runner_image": "20261116.202.1"
+  },
+  "results": [
+    {
+      "index": 5,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 56 and over the past 2 days noticed a new cluster of vitreous opacities in my right eye without vision loss so I need to see a",
+        "patient": "I am 56 and over the past 2 days noticed a new cluster of floaters in my right eye without vision loss so I need to see a"
+      },
+      "target_token": "Output \" specialist\"",
+      "probabilities": {
+        "clinical": 0.158,
+        "patient": 0.106
+      },
+      "language_penalty": -0.052000000000000005,
+      "clinical_mass": {
+        "clinical": 0.3682,
+        "patient": 0.3552
+      },
+      "error_share": {
+        "clinical": 0.1004,
+        "patient": 0.0975
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7O] terms related to opthamology, eye conditions, and vi \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.297)",
+        "patient": "embedding \u2192 [L17\u00b7O] terms related to opthamology, eye conditions, and vi \u2192 [L22\u00b7O] ophthalmology and optometry related terms | Eyeglass \u2192 [L25\u00b7C] mentions of eyes, studies, patients, and medical ana \u2192 Output \" eye\" (p=0.039)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.297
+          ],
+          [
+            "Output \" specialist\"",
+            0.158
+          ],
+          [
+            "Output \" retina\"",
+            0.124
+          ],
+          [
+            "Output \" vit\"",
+            0.058
+          ],
+          [
+            "Output \" retinal\"",
+            0.052
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.477
+          ],
+          [
+            "Output \" specialist\"",
+            0.106
+          ],
+          [
+            "Output \" retina\"",
+            0.05
+          ],
+          [
+            "Output \" dr\"",
+            0.044
+          ],
+          [
+            "Output \" eye\"",
+            0.039
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " specialist",
+        "measured_token": "Output \" specialist\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" specialist\"",
+            "probability": 0.158,
+            "rank": 2,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" specialist\"",
+            "probability": 0.106,
+            "rank": 2,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 1018,
+        "unique_to_a": 407,
+        "unique_to_b": 420
+      },
+      "outputs": {
+        "html": "trace_out/agscen_slang_a1_20261121/index_05.html",
+        "png": "trace_out/agscen_slang_a1_20261121/index_05.png",
+        "diff_html": "trace_out/agscen_slang_a1_20261121/index_05_diff.html",
+        "diff_png": "trace_out/agscen_slang_a1_20261121/index_05_diff.png"
+      }
+    },
+    {
+      "index": 6,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 72 and over 9 months my eyesight has developed progressive loss of clarity with night glare so I need to see a",
+        "patient": "I am 72 and over 9 months my eyesight has become progressively cloudy with night glare so I need to see a"
+      },
+      "target_token": "Output \" specialist\"",
+      "probabilities": {
+        "clinical": 0.336,
+        "patient": 0.379
+      },
+      "language_penalty": 0.04299999999999998,
+      "clinical_mass": {
+        "clinical": 0.2761,
+        "patient": 0.2887
+      },
+      "error_share": {
+        "clinical": 0.1025,
+        "patient": 0.1055
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.075)",
+        "patient": "embedding \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.108)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" specialist\"",
+            0.336
+          ],
+          [
+            "Output \" doctor\"",
+            0.075
+          ],
+          [
+            "Output \" consultant\"",
+            0.04
+          ],
+          [
+            "Output \" op\"",
+            0.04
+          ],
+          [
+            "Output \" lot\"",
+            0.035
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" specialist\"",
+            0.379
+          ],
+          [
+            "Output \" doctor\"",
+            0.108
+          ],
+          [
+            "Output \" consultant\"",
+            0.058
+          ],
+          [
+            "Output \" op\"",
+            0.051
+          ],
+          [
+            "Output \" neuro\"",
+            0.024
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " specialist",
+        "measured_token": "Output \" specialist\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" specialist\"",
+            "probability": 0.336,
+            "rank": 1,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" specialist\"",
+            "probability": 0.379,
+            "rank": 1,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 1199,
+        "unique_to_a": 213,
+        "unique_to_b": 178
+      },
+      "outputs": {
+        "html": "trace_out/agscen_slang_a1_20261121/index_06.html",
+        "png": "trace_out/agscen_slang_a1_20261121/index_06.png",
+        "diff_html": "trace_out/agscen_slang_a1_20261121/index_06_diff.html",
+        "diff_png": "trace_out/agscen_slang_a1_20261121/index_06_diff.png"
+      }
+    },
+    {
+      "index": 7,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 36 and since twisting my right knee 3 weeks ago the joint repeatedly catches in fixed flexion so I need to see a",
+        "patient": "I am 36 and since twisting my right knee 3 weeks ago the joint repeatedly gets locked so I need to see a"
+      },
+      "target_token": "Output \" specialist\"",
+      "probabilities": {
+        "clinical": 0.12,
+        "patient": 0.083
+      },
+      "language_penalty": -0.03699999999999999,
+      "clinical_mass": {
+        "clinical": 0.4326,
+        "patient": 0.445
+      },
+      "error_share": {
+        "clinical": 0.1032,
+        "patient": 0.1045
+      },
+      "top_path": {
+        "clinical": "[L17\u00b7S]  \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.174)",
+        "patient": "[L17\u00b7S]  \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.330)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" physio\"",
+            0.418
+          ],
+          [
+            "Output \" doctor\"",
+            0.174
+          ],
+          [
+            "Output \" specialist\"",
+            0.12
+          ],
+          [
+            "Output \" surgeon\"",
+            0.056
+          ],
+          [
+            "Output \" consultant\"",
+            0.024
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" physio\"",
+            0.33
+          ],
+          [
+            "Output \" doctor\"",
+            0.33
+          ],
+          [
+            "Output \" specialist\"",
+            0.083
+          ],
+          [
+            "Output \" surgeon\"",
+            0.027
+          ],
+          [
+            "Output \" doc\"",
+            0.019
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " specialist",
+        "measured_token": "Output \" specialist\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" specialist\"",
+            "probability": 0.12,
+            "rank": 3,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" specialist\"",
+            "probability": 0.083,
+            "rank": 3,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 1234,
+        "unique_to_a": 187,
+        "unique_to_b": 185
+      },
+      "outputs": {
+        "html": "trace_out/agscen_slang_a1_20261121/index_07.html",
+        "png": "trace_out/agscen_slang_a1_20261121/index_07.png",
+        "diff_html": "trace_out/agscen_slang_a1_20261121/index_07_diff.html",
+        "diff_png": "trace_out/agscen_slang_a1_20261121/index_07_diff.png"
+      }
+    },
+    {
+      "index": 8,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 38 and since returning from a trip 5 days ago I have had watery diarrhea with stomach cramps so I need to see a",
+        "patient": "I am 38 and since returning from a trip 5 days ago I have had the runs with stomach cramps so I need to see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.664,
+        "patient": 0.613
+      },
+      "language_penalty": -0.051000000000000045,
+      "clinical_mass": {
+        "clinical": 0.3978,
+        "patient": 0.3507
+      },
+      "error_share": {
+        "clinical": 0.1004,
+        "patient": 0.0993
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.664)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.613)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.664
+          ],
+          [
+            "Output \" Dr\"",
+            0.079
+          ],
+          [
+            "Output \" dr\"",
+            0.054
+          ],
+          [
+            "Output \" doc\"",
+            0.054
+          ],
+          [
+            "Output \" GI\"",
+            0.023
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.613
+          ],
+          [
+            "Output \" GP\"",
+            0.106
+          ],
+          [
+            "Output \" Dr\"",
+            0.073
+          ],
+          [
+            "Output \" doc\"",
+            0.057
+          ],
+          [
+            "Output \" dr\"",
+            0.057
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " doctor",
+        "measured_token": "Output \" doctor\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" doctor\"",
+            "probability": 0.664,
+            "rank": 1,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" doctor\"",
+            "probability": 0.613,
+            "rank": 1,
+            "returned": 7
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 1093,
+        "unique_to_a": 172,
+        "unique_to_b": 244
+      },
+      "outputs": {
+        "html": "trace_out/agscen_slang_a1_20261121/index_08.html",
+        "png": "trace_out/agscen_slang_a1_20261121/index_08.png",
+        "diff_html": "trace_out/agscen_slang_a1_20261121/index_08_diff.html",
+        "diff_png": "trace_out/agscen_slang_a1_20261121/index_08_diff.png"
+      }
+    }
+  ]
+}
