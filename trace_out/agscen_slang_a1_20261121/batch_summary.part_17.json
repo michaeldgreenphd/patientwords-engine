@@ -1,0 +1,467 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 17,
+  "pairs_requested": 4,
+  "completed": true,
+  "screen_targets": null,
+  "environment": {
+    "python": "3.11.18",
+    "engine_sha": "7ed973700f43",
+    "runner_image": "20261116.202.1"
+  },
+  "results": [
+    {
+      "index": 17,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 45 and for 5 months have woken nightly with numbness and paresthesias in my thumb and index finger with weak grip so I need to see a",
+        "patient": "I am 45 and for 5 months have woken nightly with numbness and pins and needles in my thumb and index finger with weak grip so I need to see a"
+      },
+      "target_token": "Output \" specialist\"",
+      "probabilities": {
+        "clinical": 0.087,
+        "patient": 0.121
+      },
+      "language_penalty": 0.034,
+      "clinical_mass": {
+        "clinical": 0.4023,
+        "patient": 0.3863
+      },
+      "error_share": {
+        "clinical": 0.1126,
+        "patient": 0.1108
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L20\u00b7C] anatomy and medical settings in which surgery on han \u2192 [L24\u00b7O] words combined with \"hand\" or words implying order o \u2192 Output \" hand\" (p=0.208)",
+        "patient": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.226)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" neuro\"",
+            0.303
+          ],
+          [
+            "Output \" hand\"",
+            0.208
+          ],
+          [
+            "Output \" doctor\"",
+            0.162
+          ],
+          [
+            "Output \" specialist\"",
+            0.087
+          ],
+          [
+            "Output \" Neuro\"",
+            0.022
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.226
+          ],
+          [
+            "Output \" neuro\"",
+            0.155
+          ],
+          [
+            "Output \" hand\"",
+            0.155
+          ],
+          [
+            "Output \" specialist\"",
+            0.121
+          ],
+          [
+            "Output \" physio\"",
+            0.057
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " specialist",
+        "measured_token": "Output \" specialist\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" specialist\"",
+            "probability": 0.087,
+            "rank": 4,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" specialist\"",
+            "probability": 0.121,
+            "rank": 4,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 1247,
+        "unique_to_a": 117,
+        "unique_to_b": 170
+      },
+      "outputs": {
+        "html": "trace_out/agscen_slang_a1_20261121/index_17.html",
+        "png": "trace_out/agscen_slang_a1_20261121/index_17.png",
+        "diff_html": "trace_out/agscen_slang_a1_20261121/index_17_diff.html",
+        "diff_png": "trace_out/agscen_slang_a1_20261121/index_17_diff.png"
+      }
+    },
+    {
+      "index": 18,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 52 and for 3 weeks have had foot drop on the right without pain causing my toes to slap the floor so I need to see a",
+        "patient": "I am 52 and for 3 weeks have had a dead foot on the right without pain causing my toes to slap the floor so I need to see a"
+      },
+      "target_token": "Output \" specialist\"",
+      "probabilities": {
+        "clinical": 0.088,
+        "patient": 0.081
+      },
+      "language_penalty": -0.006999999999999992,
+      "clinical_mass": {
+        "clinical": 0.3782,
+        "patient": 0.3614
+      },
+      "error_share": {
+        "clinical": 0.1024,
+        "patient": 0.1051
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" foot\" (p=0.068)",
+        "patient": "embedding \u2192 Output \" foot\" (p=0.072)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" neuro\"",
+            0.239
+          ],
+          [
+            "Output \" doctor\"",
+            0.187
+          ],
+          [
+            "Output \" po\"",
+            0.146
+          ],
+          [
+            "Output \" specialist\"",
+            0.088
+          ],
+          [
+            "Output \" foot\"",
+            0.068
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.25
+          ],
+          [
+            "Output \" po\"",
+            0.25
+          ],
+          [
+            "Output \" specialist\"",
+            0.081
+          ],
+          [
+            "Output \" foot\"",
+            0.072
+          ],
+          [
+            "Output \" neuro\"",
+            0.049
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " specialist",
+        "measured_token": "Output \" specialist\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" specialist\"",
+            "probability": 0.088,
+            "rank": 4,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" specialist\"",
+            "probability": 0.081,
+            "rank": 3,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 976,
+        "unique_to_a": 454,
+        "unique_to_b": 443
+      },
+      "outputs": {
+        "html": "trace_out/agscen_slang_a1_20261121/index_18.html",
+        "png": "trace_out/agscen_slang_a1_20261121/index_18.png",
+        "diff_html": "trace_out/agscen_slang_a1_20261121/index_18_diff.html",
+        "diff_png": "trace_out/agscen_slang_a1_20261121/index_18_diff.png"
+      }
+    },
+    {
+      "index": 19,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 29 and for 2 days have urinary urgency and experience severe dysuria without fever or back pain so I need to visit the",
+        "patient": "I am 29 and for 2 days have urinary urgency and feel like I am peeing fire without fever or back pain so I need to visit the"
+      },
+      "target_token": "Output \" clinic\"",
+      "probabilities": {
+        "clinical": 0.026,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4497,
+        "patient": 0.4043
+      },
+      "error_share": {
+        "clinical": 0.1043,
+        "patient": 0.1033
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.463)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.434)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.463
+          ],
+          [
+            "Output \" uro\"",
+            0.15
+          ],
+          [
+            "Output \" hospital\"",
+            0.081
+          ],
+          [
+            "Output \" ER\"",
+            0.049
+          ],
+          [
+            "Output \" clinic\"",
+            0.026
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.434
+          ],
+          [
+            "Output \" ER\"",
+            0.085
+          ],
+          [
+            "Output \" hospital\"",
+            0.085
+          ],
+          [
+            "Output \" doc\"",
+            0.052
+          ],
+          [
+            "Output \" uro\"",
+            0.046
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " clinic",
+        "measured_token": "Output \" clinic\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" clinic\"",
+            "probability": 0.026,
+            "rank": 5,
+            "returned": 10
+          },
+          "patient": {
+            "status": "missing",
+            "reason": "target_not_in_returned_logits",
+            "returned": 10,
+            "prefix_candidates": []
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 1083,
+        "unique_to_a": 202,
+        "unique_to_b": 257
+      },
+      "outputs": {
+        "html": "trace_out/agscen_slang_a1_20261121/index_19.html",
+        "png": "trace_out/agscen_slang_a1_20261121/index_19.png",
+        "diff_html": "trace_out/agscen_slang_a1_20261121/index_19_diff.html",
+        "diff_png": "trace_out/agscen_slang_a1_20261121/index_19_diff.png"
+      }
+    },
+    {
+      "index": 20,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 44 and for 4 weeks have had constant xerostomia drinking water nonstop and urinating every hour so I need to see a",
+        "patient": "I am 44 and for 4 weeks have had constant cotton mouth drinking water nonstop and urinating every hour so I need to see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.389,
+        "patient": 0.551
+      },
+      "language_penalty": 0.16200000000000003,
+      "clinical_mass": {
+        "clinical": 0.4057,
+        "patient": 0.3582
+      },
+      "error_share": {
+        "clinical": 0.1109,
+        "patient": 0.1045
+      },
+      "top_path": {
+        "clinical": "[L16\u00b7S]  \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.389)",
+        "patient": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.551)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.389
+          ],
+          [
+            "Output \" dentist\"",
+            0.303
+          ],
+          [
+            "Output \" specialist\"",
+            0.098
+          ],
+          [
+            "Output \" dr\"",
+            0.036
+          ],
+          [
+            "Output \" uro\"",
+            0.025
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.551
+          ],
+          [
+            "Output \" uro\"",
+            0.075
+          ],
+          [
+            "Output \" dr\"",
+            0.075
+          ],
+          [
+            "Output \" specialist\"",
+            0.058
+          ],
+          [
+            "Output \" Dr\"",
+            0.058
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " doctor",
+        "measured_token": "Output \" doctor\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" doctor\"",
+            "probability": 0.389,
+            "rank": 1,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" doctor\"",
+            "probability": 0.551,
+            "rank": 1,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 879,
+        "unique_to_a": 533,
+        "unique_to_b": 460
+      },
+      "outputs": {
+        "html": "trace_out/agscen_slang_a1_20261121/index_20.html",
+        "png": "trace_out/agscen_slang_a1_20261121/index_20.png",
+        "diff_html": "trace_out/agscen_slang_a1_20261121/index_20_diff.html",
+        "diff_png": "trace_out/agscen_slang_a1_20261121/index_20_diff.png"
+      }
+    }
+  ]
+}
