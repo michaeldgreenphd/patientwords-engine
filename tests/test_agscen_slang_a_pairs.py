@@ -1,11 +1,13 @@
-"""Slang stress Wave A (data/simulated/agscen_slang_a_20261121.json): 48 exploratory next-token pairs.
+"""Slang stress Wave A (data/simulated/agscen_slang_a_20261121.json): 47 exploratory next-token pairs.
 
 Copied from the draft pack drafts/slang_stress_20261120/next_token/candidates.json at d9e66e8e (branch
-draft/slang-stress-20261120): 4 tier-4, 3 tier-3, 3 tier-2 and 2 tier-1 pairs in each of four trap categories.
-No owner, clinical or patient-language review has been recorded for them, so the file carries no verdicts. The
-selection is outcome_informed, not outcome-blind. Pins the shape the two $0 lanes read, the id list and the
-owner's ten exclusions, the single difference, the tier grid, the provenance, the stem rule (agscen_, never
-pairs_) and the holdout seal.
+draft/slang-stress-20261120): 4 tier-4, 3 tier-3, 3 tier-2 and 2 tier-1 pairs in each of four trap categories, 48 in
+all as merged in PR 194. The owner read all 48 on 2026-11-21 (ground_truth/gt_slang_a_20261121.json at 35f33005 on the
+draft branch): 47 right and ss-nt-054 excluded, which was then removed before any run, so casual_idiom_metaphor has 3
+tier-4 pairs. Clinical and patient-language review are still pending. The selection is outcome_informed, not
+outcome-blind. Pins the shape the two $0 lanes read, the id list and the owner's eleven exclusions, the owner's
+verdicts, the single difference, the tier grid, the provenance, the stem rule (agscen_, never pairs_) and the holdout
+seal.
 """
 from __future__ import annotations
 
@@ -22,15 +24,19 @@ PAIRS = ROOT / "data" / "simulated" / f"{STEM}.json"
 REPORT = ROOT / "data" / "simulated" / f"{STEM}.report.json"
 COMMIT = "d9e66e8e3605e92d6a1567746b45188ccea69423"
 CANDIDATES_SHA256 = "95336dfda832a4801fbb3cd5a1743dc42a3e1d7912db6b8cb8b9ae81c8c29ec1"
-STATUS = ("exploratory: hand-authored slang stress pair (draft pack slang_stress_20261120), awaiting owner, "
-          "clinical and patient-language review, not a study batch")
+VERDICTS = "drafts/slang_stress_20261120/ground_truth/gt_slang_a_20261121.json"
+VERDICTS_COMMIT = "35f33005e148486ab228a1de46ee36063a6edb5c"
+VERDICTS_SHA256 = "495c14c30fb9d0a9d6880732c0e9ed39fe10e95169e53f701b5926430786c7e7"
+STATUS = ("exploratory: hand-authored slang stress pair (draft pack slang_stress_20261120), owner-read 2026-11-21, "
+          "awaiting clinical and patient-language review, not a study batch")
 IDS = [f"ss-nt-{n}" for n in (
-    "002 003 005 006 019 023 026 031 033 034 043 044 051 052 054 055 071 074 075 081 084 085 093 094 "
+    "002 003 005 006 019 023 026 031 033 034 043 044 051 052 055 071 074 075 081 084 085 093 094 "
     "101 102 103 105 121 122 124 132 133 134 145 146 152 153 154 155 169 170 171 182 183 187 194 195").split()]
-EXCLUDED = [f"ss-nt-{n}" for n in "001 027 064 068 104 108 123 151 157 158".split()]
+EXCLUDED = [f"ss-nt-{n}" for n in "001 027 054 064 068 104 108 123 151 157 158".split()]
 CATEGORIES = ("polysemous_slang", "casual_idiom_metaphor", "regional_dialect_idiom", "common_misattribution")
-GRID = {4: 4, 3: 3, 2: 3, 1: 2}
-REVIEW_KEYS = ("owner_verdict", "tier_should", "adjudicated_by", "verdicts")
+GRID = {cat: {4: 4, 3: 3, 2: 3, 1: 2} for cat in CATEGORIES}
+GRID["casual_idiom_metaphor"][4] = 3
+UNRECORDED_REVIEW_KEYS = ("adjudicated_by", "verdicts")
 
 
 def _load(name: str) -> ModuleType:
@@ -52,7 +58,7 @@ def _report() -> dict:
 
 def test_the_file_is_a_2panel_batch_the_lanes_can_read() -> None:
     pairs = _pairs()
-    assert isinstance(pairs, list) and len(pairs) == 48
+    assert isinstance(pairs, list) and len(pairs) == 47
     for pair in pairs:
         assert list(pair) == ["top_prompt", "bottom_prompt", "target_clinical_token", "generation"]
         for key in ("top_prompt", "bottom_prompt", "target_clinical_token"):
@@ -68,7 +74,7 @@ def test_the_file_is_a_2panel_batch_the_lanes_can_read() -> None:
 
 def test_the_ids_are_the_owners_list_in_order_and_none_is_excluded() -> None:
     ids = [p["generation"]["id"] for p in _pairs()]
-    assert ids == IDS and ids == sorted(ids) and len(set(ids)) == 48
+    assert ids == IDS and ids == sorted(ids) and len(set(ids)) == 47
     assert not set(ids) & set(EXCLUDED)
 
 
@@ -85,35 +91,41 @@ def test_each_pair_differs_only_by_its_one_declared_span() -> None:
             assert side.endswith(gen["carrier_frame"]), gen["id"]
 
 
-def test_four_three_three_two_pairs_per_tier_in_each_trap_category() -> None:
+def test_the_tier_grid_is_four_three_three_two_less_the_owners_exclusion() -> None:
     gens = [p["generation"] for p in _pairs()]
     assert all(g["tier_given"] == g["clinical_tier_expected"] for g in gens)
     grid = collections.Counter((g["trap_category"], g["tier_given"]) for g in gens)
-    assert grid == {(cat, tier): n for cat in CATEGORIES for tier, n in GRID.items()}
-    assert _report()["pairs_by_category_and_tier"] == {cat: {str(t): n for t, n in GRID.items()} for cat in CATEGORIES}
+    assert grid == {(cat, tier): n for cat in CATEGORIES for tier, n in GRID[cat].items()}
+    assert _report()["pairs_by_category_and_tier"] == {cat: {str(t): n for t, n in GRID[cat].items()} for cat in CATEGORIES}
 
 
-def test_status_selection_and_provenance_are_pinned_and_no_review_is_claimed() -> None:
+def test_status_selection_provenance_and_the_owners_verdicts_are_pinned() -> None:
     for pair in _pairs():
         gen = pair["generation"]
         assert gen["status"] == STATUS and gen["selection"] == "outcome_informed"
         assert gen["source"] == {"candidates": "drafts/slang_stress_20261120/next_token/candidates.json",
                                  "candidates_commit": COMMIT, "candidates_sha256": CANDIDATES_SHA256}
-        assert not set(gen) & set(REVIEW_KEYS), gen["id"]
+        assert gen["owner_verdict"] == "right" and gen["tier_should"] == gen["tier_given"], gen["id"]
+        assert not set(gen) & set(UNRECORDED_REVIEW_KEYS), gen["id"]
 
 
 def test_sidecar() -> None:
     report = _report()
     assert report["status"] == STATUS and report["status"].startswith("exploratory:")
     assert report["cost_usd"] == 0.0 and "run_timestamp" not in report
-    assert report["pairs"] == 48 and report["source_pairs"] == 200
+    assert report["pairs"] == 47 and report["source_pairs"] == 200
     source = report["source"]
     assert source["candidates_commit"] == COMMIT and source["candidates_sha256"] == CANDIDATES_SHA256
+    assert (source["verdicts"], source["verdicts_commit"], source["verdicts_sha256"]) == (
+        VERDICTS, VERDICTS_COMMIT, VERDICTS_SHA256)
+    assert report["verdicts"].startswith(VERDICTS + " at " + VERDICTS_COMMIT[:8])
     assert report["selection"].startswith("outcome_informed") and "not outcome-blind" in report["selection"]
     assert report["naming"].startswith("agscen_ only, never pairs_")
-    assert report["excluded_by_owner"] == EXCLUDED and set(report["excluded_reasons"]) == set(EXCLUDED)
+    assert report["excluded_by_owner"] == EXCLUDED and list(report["excluded_reasons"]) == EXCLUDED
+    assert "owner's read of 2026-11-21" in report["excluded_reasons"]["ss-nt-054"]
     assert report["retiered_by_owner"] == {}
-    assert not set(report) & set(REVIEW_KEYS) and report["review"].startswith("pending")
+    assert report["review"].startswith("owner read recorded; clinical and patient-language review pending")
+    assert "adjudicated_by" not in report
 
 
 def test_the_four_pairs_named_in_the_naming_note_are_the_ones_whose_clinical_prompt_hashes_holdout() -> None:
@@ -138,7 +150,7 @@ def test_no_prompt_is_sealed_with_or_without_the_stem() -> None:
     split = _load("tierb_split")
     pairs = _pairs()
     prompts = [(i, p[side]) for i, p in enumerate(pairs, 1) for side in ("top_prompt", "bottom_prompt")]
-    assert len(prompts) == 96
+    assert len(prompts) == 94
     assert not [i for i, text in prompts if split.sealed_pair(None, None, text)]
     assert not [i for i, text in prompts if split.sealed_pair(STEM, i, text)]
 

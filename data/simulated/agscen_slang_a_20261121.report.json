@@ -1,19 +1,23 @@
 {
   "derived_from": "drafts/slang_stress_20261120/next_token/candidates.json at d9e66e8e (branch draft/slang-stress-20261120)",
+  "verdicts": "drafts/slang_stress_20261120/ground_truth/gt_slang_a_20261121.json at 35f33005 (branch draft/slang-stress-20261120)",
   "source": {
     "candidates": "drafts/slang_stress_20261120/next_token/candidates.json",
     "candidates_commit": "d9e66e8e3605e92d6a1567746b45188ccea69423",
     "candidates_sha256": "95336dfda832a4801fbb3cd5a1743dc42a3e1d7912db6b8cb8b9ae81c8c29ec1",
     "ledger": "drafts/slang_stress_20261120/ledger.json",
     "ledger_commit": "d9e66e8e3605e92d6a1567746b45188ccea69423",
-    "ledger_sha256": "3153faf56816dea61daec78288fb7259f2c9eb722dee0b8983a0721666a49d8f"
+    "ledger_sha256": "3153faf56816dea61daec78288fb7259f2c9eb722dee0b8983a0721666a49d8f",
+    "verdicts": "drafts/slang_stress_20261120/ground_truth/gt_slang_a_20261121.json",
+    "verdicts_commit": "35f33005e148486ab228a1de46ee36063a6edb5c",
+    "verdicts_sha256": "495c14c30fb9d0a9d6880732c0e9ed39fe10e95169e53f701b5926430786c7e7"
   },
-  "status": "exploratory: hand-authored slang stress pair (draft pack slang_stress_20261120), awaiting owner, clinical and patient-language review, not a study batch",
-  "review": "pending. No owner Ground Truth verdict, clinical review or patient-language review has been recorded for these pairs. This sidecar therefore has no verdicts entry, adjudicated_by is intentionally absent, and no pair carries owner_verdict or tier_should; tier_given is the draft's clinical_tier_expected, unreviewed. The draft's audit files (drafts/slang_stress_20261120/next_token/audit/nt_0[1-4].{facts,language,level,adversarial}.json at d9e66e8e) record a pass for each of the 48 from four model auditors; those are model readings, not clinical or patient-language review. None of the 48 is on the draft's G5 pending_clinical_review list.",
-  "selection": "outcome_informed, not outcome-blind. The draft labels itself outcome_informed (SPEC.md, ledger.json selection_label). It was drafted in a checkout of main at d126f7e6, which holds the measured results and published findings of earlier rounds, and SPEC.md did not keep the authors from them (round 9, by contrast, was written without access to measured results). The 48 were then chosen from the 200 after a review of the draft, not at random. Anything measured on this file is exploratory and does not feed the register experiment or any analysis membership",
+  "status": "exploratory: hand-authored slang stress pair (draft pack slang_stress_20261120), owner-read 2026-11-21, awaiting clinical and patient-language review, not a study batch",
+  "review": "owner read recorded; clinical and patient-language review pending. The owner read all 48 pairs merged in PR 194 on 2026-11-21 on a private read page (claude.ai artifact 7MDXRG89jWQyJZnDJJMQ8v, collection reads): 47 right, 0 retiered, 1 excluded (ss-nt-054, removed from this file). Each pair carries owner_verdict right and tier_should equal to tier_given. adjudicated_by stays absent: no clinical or patient-language review has been recorded. The draft's audit files (drafts/slang_stress_20261120/next_token/audit/nt_0[1-4].{facts,language,level,adversarial}.json at d9e66e8e) record a pass for each pair from four model auditors; those are model readings, not clinical or patient-language review. None of the 47 is on the draft's G5 pending_clinical_review list.",
+  "selection": "outcome_informed, not outcome-blind. The draft labels itself outcome_informed (SPEC.md, ledger.json selection_label). It was drafted in a checkout of main at d126f7e6, which holds the measured results and published findings of earlier rounds, and SPEC.md did not keep the authors from them (round 9, by contrast, was written without access to measured results). The 48 were then chosen from the 200 after a review of the draft, not at random, and the owner's read excluded one of them (ss-nt-054), leaving 47. Anything measured on this file is exploratory and does not feed the register experiment or any analysis membership",
   "naming": "agscen_ only, never pairs_. Under a pairs_<STAMP> name with a stamp at or after tierb.start_utc, scripts/tierb_split.py would treat the file as a Tier B batch: is_holdout assigns 20 of the 200 draft clinical prompts (top_prompt) to the holdout, and sealed_pair would seal those rows. Four of the 20 are in this file: ss-nt-023, ss-nt-043, ss-nt-101, ss-nt-153. Under this agscen_ stem is_tierb_batch is false and sealed_pair returns false for all 96 prompts, with the stem or with no batch. Do not copy these pairs into a pairs_ batch. The draft's REPORT.md, SPEC.md and ledger.json say 21; recomputed on candidates.json at d9e66e8e the count is 20",
   "source_pairs": 200,
-  "pairs": 48,
+  "pairs": 47,
   "pairs_by_category_and_tier": {
     "polysemous_slang": {
       "4": 4,
@@ -22,7 +26,7 @@
       "1": 2
     },
     "casual_idiom_metaphor": {
-      "4": 4,
+      "4": 3,
       "3": 3,
       "2": 3,
       "1": 2
@@ -43,6 +47,7 @@
   "excluded_by_owner": [
     "ss-nt-001",
     "ss-nt-027",
+    "ss-nt-054",
     "ss-nt-064",
     "ss-nt-068",
     "ss-nt-104",
@@ -55,6 +60,7 @@
   "excluded_reasons": {
     "ss-nt-001": "revisits a scenario already in committed agscen_20261108#34 (1-based index). Not an exact-text duplicate; on the draft ledger's list conceptual_agscen_replications_exclude_from_wave_a_pilot",
     "ss-nt-027": "revisits a scenario already in committed agscen_20261108#17 (1-based index). Not an exact-text duplicate; on the draft ledger's list conceptual_agscen_replications_exclude_from_wave_a_pilot",
+    "ss-nt-054": "excluded in the owner's read of 2026-11-21 (verdicts file above); no reason recorded. It was pair 15 of the 48 merged in PR 194 and was removed before any run of this file, so the 33 pairs after it each moved up one index",
     "ss-nt-064": "revisits a scenario already in committed agscen_20261108#29 (1-based index). Not an exact-text duplicate; on the draft ledger's list conceptual_agscen_replications_exclude_from_wave_a_pilot",
     "ss-nt-068": "revisits a scenario already in committed agscen_r6_20261109#4 (1-based index). Not an exact-text duplicate; on the draft ledger's list conceptual_agscen_replications_exclude_from_wave_a_pilot",
     "ss-nt-104": "revisits a scenario already in committed agscen_r6_20261109#12 and agscen_r9_20261110#7 (1-based index). Not an exact-text duplicate; on the draft ledger's list conceptual_agscen_replications_exclude_from_wave_a_pilot",
@@ -64,10 +70,14 @@
     "ss-nt-157": "revisits a scenario already in committed agscen_r6_20261109#15 (1-based index). Not an exact-text duplicate; on the draft ledger's list conceptual_agscen_replications_exclude_from_wave_a_pilot",
     "ss-nt-158": "revisits a scenario already in committed agscen_20261108#55 (1-based index). Not an exact-text duplicate; on the draft ledger's list conceptual_agscen_replications_exclude_from_wave_a_pilot"
   },
-  "not_in_this_file": "the other 142 draft pairs are not excluded by the owner. This first wave takes 4 tier-4, 3 tier-3, 3 tier-2 and 2 tier-1 pairs per trap category, after leaving out the pairs a 2026-11-21 review of the draft flagged for a fix; the rest may be promoted later in another file under another agscen_ stem",
+  "not_in_this_file": "the other 142 draft pairs are not excluded by the owner. This first wave took 4 tier-4, 3 tier-3, 3 tier-2 and 2 tier-1 pairs per trap category, after leaving out the pairs a 2026-11-21 review of the draft flagged for a fix; the rest may be promoted later in another file under another agscen_ stem. The owner's read then excluded ss-nt-054, so casual_idiom_metaphor has 3 tier-4 pairs",
   "retiered_by_owner": {},
-  "order": "candidates.json order (ascending id) with the 152 pairs not in this file removed; 1-based index i is pairs[i-1]",
-  "publication": "trace_out/agscen_* parts belong to the stimulus class hand_authored_exploratory (data/results_policy/policy.v1.json, scripts/results_policy.py), which the analysis memberships study-interim/1 and exploratory-open/1 exclude: the collectors reading through Gate (scripts/urgency_shift.py and the others) skip them and count them on stdout, and scripts/publication_hold.is_exploratory_run_dir returns true for this stem and its __<model> run directories, so scripts/export_tag_mass.py, scripts/retrace_consistency.py and the lens consumers skip them too. They are not hidden: the open-results policy shares intact agscen_ runs, and the results catalogue (scripts/export_results_catalogue.py) lists their rows as exploratory_hand_authored. Its class-level clinical_review label, owner_read_equivalence_and_domain_review_pending, overstates the review of this file until the owner records a read",
+  "order": "candidates.json order (ascending id) with the 153 pairs not in this file removed; 1-based index i is pairs[i-1]",
+  "publication": "trace_out/agscen_* parts belong to the stimulus class hand_authored_exploratory (data/results_policy/policy.v1.json, scripts/results_policy.py), which the analysis memberships study-interim/1 and exploratory-open/1 exclude: the collectors reading through Gate (scripts/urgency_shift.py and the others) skip them and count them on stdout, and scripts/publication_hold.is_exploratory_run_dir returns true for this stem and its __<model> run directories, so scripts/export_tag_mass.py, scripts/retrace_consistency.py and the lens consumers skip them too. They are not hidden: the open-results policy shares intact agscen_ runs, and the results catalogue (scripts/export_results_catalogue.py) lists their rows as exploratory_hand_authored. Its class-level clinical_review label, owner_read_equivalence_and_domain_review_pending, describes this file from the owner's read of 2026-11-21: owner-read, domain (clinical and patient-language) review pending",
+  "edits": [
+    "PR 194 (f1951960, merged 2026-11-21 as 34d84cf2): 48 pairs, no review recorded",
+    "owner read 2026-11-21 (drafts/slang_stress_20261120/ground_truth/gt_slang_a_20261121.json at 35f33005): 47 right, ss-nt-054 excluded; this edit removed ss-nt-054 and added owner_verdict and tier_should to the other 47 before any run of this file. No prompt or target changed"
+  ],
   "generator": "hand-authored outside the study generator by the draft pack's next-token authors (ledger.json: @nt-author-1 for ss-nt-001 to 100, @nt-author-2 for ss-nt-101 to 200); copied into this file by a local script with no API call",
   "cost_usd": 0.0,
   "note": "hand-authored stimuli copied from the draft branch; no API calls"
