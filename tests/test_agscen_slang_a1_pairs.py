@@ -6,7 +6,8 @@ each of four trap categories. The owner read all 48 on 2026-11-21 (ground_truth/
 on draft/slang-stress-20261120): 47 right and ss-nt-054 excluded. The 48-pair file stays exactly as it landed; this file
 holds the 47 kept pairs byte for byte, with the owner's verdicts, so casual_idiom_metaphor has 3 tier-4 pairs. Clinical
 and patient-language review are still pending. The selection is outcome_informed, not outcome-blind. Pins the shape the
-two $0 lanes read, the id list and the owner's eleven exclusions, the owner's verdicts, the copy from the 48-pair file,
+two $0 lanes read, the id list, the read's one exclusion and the ten made before it, the owner's verdicts, the copy
+from the 48-pair file,
 the single difference, the tier grid, the provenance, the stem rule (agscen_, never pairs_) and the holdout seal.
 """
 from __future__ import annotations
@@ -34,7 +35,9 @@ STATUS = ("exploratory: hand-authored slang stress pair (draft pack slang_stress
 IDS = [f"ss-nt-{n}" for n in (
     "002 003 005 006 019 023 026 031 033 034 043 044 051 052 055 071 074 075 081 084 085 093 094 "
     "101 102 103 105 121 122 124 132 133 134 145 146 152 153 154 155 169 170 171 182 183 187 194 195").split()]
-EXCLUDED = [f"ss-nt-{n}" for n in "001 027 054 064 068 104 108 123 151 157 158".split()]
+EXCLUDED_IN_READ = ["ss-nt-054"]
+EXCLUDED_BEFORE_READ = [f"ss-nt-{n}" for n in "001 027 064 068 104 108 123 151 157 158".split()]
+EXCLUDED = sorted(EXCLUDED_IN_READ + EXCLUDED_BEFORE_READ)
 CATEGORIES = ("polysemous_slang", "casual_idiom_metaphor", "regional_dialect_idiom", "common_misattribution")
 GRID = {cat: {4: 4, 3: 3, 2: 3, 1: 2} for cat in CATEGORIES}
 GRID["casual_idiom_metaphor"][4] = 3
@@ -139,8 +142,10 @@ def test_sidecar() -> None:
     assert report["verdicts"].startswith(VERDICTS + " at " + VERDICTS_COMMIT[:8])
     assert report["selection"].startswith("outcome_informed") and "not outcome-blind" in report["selection"]
     assert report["naming"].startswith("agscen_ only, never pairs_")
-    assert report["excluded_by_owner"] == EXCLUDED and list(report["excluded_reasons"]) == EXCLUDED
+    assert report["excluded_by_owner"] == EXCLUDED_IN_READ and report["excluded_before_read"] == EXCLUDED_BEFORE_READ
+    assert list(report["excluded_reasons"]) == EXCLUDED
     assert "owner's read of 2026-11-21" in report["excluded_reasons"]["ss-nt-054"]
+    assert all(report["excluded_reasons"][i].startswith("excluded before the owner read") for i in EXCLUDED_BEFORE_READ)
     assert report["retiered_by_owner"] == {}
     assert report["review"].startswith("owner read recorded; clinical and patient-language review pending")
     assert "adjudicated_by" not in report
