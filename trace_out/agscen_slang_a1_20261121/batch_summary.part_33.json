@@ -1,0 +1,362 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 33,
+  "pairs_requested": 4,
+  "completed": false,
+  "screen_targets": null,
+  "environment": {
+    "python": "3.11.18",
+    "engine_sha": "7ed973700f43",
+    "runner_image": "20261116.202.1"
+  },
+  "results": [
+    {
+      "index": 33,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 35 and have a painful warm pus filled furuncle on my inner thigh that has grown to 4 cm over 4 days so I should go to the",
+        "patient": "I am 35 and have a painful warm pus filled boil on my inner thigh that has grown to 4 cm over 4 days so I should go to the"
+      },
+      "target_token": "Output \" clinic\"",
+      "probabilities": {
+        "clinical": 0.013,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4042,
+        "patient": 0.3954
+      },
+      "error_share": {
+        "clinical": 0.1085,
+        "patient": 0.1052
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.377)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.385)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.377
+          ],
+          [
+            "Output \" hospital\"",
+            0.202
+          ],
+          [
+            "Output \" doctors\"",
+            0.096
+          ],
+          [
+            "Output \" ER\"",
+            0.065
+          ],
+          [
+            "Output \" GP\"",
+            0.051
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.385
+          ],
+          [
+            "Output \" hospital\"",
+            0.182
+          ],
+          [
+            "Output \" doctors\"",
+            0.142
+          ],
+          [
+            "Output \" ER\"",
+            0.052
+          ],
+          [
+            "Output \" GP\"",
+            0.046
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " clinic",
+        "measured_token": "Output \" clinic\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" clinic\"",
+            "probability": 0.013,
+            "rank": 10,
+            "returned": 10
+          },
+          "patient": {
+            "status": "missing",
+            "reason": "target_not_in_returned_logits",
+            "returned": 10,
+            "prefix_candidates": []
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 1087,
+        "unique_to_a": 324,
+        "unique_to_b": 267
+      },
+      "outputs": {
+        "html": "trace_out/agscen_slang_a1_20261121/index_33.html",
+        "png": "trace_out/agscen_slang_a1_20261121/index_33.png",
+        "diff_html": "trace_out/agscen_slang_a1_20261121/index_33_diff.html",
+        "diff_png": "trace_out/agscen_slang_a1_20261121/index_33_diff.png"
+      }
+    },
+    {
+      "index": 34,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 34 and have felt mildly constipated for 3 days after travel with normal appetite and no belly pain so I will take some",
+        "patient": "I am 34 and have felt mildly backed up for 3 days after travel with normal appetite and no belly pain so I will take some"
+      },
+      "target_token": "Output \" fiber\"",
+      "probabilities": {
+        "clinical": 0.081,
+        "patient": 0.059
+      },
+      "language_penalty": -0.022000000000000006,
+      "clinical_mass": {
+        "clinical": 0.3195,
+        "patient": 0.3057
+      },
+      "error_share": {
+        "clinical": 0.0985,
+        "patient": 0.0973
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L7\u00b7C] terms related to gastrointestinal and digestive heal \u2192 [L21\u00b7C] words and phrases related to gut bacteria, digestion \u2192 Output \" stool\" (p=0.104)",
+        "patient": "embedding \u2192 [L7\u00b7C] terms related to gastrointestinal and digestive heal \u2192 [L21\u00b7C] words and phrases related to gut bacteria, digestion \u2192 Output \" stool\" (p=0.046)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" stool\"",
+            0.104
+          ],
+          [
+            "Output \" lax\"",
+            0.081
+          ],
+          [
+            "Output \" fiber\"",
+            0.081
+          ],
+          [
+            "Output \" sen\"",
+            0.063
+          ],
+          [
+            "Output \" fibre\"",
+            0.056
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" probiotics\"",
+            0.097
+          ],
+          [
+            "Output \" fiber\"",
+            0.059
+          ],
+          [
+            "Output \" Me\"",
+            0.046
+          ],
+          [
+            "Output \" stool\"",
+            0.046
+          ],
+          [
+            "Output \" Mir\"",
+            0.041
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " fiber",
+        "measured_token": "Output \" fiber\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" fiber\"",
+            "probability": 0.081,
+            "rank": 2,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" fiber\"",
+            "probability": 0.059,
+            "rank": 2,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 976,
+        "unique_to_a": 576,
+        "unique_to_b": 515
+      },
+      "outputs": {
+        "html": "trace_out/agscen_slang_a1_20261121/index_34.html",
+        "png": "trace_out/agscen_slang_a1_20261121/index_34.png",
+        "diff_html": "trace_out/agscen_slang_a1_20261121/index_34_diff.html",
+        "diff_png": "trace_out/agscen_slang_a1_20261121/index_34_diff.png"
+      }
+    },
+    {
+      "index": 35,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 32 and have a small tingling herpes labialis blister on the edge of my lip familiar from prior colds so I will put on some",
+        "patient": "I am 32 and have a small tingling cold sore blister on the edge of my lip familiar from prior colds so I will put on some"
+      },
+      "target_token": "Output \" hydro\"",
+      "probabilities": {
+        "clinical": 0.047,
+        "patient": 0.02
+      },
+      "language_penalty": -0.027,
+      "clinical_mass": {
+        "clinical": 0.4119,
+        "patient": 0.4024
+      },
+      "error_share": {
+        "clinical": 0.124,
+        "patient": 0.1138
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" a\" (p=0.028)",
+        "patient": "embedding \u2192 Output \" cold\" (p=0.055)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hydro\"",
+            0.047
+          ],
+          [
+            "Output \" antiviral\"",
+            0.041
+          ],
+          [
+            "Output \" lip\"",
+            0.041
+          ],
+          [
+            "Output \" Abre\"",
+            0.032
+          ],
+          [
+            "Output \" a\"",
+            0.028
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" lip\"",
+            0.071
+          ],
+          [
+            "Output \" cold\"",
+            0.055
+          ],
+          [
+            "Output \" of\"",
+            0.038
+          ],
+          [
+            "Output \" Abre\"",
+            0.038
+          ],
+          [
+            "Output \" n\"",
+            0.038
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " cream",
+        "measured_token": "Output \" hydro\"",
+        "match": "top_logit",
+        "substituted": true,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" hydro\"",
+            "probability": 0.047,
+            "rank": 1,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" hydro\"",
+            "probability": 0.02,
+            "rank": 8,
+            "returned": 10
+          }
+        },
+        "intended_read": {
+          "status": "missing",
+          "reason": "target_not_in_returned_logits",
+          "returned": 10,
+          "prefix_candidates": []
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 1066,
+        "unique_to_a": 399,
+        "unique_to_b": 445
+      },
+      "outputs": {
+        "html": "trace_out/agscen_slang_a1_20261121/index_35.html",
+        "png": "trace_out/agscen_slang_a1_20261121/index_35.png",
+        "diff_html": "trace_out/agscen_slang_a1_20261121/index_35_diff.html",
+        "diff_png": "trace_out/agscen_slang_a1_20261121/index_35_diff.png"
+      }
+    }
+  ]
+}
