@@ -1,0 +1,468 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 37,
+  "pairs_requested": 4,
+  "completed": true,
+  "screen_targets": null,
+  "environment": {
+    "python": "3.11.18",
+    "engine_sha": "7ed973700f43",
+    "runner_image": "20261116.202.1"
+  },
+  "results": [
+    {
+      "index": 37,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 64 with sudden ripping pain between my shoulder blades and a weak left arm pulse that I attributed to a muscle strain so I need to go to the",
+        "patient": "I am 64 with sudden ripping pain between my shoulder blades and a weak left arm pulse that I thought meant I pulled a muscle so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.141,
+        "patient": 0.166
+      },
+      "language_penalty": 0.025000000000000022,
+      "clinical_mass": {
+        "clinical": 0.3795,
+        "patient": 0.3695
+      },
+      "error_share": {
+        "clinical": 0.1023,
+        "patient": 0.1049
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.297)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.241)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.297
+          ],
+          [
+            "Output \" ER\"",
+            0.141
+          ],
+          [
+            "Output \" gym\"",
+            0.109
+          ],
+          [
+            "Output \" hospital\"",
+            0.109
+          ],
+          [
+            "Output \" emergency\"",
+            0.052
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.241
+          ],
+          [
+            "Output \" ER\"",
+            0.166
+          ],
+          [
+            "Output \" gym\"",
+            0.146
+          ],
+          [
+            "Output \" hospital\"",
+            0.114
+          ],
+          [
+            "Output \" emergency\"",
+            0.054
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.141,
+            "rank": 2,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.166,
+            "rank": 2,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 1196,
+        "unique_to_a": 193,
+        "unique_to_b": 244
+      },
+      "outputs": {
+        "html": "trace_out/agscen_slang_a1_20261121/index_37.html",
+        "png": "trace_out/agscen_slang_a1_20261121/index_37.png",
+        "diff_html": "trace_out/agscen_slang_a1_20261121/index_37_diff.html",
+        "diff_png": "trace_out/agscen_slang_a1_20261121/index_37_diff.png"
+      }
+    },
+    {
+      "index": 38,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 41 and woke after 2 drinks with a sudden severe headache at the back of my head along with vomiting and neck stiffness so I need to go to the",
+        "patient": "I am 41 and woke after 2 drinks with a sudden bad hangover headache at the back of my head along with vomiting and neck stiffness so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.16,
+        "patient": 0.094
+      },
+      "language_penalty": -0.066,
+      "clinical_mass": {
+        "clinical": 0.3785,
+        "patient": 0.3468
+      },
+      "error_share": {
+        "clinical": 0.1063,
+        "patient": 0.1116
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.067)",
+        "patient": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.039)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.34
+          ],
+          [
+            "Output \" ER\"",
+            0.16
+          ],
+          [
+            "Output \" doctor\"",
+            0.142
+          ],
+          [
+            "Output \" emergency\"",
+            0.067
+          ],
+          [
+            "Output \" doctors\"",
+            0.052
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.226
+          ],
+          [
+            "Output \" doctor\"",
+            0.226
+          ],
+          [
+            "Output \" ER\"",
+            0.094
+          ],
+          [
+            "Output \" doctors\"",
+            0.094
+          ],
+          [
+            "Output \" emergency\"",
+            0.039
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.16,
+            "rank": 2,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.094,
+            "rank": 3,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 1248,
+        "unique_to_a": 153,
+        "unique_to_b": 154
+      },
+      "outputs": {
+        "html": "trace_out/agscen_slang_a1_20261121/index_38.html",
+        "png": "trace_out/agscen_slang_a1_20261121/index_38.png",
+        "diff_html": "trace_out/agscen_slang_a1_20261121/index_38_diff.html",
+        "diff_png": "trace_out/agscen_slang_a1_20261121/index_38_diff.png"
+      }
+    },
+    {
+      "index": 39,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 66 and woke 20 minutes ago with sudden painless left arm weakness and facial droop that I attributed to sleeping posture so I need to go to the",
+        "patient": "I am 66 and woke 20 minutes ago with sudden painless left arm weakness and facial droop that I thought meant I slept on it wrong so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.067,
+        "patient": 0.14
+      },
+      "language_penalty": 0.07300000000000001,
+      "clinical_mass": {
+        "clinical": 0.2525,
+        "patient": 0.2675
+      },
+      "error_share": {
+        "clinical": 0.1131,
+        "patient": 0.1122
+      },
+      "top_path": {
+        "clinical": "[L17\u00b7S]  \u2192 [L18\u00b7O] mentions of restrooms and bathrooms | bathroom \u2192 [L25\u00b7O] words relating to plumbing | bathrooms and toilets \u2192 Output \" toilet\" (p=0.110)",
+        "patient": "embedding \u2192 [L17\u00b7O] descriptions of periods of time, especially days and \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.123)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" bathroom\"",
+            0.34
+          ],
+          [
+            "Output \" toilet\"",
+            0.11
+          ],
+          [
+            "Output \" loo\"",
+            0.098
+          ],
+          [
+            "Output \" ER\"",
+            0.067
+          ],
+          [
+            "Output \" doctor\"",
+            0.067
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" bathroom\"",
+            0.203
+          ],
+          [
+            "Output \" ER\"",
+            0.14
+          ],
+          [
+            "Output \" doctor\"",
+            0.123
+          ],
+          [
+            "Output \" hospital\"",
+            0.096
+          ],
+          [
+            "Output \" gym\"",
+            0.084
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " ER",
+        "measured_token": "Output \" ER\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.067,
+            "rank": 4,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" ER\"",
+            "probability": 0.14,
+            "rank": 2,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 1196,
+        "unique_to_a": 246,
+        "unique_to_b": 366
+      },
+      "outputs": {
+        "html": "trace_out/agscen_slang_a1_20261121/index_39.html",
+        "png": "trace_out/agscen_slang_a1_20261121/index_39.png",
+        "diff_html": "trace_out/agscen_slang_a1_20261121/index_39_diff.html",
+        "diff_png": "trace_out/agscen_slang_a1_20261121/index_39_diff.png"
+      }
+    },
+    {
+      "index": 40,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 55 with progressive right nasal blockage recurrent nosebleeds and cheek numbness for 4 months that I attributed to allergic rhinitis so I should see a",
+        "patient": "I am 55 with progressive right nasal blockage recurrent nosebleeds and cheek numbness for 4 months that I thought was just allergies so I should see a"
+      },
+      "target_token": "Output \" specialist\"",
+      "probabilities": {
+        "clinical": 0.277,
+        "patient": 0.079
+      },
+      "language_penalty": -0.198,
+      "clinical_mass": {
+        "clinical": 0.4588,
+        "patient": 0.4581
+      },
+      "error_share": {
+        "clinical": 0.1223,
+        "patient": 0.1158
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.116)",
+        "patient": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.273)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" specialist\"",
+            0.277
+          ],
+          [
+            "Output \" ENT\"",
+            0.19
+          ],
+          [
+            "Output \" doctor\"",
+            0.116
+          ],
+          [
+            "Output \" rhino\"",
+            0.048
+          ],
+          [
+            "Output \" neuro\"",
+            0.038
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.273
+          ],
+          [
+            "Output \" ENT\"",
+            0.213
+          ],
+          [
+            "Output \" neuro\"",
+            0.101
+          ],
+          [
+            "Output \" specialist\"",
+            0.079
+          ],
+          [
+            "Output \" dentist\"",
+            0.033
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " specialist",
+        "measured_token": "Output \" specialist\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" specialist\"",
+            "probability": 0.277,
+            "rank": 1,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" specialist\"",
+            "probability": 0.079,
+            "rank": 4,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 1069,
+        "unique_to_a": 236,
+        "unique_to_b": 270
+      },
+      "outputs": {
+        "html": "trace_out/agscen_slang_a1_20261121/index_40.html",
+        "png": "trace_out/agscen_slang_a1_20261121/index_40.png",
+        "diff_html": "trace_out/agscen_slang_a1_20261121/index_40_diff.html",
+        "diff_png": "trace_out/agscen_slang_a1_20261121/index_40_diff.png"
+      }
+    }
+  ]
+}
