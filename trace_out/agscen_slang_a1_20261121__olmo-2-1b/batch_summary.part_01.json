@@ -1,0 +1,5528 @@
+{
+  "mode": "2panel",
+  "backend": "logits",
+  "graph_model": "olmo-2-1b",
+  "source_set": null,
+  "generation_params": {},
+  "start_index": 1,
+  "pairs_requested": 47,
+  "completed": true,
+  "screen_targets": null,
+  "inference": {
+    "method": "logits",
+    "hf_id": "allenai/OLMo-2-0425-1B",
+    "dtype": "bfloat16",
+    "revision": "a1847dff35000b4271fa70afc5db10fd29fedbdf",
+    "revision_pinned": "a1847dff35000b4271fa70afc5db10fd29fedbdf",
+    "environment": {
+      "python": "3.11.18",
+      "platform": "Linux-7.0.0-1020-azure-x86_64-with-glibc2.43",
+      "engine_sha": "8da07d82308f",
+      "runner_image": "20261116.202.1",
+      "torch": "2.13.0+cpu",
+      "transformers": "5.14.1",
+      "accelerate": "1.14.0"
+    }
+  },
+  "results": [
+    {
+      "index": 1,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My brother is 34 and has been having generalized seizures for 10 minutes without waking up so we need to go to the",
+        "patient": "My brother is 34 and has been having fits for 10 minutes without waking up so we need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.2912,
+        "patient": 0.2003
+      },
+      "language_penalty": -0.0909,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.4371
+          ],
+          [
+            "Output \" ER\"",
+            0.2912
+          ],
+          [
+            "Output \" emergency\"",
+            0.1487
+          ],
+          [
+            "Output \" doctor\"",
+            0.0296
+          ],
+          [
+            "Output \" er\"",
+            0.0209
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0128
+          ],
+          [
+            "Output \" E\"",
+            0.0083
+          ],
+          [
+            "Output \" doctors\"",
+            0.0053
+          ],
+          [
+            "Output \" nearest\"",
+            0.0042
+          ],
+          [
+            "Output \" local\"",
+            0.0037
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.536
+          ],
+          [
+            "Output \" ER\"",
+            0.2003
+          ],
+          [
+            "Output \" emergency\"",
+            0.091
+          ],
+          [
+            "Output \" doctor\"",
+            0.0681
+          ],
+          [
+            "Output \" doctors\"",
+            0.011
+          ],
+          [
+            "Output \" er\"",
+            0.0104
+          ],
+          [
+            "Output \" E\"",
+            0.0092
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0063
+          ],
+          [
+            "Output \" local\"",
+            0.0044
+          ],
+          [
+            "Output \" Hospital\"",
+            0.0043
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital. I",
+          "ER": "ER. He",
+          "emergency": "emergency room.",
+          "doctor": "doctor. I"
+        },
+        "patient": {
+          "hospital": "hospital. He",
+          "ER": "ER. He",
+          "emergency": "emergency room.",
+          "doctor": "doctor. He"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 2,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I delivered my baby 3 days ago and I am having severe postpartum bleeding while soaking 2 pads every hour so I need to go to the",
+        "patient": "I delivered my baby 3 days ago and I am flooding while soaking 2 pads every hour so I need to go to the"
+      },
+      "target_token": "Output \" hospital\"",
+      "probabilities": {
+        "clinical": 0.5828,
+        "patient": 0.2114
+      },
+      "language_penalty": -0.3714,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.5828
+          ],
+          [
+            "Output \" ER\"",
+            0.2111
+          ],
+          [
+            "Output \" doctor\"",
+            0.058
+          ],
+          [
+            "Output \" emergency\"",
+            0.0376
+          ],
+          [
+            "Output \" er\"",
+            0.0159
+          ],
+          [
+            "Output \" doctors\"",
+            0.0137
+          ],
+          [
+            "Output \" bathroom\"",
+            0.0109
+          ],
+          [
+            "Output \" doc\"",
+            0.0066
+          ],
+          [
+            "Output \" E\"",
+            0.0039
+          ],
+          [
+            "Output \" clinic\"",
+            0.0033
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" bathroom\"",
+            0.4237
+          ],
+          [
+            "Output \" hospital\"",
+            0.2114
+          ],
+          [
+            "Output \" restroom\"",
+            0.0613
+          ],
+          [
+            "Output \" doctor\"",
+            0.053
+          ],
+          [
+            "Output \" store\"",
+            0.0336
+          ],
+          [
+            "Output \" ER\"",
+            0.0273
+          ],
+          [
+            "Output \" wash\"",
+            0.0248
+          ],
+          [
+            "Output \" doctors\"",
+            0.0142
+          ],
+          [
+            "Output \" toilet\"",
+            0.0103
+          ],
+          [
+            "Output \" emergency\"",
+            0.0098
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital. I",
+          "ER": "ER. I",
+          "doctor": "doctor. I",
+          "emergency": "emergency room."
+        },
+        "patient": {
+          "bathroom": "bathroom every",
+          "hospital": "hospital. I",
+          "restroom": "restroom. I",
+          "doctor": "doctor. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 3,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My partner has diabetes and his blood glucose is dropping dangerously to 42 with confusion and shaking so we need to go to the",
+        "patient": "My partner has diabetes and his blood glucose is crashing to 42 with confusion and shaking so we need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.1125,
+        "patient": 0.2253
+      },
+      "language_penalty": 0.1128,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.5367
+          ],
+          [
+            "Output \" ER\"",
+            0.1125
+          ],
+          [
+            "Output \" emergency\"",
+            0.0755
+          ],
+          [
+            "Output \" A\"",
+            0.0401
+          ],
+          [
+            "Output \" doctor\"",
+            0.0344
+          ],
+          [
+            "Output \" local\"",
+            0.0195
+          ],
+          [
+            "Output \" doctors\"",
+            0.0132
+          ],
+          [
+            "Output \" E\"",
+            0.0115
+          ],
+          [
+            "Output \" nearest\"",
+            0.0111
+          ],
+          [
+            "Output \" Emergency\"",
+            0.009
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.4999
+          ],
+          [
+            "Output \" ER\"",
+            0.2253
+          ],
+          [
+            "Output \" emergency\"",
+            0.0896
+          ],
+          [
+            "Output \" doctor\"",
+            0.0211
+          ],
+          [
+            "Output \" A\"",
+            0.0181
+          ],
+          [
+            "Output \" E\"",
+            0.0136
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0097
+          ],
+          [
+            "Output \" local\"",
+            0.0092
+          ],
+          [
+            "Output \" ED\"",
+            0.0089
+          ],
+          [
+            "Output \" nearest\"",
+            0.0072
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital. I",
+          "ER": "ER. I",
+          "emergency": "emergency room.",
+          "A": "A&E."
+        },
+        "patient": {
+          "hospital": "hospital. I",
+          "ER": "ER.",
+          "emergency": "emergency room.",
+          "doctor": "doctor. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 4,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My sister is 29 with a 39 C fever and stiff neck and keeps having altered mental status and cannot answer so we need to go to the",
+        "patient": "My sister is 29 with a 39 C fever and stiff neck and keeps zoning out and cannot answer so we need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.392,
+        "patient": 0.3046
+      },
+      "language_penalty": -0.0874,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ER\"",
+            0.392
+          ],
+          [
+            "Output \" hospital\"",
+            0.38
+          ],
+          [
+            "Output \" er\"",
+            0.0737
+          ],
+          [
+            "Output \" emergency\"",
+            0.0483
+          ],
+          [
+            "Output \" doctor\"",
+            0.0273
+          ],
+          [
+            "Output \" doctors\"",
+            0.0103
+          ],
+          [
+            "Output \" ED\"",
+            0.0064
+          ],
+          [
+            "Output \" E\"",
+            0.0047
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0034
+          ],
+          [
+            "Output \" local\"",
+            0.0034
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.3345
+          ],
+          [
+            "Output \" ER\"",
+            0.3046
+          ],
+          [
+            "Output \" doctor\"",
+            0.0944
+          ],
+          [
+            "Output \" er\"",
+            0.0915
+          ],
+          [
+            "Output \" emergency\"",
+            0.049
+          ],
+          [
+            "Output \" doctors\"",
+            0.0286
+          ],
+          [
+            "Output \" doc\"",
+            0.0157
+          ],
+          [
+            "Output \" dr\"",
+            0.0077
+          ],
+          [
+            "Output \" Dr\"",
+            0.0064
+          ],
+          [
+            "Output \" E\"",
+            0.0051
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "ER": "ER. She",
+          "hospital": "hospital. She",
+          "er": "er. She",
+          "emergency": "emergency room."
+        },
+        "patient": {
+          "hospital": "hospital. She",
+          "ER": "ER. She",
+          "doctor": "doctor. She",
+          "er": "er. She"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 5,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 56 and over the past 2 days noticed a new cluster of vitreous opacities in my right eye without vision loss so I need to see a",
+        "patient": "I am 56 and over the past 2 days noticed a new cluster of floaters in my right eye without vision loss so I need to see a"
+      },
+      "target_token": "Output \" specialist\"",
+      "probabilities": {
+        "clinical": 0.0747,
+        "patient": 0.0358
+      },
+      "language_penalty": -0.0389,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.1581
+          ],
+          [
+            "Output \" retina\"",
+            0.1005
+          ],
+          [
+            "Output \" op\"",
+            0.0915
+          ],
+          [
+            "Output \" ret\"",
+            0.0833
+          ],
+          [
+            "Output \" specialist\"",
+            0.0747
+          ],
+          [
+            "Output \" o\"",
+            0.0724
+          ],
+          [
+            "Output \" O\"",
+            0.068
+          ],
+          [
+            "Output \" u\"",
+            0.0219
+          ],
+          [
+            "Output \" Dr\"",
+            0.0189
+          ],
+          [
+            "Output \" Ret\"",
+            0.0164
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.2564
+          ],
+          [
+            "Output \" o\"",
+            0.1905
+          ],
+          [
+            "Output \" O\"",
+            0.0973
+          ],
+          [
+            "Output \" op\"",
+            0.0859
+          ],
+          [
+            "Output \" specialist\"",
+            0.0358
+          ],
+          [
+            "Output \" eye\"",
+            0.0313
+          ],
+          [
+            "Output \" retina\"",
+            0.0271
+          ],
+          [
+            "Output \" Dr\"",
+            0.0266
+          ],
+          [
+            "Output \" doc\"",
+            0.0262
+          ],
+          [
+            "Output \" u\"",
+            0.0174
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. I",
+          "retina": "retina specialist.",
+          "op": "opthalmologist",
+          "ret": "retinal specialist"
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "o": "ophthalmologist",
+          "O": "Ophthalmologist",
+          "op": "optham"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 6,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 72 and over 9 months my eyesight has developed progressive loss of clarity with night glare so I need to see a",
+        "patient": "I am 72 and over 9 months my eyesight has become progressively cloudy with night glare so I need to see a"
+      },
+      "target_token": "Output \" specialist\"",
+      "probabilities": {
+        "clinical": 0.1498,
+        "patient": 0.1812
+      },
+      "language_penalty": 0.0314,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.1546
+          ],
+          [
+            "Output \" specialist\"",
+            0.1498
+          ],
+          [
+            "Output \" lot\"",
+            0.0753
+          ],
+          [
+            "Output \" new\"",
+            0.0203
+          ],
+          [
+            "Output \" opt\"",
+            0.0203
+          ],
+          [
+            "Output \" different\"",
+            0.0153
+          ],
+          [
+            "Output \" GP\"",
+            0.0135
+          ],
+          [
+            "Output \" gl\"",
+            0.0107
+          ],
+          [
+            "Output \" \"",
+            0.0107
+          ],
+          [
+            "Output \" sight\"",
+            0.0102
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.2637
+          ],
+          [
+            "Output \" specialist\"",
+            0.1812
+          ],
+          [
+            "Output \" lot\"",
+            0.0465
+          ],
+          [
+            "Output \" opt\"",
+            0.0185
+          ],
+          [
+            "Output \" new\"",
+            0.0163
+          ],
+          [
+            "Output \" GP\"",
+            0.0144
+          ],
+          [
+            "Output \" gl\"",
+            0.0133
+          ],
+          [
+            "Output \" different\"",
+            0.0121
+          ],
+          [
+            "Output \" Opt\"",
+            0.0104
+          ],
+          [
+            "Output \" sight\"",
+            0.0102
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. I",
+          "specialist": "specialist. I",
+          "lot": "lot better.",
+          "new": "new pair of"
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "specialist": "specialist. I",
+          "lot": "lot of light",
+          "opt": "optician."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 7,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 36 and since twisting my right knee 3 weeks ago the joint repeatedly catches in fixed flexion so I need to see a",
+        "patient": "I am 36 and since twisting my right knee 3 weeks ago the joint repeatedly gets locked so I need to see a"
+      },
+      "target_token": "Output \" specialist\"",
+      "probabilities": {
+        "clinical": 0.2065,
+        "patient": 0.1905
+      },
+      "language_penalty": -0.016,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" specialist\"",
+            0.2065
+          ],
+          [
+            "Output \" phys\"",
+            0.2065
+          ],
+          [
+            "Output \" doctor\"",
+            0.1712
+          ],
+          [
+            "Output \" sports\"",
+            0.0692
+          ],
+          [
+            "Output \" knee\"",
+            0.0322
+          ],
+          [
+            "Output \" surgeon\"",
+            0.0322
+          ],
+          [
+            "Output \" chiropr\"",
+            0.0235
+          ],
+          [
+            "Output \" pod\"",
+            0.0192
+          ],
+          [
+            "Output \" orth\"",
+            0.0145
+          ],
+          [
+            "Output \" professional\"",
+            0.0115
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.2227
+          ],
+          [
+            "Output \" phys\"",
+            0.1997
+          ],
+          [
+            "Output \" specialist\"",
+            0.1905
+          ],
+          [
+            "Output \" sports\"",
+            0.059
+          ],
+          [
+            "Output \" knee\"",
+            0.0342
+          ],
+          [
+            "Output \" surgeon\"",
+            0.029
+          ],
+          [
+            "Output \" chiropr\"",
+            0.0281
+          ],
+          [
+            "Output \" orth\"",
+            0.0186
+          ],
+          [
+            "Output \" pod\"",
+            0.0154
+          ],
+          [
+            "Output \" professional\"",
+            0.0117
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "specialist": "specialist. I",
+          "phys": "physio.",
+          "doctor": "doctor. I",
+          "sports": "sports injury doctor"
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "phys": "physio.",
+          "specialist": "specialist. I",
+          "sports": "sports injury doctor"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 8,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 38 and since returning from a trip 5 days ago I have had watery diarrhea with stomach cramps so I need to see a",
+        "patient": "I am 38 and since returning from a trip 5 days ago I have had the runs with stomach cramps so I need to see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.7845,
+        "patient": 0.688
+      },
+      "language_penalty": -0.0965,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.7845
+          ],
+          [
+            "Output \" gastro\"",
+            0.0517
+          ],
+          [
+            "Output \" doc\"",
+            0.0216
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0206
+          ],
+          [
+            "Output \" Dr\"",
+            0.0195
+          ],
+          [
+            "Output \" specialist\"",
+            0.0177
+          ],
+          [
+            "Output \" physician\"",
+            0.0121
+          ],
+          [
+            "Output \" GI\"",
+            0.011
+          ],
+          [
+            "Output \" dr\"",
+            0.0068
+          ],
+          [
+            "Output \" medical\"",
+            0.0038
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.688
+          ],
+          [
+            "Output \" gastro\"",
+            0.0809
+          ],
+          [
+            "Output \" specialist\"",
+            0.0317
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0307
+          ],
+          [
+            "Output \" doc\"",
+            0.0259
+          ],
+          [
+            "Output \" Dr\"",
+            0.0159
+          ],
+          [
+            "Output \" GP\"",
+            0.0122
+          ],
+          [
+            "Output \" G\"",
+            0.01
+          ],
+          [
+            "Output \" GI\"",
+            0.0087
+          ],
+          [
+            "Output \" dr\"",
+            0.0081
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. I",
+          "gastro": "gastroenterologist",
+          "doc": "doc. I",
+          "Doctor": "Doctor. I"
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "gastro": "gastroenterologist",
+          "specialist": "specialist. I",
+          "Doctor": "Doctor. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 9,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 32 and for 2 days have had turbid urine with a strong odor and lower belly ache so I need to visit the",
+        "patient": "I am 32 and for 2 days have had cloudy pee with a strong odor and lower belly ache so I need to visit the"
+      },
+      "target_token": "Output \" clinic\"",
+      "probabilities": {
+        "clinical": 0.0066,
+        "patient": 0.0039
+      },
+      "language_penalty": -0.0027,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.658
+          ],
+          [
+            "Output \" doc\"",
+            0.0353
+          ],
+          [
+            "Output \" u\"",
+            0.0339
+          ],
+          [
+            "Output \" doctors\"",
+            0.0285
+          ],
+          [
+            "Output \" g\"",
+            0.0218
+          ],
+          [
+            "Output \" hospital\"",
+            0.0193
+          ],
+          [
+            "Output \" Dr\"",
+            0.0186
+          ],
+          [
+            "Output \" ER\"",
+            0.0154
+          ],
+          [
+            "Output \" Doctor\"",
+            0.014
+          ],
+          [
+            "Output \" GP\"",
+            0.0104
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.6296
+          ],
+          [
+            "Output \" doc\"",
+            0.0737
+          ],
+          [
+            "Output \" doctors\"",
+            0.0318
+          ],
+          [
+            "Output \" g\"",
+            0.0278
+          ],
+          [
+            "Output \" ER\"",
+            0.0246
+          ],
+          [
+            "Output \" Dr\"",
+            0.0233
+          ],
+          [
+            "Output \" u\"",
+            0.0153
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0141
+          ],
+          [
+            "Output \" hospital\"",
+            0.0141
+          ],
+          [
+            "Output \" dr\"",
+            0.0141
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. I",
+          "doc": "doc. I",
+          "u": "urolog",
+          "doctors": "doctors. I"
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "doc": "doc. I",
+          "doctors": "doctors. I",
+          "g": "gyno"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 10,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 53 and for 2 weeks my morning blood glucose has stayed above 280 despite my daily pills so I need to see my",
+        "patient": "I am 53 and for 2 weeks my morning sugar has stayed above 280 despite my daily pills so I need to see my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.5093,
+        "patient": 0.4908
+      },
+      "language_penalty": -0.0185,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.5093
+          ],
+          [
+            "Output \" end\"",
+            0.0987
+          ],
+          [
+            "Output \" Dr\"",
+            0.0668
+          ],
+          [
+            "Output \" GP\"",
+            0.0445
+          ],
+          [
+            "Output \" doc\"",
+            0.036
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0226
+          ],
+          [
+            "Output \" End\"",
+            0.022
+          ],
+          [
+            "Output \" dr\"",
+            0.0215
+          ],
+          [
+            "Output \" PC\"",
+            0.0188
+          ],
+          [
+            "Output \" physician\"",
+            0.0131
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.4908
+          ],
+          [
+            "Output \" Dr\"",
+            0.0827
+          ],
+          [
+            "Output \" doc\"",
+            0.0675
+          ],
+          [
+            "Output \" end\"",
+            0.0494
+          ],
+          [
+            "Output \" GP\"",
+            0.0442
+          ],
+          [
+            "Output \" dr\"",
+            0.0378
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0277
+          ],
+          [
+            "Output \" PC\"",
+            0.0184
+          ],
+          [
+            "Output \" physician\"",
+            0.0121
+          ],
+          [
+            "Output \" End\"",
+            0.0085
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. I",
+          "end": "endocrinologist",
+          "Dr": "Dr. I",
+          "GP": "GP. I"
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "Dr": "Dr. I",
+          "doc": "doc. I",
+          "end": "endocrinologist"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 11,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I ate a big bowl of beans at lunch and now have mild abdominal flatulence and belching so I will buy some",
+        "patient": "I ate a big bowl of beans at lunch and now have mild gas and belching so I will buy some"
+      },
+      "target_token": "Output \" medicine\"",
+      "probabilities": {
+        "clinical": 0.0019,
+        "patient": 0.0034
+      },
+      "language_penalty": 0.0015,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" more\"",
+            0.1035
+          ],
+          [
+            "Output \" beans\"",
+            0.0369
+          ],
+          [
+            "Output \" baking\"",
+            0.0197
+          ],
+          [
+            "Output \" of\"",
+            0.0186
+          ],
+          [
+            "Output \" over\"",
+            0.0186
+          ],
+          [
+            "Output \" lact\"",
+            0.0164
+          ],
+          [
+            "Output \" gas\"",
+            0.0159
+          ],
+          [
+            "Output \" T\"",
+            0.0154
+          ],
+          [
+            "Output \" anti\"",
+            0.0127
+          ],
+          [
+            "Output \" lax\"",
+            0.0109
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" more\"",
+            0.0876
+          ],
+          [
+            "Output \" gas\"",
+            0.0484
+          ],
+          [
+            "Output \" Gas\"",
+            0.0208
+          ],
+          [
+            "Output \" beans\"",
+            0.0202
+          ],
+          [
+            "Output \" milk\"",
+            0.0202
+          ],
+          [
+            "Output \" T\"",
+            0.0202
+          ],
+          [
+            "Output \" of\"",
+            0.0172
+          ],
+          [
+            "Output \" over\"",
+            0.0172
+          ],
+          [
+            "Output \" baking\"",
+            0.0152
+          ],
+          [
+            "Output \" Pe\"",
+            0.0139
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "more": "more beans and",
+          "beans": "beans and eat",
+          "baking": "baking soda and",
+          "of": "of the other"
+        },
+        "patient": {
+          "more": "more beans and",
+          "gas": "gas pills to",
+          "Gas": "Gas-X and",
+          "beans": "beans at the"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 12,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After shifting my work hours 2 nights ago I have mild sleep onset delay at bedtime so tonight I might try some",
+        "patient": "After shifting my work hours 2 nights ago I have mild trouble dropping off at bedtime so tonight I might try some"
+      },
+      "target_token": "Output \" mel\"",
+      "probabilities": {
+        "clinical": 0.3761,
+        "patient": 0.2146
+      },
+      "language_penalty": -0.1615,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" mel\"",
+            0.3761
+          ],
+          [
+            "Output \" of\"",
+            0.0559
+          ],
+          [
+            "Output \" Mel\"",
+            0.0299
+          ],
+          [
+            "Output \" caffeine\"",
+            0.0256
+          ],
+          [
+            "Output \" short\"",
+            0.0187
+          ],
+          [
+            "Output \" \"",
+            0.016
+          ],
+          [
+            "Output \" magnesium\"",
+            0.0129
+          ],
+          [
+            "Output \" sleep\"",
+            0.0117
+          ],
+          [
+            "Output \" more\"",
+            0.0107
+          ],
+          [
+            "Output \" kind\"",
+            0.0081
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" mel\"",
+            0.2146
+          ],
+          [
+            "Output \" of\"",
+            0.0719
+          ],
+          [
+            "Output \" magnesium\"",
+            0.0329
+          ],
+          [
+            "Output \" Mel\"",
+            0.0226
+          ],
+          [
+            "Output \" val\"",
+            0.0219
+          ],
+          [
+            "Output \" warm\"",
+            0.0171
+          ],
+          [
+            "Output \" lavender\"",
+            0.016
+          ],
+          [
+            "Output \" sleep\"",
+            0.0133
+          ],
+          [
+            "Output \" cham\"",
+            0.0125
+          ],
+          [
+            "Output \" Val\"",
+            0.0125
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "mel": "melatonin.",
+          "of": "of the mel",
+          "Mel": "Melatonin.",
+          "caffeine": "caffeine to see"
+        },
+        "patient": {
+          "mel": "melatonin.",
+          "of": "of the suggestions",
+          "magnesium": "magnesium before bed",
+          "Mel": "Melatonin."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 13,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 62 and twice in the last hour have had dark hematemesis with dizziness when standing so I need to go to the",
+        "patient": "I am 62 and twice in the last hour have been throwing up coffee grounds with dizziness when standing so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.1107,
+        "patient": 0.0385
+      },
+      "language_penalty": -0.0722,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.3106
+          ],
+          [
+            "Output \" toilet\"",
+            0.1783
+          ],
+          [
+            "Output \" ER\"",
+            0.1107
+          ],
+          [
+            "Output \" bathroom\"",
+            0.0791
+          ],
+          [
+            "Output \" doctor\"",
+            0.0386
+          ],
+          [
+            "Output \" emergency\"",
+            0.0382
+          ],
+          [
+            "Output \" E\"",
+            0.0189
+          ],
+          [
+            "Output \" doctors\"",
+            0.014
+          ],
+          [
+            "Output \" lo\"",
+            0.0077
+          ],
+          [
+            "Output \" GP\"",
+            0.0075
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" bathroom\"",
+            0.3754
+          ],
+          [
+            "Output \" hospital\"",
+            0.2331
+          ],
+          [
+            "Output \" toilet\"",
+            0.1092
+          ],
+          [
+            "Output \" doctor\"",
+            0.0513
+          ],
+          [
+            "Output \" ER\"",
+            0.0385
+          ],
+          [
+            "Output \" emergency\"",
+            0.0344
+          ],
+          [
+            "Output \" restroom\"",
+            0.0163
+          ],
+          [
+            "Output \" lo\"",
+            0.0116
+          ],
+          [
+            "Output \" doctors\"",
+            0.0104
+          ],
+          [
+            "Output \" wash\"",
+            0.0076
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital. I",
+          "toilet": "toilet. I",
+          "ER": "ER. I",
+          "bathroom": "bathroom. I"
+        },
+        "patient": {
+          "bathroom": "bathroom. I",
+          "hospital": "hospital. I",
+          "toilet": "toilet. I",
+          "doctor": "doctor. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 14,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 59 and since last night have passed melena stools 3 times with lightheadedness and a racing pulse so I need to go to the",
+        "patient": "I am 59 and since last night have passed black tarry poop 3 times with lightheadedness and a racing pulse so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.4586,
+        "patient": 0.4113
+      },
+      "language_penalty": -0.0473,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ER\"",
+            0.4586
+          ],
+          [
+            "Output \" hospital\"",
+            0.2379
+          ],
+          [
+            "Output \" emergency\"",
+            0.0735
+          ],
+          [
+            "Output \" doctor\"",
+            0.0698
+          ],
+          [
+            "Output \" er\"",
+            0.052
+          ],
+          [
+            "Output \" E\"",
+            0.0181
+          ],
+          [
+            "Output \" doc\"",
+            0.0097
+          ],
+          [
+            "Output \" doctors\"",
+            0.0079
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0073
+          ],
+          [
+            "Output \" ED\"",
+            0.0053
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ER\"",
+            0.4113
+          ],
+          [
+            "Output \" hospital\"",
+            0.2004
+          ],
+          [
+            "Output \" doctor\"",
+            0.1206
+          ],
+          [
+            "Output \" emergency\"",
+            0.0636
+          ],
+          [
+            "Output \" er\"",
+            0.0615
+          ],
+          [
+            "Output \" doc\"",
+            0.0249
+          ],
+          [
+            "Output \" doctors\"",
+            0.0179
+          ],
+          [
+            "Output \" E\"",
+            0.014
+          ],
+          [
+            "Output \" Dr\"",
+            0.0104
+          ],
+          [
+            "Output \" dr\"",
+            0.0069
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "ER": "ER. I",
+          "hospital": "hospital. I",
+          "emergency": "emergency room.",
+          "doctor": "doctor. I"
+        },
+        "patient": {
+          "ER": "ER. I",
+          "hospital": "hospital. I",
+          "doctor": "doctor. I",
+          "emergency": "emergency room."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 15,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 68 and for 4 hours have had gross hematuria with thick clots and now cannot empty my bladder so I need to go to the",
+        "patient": "I am 68 and for 4 hours have been peeing pure blood with thick clots and now cannot empty my bladder so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.0904,
+        "patient": 0.0717
+      },
+      "language_penalty": -0.0187,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.2392
+          ],
+          [
+            "Output \" doctor\"",
+            0.2127
+          ],
+          [
+            "Output \" bathroom\"",
+            0.1021
+          ],
+          [
+            "Output \" ER\"",
+            0.0904
+          ],
+          [
+            "Output \" emergency\"",
+            0.0421
+          ],
+          [
+            "Output \" toilet\"",
+            0.0361
+          ],
+          [
+            "Output \" doctors\"",
+            0.0331
+          ],
+          [
+            "Output \" u\"",
+            0.0292
+          ],
+          [
+            "Output \" restroom\"",
+            0.014
+          ],
+          [
+            "Output \" E\"",
+            0.0089
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.4657
+          ],
+          [
+            "Output \" doctor\"",
+            0.1164
+          ],
+          [
+            "Output \" ER\"",
+            0.0717
+          ],
+          [
+            "Output \" doctors\"",
+            0.0513
+          ],
+          [
+            "Output \" emergency\"",
+            0.0436
+          ],
+          [
+            "Output \" toilet\"",
+            0.0406
+          ],
+          [
+            "Output \" bathroom\"",
+            0.0228
+          ],
+          [
+            "Output \" er\"",
+            0.0092
+          ],
+          [
+            "Output \" docs\"",
+            0.007
+          ],
+          [
+            "Output \" A\"",
+            0.0066
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital. I",
+          "doctor": "doctor. I",
+          "bathroom": "bathroom every",
+          "ER": "ER. I"
+        },
+        "patient": {
+          "hospital": "hospital. I",
+          "doctor": "doctor. I",
+          "ER": "ER. I",
+          "doctors": "doctors. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 16,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 61 and for 2 months have had worsening solid esophageal dysphagia behind my breastbone with 5 kg weight loss so I need to see a",
+        "patient": "I am 61 and for 2 months have had worsening solid food getting stuck behind my breastbone with 5 kg weight loss so I need to see a"
+      },
+      "target_token": "Output \" specialist\"",
+      "probabilities": {
+        "clinical": 0.0866,
+        "patient": 0.0826
+      },
+      "language_penalty": -0.004,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" gastro\"",
+            0.2667
+          ],
+          [
+            "Output \" doctor\"",
+            0.1951
+          ],
+          [
+            "Output \" GI\"",
+            0.1044
+          ],
+          [
+            "Output \" specialist\"",
+            0.0866
+          ],
+          [
+            "Output \" surgeon\"",
+            0.0741
+          ],
+          [
+            "Output \" pul\"",
+            0.0206
+          ],
+          [
+            "Output \" G\"",
+            0.0155
+          ],
+          [
+            "Output \" cardi\"",
+            0.0141
+          ],
+          [
+            "Output \" physician\"",
+            0.0141
+          ],
+          [
+            "Output \" neuro\"",
+            0.0103
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.3941
+          ],
+          [
+            "Output \" surgeon\"",
+            0.1165
+          ],
+          [
+            "Output \" specialist\"",
+            0.0826
+          ],
+          [
+            "Output \" gastro\"",
+            0.0586
+          ],
+          [
+            "Output \" GP\"",
+            0.0517
+          ],
+          [
+            "Output \" cardi\"",
+            0.0229
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0222
+          ],
+          [
+            "Output \" doc\"",
+            0.0133
+          ],
+          [
+            "Output \" Dr\"",
+            0.0121
+          ],
+          [
+            "Output \" GI\"",
+            0.01
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "gastro": "gastroenterologist",
+          "doctor": "doctor. I",
+          "GI": "GI doc.",
+          "specialist": "specialist. I"
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "surgeon": "surgeon. I",
+          "specialist": "specialist. I",
+          "gastro": "gastroenterologist"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 17,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 45 and for 5 months have woken nightly with numbness and paresthesias in my thumb and index finger with weak grip so I need to see a",
+        "patient": "I am 45 and for 5 months have woken nightly with numbness and pins and needles in my thumb and index finger with weak grip so I need to see a"
+      },
+      "target_token": "Output \" specialist\"",
+      "probabilities": {
+        "clinical": 0.053,
+        "patient": 0.045
+      },
+      "language_penalty": -0.008,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.3798
+          ],
+          [
+            "Output \" neuro\"",
+            0.197
+          ],
+          [
+            "Output \" hand\"",
+            0.1583
+          ],
+          [
+            "Output \" specialist\"",
+            0.053
+          ],
+          [
+            "Output \" doc\"",
+            0.0258
+          ],
+          [
+            "Output \" Neuro\"",
+            0.0192
+          ],
+          [
+            "Output \" physician\"",
+            0.0183
+          ],
+          [
+            "Output \" surgeon\"",
+            0.0089
+          ],
+          [
+            "Output \" phys\"",
+            0.0088
+          ],
+          [
+            "Output \" GP\"",
+            0.0081
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.4338
+          ],
+          [
+            "Output \" hand\"",
+            0.1986
+          ],
+          [
+            "Output \" neuro\"",
+            0.0494
+          ],
+          [
+            "Output \" specialist\"",
+            0.045
+          ],
+          [
+            "Output \" GP\"",
+            0.043
+          ],
+          [
+            "Output \" phys\"",
+            0.0367
+          ],
+          [
+            "Output \" doc\"",
+            0.0168
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0131
+          ],
+          [
+            "Output \" surgeon\"",
+            0.0115
+          ],
+          [
+            "Output \" Phys\"",
+            0.0089
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. I",
+          "neuro": "neurologist",
+          "hand": "hand specialist.",
+          "specialist": "specialist. I"
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "hand": "hand specialist.",
+          "neuro": "neurologist",
+          "specialist": "specialist. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 18,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 52 and for 3 weeks have had foot drop on the right without pain causing my toes to slap the floor so I need to see a",
+        "patient": "I am 52 and for 3 weeks have had a dead foot on the right without pain causing my toes to slap the floor so I need to see a"
+      },
+      "target_token": "Output \" specialist\"",
+      "probabilities": {
+        "clinical": 0.0488,
+        "patient": 0.0178
+      },
+      "language_penalty": -0.031,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.2809
+          ],
+          [
+            "Output \" pod\"",
+            0.1992
+          ],
+          [
+            "Output \" foot\"",
+            0.105
+          ],
+          [
+            "Output \" neuro\"",
+            0.0733
+          ],
+          [
+            "Output \" specialist\"",
+            0.0488
+          ],
+          [
+            "Output \" Pod\"",
+            0.0417
+          ],
+          [
+            "Output \" phys\"",
+            0.0405
+          ],
+          [
+            "Output \" surgeon\"",
+            0.0175
+          ],
+          [
+            "Output \" GP\"",
+            0.015
+          ],
+          [
+            "Output \" Dr\"",
+            0.0145
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.4169
+          ],
+          [
+            "Output \" pod\"",
+            0.2777
+          ],
+          [
+            "Output \" Pod\"",
+            0.053
+          ],
+          [
+            "Output \" foot\"",
+            0.0483
+          ],
+          [
+            "Output \" Dr\"",
+            0.0182
+          ],
+          [
+            "Output \" specialist\"",
+            0.0178
+          ],
+          [
+            "Output \" surgeon\"",
+            0.015
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0126
+          ],
+          [
+            "Output \" GP\"",
+            0.0107
+          ],
+          [
+            "Output \" doc\"",
+            0.0099
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. I",
+          "pod": "podiatrist",
+          "foot": "foot doctor.",
+          "neuro": "neurologist"
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "pod": "podiatrist",
+          "Pod": "Podiatrist",
+          "foot": "foot doctor."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 19,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 29 and for 2 days have urinary urgency and experience severe dysuria without fever or back pain so I need to visit the",
+        "patient": "I am 29 and for 2 days have urinary urgency and feel like I am peeing fire without fever or back pain so I need to visit the"
+      },
+      "target_token": "Output \" clinic\"",
+      "probabilities": {
+        "clinical": 0.0131,
+        "patient": 0.0072
+      },
+      "language_penalty": -0.0059,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.5167
+          ],
+          [
+            "Output \" u\"",
+            0.1626
+          ],
+          [
+            "Output \" hospital\"",
+            0.0627
+          ],
+          [
+            "Output \" doctors\"",
+            0.0213
+          ],
+          [
+            "Output \" g\"",
+            0.018
+          ],
+          [
+            "Output \" GP\"",
+            0.0177
+          ],
+          [
+            "Output \" physician\"",
+            0.0148
+          ],
+          [
+            "Output \" U\"",
+            0.0132
+          ],
+          [
+            "Output \" clinic\"",
+            0.0131
+          ],
+          [
+            "Output \" ER\"",
+            0.0097
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.6333
+          ],
+          [
+            "Output \" u\"",
+            0.0571
+          ],
+          [
+            "Output \" hospital\"",
+            0.0363
+          ],
+          [
+            "Output \" ER\"",
+            0.0349
+          ],
+          [
+            "Output \" doctors\"",
+            0.0318
+          ],
+          [
+            "Output \" doc\"",
+            0.0232
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0153
+          ],
+          [
+            "Output \" emergency\"",
+            0.0139
+          ],
+          [
+            "Output \" Dr\"",
+            0.0101
+          ],
+          [
+            "Output \" g\"",
+            0.0099
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. I",
+          "u": "urolog",
+          "hospital": "hospital. I",
+          "doctors": "doctors. I"
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "u": "urolog",
+          "hospital": "hospital. I",
+          "ER": "ER. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 20,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 44 and for 4 weeks have had constant xerostomia drinking water nonstop and urinating every hour so I need to see a",
+        "patient": "I am 44 and for 4 weeks have had constant cotton mouth drinking water nonstop and urinating every hour so I need to see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.4571,
+        "patient": 0.6723
+      },
+      "language_penalty": 0.2152,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.4571
+          ],
+          [
+            "Output \" dentist\"",
+            0.1735
+          ],
+          [
+            "Output \" specialist\"",
+            0.0658
+          ],
+          [
+            "Output \" u\"",
+            0.0513
+          ],
+          [
+            "Output \" dr\"",
+            0.0189
+          ],
+          [
+            "Output \" Dr\"",
+            0.0172
+          ],
+          [
+            "Output \" physician\"",
+            0.0134
+          ],
+          [
+            "Output \" doc\"",
+            0.0124
+          ],
+          [
+            "Output \" ENT\"",
+            0.0122
+          ],
+          [
+            "Output \" end\"",
+            0.0111
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.6723
+          ],
+          [
+            "Output \" specialist\"",
+            0.0417
+          ],
+          [
+            "Output \" dentist\"",
+            0.0385
+          ],
+          [
+            "Output \" Dr\"",
+            0.0278
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0278
+          ],
+          [
+            "Output \" u\"",
+            0.0273
+          ],
+          [
+            "Output \" dr\"",
+            0.0188
+          ],
+          [
+            "Output \" doc\"",
+            0.0163
+          ],
+          [
+            "Output \" physician\"",
+            0.0109
+          ],
+          [
+            "Output \" medical\"",
+            0.0092
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. I",
+          "dentist": "dentist. I",
+          "specialist": "specialist. I",
+          "u": "urolog"
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "specialist": "specialist. I",
+          "dentist": "dentist. I",
+          "Dr": "Dr. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 21,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 47 and for 3 months have had steady cognitive slowing with unexplained weight gain and feeling cold so I need to see a",
+        "patient": "I am 47 and for 3 months have had steady brain fog with unexplained weight gain and feeling cold so I need to see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.388,
+        "patient": 0.5068
+      },
+      "language_penalty": 0.1188,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.388
+          ],
+          [
+            "Output \" neuro\"",
+            0.1951
+          ],
+          [
+            "Output \" specialist\"",
+            0.0951
+          ],
+          [
+            "Output \" doc\"",
+            0.0493
+          ],
+          [
+            "Output \" Neuro\"",
+            0.024
+          ],
+          [
+            "Output \" GP\"",
+            0.024
+          ],
+          [
+            "Output \" physician\"",
+            0.0187
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0121
+          ],
+          [
+            "Output \" Dr\"",
+            0.0121
+          ],
+          [
+            "Output \" medical\"",
+            0.0097
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.5068
+          ],
+          [
+            "Output \" neuro\"",
+            0.1204
+          ],
+          [
+            "Output \" specialist\"",
+            0.0802
+          ],
+          [
+            "Output \" doc\"",
+            0.0534
+          ],
+          [
+            "Output \" GP\"",
+            0.0245
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0155
+          ],
+          [
+            "Output \" Dr\"",
+            0.0144
+          ],
+          [
+            "Output \" Neuro\"",
+            0.0144
+          ],
+          [
+            "Output \" dr\"",
+            0.0142
+          ],
+          [
+            "Output \" medical\"",
+            0.0109
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. I",
+          "neuro": "neurologist",
+          "specialist": "specialist. I",
+          "doc": "doc. I"
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "neuro": "neurologist",
+          "specialist": "specialist. I",
+          "doc": "doc. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 22,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After a hot 10 km run I got a mild calf muscle spasm that eased with stretching and left mild soreness so I might take some",
+        "patient": "After a hot 10 km run I got a mild charley horse that eased with stretching and left mild soreness so I might take some"
+      },
+      "target_token": "Output \" medicine\"",
+      "probabilities": {
+        "clinical": 0.0003,
+        "patient": 0.0008
+      },
+      "language_penalty": 0.0005,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ib\"",
+            0.3605
+          ],
+          [
+            "Output \" time\"",
+            0.1033
+          ],
+          [
+            "Output \" Ib\"",
+            0.0503
+          ],
+          [
+            "Output \" pain\"",
+            0.0296
+          ],
+          [
+            "Output \" ice\"",
+            0.0296
+          ],
+          [
+            "Output \" NSA\"",
+            0.0278
+          ],
+          [
+            "Output \" Adv\"",
+            0.0253
+          ],
+          [
+            "Output \" rest\"",
+            0.0253
+          ],
+          [
+            "Output \" anti\"",
+            0.0203
+          ],
+          [
+            "Output \" days\"",
+            0.0191
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ib\"",
+            0.4275
+          ],
+          [
+            "Output \" Ib\"",
+            0.0743
+          ],
+          [
+            "Output \" time\"",
+            0.0437
+          ],
+          [
+            "Output \" Adv\"",
+            0.034
+          ],
+          [
+            "Output \" pain\"",
+            0.032
+          ],
+          [
+            "Output \" NSA\"",
+            0.022
+          ],
+          [
+            "Output \" ice\"",
+            0.0188
+          ],
+          [
+            "Output \" rest\"",
+            0.0166
+          ],
+          [
+            "Output \" days\"",
+            0.0133
+          ],
+          [
+            "Output \" anti\"",
+            0.0125
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "ib": "ibuprofen",
+          "time": "time off.",
+          "Ib": "Ibuprofen",
+          "pain": "painkillers"
+        },
+        "patient": {
+          "ib": "ibuprofen",
+          "Ib": "Ibuprofen",
+          "time": "time off.",
+          "Adv": "Advil."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 23,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After sleeping on a high pillow last night I woke with mild cervical stiffness on the right without arm tingling so I will apply some cooling",
+        "patient": "After sleeping on a high pillow last night I woke with a mild kink in my neck on the right without arm tingling so I will apply some cooling"
+      },
+      "target_token": "Output \" gel\"",
+      "probabilities": {
+        "clinical": 0.1097,
+        "patient": 0.128
+      },
+      "language_penalty": 0.0183,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" gel\"",
+            0.1097
+          ],
+          [
+            "Output \" cream\"",
+            0.0803
+          ],
+          [
+            "Output \" oil\"",
+            0.0687
+          ],
+          [
+            "Output \" lotion\"",
+            0.043
+          ],
+          [
+            "Output \" spray\"",
+            0.0295
+          ],
+          [
+            "Output \" o\"",
+            0.0286
+          ],
+          [
+            "Output \" ice\"",
+            0.0269
+          ],
+          [
+            "Output \" to\"",
+            0.0261
+          ],
+          [
+            "Output \" lin\"",
+            0.0216
+          ],
+          [
+            "Output \" and\"",
+            0.0179
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" oil\"",
+            0.128
+          ],
+          [
+            "Output \" gel\"",
+            0.128
+          ],
+          [
+            "Output \" cream\"",
+            0.0997
+          ],
+          [
+            "Output \" lotion\"",
+            0.055
+          ],
+          [
+            "Output \" spray\"",
+            0.0314
+          ],
+          [
+            "Output \" ice\"",
+            0.0277
+          ],
+          [
+            "Output \" o\"",
+            0.0277
+          ],
+          [
+            "Output \" oils\"",
+            0.0153
+          ],
+          [
+            "Output \" lin\"",
+            0.0148
+          ],
+          [
+            "Output \" to\"",
+            0.0139
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "gel": "gel to the",
+          "cream": "cream to the",
+          "oil": "oil to the",
+          "lotion": "lotion to the"
+        },
+        "patient": {
+          "oil": "oil to the",
+          "gel": "gel to the",
+          "cream": "cream to the",
+          "lotion": "lotion to the"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 24,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 61 and woke up 20 minutes ago with severe chest pain radiating down my left arm and cold sweat so I need to go to the",
+        "patient": "I am 61 and woke up 20 minutes ago with a bad misery in my chest radiating down my left arm and cold sweat so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.2675,
+        "patient": 0.0416
+      },
+      "language_penalty": -0.2259,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.3684
+          ],
+          [
+            "Output \" ER\"",
+            0.2675
+          ],
+          [
+            "Output \" emergency\"",
+            0.0924
+          ],
+          [
+            "Output \" doctor\"",
+            0.0855
+          ],
+          [
+            "Output \" E\"",
+            0.0228
+          ],
+          [
+            "Output \" doctors\"",
+            0.0181
+          ],
+          [
+            "Output \" A\"",
+            0.0121
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0119
+          ],
+          [
+            "Output \" Hospital\"",
+            0.0116
+          ],
+          [
+            "Output \" er\"",
+            0.0101
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.2067
+          ],
+          [
+            "Output \" doctor\"",
+            0.1713
+          ],
+          [
+            "Output \" bathroom\"",
+            0.1244
+          ],
+          [
+            "Output \" toilet\"",
+            0.1072
+          ],
+          [
+            "Output \" doctors\"",
+            0.0481
+          ],
+          [
+            "Output \" ER\"",
+            0.0416
+          ],
+          [
+            "Output \" emergency\"",
+            0.0384
+          ],
+          [
+            "Output \" GP\"",
+            0.0195
+          ],
+          [
+            "Output \" clinic\"",
+            0.0105
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0094
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital. I",
+          "ER": "ER. I",
+          "emergency": "emergency room.",
+          "doctor": "doctor. I"
+        },
+        "patient": {
+          "hospital": "hospital. I",
+          "doctor": "doctor. I",
+          "bathroom": "bathroom. I",
+          "toilet": "toilet. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 25,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 67 with heart failure and cannot lie flat tonight because I am experiencing air hunger at rest with bluish lips so I need to go to the",
+        "patient": "I am 67 with heart failure and cannot lie flat tonight because I am smothering at rest with bluish lips so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.2847,
+        "patient": 0.2815
+      },
+      "language_penalty": -0.0032,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ER\"",
+            0.2847
+          ],
+          [
+            "Output \" hospital\"",
+            0.2633
+          ],
+          [
+            "Output \" bathroom\"",
+            0.1064
+          ],
+          [
+            "Output \" emergency\"",
+            0.0687
+          ],
+          [
+            "Output \" E\"",
+            0.033
+          ],
+          [
+            "Output \" doctor\"",
+            0.0183
+          ],
+          [
+            "Output \" floor\"",
+            0.0116
+          ],
+          [
+            "Output \" ICU\"",
+            0.0083
+          ],
+          [
+            "Output \" ED\"",
+            0.0069
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0065
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.3395
+          ],
+          [
+            "Output \" ER\"",
+            0.2815
+          ],
+          [
+            "Output \" emergency\"",
+            0.0669
+          ],
+          [
+            "Output \" bathroom\"",
+            0.0489
+          ],
+          [
+            "Output \" E\"",
+            0.0316
+          ],
+          [
+            "Output \" doctor\"",
+            0.0244
+          ],
+          [
+            "Output \" floor\"",
+            0.008
+          ],
+          [
+            "Output \" ED\"",
+            0.0067
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0064
+          ],
+          [
+            "Output \" er\"",
+            0.0063
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "ER": "ER. I",
+          "hospital": "hospital. I",
+          "bathroom": "bathroom. I",
+          "emergency": "emergency room."
+        },
+        "patient": {
+          "hospital": "hospital. I",
+          "ER": "ER. I",
+          "emergency": "emergency room.",
+          "bathroom": "bathroom. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 26,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 54 and 2 hours after a 9 hour flight I suddenly became severely dyspneic with sharp chest pain when taking a breath so I need to go to the",
+        "patient": "I am 54 and 2 hours after a 9 hour flight I suddenly became severely short winded with sharp chest pain when taking a breath so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.2483,
+        "patient": 0.1465
+      },
+      "language_penalty": -0.1018,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.2503
+          ],
+          [
+            "Output \" ER\"",
+            0.2483
+          ],
+          [
+            "Output \" emergency\"",
+            0.0778
+          ],
+          [
+            "Output \" doctor\"",
+            0.0564
+          ],
+          [
+            "Output \" E\"",
+            0.0467
+          ],
+          [
+            "Output \" A\"",
+            0.043
+          ],
+          [
+            "Output \" toilet\"",
+            0.016
+          ],
+          [
+            "Output \" local\"",
+            0.0137
+          ],
+          [
+            "Output \" doctors\"",
+            0.0132
+          ],
+          [
+            "Output \" nearest\"",
+            0.0128
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.325
+          ],
+          [
+            "Output \" ER\"",
+            0.1465
+          ],
+          [
+            "Output \" doctor\"",
+            0.1061
+          ],
+          [
+            "Output \" emergency\"",
+            0.0798
+          ],
+          [
+            "Output \" E\"",
+            0.0349
+          ],
+          [
+            "Output \" toilet\"",
+            0.03
+          ],
+          [
+            "Output \" doctors\"",
+            0.0271
+          ],
+          [
+            "Output \" A\"",
+            0.0245
+          ],
+          [
+            "Output \" bathroom\"",
+            0.0218
+          ],
+          [
+            "Output \" local\"",
+            0.0112
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital. I",
+          "ER": "ER. I",
+          "emergency": "emergency room.",
+          "doctor": "doctor. I"
+        },
+        "patient": {
+          "hospital": "hospital. I",
+          "ER": "ER. I",
+          "doctor": "doctor. I",
+          "emergency": "emergency room."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 27,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 63 and feel severely lightheaded after passing black tarry stools twice today and briefly fainting in the hallway so I need to go to the",
+        "patient": "I am 63 and feel severely swimmy headed after passing black tarry stools twice today and briefly fainting in the hallway so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.3323,
+        "patient": 0.2167
+      },
+      "language_penalty": -0.1156,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ER\"",
+            0.3323
+          ],
+          [
+            "Output \" hospital\"",
+            0.2932
+          ],
+          [
+            "Output \" doctor\"",
+            0.1096
+          ],
+          [
+            "Output \" emergency\"",
+            0.1054
+          ],
+          [
+            "Output \" doctors\"",
+            0.023
+          ],
+          [
+            "Output \" er\"",
+            0.0173
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0155
+          ],
+          [
+            "Output \" E\"",
+            0.0131
+          ],
+          [
+            "Output \" Dr\"",
+            0.0071
+          ],
+          [
+            "Output \" doc\"",
+            0.0071
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.3009
+          ],
+          [
+            "Output \" ER\"",
+            0.2167
+          ],
+          [
+            "Output \" doctor\"",
+            0.1513
+          ],
+          [
+            "Output \" emergency\"",
+            0.0737
+          ],
+          [
+            "Output \" doctors\"",
+            0.0476
+          ],
+          [
+            "Output \" doc\"",
+            0.0267
+          ],
+          [
+            "Output \" er\"",
+            0.0156
+          ],
+          [
+            "Output \" Dr\"",
+            0.0131
+          ],
+          [
+            "Output \" bathroom\"",
+            0.0105
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0091
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "ER": "ER. I",
+          "hospital": "hospital. I",
+          "doctor": "doctor. I",
+          "emergency": "emergency room."
+        },
+        "patient": {
+          "hospital": "hospital. I",
+          "ER": "ER. I",
+          "doctor": "doctor. I",
+          "emergency": "emergency room."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 28,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 58 and have had rectal bleeding that I thought was hemorrhoids along with looser stools and 5 kg weight loss over 3 months so I should see a",
+        "patient": "I am 58 and have had rectal bleeding that I thought was piles along with looser stools and 5 kg weight loss over 3 months so I should see a"
+      },
+      "target_token": "Output \" specialist\"",
+      "probabilities": {
+        "clinical": 0.0374,
+        "patient": 0.038
+      },
+      "language_penalty": 0.0006,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.6381
+          ],
+          [
+            "Output \" gastro\"",
+            0.1058
+          ],
+          [
+            "Output \" specialist\"",
+            0.0374
+          ],
+          [
+            "Output \" GI\"",
+            0.0315
+          ],
+          [
+            "Output \" doc\"",
+            0.0236
+          ],
+          [
+            "Output \" physician\"",
+            0.0165
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0143
+          ],
+          [
+            "Output \" GP\"",
+            0.0138
+          ],
+          [
+            "Output \" g\"",
+            0.0112
+          ],
+          [
+            "Output \" Dr\"",
+            0.01
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.6334
+          ],
+          [
+            "Output \" GP\"",
+            0.0793
+          ],
+          [
+            "Output \" gastro\"",
+            0.0617
+          ],
+          [
+            "Output \" specialist\"",
+            0.038
+          ],
+          [
+            "Output \" doc\"",
+            0.0234
+          ],
+          [
+            "Output \" surgeon\"",
+            0.0143
+          ],
+          [
+            "Output \" G\"",
+            0.0123
+          ],
+          [
+            "Output \" g\"",
+            0.0119
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0115
+          ],
+          [
+            "Output \" u\"",
+            0.0088
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. I",
+          "gastro": "gastroenterologist",
+          "specialist": "specialist. I",
+          "GI": "GI doctor."
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "GP": "GP. I",
+          "gastro": "gastroenterologist",
+          "specialist": "specialist. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 29,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 49 and have had a recurrent knee joint effusion that turns warm and restricts bending for 3 months so I should see a",
+        "patient": "I am 49 and have had recurrent water on the knee that turns warm and restricts bending for 3 months so I should see a"
+      },
+      "target_token": "Output \" specialist\"",
+      "probabilities": {
+        "clinical": 0.2365,
+        "patient": 0.2462
+      },
+      "language_penalty": 0.0097,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.2853
+          ],
+          [
+            "Output \" specialist\"",
+            0.2365
+          ],
+          [
+            "Output \" knee\"",
+            0.0589
+          ],
+          [
+            "Output \" sports\"",
+            0.0553
+          ],
+          [
+            "Output \" surgeon\"",
+            0.052
+          ],
+          [
+            "Output \" rhe\"",
+            0.0417
+          ],
+          [
+            "Output \" phys\"",
+            0.0374
+          ],
+          [
+            "Output \" GP\"",
+            0.031
+          ],
+          [
+            "Output \" Rhe\"",
+            0.0245
+          ],
+          [
+            "Output \" orth\"",
+            0.012
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.279
+          ],
+          [
+            "Output \" specialist\"",
+            0.2462
+          ],
+          [
+            "Output \" knee\"",
+            0.0705
+          ],
+          [
+            "Output \" sports\"",
+            0.0632
+          ],
+          [
+            "Output \" surgeon\"",
+            0.0396
+          ],
+          [
+            "Output \" phys\"",
+            0.0384
+          ],
+          [
+            "Output \" Rhe\"",
+            0.0184
+          ],
+          [
+            "Output \" orth\"",
+            0.0178
+          ],
+          [
+            "Output \" rhe\"",
+            0.0168
+          ],
+          [
+            "Output \" GP\"",
+            0.0165
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. I",
+          "specialist": "specialist. I",
+          "knee": "knee specialist.",
+          "sports": "sports doctor."
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "specialist": "specialist. I",
+          "knee": "knee specialist.",
+          "sports": "sports medicine doctor"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 30,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 33 and my anxiety disorder has caused daily panic attacks and racing heart that keep me off public transit for 8 months so I should see a",
+        "patient": "I am 33 and my nerves have caused daily panic attacks and racing heart that keep me off public transit for 8 months so I should see a"
+      },
+      "target_token": "Output \" psychiatrist\"",
+      "probabilities": {
+        "clinical": 0.1638,
+        "patient": 0.0604
+      },
+      "language_penalty": -0.1034,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.3468
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.1638
+          ],
+          [
+            "Output \" therapist\"",
+            0.1316
+          ],
+          [
+            "Output \" specialist\"",
+            0.0427
+          ],
+          [
+            "Output \" psychologist\"",
+            0.0414
+          ],
+          [
+            "Output \" cardi\"",
+            0.0294
+          ],
+          [
+            "Output \" shrink\"",
+            0.0243
+          ],
+          [
+            "Output \" counselor\"",
+            0.0148
+          ],
+          [
+            "Output \" mental\"",
+            0.0148
+          ],
+          [
+            "Output \" doc\"",
+            0.0148
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.337
+          ],
+          [
+            "Output \" neuro\"",
+            0.1129
+          ],
+          [
+            "Output \" specialist\"",
+            0.0852
+          ],
+          [
+            "Output \" cardi\"",
+            0.08
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.0604
+          ],
+          [
+            "Output \" therapist\"",
+            0.0334
+          ],
+          [
+            "Output \" psychologist\"",
+            0.0222
+          ],
+          [
+            "Output \" doc\"",
+            0.0215
+          ],
+          [
+            "Output \" shrink\"",
+            0.0173
+          ],
+          [
+            "Output \" Dr\"",
+            0.0131
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. I",
+          "psychiatrist": "psychiatrist. I",
+          "therapist": "therapist. I",
+          "specialist": "specialist. I"
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "neuro": "neurologist",
+          "specialist": "specialist. I",
+          "cardi": "cardiologist."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 31,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 51 and have been feeling systemically unwell for 5 days with a productive green cough fever of 38.8 C and fatigue so I should see my",
+        "patient": "I am 51 and have been feeling poorly for 5 days with a productive green cough fever of 38.8 C and fatigue so I should see my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.3732,
+        "patient": 0.416
+      },
+      "language_penalty": 0.0428,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.3732
+          ],
+          [
+            "Output \" GP\"",
+            0.3398
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0474
+          ],
+          [
+            "Output \" G\"",
+            0.025
+          ],
+          [
+            "Output \" gp\"",
+            0.0246
+          ],
+          [
+            "Output \" Dr\"",
+            0.0242
+          ],
+          [
+            "Output \" family\"",
+            0.0221
+          ],
+          [
+            "Output \" doc\"",
+            0.0156
+          ],
+          [
+            "Output \" general\"",
+            0.0098
+          ],
+          [
+            "Output \" General\"",
+            0.0093
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.416
+          ],
+          [
+            "Output \" GP\"",
+            0.314
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0546
+          ],
+          [
+            "Output \" Dr\"",
+            0.0301
+          ],
+          [
+            "Output \" G\"",
+            0.0224
+          ],
+          [
+            "Output \" gp\"",
+            0.0217
+          ],
+          [
+            "Output \" family\"",
+            0.0186
+          ],
+          [
+            "Output \" doc\"",
+            0.0159
+          ],
+          [
+            "Output \" general\"",
+            0.0076
+          ],
+          [
+            "Output \" dr\"",
+            0.0068
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. I",
+          "GP": "GP. I",
+          "Doctor": "Doctor. I",
+          "G": "G.P."
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "GP": "GP. I",
+          "Doctor": "Doctor. I",
+          "Dr": "Dr. but"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 32,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 42 and have had burning in my urinary tract when I pee for 3 days with a dull right side ache and fever of 38 C so I should visit the",
+        "patient": "I am 42 and have had burning in my waterworks when I pee for 3 days with a dull right side ache and fever of 38 C so I should visit the"
+      },
+      "target_token": "Output \" clinic\"",
+      "probabilities": {
+        "clinical": 0.0069,
+        "patient": 0.0052
+      },
+      "language_penalty": -0.0017,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.6225
+          ],
+          [
+            "Output \" doc\"",
+            0.0449
+          ],
+          [
+            "Output \" hospital\"",
+            0.043
+          ],
+          [
+            "Output \" GP\"",
+            0.043
+          ],
+          [
+            "Output \" doctors\"",
+            0.0315
+          ],
+          [
+            "Output \" ER\"",
+            0.0244
+          ],
+          [
+            "Output \" Dr\"",
+            0.0225
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0173
+          ],
+          [
+            "Output \" u\"",
+            0.0167
+          ],
+          [
+            "Output \" docs\"",
+            0.0139
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.5275
+          ],
+          [
+            "Output \" doc\"",
+            0.1007
+          ],
+          [
+            "Output \" GP\"",
+            0.0815
+          ],
+          [
+            "Output \" doctors\"",
+            0.0413
+          ],
+          [
+            "Output \" docs\"",
+            0.0313
+          ],
+          [
+            "Output \" Dr\"",
+            0.029
+          ],
+          [
+            "Output \" hospital\"",
+            0.0229
+          ],
+          [
+            "Output \" Doctor\"",
+            0.021
+          ],
+          [
+            "Output \" G\"",
+            0.0175
+          ],
+          [
+            "Output \" ER\"",
+            0.0126
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. I",
+          "doc": "doc. I",
+          "hospital": "hospital. I",
+          "GP": "GP. I"
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "doc": "doc. I",
+          "GP": "GP. I",
+          "doctors": "doctors. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 33,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 35 and have a painful warm pus filled furuncle on my inner thigh that has grown to 4 cm over 4 days so I should go to the",
+        "patient": "I am 35 and have a painful warm pus filled boil on my inner thigh that has grown to 4 cm over 4 days so I should go to the"
+      },
+      "target_token": "Output \" clinic\"",
+      "probabilities": {
+        "clinical": 0.0034,
+        "patient": 0.0031
+      },
+      "language_penalty": -0.0003,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.5656
+          ],
+          [
+            "Output \" doctors\"",
+            0.1437
+          ],
+          [
+            "Output \" hospital\"",
+            0.0637
+          ],
+          [
+            "Output \" GP\"",
+            0.0423
+          ],
+          [
+            "Output \" Dr\"",
+            0.0233
+          ],
+          [
+            "Output \" docs\"",
+            0.0221
+          ],
+          [
+            "Output \" doc\"",
+            0.0197
+          ],
+          [
+            "Output \" dr\"",
+            0.0104
+          ],
+          [
+            "Output \" gp\"",
+            0.0097
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0085
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.5508
+          ],
+          [
+            "Output \" doctors\"",
+            0.1182
+          ],
+          [
+            "Output \" hospital\"",
+            0.0787
+          ],
+          [
+            "Output \" doc\"",
+            0.0428
+          ],
+          [
+            "Output \" ER\"",
+            0.0304
+          ],
+          [
+            "Output \" Dr\"",
+            0.022
+          ],
+          [
+            "Output \" dr\"",
+            0.0191
+          ],
+          [
+            "Output \" GP\"",
+            0.0174
+          ],
+          [
+            "Output \" emergency\"",
+            0.016
+          ],
+          [
+            "Output \" docs\"",
+            0.0149
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. I",
+          "doctors": "doctors. I",
+          "hospital": "hospital. I",
+          "GP": "GP. I"
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "doctors": "doctors. I",
+          "hospital": "hospital. I",
+          "doc": "doc. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 34,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 34 and have felt mildly constipated for 3 days after travel with normal appetite and no belly pain so I will take some",
+        "patient": "I am 34 and have felt mildly backed up for 3 days after travel with normal appetite and no belly pain so I will take some"
+      },
+      "target_token": "Output \" fiber\"",
+      "probabilities": {
+        "clinical": 0.0499,
+        "patient": 0.0087
+      },
+      "language_penalty": -0.0412,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" lax\"",
+            0.109
+          ],
+          [
+            "Output \" fiber\"",
+            0.0499
+          ],
+          [
+            "Output \" prob\"",
+            0.0401
+          ],
+          [
+            "Output \" more\"",
+            0.0354
+          ],
+          [
+            "Output \" meds\"",
+            0.0243
+          ],
+          [
+            "Output \" stool\"",
+            0.0236
+          ],
+          [
+            "Output \" over\"",
+            0.0202
+          ],
+          [
+            "Output \" of\"",
+            0.0189
+          ],
+          [
+            "Output \" Mir\"",
+            0.0184
+          ],
+          [
+            "Output \" fibre\"",
+            0.0178
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" lax\"",
+            0.0549
+          ],
+          [
+            "Output \" meds\"",
+            0.0427
+          ],
+          [
+            "Output \" prob\"",
+            0.0402
+          ],
+          [
+            "Output \" more\"",
+            0.0354
+          ],
+          [
+            "Output \" of\"",
+            0.0343
+          ],
+          [
+            "Output \" over\"",
+            0.0276
+          ],
+          [
+            "Output \" mot\"",
+            0.0276
+          ],
+          [
+            "Output \" Mir\"",
+            0.0184
+          ],
+          [
+            "Output \" Pe\"",
+            0.0135
+          ],
+          [
+            "Output \" t\"",
+            0.0115
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "lax": "laxatives and",
+          "fiber": "fiber and see",
+          "prob": "probiotics and",
+          "more": "more laxatives"
+        },
+        "patient": {
+          "lax": "laxatives and",
+          "meds": "meds and see",
+          "prob": "probiotics and",
+          "more": "more meds and"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 35,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 32 and have a small tingling herpes labialis blister on the edge of my lip familiar from prior colds so I will put on some",
+        "patient": "I am 32 and have a small tingling cold sore blister on the edge of my lip familiar from prior colds so I will put on some"
+      },
+      "target_token": "Output \" cream\"",
+      "probabilities": {
+        "clinical": 0.0879,
+        "patient": 0.0577
+      },
+      "language_penalty": -0.0302,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" cream\"",
+            0.0879
+          ],
+          [
+            "Output \" V\"",
+            0.0776
+          ],
+          [
+            "Output \" o\"",
+            0.0684
+          ],
+          [
+            "Output \" ice\"",
+            0.0268
+          ],
+          [
+            "Output \" ant\"",
+            0.0237
+          ],
+          [
+            "Output \" cold\"",
+            0.0173
+          ],
+          [
+            "Output \" anti\"",
+            0.0168
+          ],
+          [
+            "Output \" O\"",
+            0.0163
+          ],
+          [
+            "Output \" topical\"",
+            0.0158
+          ],
+          [
+            "Output \" abre\"",
+            0.0143
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" V\"",
+            0.0696
+          ],
+          [
+            "Output \" cream\"",
+            0.0577
+          ],
+          [
+            "Output \" o\"",
+            0.0384
+          ],
+          [
+            "Output \" lip\"",
+            0.029
+          ],
+          [
+            "Output \" cold\"",
+            0.0272
+          ],
+          [
+            "Output \" of\"",
+            0.0226
+          ],
+          [
+            "Output \" ice\"",
+            0.0219
+          ],
+          [
+            "Output \" abre\"",
+            0.0206
+          ],
+          [
+            "Output \" ant\"",
+            0.0193
+          ],
+          [
+            "Output \" O\"",
+            0.0181
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "cream": "cream and wait",
+          "V": "Vaseline and",
+          "o": "ointment",
+          "ice": "ice and see"
+        },
+        "patient": {
+          "V": "Vaseline and",
+          "cream": "cream and wait",
+          "o": "ointment",
+          "lip": "lip balm"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 36,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 62 with heavy upper belly pressure shortness of breath and drenching cold sweat for 30 minutes that I attributed to intestinal gas so I need to go to the",
+        "patient": "I am 62 with heavy upper belly pressure shortness of breath and drenching cold sweat for 30 minutes that I thought was just gas so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.0612,
+        "patient": 0.2512
+      },
+      "language_penalty": 0.19,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" bathroom\"",
+            0.4051
+          ],
+          [
+            "Output \" doctor\"",
+            0.1826
+          ],
+          [
+            "Output \" hospital\"",
+            0.0651
+          ],
+          [
+            "Output \" ER\"",
+            0.0612
+          ],
+          [
+            "Output \" restroom\"",
+            0.0407
+          ],
+          [
+            "Output \" toilet\"",
+            0.0317
+          ],
+          [
+            "Output \" doctors\"",
+            0.0185
+          ],
+          [
+            "Output \" emergency\"",
+            0.0167
+          ],
+          [
+            "Output \" wash\"",
+            0.0152
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0102
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.2759
+          ],
+          [
+            "Output \" ER\"",
+            0.2512
+          ],
+          [
+            "Output \" hospital\"",
+            0.1283
+          ],
+          [
+            "Output \" bathroom\"",
+            0.0506
+          ],
+          [
+            "Output \" emergency\"",
+            0.0472
+          ],
+          [
+            "Output \" doctors\"",
+            0.0316
+          ],
+          [
+            "Output \" Dr\"",
+            0.0239
+          ],
+          [
+            "Output \" doc\"",
+            0.0193
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0189
+          ],
+          [
+            "Output \" er\"",
+            0.0142
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "bathroom": "bathroom. I",
+          "doctor": "doctor. I",
+          "hospital": "hospital. I",
+          "ER": "ER. I"
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "ER": "ER. I",
+          "hospital": "hospital. I",
+          "bathroom": "bathroom. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 37,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 64 with sudden ripping pain between my shoulder blades and a weak left arm pulse that I attributed to a muscle strain so I need to go to the",
+        "patient": "I am 64 with sudden ripping pain between my shoulder blades and a weak left arm pulse that I thought meant I pulled a muscle so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.2127,
+        "patient": 0.3163
+      },
+      "language_penalty": 0.1036,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.3734
+          ],
+          [
+            "Output \" ER\"",
+            0.2127
+          ],
+          [
+            "Output \" hospital\"",
+            0.1184
+          ],
+          [
+            "Output \" doc\"",
+            0.0371
+          ],
+          [
+            "Output \" emergency\"",
+            0.0368
+          ],
+          [
+            "Output \" doctors\"",
+            0.031
+          ],
+          [
+            "Output \" Dr\"",
+            0.027
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0141
+          ],
+          [
+            "Output \" dr\"",
+            0.0131
+          ],
+          [
+            "Output \" E\"",
+            0.0096
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ER\"",
+            0.3163
+          ],
+          [
+            "Output \" doctor\"",
+            0.2502
+          ],
+          [
+            "Output \" hospital\"",
+            0.1747
+          ],
+          [
+            "Output \" emergency\"",
+            0.0556
+          ],
+          [
+            "Output \" doc\"",
+            0.0258
+          ],
+          [
+            "Output \" doctors\"",
+            0.0217
+          ],
+          [
+            "Output \" Dr\"",
+            0.0168
+          ],
+          [
+            "Output \" E\"",
+            0.0144
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0104
+          ],
+          [
+            "Output \" dr\"",
+            0.0082
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. I",
+          "ER": "ER. I",
+          "hospital": "hospital. I",
+          "doc": "doc. I"
+        },
+        "patient": {
+          "ER": "ER. I",
+          "doctor": "doctor. I",
+          "hospital": "hospital. I",
+          "emergency": "emergency room."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 38,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 41 and woke after 2 drinks with a sudden severe headache at the back of my head along with vomiting and neck stiffness so I need to go to the",
+        "patient": "I am 41 and woke after 2 drinks with a sudden bad hangover headache at the back of my head along with vomiting and neck stiffness so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.1346,
+        "patient": 0.0452
+      },
+      "language_penalty": -0.0894,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.4553
+          ],
+          [
+            "Output \" ER\"",
+            0.1346
+          ],
+          [
+            "Output \" doctor\"",
+            0.1125
+          ],
+          [
+            "Output \" emergency\"",
+            0.09
+          ],
+          [
+            "Output \" doctors\"",
+            0.0508
+          ],
+          [
+            "Output \" Hospital\"",
+            0.0109
+          ],
+          [
+            "Output \" E\"",
+            0.0086
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0085
+          ],
+          [
+            "Output \" A\"",
+            0.0081
+          ],
+          [
+            "Output \" doc\"",
+            0.0075
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.3183
+          ],
+          [
+            "Output \" doctor\"",
+            0.2293
+          ],
+          [
+            "Output \" doctors\"",
+            0.1246
+          ],
+          [
+            "Output \" ER\"",
+            0.0452
+          ],
+          [
+            "Output \" emergency\"",
+            0.0446
+          ],
+          [
+            "Output \" toilet\"",
+            0.0288
+          ],
+          [
+            "Output \" GP\"",
+            0.0172
+          ],
+          [
+            "Output \" doc\"",
+            0.0118
+          ],
+          [
+            "Output \" docs\"",
+            0.011
+          ],
+          [
+            "Output \" bathroom\"",
+            0.0104
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital. I",
+          "ER": "ER. I",
+          "doctor": "doctor. I",
+          "emergency": "emergency room."
+        },
+        "patient": {
+          "hospital": "hospital. I",
+          "doctor": "doctor. I",
+          "doctors": "doctors. I",
+          "ER": "ER. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 39,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 66 and woke 20 minutes ago with sudden painless left arm weakness and facial droop that I attributed to sleeping posture so I need to go to the",
+        "patient": "I am 66 and woke 20 minutes ago with sudden painless left arm weakness and facial droop that I thought meant I slept on it wrong so I need to go to the"
+      },
+      "target_token": "Output \" ER\"",
+      "probabilities": {
+        "clinical": 0.3058,
+        "patient": 0.4043
+      },
+      "language_penalty": 0.0985,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ER\"",
+            0.3058
+          ],
+          [
+            "Output \" doctor\"",
+            0.2363
+          ],
+          [
+            "Output \" hospital\"",
+            0.1479
+          ],
+          [
+            "Output \" emergency\"",
+            0.0677
+          ],
+          [
+            "Output \" doc\"",
+            0.0267
+          ],
+          [
+            "Output \" doctors\"",
+            0.02
+          ],
+          [
+            "Output \" E\"",
+            0.0185
+          ],
+          [
+            "Output \" Dr\"",
+            0.015
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0092
+          ],
+          [
+            "Output \" urgent\"",
+            0.0088
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ER\"",
+            0.4043
+          ],
+          [
+            "Output \" hospital\"",
+            0.178
+          ],
+          [
+            "Output \" doctor\"",
+            0.1672
+          ],
+          [
+            "Output \" emergency\"",
+            0.0601
+          ],
+          [
+            "Output \" doc\"",
+            0.0238
+          ],
+          [
+            "Output \" E\"",
+            0.0175
+          ],
+          [
+            "Output \" er\"",
+            0.0119
+          ],
+          [
+            "Output \" Dr\"",
+            0.0118
+          ],
+          [
+            "Output \" doctors\"",
+            0.0116
+          ],
+          [
+            "Output \" dr\"",
+            0.0071
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "ER": "ER. I",
+          "doctor": "doctor. I",
+          "hospital": "hospital. I",
+          "emergency": "emergency room."
+        },
+        "patient": {
+          "ER": "ER. I",
+          "hospital": "hospital. I",
+          "doctor": "doctor. I",
+          "emergency": "emergency room."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 40,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 55 with progressive right nasal blockage recurrent nosebleeds and cheek numbness for 4 months that I attributed to allergic rhinitis so I should see a",
+        "patient": "I am 55 with progressive right nasal blockage recurrent nosebleeds and cheek numbness for 4 months that I thought was just allergies so I should see a"
+      },
+      "target_token": "Output \" specialist\"",
+      "probabilities": {
+        "clinical": 0.1087,
+        "patient": 0.0551
+      },
+      "language_penalty": -0.0536,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ENT\"",
+            0.3564
+          ],
+          [
+            "Output \" doctor\"",
+            0.1737
+          ],
+          [
+            "Output \" specialist\"",
+            0.1087
+          ],
+          [
+            "Output \" rh\"",
+            0.0358
+          ],
+          [
+            "Output \" allerg\"",
+            0.0288
+          ],
+          [
+            "Output \" nose\"",
+            0.0221
+          ],
+          [
+            "Output \" nasal\"",
+            0.0186
+          ],
+          [
+            "Output \" ear\"",
+            0.0134
+          ],
+          [
+            "Output \" pul\"",
+            0.0128
+          ],
+          [
+            "Output \" physician\"",
+            0.0126
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.3708
+          ],
+          [
+            "Output \" ENT\"",
+            0.2799
+          ],
+          [
+            "Output \" specialist\"",
+            0.0551
+          ],
+          [
+            "Output \" neuro\"",
+            0.0286
+          ],
+          [
+            "Output \" doc\"",
+            0.019
+          ],
+          [
+            "Output \" nose\"",
+            0.0185
+          ],
+          [
+            "Output \" ear\"",
+            0.0132
+          ],
+          [
+            "Output \" Dr\"",
+            0.013
+          ],
+          [
+            "Output \" allerg\"",
+            0.0087
+          ],
+          [
+            "Output \" dermat\"",
+            0.008
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "ENT": "ENT. I",
+          "doctor": "doctor. I",
+          "specialist": "specialist. I",
+          "rh": "rhinologist"
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "ENT": "ENT. I",
+          "specialist": "specialist. I",
+          "neuro": "neurologist"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 41,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 69 with progressive central vision loss and straight doorframes looking wavy for 3 weeks that I attributed to digital eyestrain so I should see a",
+        "patient": "I am 69 with progressive central vision loss and straight doorframes looking wavy for 3 weeks that I blamed on screen fatigue so I should see a"
+      },
+      "target_token": "Output \" specialist\"",
+      "probabilities": {
+        "clinical": 0.1163,
+        "patient": 0.1134
+      },
+      "language_penalty": -0.0029,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.2313
+          ],
+          [
+            "Output \" specialist\"",
+            0.1163
+          ],
+          [
+            "Output \" neuro\"",
+            0.0415
+          ],
+          [
+            "Output \" opt\"",
+            0.0303
+          ],
+          [
+            "Output \" new\"",
+            0.0285
+          ],
+          [
+            "Output \" vision\"",
+            0.0236
+          ],
+          [
+            "Output \" doc\"",
+            0.0225
+          ],
+          [
+            "Output \" o\"",
+            0.0212
+          ],
+          [
+            "Output \" gl\"",
+            0.0119
+          ],
+          [
+            "Output \" Dr\"",
+            0.0117
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.2808
+          ],
+          [
+            "Output \" specialist\"",
+            0.1134
+          ],
+          [
+            "Output \" doc\"",
+            0.0363
+          ],
+          [
+            "Output \" neuro\"",
+            0.0305
+          ],
+          [
+            "Output \" new\"",
+            0.0301
+          ],
+          [
+            "Output \" opt\"",
+            0.0296
+          ],
+          [
+            "Output \" o\"",
+            0.0287
+          ],
+          [
+            "Output \" op\"",
+            0.02
+          ],
+          [
+            "Output \" vision\"",
+            0.0169
+          ],
+          [
+            "Output \" Dr\"",
+            0.0154
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. I",
+          "specialist": "specialist. I",
+          "neuro": "neuro ophthalm",
+          "opt": "optometrist"
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "specialist": "specialist. I",
+          "doc": "doc. I",
+          "neuro": "neuro ophthalm"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 42,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 51 with progressive left ear hearing loss and constant ringing for 5 months that I attributed to cerumen impaction so I should see a",
+        "patient": "I am 51 with progressive left ear hearing loss and constant ringing for 5 months that I thought was just earwax so I should see a"
+      },
+      "target_token": "Output \" specialist\"",
+      "probabilities": {
+        "clinical": 0.0415,
+        "patient": 0.0332
+      },
+      "language_penalty": -0.0083,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.5004
+          ],
+          [
+            "Output \" ENT\"",
+            0.1179
+          ],
+          [
+            "Output \" physician\"",
+            0.0767
+          ],
+          [
+            "Output \" specialist\"",
+            0.0415
+          ],
+          [
+            "Output \" hearing\"",
+            0.0309
+          ],
+          [
+            "Output \" ot\"",
+            0.0239
+          ],
+          [
+            "Output \" GP\"",
+            0.0178
+          ],
+          [
+            "Output \" Dr\"",
+            0.016
+          ],
+          [
+            "Output \" Doctor\"",
+            0.013
+          ],
+          [
+            "Output \" professional\"",
+            0.0128
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.6803
+          ],
+          [
+            "Output \" ENT\"",
+            0.0939
+          ],
+          [
+            "Output \" specialist\"",
+            0.0332
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0309
+          ],
+          [
+            "Output \" Dr\"",
+            0.0256
+          ],
+          [
+            "Output \" physician\"",
+            0.0147
+          ],
+          [
+            "Output \" ear\"",
+            0.0118
+          ],
+          [
+            "Output \" doc\"",
+            0.0098
+          ],
+          [
+            "Output \" hearing\"",
+            0.0097
+          ],
+          [
+            "Output \" GP\"",
+            0.0085
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. I",
+          "ENT": "ENT. I",
+          "physician": "physician. I",
+          "specialist": "specialist. I"
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "ENT": "ENT. I",
+          "specialist": "specialist. I",
+          "Doctor": "Doctor. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 43,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 49 with worsening fatigue cold intolerance and 4 kg weight gain for 6 weeks while taking levothyroxine together with calcium and iron tablets every morning so I should see my",
+        "patient": "I am 49 with worsening fatigue cold intolerance and 4 kg weight gain for 6 weeks while taking my levothyroxine thyroid pill with calcium and iron vitamins every morning so I should see my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.4469,
+        "patient": 0.5448
+      },
+      "language_penalty": 0.0979,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.4469
+          ],
+          [
+            "Output \" GP\"",
+            0.2977
+          ],
+          [
+            "Output \" end\"",
+            0.0379
+          ],
+          [
+            "Output \" Dr\"",
+            0.0203
+          ],
+          [
+            "Output \" gp\"",
+            0.0193
+          ],
+          [
+            "Output \" G\"",
+            0.0183
+          ],
+          [
+            "Output \" dr\"",
+            0.0108
+          ],
+          [
+            "Output \" physician\"",
+            0.0104
+          ],
+          [
+            "Output \" Doctor\"",
+            0.01
+          ],
+          [
+            "Output \" family\"",
+            0.0081
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.5448
+          ],
+          [
+            "Output \" GP\"",
+            0.1216
+          ],
+          [
+            "Output \" end\"",
+            0.0515
+          ],
+          [
+            "Output \" Dr\"",
+            0.0338
+          ],
+          [
+            "Output \" dr\"",
+            0.0267
+          ],
+          [
+            "Output \" gp\"",
+            0.0208
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0167
+          ],
+          [
+            "Output \" physician\"",
+            0.0121
+          ],
+          [
+            "Output \" doctors\"",
+            0.011
+          ],
+          [
+            "Output \" doc\"",
+            0.0107
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor soon.",
+          "GP": "GP. I",
+          "end": "endocrinologist",
+          "Dr": "Dr. in"
+        },
+        "patient": {
+          "doctor": "doctor soon.",
+          "GP": "GP soon.",
+          "end": "endocrinologist",
+          "Dr": "Dr. in"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 44,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 29 and developed a spreading itchy red maculopapular rash across my chest and back on day 5 of amoxicillin with no breathing trouble so I should call my",
+        "patient": "I am 29 and developed a spreading itchy red heat rash across my chest and back on day 5 of amoxicillin with no breathing trouble so I should call my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.55,
+        "patient": 0.5515
+      },
+      "language_penalty": 0.0015,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.55
+          ],
+          [
+            "Output \" GP\"",
+            0.11
+          ],
+          [
+            "Output \" doc\"",
+            0.0744
+          ],
+          [
+            "Output \" Dr\"",
+            0.0431
+          ],
+          [
+            "Output \" dr\"",
+            0.0315
+          ],
+          [
+            "Output \" gp\"",
+            0.0261
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0141
+          ],
+          [
+            "Output \" doctors\"",
+            0.0087
+          ],
+          [
+            "Output \" Doc\"",
+            0.0069
+          ],
+          [
+            "Output \" PC\"",
+            0.0062
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.5515
+          ],
+          [
+            "Output \" doc\"",
+            0.0915
+          ],
+          [
+            "Output \" GP\"",
+            0.0735
+          ],
+          [
+            "Output \" Dr\"",
+            0.0497
+          ],
+          [
+            "Output \" dr\"",
+            0.0393
+          ],
+          [
+            "Output \" gp\"",
+            0.0217
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0177
+          ],
+          [
+            "Output \" doctors\"",
+            0.0087
+          ],
+          [
+            "Output \" Doc\"",
+            0.0079
+          ],
+          [
+            "Output \" PC\"",
+            0.0054
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor tomorrow.",
+          "GP": "GP. I",
+          "doc": "doc tomorrow.",
+          "Dr": "Dr. I"
+        },
+        "patient": {
+          "doctor": "doctor tomorrow.",
+          "doc": "doc tomorrow.",
+          "GP": "GP. I",
+          "Dr": "Dr. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 45,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 60 and have gnawing upper stomach pain and nausea after taking 2 overlapping antiinflammatory medications ibuprofen and naproxen daily for 3 weeks so I should see my",
+        "patient": "I am 60 and have gnawing upper stomach pain and nausea after a painkiller mixup taking 2 pain pills ibuprofen and naproxen daily for 3 weeks so I should see my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.5527,
+        "patient": 0.5269
+      },
+      "language_penalty": -0.0258,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.5527
+          ],
+          [
+            "Output \" GP\"",
+            0.0506
+          ],
+          [
+            "Output \" primary\"",
+            0.044
+          ],
+          [
+            "Output \" physician\"",
+            0.0337
+          ],
+          [
+            "Output \" doc\"",
+            0.0332
+          ],
+          [
+            "Output \" Dr\"",
+            0.0307
+          ],
+          [
+            "Output \" family\"",
+            0.0254
+          ],
+          [
+            "Output \" dr\"",
+            0.0194
+          ],
+          [
+            "Output \" PC\"",
+            0.0163
+          ],
+          [
+            "Output \" MD\"",
+            0.0121
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.5269
+          ],
+          [
+            "Output \" Dr\"",
+            0.0591
+          ],
+          [
+            "Output \" dr\"",
+            0.0453
+          ],
+          [
+            "Output \" GP\"",
+            0.0406
+          ],
+          [
+            "Output \" primary\"",
+            0.0348
+          ],
+          [
+            "Output \" doc\"",
+            0.0342
+          ],
+          [
+            "Output \" family\"",
+            0.0243
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0192
+          ],
+          [
+            "Output \" PC\"",
+            0.0164
+          ],
+          [
+            "Output \" physician\"",
+            0.0157
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor soon.",
+          "GP": "GP. I",
+          "primary": "primary care doctor",
+          "physician": "physician. I"
+        },
+        "patient": {
+          "doctor": "doctor soon.",
+          "Dr": "Dr. I",
+          "dr": "dr. I",
+          "GP": "GP? I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 46,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 28 and have mild seasonal itchy dry skin on my forearms from low winter humidity with no rash so I will put on some",
+        "patient": "I am 28 and have mild seasonal itchy dry skin on my forearms from dry winter air with no rash so I will put on some"
+      },
+      "target_token": "Output \" lotion\"",
+      "probabilities": {
+        "clinical": 0.0597,
+        "patient": 0.0682
+      },
+      "language_penalty": 0.0085,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" lotion\"",
+            0.0597
+          ],
+          [
+            "Output \" moistur\"",
+            0.0527
+          ],
+          [
+            "Output \" hydro\"",
+            0.0423
+          ],
+          [
+            "Output \" V\"",
+            0.034
+          ],
+          [
+            "Output \" cream\"",
+            0.0291
+          ],
+          [
+            "Output \" oil\"",
+            0.0206
+          ],
+          [
+            "Output \" gloves\"",
+            0.0166
+          ],
+          [
+            "Output \" vas\"",
+            0.0161
+          ],
+          [
+            "Output \" Ave\"",
+            0.0156
+          ],
+          [
+            "Output \" cort\"",
+            0.0151
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" lotion\"",
+            0.0682
+          ],
+          [
+            "Output \" moistur\"",
+            0.0621
+          ],
+          [
+            "Output \" cream\"",
+            0.0322
+          ],
+          [
+            "Output \" V\"",
+            0.0322
+          ],
+          [
+            "Output \" hydro\"",
+            0.0312
+          ],
+          [
+            "Output \" Ave\"",
+            0.0221
+          ],
+          [
+            "Output \" oil\"",
+            0.0221
+          ],
+          [
+            "Output \" cal\"",
+            0.0143
+          ],
+          [
+            "Output \" vas\"",
+            0.0139
+          ],
+          [
+            "Output \" em\"",
+            0.0139
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "lotion": "lotion and it",
+          "moistur": "moisturizer and",
+          "hydro": "hydrocort",
+          "V": "Vaseline and"
+        },
+        "patient": {
+          "lotion": "lotion and it",
+          "moistur": "moisturizer and",
+          "cream": "cream and it",
+          "V": "Vaseline and"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 47,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 35 and have mild stomach bloating and sour indigestion this evening after high dietary sodium at a takeout dinner with no chest pain so at the pharmacy I will pick up some",
+        "patient": "I am 35 and have mild stomach bloating and sour indigestion this evening after too much salt at a takeout dinner with no chest pain so at the pharmacy I will pick up some"
+      },
+      "target_token": "Output \" medicine\"",
+      "probabilities": {
+        "clinical": 0.0064,
+        "patient": 0.0113
+      },
+      "language_penalty": 0.0049,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" Pep\"",
+            0.0853
+          ],
+          [
+            "Output \" Pe\"",
+            0.0379
+          ],
+          [
+            "Output \" ant\"",
+            0.0367
+          ],
+          [
+            "Output \" of\"",
+            0.0324
+          ],
+          [
+            "Output \" anti\"",
+            0.0314
+          ],
+          [
+            "Output \" magnesium\"",
+            0.026
+          ],
+          [
+            "Output \" acid\"",
+            0.0237
+          ],
+          [
+            "Output \" Z\"",
+            0.023
+          ],
+          [
+            "Output \" meds\"",
+            0.0203
+          ],
+          [
+            "Output \" O\"",
+            0.0173
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" Pep\"",
+            0.0888
+          ],
+          [
+            "Output \" Pe\"",
+            0.049
+          ],
+          [
+            "Output \" acid\"",
+            0.0394
+          ],
+          [
+            "Output \" ant\"",
+            0.0348
+          ],
+          [
+            "Output \" of\"",
+            0.0348
+          ],
+          [
+            "Output \" anti\"",
+            0.0337
+          ],
+          [
+            "Output \" meds\"",
+            0.0297
+          ],
+          [
+            "Output \" Z\"",
+            0.0211
+          ],
+          [
+            "Output \" prob\"",
+            0.018
+          ],
+          [
+            "Output \" Pr\"",
+            0.0159
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "Pep": "Pepcid AC",
+          "Pe": "Pepto B",
+          "ant": "antacids",
+          "of": "of the new"
+        },
+        "patient": {
+          "Pep": "Pepcid and",
+          "Pe": "Pepto B",
+          "acid": "acid reducer and",
+          "ant": "antacids"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    }
+  ]
+}
