@@ -1,0 +1,468 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 41,
+  "pairs_requested": 4,
+  "completed": true,
+  "screen_targets": null,
+  "environment": {
+    "python": "3.11.18",
+    "engine_sha": "7ed973700f43",
+    "runner_image": "20261116.88.1"
+  },
+  "results": [
+    {
+      "index": 41,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 69 with progressive central vision loss and straight doorframes looking wavy for 3 weeks that I attributed to digital eyestrain so I should see a",
+        "patient": "I am 69 with progressive central vision loss and straight doorframes looking wavy for 3 weeks that I blamed on screen fatigue so I should see a"
+      },
+      "target_token": "Output \" specialist\"",
+      "probabilities": {
+        "clinical": 0.065,
+        "patient": 0.066
+      },
+      "language_penalty": 0.0010000000000000009,
+      "clinical_mass": {
+        "clinical": 0.2652,
+        "patient": 0.2537
+      },
+      "error_share": {
+        "clinical": 0.1122,
+        "patient": 0.1093
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.260)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.260)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.26
+          ],
+          [
+            "Output \" neuro\"",
+            0.108
+          ],
+          [
+            "Output \" specialist\"",
+            0.065
+          ],
+          [
+            "Output \" doc\"",
+            0.035
+          ],
+          [
+            "Output \" dr\"",
+            0.031
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.26
+          ],
+          [
+            "Output \" neuro\"",
+            0.109
+          ],
+          [
+            "Output \" specialist\"",
+            0.066
+          ],
+          [
+            "Output \" doc\"",
+            0.045
+          ],
+          [
+            "Output \" dr\"",
+            0.04
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " specialist",
+        "measured_token": "Output \" specialist\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" specialist\"",
+            "probability": 0.065,
+            "rank": 3,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" specialist\"",
+            "probability": 0.066,
+            "rank": 3,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 1350,
+        "unique_to_a": 146,
+        "unique_to_b": 139
+      },
+      "outputs": {
+        "html": "trace_out/agscen_slang_a1_20261121/index_41.html",
+        "png": "trace_out/agscen_slang_a1_20261121/index_41.png",
+        "diff_html": "trace_out/agscen_slang_a1_20261121/index_41_diff.html",
+        "diff_png": "trace_out/agscen_slang_a1_20261121/index_41_diff.png"
+      }
+    },
+    {
+      "index": 42,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 51 with progressive left ear hearing loss and constant ringing for 5 months that I attributed to cerumen impaction so I should see a",
+        "patient": "I am 51 with progressive left ear hearing loss and constant ringing for 5 months that I thought was just earwax so I should see a"
+      },
+      "target_token": "Output \" specialist\"",
+      "probabilities": {
+        "clinical": 0.064,
+        "patient": 0.052
+      },
+      "language_penalty": -0.012000000000000004,
+      "clinical_mass": {
+        "clinical": 0.3432,
+        "patient": 0.3398
+      },
+      "error_share": {
+        "clinical": 0.1144,
+        "patient": 0.1056
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L20\u00b7O] words and concepts about the inner ear | ear and hea \u2192 Output \" hearing\" (p=0.105)",
+        "patient": "[L15\u00b7S]  \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.562)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.287
+          ],
+          [
+            "Output \" ENT\"",
+            0.287
+          ],
+          [
+            "Output \" hearing\"",
+            0.105
+          ],
+          [
+            "Output \" specialist\"",
+            0.064
+          ],
+          [
+            "Output \" audio\"",
+            0.034
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.562
+          ],
+          [
+            "Output \" ENT\"",
+            0.125
+          ],
+          [
+            "Output \" specialist\"",
+            0.052
+          ],
+          [
+            "Output \" hearing\"",
+            0.036
+          ],
+          [
+            "Output \" Dr\"",
+            0.032
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " specialist",
+        "measured_token": "Output \" specialist\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" specialist\"",
+            "probability": 0.064,
+            "rank": 4,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" specialist\"",
+            "probability": 0.052,
+            "rank": 3,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 1014,
+        "unique_to_a": 466,
+        "unique_to_b": 373
+      },
+      "outputs": {
+        "html": "trace_out/agscen_slang_a1_20261121/index_42.html",
+        "png": "trace_out/agscen_slang_a1_20261121/index_42.png",
+        "diff_html": "trace_out/agscen_slang_a1_20261121/index_42_diff.html",
+        "diff_png": "trace_out/agscen_slang_a1_20261121/index_42_diff.png"
+      }
+    },
+    {
+      "index": 43,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 49 with worsening fatigue cold intolerance and 4 kg weight gain for 6 weeks while taking levothyroxine together with calcium and iron tablets every morning so I should see my",
+        "patient": "I am 49 with worsening fatigue cold intolerance and 4 kg weight gain for 6 weeks while taking my levothyroxine thyroid pill with calcium and iron vitamins every morning so I should see my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.305,
+        "patient": 0.226
+      },
+      "language_penalty": -0.07899999999999999,
+      "clinical_mass": {
+        "clinical": 0.3703,
+        "patient": 0.3317
+      },
+      "error_share": {
+        "clinical": 0.1173,
+        "patient": 0.1203
+      },
+      "top_path": {
+        "clinical": "[L15\u00b7S]  \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.305)",
+        "patient": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.226)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" GP\"",
+            0.393
+          ],
+          [
+            "Output \" doctor\"",
+            0.305
+          ],
+          [
+            "Output \" gp\"",
+            0.087
+          ],
+          [
+            "Output \" Dr\"",
+            0.025
+          ],
+          [
+            "Output \" doc\"",
+            0.02
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" GP\"",
+            0.289
+          ],
+          [
+            "Output \" doctor\"",
+            0.226
+          ],
+          [
+            "Output \" weight\"",
+            0.073
+          ],
+          [
+            "Output \" thyroid\"",
+            0.05
+          ],
+          [
+            "Output \" gp\"",
+            0.05
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " doctor",
+        "measured_token": "Output \" doctor\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" doctor\"",
+            "probability": 0.305,
+            "rank": 2,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" doctor\"",
+            "probability": 0.226,
+            "rank": 2,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 1236,
+        "unique_to_a": 177,
+        "unique_to_b": 205
+      },
+      "outputs": {
+        "html": "trace_out/agscen_slang_a1_20261121/index_43.html",
+        "png": "trace_out/agscen_slang_a1_20261121/index_43.png",
+        "diff_html": "trace_out/agscen_slang_a1_20261121/index_43_diff.html",
+        "diff_png": "trace_out/agscen_slang_a1_20261121/index_43_diff.png"
+      }
+    },
+    {
+      "index": 44,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 29 and developed a spreading itchy red maculopapular rash across my chest and back on day 5 of amoxicillin with no breathing trouble so I should call my",
+        "patient": "I am 29 and developed a spreading itchy red heat rash across my chest and back on day 5 of amoxicillin with no breathing trouble so I should call my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.555,
+        "patient": 0.539
+      },
+      "language_penalty": -0.016000000000000014,
+      "clinical_mass": {
+        "clinical": 0.4073,
+        "patient": 0.3901
+      },
+      "error_share": {
+        "clinical": 0.1162,
+        "patient": 0.1128
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] Relationships | words related to healthcare and rela \u2192 [L19\u00b7O] words related to money, taxes, debt, and legal confl \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.555)",
+        "patient": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] Relationships | words related to healthcare and rela \u2192 [L19\u00b7O] words related to money, taxes, debt, and legal confl \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.539)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.555
+          ],
+          [
+            "Output \" GP\"",
+            0.096
+          ],
+          [
+            "Output \" doc\"",
+            0.085
+          ],
+          [
+            "Output \" Dr\"",
+            0.058
+          ],
+          [
+            "Output \" dr\"",
+            0.052
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.539
+          ],
+          [
+            "Output \" GP\"",
+            0.137
+          ],
+          [
+            "Output \" doc\"",
+            0.083
+          ],
+          [
+            "Output \" Dr\"",
+            0.057
+          ],
+          [
+            "Output \" dr\"",
+            0.057
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " doctor",
+        "measured_token": "Output \" doctor\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" doctor\"",
+            "probability": 0.555,
+            "rank": 1,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" doctor\"",
+            "probability": 0.539,
+            "rank": 1,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 1193,
+        "unique_to_a": 97,
+        "unique_to_b": 153
+      },
+      "outputs": {
+        "html": "trace_out/agscen_slang_a1_20261121/index_44.html",
+        "png": "trace_out/agscen_slang_a1_20261121/index_44.png",
+        "diff_html": "trace_out/agscen_slang_a1_20261121/index_44_diff.html",
+        "diff_png": "trace_out/agscen_slang_a1_20261121/index_44_diff.png"
+      }
+    }
+  ]
+}
