@@ -1,0 +1,468 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 29,
+  "pairs_requested": 4,
+  "completed": true,
+  "screen_targets": null,
+  "environment": {
+    "python": "3.11.18",
+    "engine_sha": "7ed973700f43",
+    "runner_image": "20261116.202.1"
+  },
+  "results": [
+    {
+      "index": 29,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 49 and have had a recurrent knee joint effusion that turns warm and restricts bending for 3 months so I should see a",
+        "patient": "I am 49 and have had recurrent water on the knee that turns warm and restricts bending for 3 months so I should see a"
+      },
+      "target_token": "Output \" specialist\"",
+      "probabilities": {
+        "clinical": 0.133,
+        "patient": 0.17
+      },
+      "language_penalty": 0.037000000000000005,
+      "clinical_mass": {
+        "clinical": 0.4949,
+        "patient": 0.4543
+      },
+      "error_share": {
+        "clinical": 0.1038,
+        "patient": 0.104
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.281)",
+        "patient": "embedding \u2192 Output \" knee\" (p=0.038)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.281
+          ],
+          [
+            "Output \" specialist\"",
+            0.133
+          ],
+          [
+            "Output \" rhe\"",
+            0.081
+          ],
+          [
+            "Output \" surgeon\"",
+            0.081
+          ],
+          [
+            "Output \" GP\"",
+            0.056
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.247
+          ],
+          [
+            "Output \" specialist\"",
+            0.17
+          ],
+          [
+            "Output \" surgeon\"",
+            0.149
+          ],
+          [
+            "Output \" consultant\"",
+            0.062
+          ],
+          [
+            "Output \" knee\"",
+            0.038
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " specialist",
+        "measured_token": "Output \" specialist\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" specialist\"",
+            "probability": 0.133,
+            "rank": 2,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" specialist\"",
+            "probability": 0.17,
+            "rank": 2,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 1049,
+        "unique_to_a": 336,
+        "unique_to_b": 367
+      },
+      "outputs": {
+        "html": "trace_out/agscen_slang_a1_20261121/index_29.html",
+        "png": "trace_out/agscen_slang_a1_20261121/index_29.png",
+        "diff_html": "trace_out/agscen_slang_a1_20261121/index_29_diff.html",
+        "diff_png": "trace_out/agscen_slang_a1_20261121/index_29_diff.png"
+      }
+    },
+    {
+      "index": 30,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 33 and my anxiety disorder has caused daily panic attacks and racing heart that keep me off public transit for 8 months so I should see a",
+        "patient": "I am 33 and my nerves have caused daily panic attacks and racing heart that keep me off public transit for 8 months so I should see a"
+      },
+      "target_token": "Output \" psychiatrist\"",
+      "probabilities": {
+        "clinical": 0.129,
+        "patient": 0.108
+      },
+      "language_penalty": -0.021000000000000005,
+      "clinical_mass": {
+        "clinical": 0.3544,
+        "patient": 0.326
+      },
+      "error_share": {
+        "clinical": 0.1052,
+        "patient": 0.104
+      },
+      "top_path": {
+        "clinical": "[L17\u00b7S]  \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.311)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.332)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.311
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.129
+          ],
+          [
+            "Output \" specialist\"",
+            0.129
+          ],
+          [
+            "Output \" therapist\"",
+            0.101
+          ],
+          [
+            "Output \" psychologist\"",
+            0.037
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.332
+          ],
+          [
+            "Output \" specialist\"",
+            0.123
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.108
+          ],
+          [
+            "Output \" therapist\"",
+            0.065
+          ],
+          [
+            "Output \" neuro\"",
+            0.051
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " psychiatrist",
+        "measured_token": "Output \" psychiatrist\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" psychiatrist\"",
+            "probability": 0.129,
+            "rank": 2,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" psychiatrist\"",
+            "probability": 0.108,
+            "rank": 3,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 1148,
+        "unique_to_a": 289,
+        "unique_to_b": 315
+      },
+      "outputs": {
+        "html": "trace_out/agscen_slang_a1_20261121/index_30.html",
+        "png": "trace_out/agscen_slang_a1_20261121/index_30.png",
+        "diff_html": "trace_out/agscen_slang_a1_20261121/index_30_diff.html",
+        "diff_png": "trace_out/agscen_slang_a1_20261121/index_30_diff.png"
+      }
+    },
+    {
+      "index": 31,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 51 and have been feeling systemically unwell for 5 days with a productive green cough fever of 38.8 C and fatigue so I should see my",
+        "patient": "I am 51 and have been feeling poorly for 5 days with a productive green cough fever of 38.8 C and fatigue so I should see my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.237,
+        "patient": 0.233
+      },
+      "language_penalty": -0.003999999999999976,
+      "clinical_mass": {
+        "clinical": 0.3715,
+        "patient": 0.3655
+      },
+      "error_share": {
+        "clinical": 0.1,
+        "patient": 0.0983
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.237)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.233)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" GP\"",
+            0.504
+          ],
+          [
+            "Output \" doctor\"",
+            0.237
+          ],
+          [
+            "Output \" gp\"",
+            0.077
+          ],
+          [
+            "Output \" Dr\"",
+            0.036
+          ],
+          [
+            "Output \" doc\"",
+            0.017
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" GP\"",
+            0.494
+          ],
+          [
+            "Output \" doctor\"",
+            0.233
+          ],
+          [
+            "Output \" gp\"",
+            0.097
+          ],
+          [
+            "Output \" Dr\"",
+            0.046
+          ],
+          [
+            "Output \" dr\"",
+            0.022
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " doctor",
+        "measured_token": "Output \" doctor\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" doctor\"",
+            "probability": 0.237,
+            "rank": 2,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" doctor\"",
+            "probability": 0.233,
+            "rank": 2,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 1144,
+        "unique_to_a": 214,
+        "unique_to_b": 182
+      },
+      "outputs": {
+        "html": "trace_out/agscen_slang_a1_20261121/index_31.html",
+        "png": "trace_out/agscen_slang_a1_20261121/index_31.png",
+        "diff_html": "trace_out/agscen_slang_a1_20261121/index_31_diff.html",
+        "diff_png": "trace_out/agscen_slang_a1_20261121/index_31_diff.png"
+      }
+    },
+    {
+      "index": 32,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 42 and have had burning in my urinary tract when I pee for 3 days with a dull right side ache and fever of 38 C so I should visit the",
+        "patient": "I am 42 and have had burning in my waterworks when I pee for 3 days with a dull right side ache and fever of 38 C so I should visit the"
+      },
+      "target_token": "Output \" clinic\"",
+      "probabilities": {
+        "clinical": 0.015,
+        "patient": 0.018
+      },
+      "language_penalty": 0.002999999999999999,
+      "clinical_mass": {
+        "clinical": 0.4272,
+        "patient": 0.3916
+      },
+      "error_share": {
+        "clinical": 0.1082,
+        "patient": 0.1119
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.570)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.531)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.57
+          ],
+          [
+            "Output \" hospital\"",
+            0.185
+          ],
+          [
+            "Output \" uro\"",
+            0.041
+          ],
+          [
+            "Output \" doctors\"",
+            0.022
+          ],
+          [
+            "Output \" doc\"",
+            0.022
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.531
+          ],
+          [
+            "Output \" hospital\"",
+            0.151
+          ],
+          [
+            "Output \" doc\"",
+            0.056
+          ],
+          [
+            "Output \" ER\"",
+            0.026
+          ],
+          [
+            "Output \" doctors\"",
+            0.023
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " clinic",
+        "measured_token": "Output \" clinic\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" clinic\"",
+            "probability": 0.015,
+            "rank": 7,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" clinic\"",
+            "probability": 0.018,
+            "rank": 9,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 1047,
+        "unique_to_a": 203,
+        "unique_to_b": 279
+      },
+      "outputs": {
+        "html": "trace_out/agscen_slang_a1_20261121/index_32.html",
+        "png": "trace_out/agscen_slang_a1_20261121/index_32.png",
+        "diff_html": "trace_out/agscen_slang_a1_20261121/index_32_diff.html",
+        "diff_png": "trace_out/agscen_slang_a1_20261121/index_32_diff.png"
+      }
+    }
+  ]
+}
