@@ -1,0 +1,363 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 45,
+  "pairs_requested": 3,
+  "completed": true,
+  "screen_targets": null,
+  "environment": {
+    "python": "3.11.18",
+    "engine_sha": "7ed973700f43",
+    "runner_image": "20261116.202.1"
+  },
+  "results": [
+    {
+      "index": 45,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 60 and have gnawing upper stomach pain and nausea after taking 2 overlapping antiinflammatory medications ibuprofen and naproxen daily for 3 weeks so I should see my",
+        "patient": "I am 60 and have gnawing upper stomach pain and nausea after a painkiller mixup taking 2 pain pills ibuprofen and naproxen daily for 3 weeks so I should see my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.41,
+        "patient": 0.404
+      },
+      "language_penalty": -0.00599999999999995,
+      "clinical_mass": {
+        "clinical": 0.4658,
+        "patient": 0.4296
+      },
+      "error_share": {
+        "clinical": 0.1078,
+        "patient": 0.1052
+      },
+      "top_path": {
+        "clinical": "[L11\u00b7S]  \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.410)",
+        "patient": "[L15\u00b7S]  \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.404)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.41
+          ],
+          [
+            "Output \" GI\"",
+            0.071
+          ],
+          [
+            "Output \" doc\"",
+            0.063
+          ],
+          [
+            "Output \" GP\"",
+            0.049
+          ],
+          [
+            "Output \" primary\"",
+            0.043
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.404
+          ],
+          [
+            "Output \" GP\"",
+            0.09
+          ],
+          [
+            "Output \" doc\"",
+            0.07
+          ],
+          [
+            "Output \" Dr\"",
+            0.062
+          ],
+          [
+            "Output \" dr\"",
+            0.055
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " doctor",
+        "measured_token": "Output \" doctor\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" doctor\"",
+            "probability": 0.41,
+            "rank": 1,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" doctor\"",
+            "probability": 0.404,
+            "rank": 1,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 1118,
+        "unique_to_a": 199,
+        "unique_to_b": 205
+      },
+      "outputs": {
+        "html": "trace_out/agscen_slang_a1_20261121/index_45.html",
+        "png": "trace_out/agscen_slang_a1_20261121/index_45.png",
+        "diff_html": "trace_out/agscen_slang_a1_20261121/index_45_diff.html",
+        "diff_png": "trace_out/agscen_slang_a1_20261121/index_45_diff.png"
+      }
+    },
+    {
+      "index": 46,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 28 and have mild seasonal itchy dry skin on my forearms from low winter humidity with no rash so I will put on some",
+        "patient": "I am 28 and have mild seasonal itchy dry skin on my forearms from dry winter air with no rash so I will put on some"
+      },
+      "target_token": "Output \" lotion\"",
+      "probabilities": {
+        "clinical": 0.136,
+        "patient": 0.135
+      },
+      "language_penalty": -0.0010000000000000009,
+      "clinical_mass": {
+        "clinical": 0.3383,
+        "patient": 0.3496
+      },
+      "error_share": {
+        "clinical": 0.1183,
+        "patient": 0.1174
+      },
+      "top_path": {
+        "clinical": "[L23\u00b7S]  \u2192 [L24\u00b7C] terms related to skin conditions and medical treatme \u2192 Output \" cream\" (p=0.057)",
+        "patient": "[L23\u00b7S]  \u2192 [L24\u00b7C] terms related to skin conditions and medical treatme \u2192 Output \" cream\" (p=0.056)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" lotion\"",
+            0.136
+          ],
+          [
+            "Output \" moisturizer\"",
+            0.082
+          ],
+          [
+            "Output \" cream\"",
+            0.057
+          ],
+          [
+            "Output \" Vase\"",
+            0.039
+          ],
+          [
+            "Output \" Ave\"",
+            0.034
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" lotion\"",
+            0.135
+          ],
+          [
+            "Output \" moisturizer\"",
+            0.072
+          ],
+          [
+            "Output \" cream\"",
+            0.056
+          ],
+          [
+            "Output \" hydro\"",
+            0.044
+          ],
+          [
+            "Output \" Ave\"",
+            0.039
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " lotion",
+        "measured_token": "Output \" lotion\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" lotion\"",
+            "probability": 0.136,
+            "rank": 1,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" lotion\"",
+            "probability": 0.135,
+            "rank": 1,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 1337,
+        "unique_to_a": 71,
+        "unique_to_b": 70
+      },
+      "outputs": {
+        "html": "trace_out/agscen_slang_a1_20261121/index_46.html",
+        "png": "trace_out/agscen_slang_a1_20261121/index_46.png",
+        "diff_html": "trace_out/agscen_slang_a1_20261121/index_46_diff.html",
+        "diff_png": "trace_out/agscen_slang_a1_20261121/index_46_diff.png"
+      }
+    },
+    {
+      "index": 47,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I am 35 and have mild stomach bloating and sour indigestion this evening after high dietary sodium at a takeout dinner with no chest pain so at the pharmacy I will pick up some",
+        "patient": "I am 35 and have mild stomach bloating and sour indigestion this evening after too much salt at a takeout dinner with no chest pain so at the pharmacy I will pick up some"
+      },
+      "target_token": "Output \" Pep\"",
+      "probabilities": {
+        "clinical": 0.132,
+        "patient": 0.128
+      },
+      "language_penalty": -0.0040000000000000036,
+      "clinical_mass": {
+        "clinical": 0.436,
+        "patient": 0.4361
+      },
+      "error_share": {
+        "clinical": 0.1154,
+        "patient": 0.111
+      },
+      "top_path": {
+        "clinical": "[L22\u00b7S]  \u2192 [L23\u00b7O] words or phrases related to legal and governmental a \u2192 Output \" over\" (p=0.049)",
+        "patient": "[L24\u00b7S]  \u2192 Output \" Z\" (p=0.042)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" Pep\"",
+            0.132
+          ],
+          [
+            "Output \" ant\"",
+            0.091
+          ],
+          [
+            "Output \" Z\"",
+            0.049
+          ],
+          [
+            "Output \" pep\"",
+            0.049
+          ],
+          [
+            "Output \" over\"",
+            0.049
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" Pep\"",
+            0.128
+          ],
+          [
+            "Output \" ant\"",
+            0.088
+          ],
+          [
+            "Output \" pep\"",
+            0.053
+          ],
+          [
+            "Output \" Z\"",
+            0.042
+          ],
+          [
+            "Output \" T\"",
+            0.037
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " medicine",
+        "measured_token": "Output \" Pep\"",
+        "match": "top_logit",
+        "substituted": true,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" Pep\"",
+            "probability": 0.132,
+            "rank": 1,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" Pep\"",
+            "probability": 0.128,
+            "rank": 1,
+            "returned": 10
+          }
+        },
+        "intended_read": {
+          "status": "missing",
+          "reason": "target_not_in_returned_logits",
+          "returned": 10,
+          "prefix_candidates": []
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 1349,
+        "unique_to_a": 105,
+        "unique_to_b": 123
+      },
+      "outputs": {
+        "html": "trace_out/agscen_slang_a1_20261121/index_47.html",
+        "png": "trace_out/agscen_slang_a1_20261121/index_47.png",
+        "diff_html": "trace_out/agscen_slang_a1_20261121/index_47_diff.html",
+        "diff_png": "trace_out/agscen_slang_a1_20261121/index_47_diff.png"
+      }
+    }
+  ]
+}
