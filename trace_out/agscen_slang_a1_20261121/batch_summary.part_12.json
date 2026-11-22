@@ -1,0 +1,135 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 12,
+  "pairs_requested": 1,
+  "completed": true,
+  "screen_targets": null,
+  "environment": {
+    "python": "3.11.18",
+    "engine_sha": "0c08a704a48f",
+    "runner_image": "20261116.88.1"
+  },
+  "results": [
+    {
+      "index": 12,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After shifting my work hours 2 nights ago I have mild sleep onset delay at bedtime so tonight I might try some",
+        "patient": "After shifting my work hours 2 nights ago I have mild trouble dropping off at bedtime so tonight I might try some"
+      },
+      "target_token": "Output \" melatonin\"",
+      "probabilities": {
+        "clinical": 0.293,
+        "patient": 0.211
+      },
+      "language_penalty": -0.08199999999999999,
+      "clinical_mass": {
+        "clinical": 0.2475,
+        "patient": 0.178
+      },
+      "error_share": {
+        "clinical": 0.1053,
+        "patient": 0.1021
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" melatonin\" (p=0.293)",
+        "patient": "embedding \u2192 [L25\u00b7O] the word \"sleep\" and words associated with it, like  \u2192 Output \" sleep\" (p=0.029)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" melatonin\"",
+            0.293
+          ],
+          [
+            "Output \" of\"",
+            0.065
+          ],
+          [
+            "Output \" CBD\"",
+            0.051
+          ],
+          [
+            "Output \" magnesium\"",
+            0.045
+          ],
+          [
+            "Output \" \"",
+            0.04
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" melatonin\"",
+            0.211
+          ],
+          [
+            "Output \" of\"",
+            0.113
+          ],
+          [
+            "Output \" CBD\"",
+            0.061
+          ],
+          [
+            "Output \" lavender\"",
+            0.042
+          ],
+          [
+            "Output \" sleep\"",
+            0.029
+          ]
+        ]
+      },
+      "target_read": {
+        "rule": "exact_token/2026-10-07",
+        "intended_target": " melatonin",
+        "measured_token": "Output \" melatonin\"",
+        "match": "exact",
+        "substituted": false,
+        "reference_side": "clinical",
+        "sides": {
+          "clinical": {
+            "status": "exact",
+            "token": "Output \" melatonin\"",
+            "probability": 0.293,
+            "rank": 1,
+            "returned": 10
+          },
+          "patient": {
+            "status": "exact",
+            "token": "Output \" melatonin\"",
+            "probability": 0.211,
+            "rank": 1,
+            "returned": 10
+          }
+        }
+      },
+      "circuit_diff": {
+        "shared_features": 987,
+        "unique_to_a": 372,
+        "unique_to_b": 457
+      },
+      "outputs": {
+        "html": "trace_out/agscen_slang_a1_20261121/index_12.html",
+        "png": "trace_out/agscen_slang_a1_20261121/index_12.png",
+        "diff_html": "trace_out/agscen_slang_a1_20261121/index_12_diff.html",
+        "diff_png": "trace_out/agscen_slang_a1_20261121/index_12_diff.png"
+      }
+    }
+  ]
+}
