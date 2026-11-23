@@ -6,6 +6,7 @@ under tmp_path; nothing here touches git or the network.
 """
 
 import importlib.util
+import hashlib
 import json
 import re
 import subprocess
@@ -4165,3 +4166,95 @@ def test_budget_gate_enforces_a_spent_campaign_on_a_push_without_its_own_reserva
     assert "no journal reservation of this push is tagged with it" in capsys.readouterr().err
     # ...and the fire push itself, first attempt, is granted the campaign
     assert gate(base) == 0, capsys.readouterr().err
+
+
+def _coverage_archive(tmp_path, *, items=2, tiered=("a", "b"), empty=(), rubric=None, judge="anthropic:claude-haiku-5-5"):
+    """A minimal advice archive for the coverage check: stimuli with `items` items, advice replies a and b (plus any
+    `empty` replies with no text), and Haiku 5.5 tiers for `tiered` under the rubric's canonical sha256."""
+    from scripts import advice_eval as ae
+    rubric_doc = {"version": "t", "tiers": [{"id": "routine"}]} if rubric is None else rubric
+    rubric_path = tmp_path / "rubric.json"
+    rubric_path.write_text(json.dumps(rubric_doc), encoding="utf-8")
+    sha = ae.sha256_text(ae.canonical_json(rubric_doc))
+    stimuli = tmp_path / "stimuli_t.json"
+    stimuli.write_text(json.dumps({"items": [{"id": f"s{i}"} for i in range(items)]}), encoding="utf-8")
+    replies = [{"record_type": "advice", "response_sha256": h, "response_text": "text"} for h in ("a", "b")]
+    replies += [{"record_type": "advice", "response_sha256": h, "response_text": " "} for h in empty]
+    (tmp_path / "responses_stimuli_t.jsonl").write_text(
+        "".join(json.dumps(r) + "\n" for r in [{"record_type": "translation"}, *replies]), encoding="utf-8")
+    (tmp_path / "judgments_stimuli_t.jsonl").write_text(
+        "".join(json.dumps({"response_sha256": h, "judge_model": judge, "rubric_sha256": sha, "tier": "routine"})
+                + "\n" for h in tiered), encoding="utf-8")
+    return {"stimuli_file": str(stimuli), "rubric": str(rubric_path), "models": "openai:openai/gpt-5.4-mini",
+            "arms": "clinical,patient", "offset": items, "judge": "true",
+            "judge_model": "openrouter:openai/gpt-5.4-mini", "judge_max_spend": "1.5", "max_spend": "0.01"}
+
+
+def test_a_covered_archive_lets_an_openrouter_judge_fire_bill_one_account(tmp_path):
+    """Owner, 2026-11-23 (docs/exploratory/xjudge_20261031.md, "Advice lane"): R4's Claude Haiku 5.5 pass is left
+    out of an OpenRouter judge's fire only when it has nothing to judge, so the fire bills OpenRouter alone and the
+    second judge reserves nothing. An empty reply is not counted: neither judge can grade it."""
+    params = _coverage_archive(tmp_path, empty=("e",))
+    covered = ft.advice_secondary_coverage(params)
+    assert covered == {"judge_model": "anthropic:claude-haiku-5-5", "max_spend_usd": 0.0,
+                       "reason": "already_covered", "replies_covered": 2}
+    assert ft.secondary_judge_reservation(params) == covered
+    assert [part[0] for part in ft.advice_billing_parts(params)] == ["model", "judge"]
+    assert ft.advice_params_problems(params) == []
+    assert ft.fire_lane("advice-eval", params) == "openrouter"
+    assert ft.fire_commitment(params) == (pytest.approx(1.51), None)
+    # the judge step in CI checks the archive it reads, and agrees with the fire
+    assert ft.secondary_judge_reservation(
+        {"judge": True, "judge_model": params["judge_model"], "judge_max_spend": 1.5},
+        responses_path=tmp_path / "responses_stimuli_t.jsonl", rubric_path=params["rubric"]) == covered
+
+
+@pytest.mark.parametrize("change", ["one_untiered", "offset_short", "gen_config", "other_rubric", "no_stimuli",
+                                    "unreadable", "empty_archive"])
+def test_the_haiku_5_5_pass_stays_unless_it_has_nothing_to_judge(tmp_path, change):
+    """Every other OpenRouter judge fire keeps the Anthropic-billed pass and is refused as before: a reply without a
+    Haiku 5.5 tier, a fire that can still elicit, a generation fire, tiers under another rubric, no stimuli file,
+    an unreadable archive, or an archive with no reply that has text."""
+    params = _coverage_archive(
+        tmp_path, tiered=("a",) if change == "one_untiered" else ("a", "b"),
+        rubric={"version": "u", "tiers": [{"id": "x"}]} if change == "other_rubric" else None)
+    if change == "offset_short":
+        params["offset"] = 1
+    elif change == "gen_config":
+        params["gen_config"] = "config/advice_gen.json"
+    elif change == "other_rubric":
+        params["rubric"] = str(tmp_path / "rubric_other.json")
+        (tmp_path / "rubric_other.json").write_text(json.dumps({"version": "v", "tiers": []}), encoding="utf-8")
+    elif change == "no_stimuli":
+        del params["stimuli_file"]
+    elif change == "unreadable":
+        (tmp_path / "judgments_stimuli_t.jsonl").write_text("{not json\n", encoding="utf-8")
+    elif change == "empty_archive":
+        (tmp_path / "responses_stimuli_t.jsonl").write_text("", encoding="utf-8")
+    assert ft.advice_secondary_coverage(params) is None
+    assert ft.secondary_judge_reservation(params).get("reason") != "already_covered"
+    assert ("secondary_judge", "anthropic:claude-haiku-5-5", "anthropic") in ft.advice_billing_parts(params)
+    assert any("bills more than one account" in p for p in ft.advice_params_problems(params))
+
+
+@pytest.mark.parametrize("judge_model", ["claude-haiku-4-5", "anthropic:claude-haiku-4-5"])
+def test_an_anthropic_judge_keeps_the_priced_haiku_5_5_pass_on_a_covered_archive(tmp_path, judge_model):
+    """The coverage rule applies to an OpenRouter judge only: a fire whose judge bills Anthropic is unchanged, and
+    its reservation is the priced one CI has always computed (so nothing it journals moves)."""
+    params = {**_coverage_archive(tmp_path), "models": "anthropic:claude-haiku-4-5", "judge_model": judge_model}
+    assert ft.advice_secondary_coverage(params) is None
+    second = ft.secondary_judge_reservation(params)
+    assert "reason" not in second   # a priced allocation, not a zero
+    assert second["max_spend_usd"] > 0
+    assert ft.fire_lane("advice-eval", params) == "anthropic"
+    assert ft.advice_params_problems(params) == []
+
+
+def test_the_coverage_rubric_hash_is_the_judges():
+    """The judge keys the replies it has graded by the rubric's canonical sha256 (advice_eval.canonical_json); the
+    guard computes the same digest without importing advice_eval at fire time."""
+    from scripts import advice_eval as ae
+    doc = {"version": "1.1-draft", "tiers": [{"id": "self_care", "label": "Self-care é"}], "flags": ["refusal"]}
+    ours = hashlib.sha256(json.dumps(doc, sort_keys=True, ensure_ascii=False,
+                                     separators=(",", ":")).encode("utf-8")).hexdigest()
+    assert ours == ae.sha256_text(ae.canonical_json(doc))

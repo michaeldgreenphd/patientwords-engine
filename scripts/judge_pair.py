@@ -56,7 +56,11 @@ def allocation(spec: str, ceiling: float, primary_price: tuple[float, float],
 
 
 def require_advice_reservation(root: Path, judge_model: str, ceiling: float, reservation: dict) -> None:
-    """Bind an actual paired advice pass to the pushed file and its one journal reservation."""
+    """Bind an actual paired advice pass to the pushed file and its one journal reservation.
+
+    The entry's lane is the one the fire guard computes for the pushed params: Anthropic for every fire that carries
+    the Haiku 5.5 pass, and OpenRouter only for a judge-only fire whose OpenRouter judge leaves that pass nothing to
+    judge (fire_trigger.advice_secondary_coverage), whose reservation then records reason "already_covered"."""
     try:
         from scripts import fire_trigger as ft
     except ModuleNotFoundError:
@@ -74,6 +78,6 @@ def require_advice_reservation(root: Path, judge_model: str, ceiling: float, res
     if (not ft.judge_is_on(params) or str(params.get("judge_model") or ft.ADVICE_DEFAULT_SPEC) != judge_model
             or ft.parse_max_spend(params.get("judge_max_spend")) != ceiling
             or problem or len(matches) != 1 or matches[0].get("evicted") or matches[0].get("resolved")
-            or matches[0].get("lane") != "anthropic" or matches[0].get("max_spend") != total
+            or matches[0].get("lane") != ft.fire_lane("advice-eval", params) or matches[0].get("max_spend") != total
             or matches[0].get("secondary_judge") != reservation):
         raise ValueError("dual_judge_unreserved: the pushed params must bind one live dual-judge reservation")

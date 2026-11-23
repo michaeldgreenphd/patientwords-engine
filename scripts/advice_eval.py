@@ -2119,8 +2119,11 @@ def judge_both(args: argparse.Namespace) -> Path:
     except ModuleNotFoundError:
         from fire_trigger import secondary_judge_reservation
         from judge_pair import require_advice_reservation
+    # the archive and rubric this step reads: an OpenRouter judge whose Haiku 5.5 pass has nothing left to judge
+    # reserves nothing for it (fire_trigger.advice_secondary_coverage), and then no second pass runs below
     reservation = secondary_judge_reservation({"judge": True, "judge_model": args.judge_model,
-                                              "judge_max_spend": args.max_spend})
+                                              "judge_max_spend": args.max_spend},
+                                             responses_path=args.responses, rubric_path=args.rubric)
     if not args.dry_run:
         require_advice_reservation(REPO_ROOT, args.judge_model, args.max_spend, reservation)
     first = copy.copy(args)

@@ -3026,3 +3026,102 @@ def test_style_checks_count_stops_before_a_sentence_that_starts_with_a_number():
     c = ae.style_checks(t, t, STYLE)
     assert c["inner_stops"] == 2 and not c["style_ok"]
     assert ae.style_checks("it was 38.4 today", "it was 38.4 today", STYLE)["inner_stops"] == 0
+
+
+def _covered_openrouter_fire(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[dict, Path, Path]:
+    """An archive Claude Haiku 5.5 has already graded in full, and the judge-only fire params of an exploratory
+    OpenRouter judge over it (owner, 2026-11-23; docs/exploratory/xjudge_20261031.md, "Advice lane")."""
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    resp, _ = _elicit(tmp_path, monkeypatch, stim_path, samples="1")
+    rubric_path = tmp_path / "rubric.json"
+    rubric_path.write_text(json.dumps(RUBRIC), encoding="utf-8")
+    monkeypatch.setattr(ae, "_send", _judge_send_recorder([]))
+    ae.main(["judge", "--responses", str(resp), "--rubric", str(rubric_path), "--judge-model",
+             "anthropic:claude-haiku-5-5", "--providers", str(LIVE_PROVIDERS_PATH), "--max-spend", "1.0"])
+    items = json.loads(stim_path.read_text(encoding="utf-8"))["items"]
+    params = {"stimuli_file": str(stim_path), "models": "openai:openai/gpt-5.4-mini", "arms": "clinical,patient",
+              "offset": len(items), "rubric": str(rubric_path), "judge": True,
+              "judge_model": "openrouter:openai/gpt-5.4-mini", "judge_max_spend": 1.0, "max_spend": 0.01}
+    return params, resp, rubric_path
+
+
+def _ci_checkout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, params: dict, entry: dict) -> None:
+    from scripts import fire_trigger as ft
+    content = json.dumps(params)
+    trigger = tmp_path / ".github/trigger/advice-eval.json"
+    trigger.parent.mkdir(parents=True)
+    trigger.write_text(content)
+    journal = tmp_path / "ops/trigger_journal.jsonl"
+    journal.parent.mkdir()
+    journal.write_text(json.dumps({"trigger": "advice-eval", "params_sha256": ft.params_digest(content),
+                                   "ref": "test", **entry}) + "\n")
+    monkeypatch.setattr(ae, "REPO_ROOT", tmp_path)
+    for key, value in {"GITHUB_ACTIONS": "true", "GITHUB_EVENT_NAME": "push", "GITHUB_RUN_ATTEMPT": "1",
+                       "GITHUB_REF_NAME": "test"}.items():
+        monkeypatch.setenv(key, value)
+
+
+def test_an_openrouter_judge_over_a_haiku_5_5_graded_archive_bills_one_account_and_runs_one_pass(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every judged advice fire also runs Claude Haiku 5.5 on the Anthropic account (owner decision R4), so an
+    OpenRouter judge made the fire bill two accounts and the guard refused it. When Haiku 5.5 has already graded
+    every reply of the archive, that pass has nothing to do: the fire bills OpenRouter alone, CI binds it to its
+    OpenRouter reservation, and only the OpenRouter judge is called."""
+    from scripts import fire_trigger as ft
+    params, resp, rubric_path = _covered_openrouter_fire(tmp_path, monkeypatch)
+    reservation = ft.secondary_judge_reservation(params)
+    assert reservation["reason"] == "already_covered" and reservation["max_spend_usd"] == 0.0
+    assert ft.advice_params_problems(params) == []
+    assert ft.fire_lane("advice-eval", params) == "openrouter"
+    assert ft.fire_commitment(params) == (pytest.approx(1.01), None)
+    _ci_checkout(tmp_path, monkeypatch, params, {"max_spend": ft.fire_commitment(params)[0], "lane": "openrouter",
+                                                 "secondary_judge": reservation})
+    called: list[str] = []
+
+    def compat(cfg, model, system, user_text, max_tokens, temperature):
+        called.append(model)
+        return (json.dumps({"tier": "urgent", "flags": {"refusal": False}}), 10, 20,
+                {"model": model, "usage": {"prompt_tokens": 10, "completion_tokens": 20}}, {})
+
+    def no_anthropic(*args, **kwargs):
+        raise AssertionError("the Haiku 5.5 pass has nothing to judge, so no Anthropic call is made")
+
+    monkeypatch.setattr(ae, "_send_compat", compat)
+    monkeypatch.setattr(ae, "_pace", lambda provider, cfg: None)
+    monkeypatch.setattr(ae, "_client", no_anthropic)
+    monkeypatch.setattr(ae, "_send", no_anthropic)
+    reports = tmp_path / "reports.txt"
+    monkeypatch.setenv("ADVICE_JUDGE_REPORTS", str(reports))
+    ae.main(["judge", "--responses", str(resp), "--rubric", str(rubric_path), "--with-secondary",
+             "--judge-model", "openrouter:openai/gpt-5.4-mini", "--providers", str(LIVE_PROVIDERS_PATH),
+             "--max-spend", "1.0"])
+    sidecars = [json.loads(Path(p).read_text()) for p in reports.read_text().splitlines()]
+    assert [s["judge_model"] for s in sidecars] == ["openrouter:openai/gpt-5.4-mini"]
+    assert sidecars[0]["dual_judge_reservation"] == reservation
+    jpath = resp.with_name(resp.stem.replace("responses_", "judgments_") + ".jsonl")
+    rows = ae._read_jsonl(jpath)
+    graded = [r for r in rows if r["judge_model"] == "openrouter:openai/gpt-5.4-mini"]
+    assert called and len(graded) == len(called) == sum(r["judge_model"] == "anthropic:claude-haiku-5-5" for r in rows)
+
+
+def test_a_reply_the_second_judge_has_not_graded_refuses_the_openrouter_judge_before_any_call(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The reservation is recomputed in CI from the archive as it stands. If a Haiku 5.5 tier the fire counted is
+    gone, the pass is no longer covered, the reservation differs from the journal's, and the judge step refuses
+    before any call (fail closed), instead of running a Haiku 5.5 pass no reservation holds."""
+    from scripts import fire_trigger as ft
+    params, resp, rubric_path = _covered_openrouter_fire(tmp_path, monkeypatch)
+    reservation = ft.secondary_judge_reservation(params)
+    _ci_checkout(tmp_path, monkeypatch, params, {"max_spend": ft.fire_commitment(params)[0], "lane": "openrouter",
+                                                 "secondary_judge": reservation})
+    jpath = resp.with_name(resp.stem.replace("responses_", "judgments_") + ".jsonl")
+    lines = jpath.read_text(encoding="utf-8").splitlines()
+    jpath.write_text("\n".join(lines[1:]) + "\n", encoding="utf-8")
+    calls: list[object] = []
+    monkeypatch.setattr(ae, "_send_compat", lambda *a, **k: calls.append(a))
+    monkeypatch.setattr(ae, "_send", lambda *a, **k: calls.append(a))
+    with pytest.raises(ValueError, match="dual_judge_unreserved"):
+        ae.main(["judge", "--responses", str(resp), "--rubric", str(rubric_path), "--with-secondary",
+                 "--judge-model", "openrouter:openai/gpt-5.4-mini", "--providers", str(LIVE_PROVIDERS_PATH),
+                 "--max-spend", "1.0"])
+    assert calls == []

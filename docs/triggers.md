@@ -103,7 +103,12 @@ judging atomically checkpoints that pass's cap; if no response returns, the sing
 imputation. Missing, partial, or invalid usage also retains that cap and refuses another call; explicit measured zero remains zero. Normal completion replaces it with measured spend. Because this second judge bills
 Anthropic, an advice fire that also bills OpenRouter is refused before any call. The supported migration is
 OpenRouter elicitation with `judge: false`, then a separate Anthropic judge-only fire over that archive using
-the zero-elicitation offset described in the lane table. `--with-secondary` requires first-attempt push-to-run
+the zero-elicitation offset described in the lane table. One exception (owner, 2026-11-23): an exploratory
+OpenRouter judge (a `provider:model` spec billed to OpenRouter) may judge an archive in a judge-only fire when
+Claude Haiku 5.5 has already given a tier, under the fire's rubric, to every advice reply with text. The
+second pass then has nothing to judge, so it is left out and reserves nothing (`reason: already_covered`), and
+the fire bills OpenRouter alone (`fire_trigger.advice_secondary_coverage`). In CI the judge step recomputes the
+check on the archive it reads; a difference from the journaled reservation refuses the step before any call. `--with-secondary` requires first-attempt push-to-run
 CI and a matching live journal reservation; its `--dry-run` remains offline.
 Paired advice prices each rendered prompt's UTF-8 byte bound plus the existing Petri framing allowance and the sent output allowance before admitting a call; its sidecar names the estimator. It disables hidden SDK retries and refuses a further paid attempt after a transient error without
 usage, preserving the cap imputation. Petri's secondary client also disables SDK retries, while its existing
