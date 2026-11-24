@@ -491,6 +491,97 @@ def advice_gen_config_model(gen_config: str) -> tuple[str | None, str | None]:
     return model.strip(), None
 
 
+# The workflow's params default for `rubric` (advice_evaluation.yml); the coverage check reads the rubric the judge
+# will run under, as the guard reads every other absent key as the workflow will run it.
+ADVICE_DEFAULT_RUBRIC = "data/advice_rubric.draft.json"
+
+
+def _advice_repo_path(value: str | Path) -> Path:
+    """A params path as the workflow reads it: relative to the checkout's root."""
+    path = Path(value)
+    return path if path.is_absolute() else Path(__file__).resolve().parents[1] / path
+
+
+def advice_secondary_coverage(params: dict, registry: dict | None = None, *,
+                              responses_path: str | Path | None = None,
+                              rubric_path: str | Path | None = None) -> dict | None:
+    """R4's second-judge reservation when that pass has nothing left to judge, or None.
+
+    Every judged advice fire also runs Claude Haiku 5.5 (`anthropic:claude-haiku-5-5`) after its judge, billed to
+    the Anthropic account (owner decision R4, 2026-10-14). A fire whose judge bills OpenRouter (an exploratory
+    second judge from another vendor, spelled with ':' so analysis keeps it out of the primary cells) therefore
+    bills two accounts, and advice_params_problems refuses it. When the Haiku 5.5 pass has nothing to do, it is
+    left out and the fire bills one account (owner, 2026-11-23, docs/exploratory/xjudge_20261031.md, "Advice lane"):
+    every advice reply with text in the archive already has a Haiku 5.5 tier under the fire's rubric, so R4 is
+    already met for this archive. An empty reply is not counted: neither judge can grade it, and a pass would retry
+    it on every fire.
+
+    Returns {"judge_model": "anthropic:claude-haiku-5-5", "max_spend_usd": 0.0, "reason": "already_covered",
+    "replies_covered": n}, or None when any condition fails or a file cannot be read (the pass then stays, and the
+    fire is refused as before). The conditions:
+    - an advice fire (no `mode`), judge on, and a judge spec with ':' that the registry bills to OpenRouter;
+    - at fire time (`responses_path` None): no `gen_config`, a readable `stimuli_file`, and `offset` at least its
+      item count, so elicitation adds no reply this check has not seen;
+    - at judge time (`responses_path` given, by advice_eval.judge_both in CI): the archive as it stands. A reply
+      appended since the fire makes this differ from the journal's reservation, and
+      judge_pair.require_advice_reservation refuses before any call;
+    - at least one reply with text, and every such reply tiered by Haiku 5.5 under the rubric's canonical sha256
+      (advice_eval.canonical_json), which is how the judge keys the replies it has already judged."""
+    try:
+        from scripts.judge_pair import SECONDARY
+    except ModuleNotFoundError:
+        from judge_pair import SECONDARY
+    if "mode" in params or not judge_is_on(params):
+        return None
+    registry = providers_registry() if registry is None else registry
+    if not isinstance(registry, dict):
+        return None
+    spec = _advice_job_value(params, "judge_model", ADVICE_DEFAULT_SPEC).strip()
+    if ":" not in spec or advice_spec_key_env(spec, registry) != "OPENROUTER_API_KEY":
+        return None
+    try:
+        if responses_path is None:
+            if _advice_job_value(params, "gen_config", "").strip():
+                return None
+            stimuli_file = _advice_job_value(params, "stimuli_file", "").strip()
+            if not stimuli_file:
+                return None
+            stimuli = _advice_repo_path(stimuli_file)
+            items = json.loads(stimuli.read_text(encoding="utf-8")).get("items")
+            offset = int(_advice_job_value(params, "offset", "0").strip() or "0")
+            if not isinstance(items, list) or offset < len(items):
+                return None
+            responses = stimuli.parent / f"responses_{stimuli.stem}.jsonl"
+            rubric = _advice_repo_path(_advice_job_value(params, "rubric", ADVICE_DEFAULT_RUBRIC).strip()
+                                       or ADVICE_DEFAULT_RUBRIC)
+        else:
+            responses = _advice_repo_path(responses_path)
+            rubric = _advice_repo_path(rubric_path or ADVICE_DEFAULT_RUBRIC)
+        judgments = responses.with_name(responses.name.replace("responses_", "judgments_", 1))
+        rubric_doc = json.loads(rubric.read_text(encoding="utf-8"))
+        rubric_sha = hashlib.sha256(json.dumps(rubric_doc, sort_keys=True, ensure_ascii=False,
+                                               separators=(",", ":")).encode("utf-8")).hexdigest()
+        gradable = set()
+        for line in responses.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                row = json.loads(line)
+                if row.get("record_type") == "advice" and str(row.get("response_text") or "").strip():
+                    gradable.add(row["response_sha256"])
+        tiered = set()
+        for line in judgments.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                row = json.loads(line)
+                if (row.get("judge_model") == SECONDARY and row.get("tier") is not None
+                        and row.get("rubric_sha256") == rubric_sha):
+                    tiered.add(row.get("response_sha256"))
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return None
+    if not gradable or not gradable <= tiered:
+        return None
+    return {"judge_model": SECONDARY, "max_spend_usd": 0.0, "reason": "already_covered",
+            "replies_covered": len(gradable)}
+
+
 def advice_billing_parts(params: dict, registry: dict | None = None) -> list[tuple[str, str, str]]:
     """[(role, spec, channel)] for every part of an advice-eval fire that can make a paid call: each elicitation
     model (role "model"), the judge when `judge` is on ("judge"), and the translator when the translated arm is
@@ -510,7 +601,9 @@ def advice_billing_parts(params: dict, registry: dict | None = None) -> list[tup
     if judge_is_on(params):
         judge = _advice_job_value(params, "judge_model", ADVICE_DEFAULT_SPEC).strip() or ADVICE_DEFAULT_SPEC
         judge_part.append(("judge", judge, _advice_spec_channel(judge, registry)))
-        judge_part.append(("secondary_judge", "anthropic:claude-haiku-5-5", "anthropic"))
+        if advice_secondary_coverage(params, registry) is None:
+            # R4's automatic Claude Haiku 5.5 pass bills Anthropic; it is left out only when it has nothing to judge
+            judge_part.append(("secondary_judge", "anthropic:claude-haiku-5-5", "anthropic"))
     gen_config = _advice_job_value(params, "gen_config", "").strip()
     if gen_config:
         generator, _ = advice_gen_config_model(gen_config)
@@ -2171,8 +2264,11 @@ def judge_is_on(params):
     return str(params.get("judge", "")).lower() in ("true", "1")
 
 
-def secondary_judge_reservation(params: dict) -> dict:
-    """The derived Haiku 5.5 pass inside the fire's single reservation (R4)."""
+def secondary_judge_reservation(params: dict, *, responses_path: str | Path | None = None,
+                                rubric_path: str | Path | None = None) -> dict:
+    """The derived Haiku 5.5 pass inside the fire's single reservation (R4). An advice fire whose OpenRouter judge
+    leaves that pass nothing to judge reserves nothing for it (advice_secondary_coverage); `responses_path` and
+    `rubric_path` are the archive and rubric the judge step reads in CI, where advice_eval.judge_both calls this."""
     try:
         from scripts.judge_pair import OPENROUTER_SECONDARY, SECONDARY, allocation
     except ModuleNotFoundError:
@@ -2180,6 +2276,9 @@ def secondary_judge_reservation(params: dict) -> dict:
 
     if not judge_is_on(params):
         return {"judge_model": SECONDARY, "max_spend_usd": 0.0, "reason": "judge_off"}
+    covered = advice_secondary_coverage(params, responses_path=responses_path, rubric_path=rubric_path)
+    if covered is not None:
+        return covered
     spec = str(params.get("judge_model") or ADVICE_DEFAULT_SPEC)
     registry = providers_registry()
     resolved = petri_judge_inspect_name(spec, registry)
