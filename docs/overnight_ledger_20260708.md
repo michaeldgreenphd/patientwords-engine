@@ -845,3 +845,12 @@ patching smoke run 1 = failure; diagnosis below after log pull.
 - rewrite_colloquial_v2_20261107T231002Z.report.json · $0.3294 · openrouter:anthropic/claude-sonnet-5 · accepted — · —
 - agscen_r9_20261110.report.json · $0.0000 · alias · accepted — · —
 - agscen_r8_20261110.report.json · $0.0000 · alias · accepted — · —
+- agscen_slang_a1_20261121.report.json · $0.0000 · alias · accepted — · —
+- agscen_slang_a_20261121.report.json · $0.0000 · alias · accepted — · —
+- judgments_stimuli_20260721T235403Z.judge_20261123T010854684546Z.report.json · $0.2469 · alias · accepted — · —
+- judgments_stimuli_20260721T235403Z.judge_20261123T033615293389Z.report.json · $0.0004 · alias · accepted — · —
+- judgments_stimuli_20260722T003502Z.judge_20261123T013012314653Z.report.json · $0.0566 · alias · accepted — · —
+- judgments_stimuli_20260722T112140Z.judge_20261123T012616164275Z.report.json · $0.0342 · alias · accepted — · —
+- judgments_stimuli_20260728T194624Z.judge_20261123T013507864012Z.report.json · $0.2655 · alias · accepted — · —
+- judgments_stimuli_20260807T153329Z.judge_20261123T015517858582Z.report.json · $0.2837 · alias · accepted — · —
+- judgments_stimuli_20260827T141036Z.judge_20261123T015207218469Z.report.json · $0.0149 · alias · accepted — · —
