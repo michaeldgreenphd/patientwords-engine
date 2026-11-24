@@ -14,7 +14,8 @@ software-verification guide.
 Use Python 3.12 or later for normal development so recorded pilots sealed on that
 side of 3.12 can re-finalize (float summation changed in 3.12; see
 [docs/pilot_runs.md](docs/pilot_runs.md#the-python-312-line)). The main measurement
-workflows use Python 3.11; the Petri lane pins 3.12.3; the Jev pilot and the action-annotation
+workflows use Python 3.11; the Petri lane pins 3.12.3 on an `ubuntu-24.04` runner (`ubuntu-latest` became
+Ubuntu 26.04, which has no 3.12.3 build); the Jev pilot and the action-annotation
 lane use 3.12; the exploratory baseline preflight pins 3.12.14. These are distinct execution environments.
 
 There is no general Poetry/uv/pip lockfile in this checkout. The dev ranges below
