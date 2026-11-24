@@ -238,6 +238,21 @@ def test_interpreter_and_harness_are_the_locked_ones(workflow, raw):
     assert "verify-lock" in verify["run"] and "--no-harness-commit" not in verify["run"]
 
 
+# actions/setup-python has no 3.12.3 build for Ubuntu 26.04, which ubuntu-latest became by 2026-11-24: the rejudge
+# job of run 45295444489 failed at setup-python before any call. 3.12.3 has x64 builds for 20.04, 22.04 and 24.04
+# (actions/python-versions, versions-manifest.json), so the jobs that install the locked interpreter pin 24.04.
+LOCKED_INTERPRETER_RUNNER = "ubuntu-24.04"
+
+
+@pytest.mark.parametrize("job", ["audit", "rejudge"])
+def test_a_job_that_installs_the_locked_interpreter_runs_on_an_image_that_has_it(workflow, job):
+    lock = json.loads(LOCK.read_text(encoding="utf-8"))
+    setup = next(s for s in _steps(workflow, job) if str(s.get("uses", "")).startswith("actions/setup-python"))
+    assert setup["with"]["python-version"] == lock["python"]["version"]
+    assert workflow["jobs"][job]["runs-on"] == LOCKED_INTERPRETER_RUNNER, (
+        f"{job} installs Python {lock['python']['version']}; ubuntu-latest (Ubuntu 26.04) has no build of it")
+
+
 def test_paid_steps_are_gated_on_mode_and_the_raw_log_stays_outside_the_checkout(workflow):
     run = _step(workflow, "Run (mode dry_run or run")
     assert run["if"] == "${{ needs.params.outputs.mode == 'dry_run' || needs.params.outputs.mode == 'run' }}"
