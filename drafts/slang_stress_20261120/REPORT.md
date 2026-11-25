@@ -19,7 +19,7 @@
 | Lane | Output Artifact(s) | Units | Breakdown | Native Engine Gate |
 |---|---|---:|---|---|
 | **Lane 1 — Next-Token Swaps** | `next_token/candidates.json` (`sources.md`, `check_report.json`) | **200 pairs** | `50` × 4 slang/register trap categories; exact `72` T4 / `48` T3 / `48` T2 / `32` T1 tier grid | `scripts/check_candidate_pairs.py --forbid ",;-"` → **200/200, 0 errors, 0 warnings** |
-| **Lane 2 — Direct LLM Advice** | `advice/manual_vignettes.json` (`sources.md`, `build_dryrun_report.json`) | **100 vignettes** (`88` unique situations) | `25` × 4 trap categories; `32` emergency / `24` urgent / `24` routine / `20` self_care; `12` multi-variant register ladders (`24` items, identical clinical baseline enforced) | `scripts/advice_eval.py build-stimuli --source manual --family natural_questions --ask-suffix ""` dry-run → **100/100, 0 errors** |
+| **Lane 2 — Direct LLM Advice** | `advice/manual_vignettes.json` (`sources.md`, `build_dryrun_report.json`) | **100 vignettes** (`88` unique situations) | `25` × 4 trap categories; `34` emergency / `22` urgent / `24` routine / `20` self_care; `12` multi-variant register ladders (`24` items, identical clinical baseline enforced) | `scripts/advice_eval.py build-stimuli --source manual --family natural_questions --ask-suffix ""` dry-run → **100/100, 0 errors** |
 | **Lane 3 — Multi-Turn Petri** | `petri/petri_seeds_slang.draft.json`, `petri/lay_careful_swaps_slang.draft.json` (`sources.md`, `validate_seeds_report.json`) | **20 seeds** (`600` scripted user turns + `10` propositions = `610` target-visible strings) | `5` × 4 multi-turn mechanisms (`reassurance_decay`, `referral_specificity`, `late_red_flag`, `pressure_minimisation`); 3 arms (`clinical`, `lay_careful`, `colloquial`) × 10 turns; `pilot_wave: 4`; `claim_grade_eligible: false`; Q4-aligned `hypotheses`; `95` verified lexicon pairs | `scripts.petri_audit.cli validate-seeds` (with & without `--wave 4`) → **20/20 `ok`, 0 errors** |
 | **Combined** | All under `drafts/slang_stress_20261120/` | **320 stimuli** | All 4 slang/register traps across all 4 urgency tiers & 4 multi-turn mechanisms | **0 errors, 0 warnings, 0 Tier B holdout hits, 0 exact corpus duplicates** |
 
@@ -93,7 +93,7 @@ Following an independent Claude Code audit of `6c80e38a`, all **5 promotion bloc
 ### Remaining Curatorial Notes for Owner & Human Review
 
 - **10 conceptual `agscen` replications in Lane 1** (`ss-nt-001, 027, 064, 068, 104, 108, 123, 151, 157, 158`): zero exact-text duplicates, but conceptually revisit scenarios already present in committed `data/simulated/agscen_*.json`. **Exclude all 10 from the curated Wave A pilot** (and either replace or explicitly tag as replications before any full-pack statistical pooling).
-- **Urgency borderline flags**: `ss-adv-011` (6yo rapidly worsening eyelid swelling + 102 F fever) and `ss-adv-084` (4-day daily methotrexate overdose with mouth sores/sore throat) are currently `urgent` and flagged for owner/clinician decision (`urgent` vs `emergency`).
+- **Urgency borderline flags (resolved 2026-11-24)**: `ss-adv-011` (6yo rapidly worsening eyelid swelling + 102 F fever) and `ss-adv-084` (4-day daily methotrexate overdose with mouth sores/sore throat) were `urgent` and flagged for owner/clinician decision. After an independent Gemini read (`gemini-4-neon-xhigh`) judged both `emergency`, the owner relabelled both `emergency` (ledger `advice_owner_tier_decisions_20261124`). Neither is clinician-adjudicated.
 - **Regional-category boundary notes**: `"boil"` (`ss-adv-061`) and `"stitch in my side"` (`ss-adv-071`) are general colloquial English rather than narrow regional dialects; note this if stratifying strictly by regional dialect.
 - **Petri clinical-arm jargon density**: Claude's review noted that clinical arms in this draft pack carry ~4.4× higher technical-term density than Wave 3. The 3-arm `lay_careful` intermediate arm decomposes lexical vs pragmatic effects, and pilot reviewers may optionally moderate clinical-arm technical density before comparing directly against Wave 3.
 - **Non-blocking audit notes** remain preserved in `*/audit/*.json` (`*.level.json` `pending_clinical_review: true` notes, `*.language.json` scaffold-repetition notes — e.g., `"attributed to X"` in `nt_04` and recurring Petri `t06`/`t09`/`t10` turn frames).
@@ -162,9 +162,9 @@ All artifacts below were built with `PYTHONDONTWRITEBYTECODE=1 python3 drafts/sl
 | `drafts/slang_stress_20261120/next_token/candidates.json` | `95336dfda832a4801fbb3cd5a1743dc42a3e1d7912db6b8cb8b9ae81c8c29ec1` |
 | `drafts/slang_stress_20261120/next_token/sources.md` | `407f887a561e85e27f09ae48bd032594e7769acf77f6783b3bf84a1d91e76ce7` |
 | `drafts/slang_stress_20261120/next_token/check_report.json` | `da89c6dfb280f4f7e4a8be192cd01ea7c6e8ca74a40419cb5ec3fae48bee3172` |
-| `drafts/slang_stress_20261120/advice/manual_vignettes.json` | `2f64be5552d166b58cd0efaa0843749c3eb83c04a2826bdcbf2d64b400654d4d` |
-| `drafts/slang_stress_20261120/advice/sources.md` | `0fbae19409ad6f5167a2083ef5588b71f217db7cebc32ca3098778640d015f0c` |
-| `drafts/slang_stress_20261120/advice/build_dryrun_report.json` | `bcddfb89d90dd31cd5b2e61aca9dd07415f1658bf15f527f8a95b4716c55c820` |
+| `drafts/slang_stress_20261120/advice/manual_vignettes.json` | `e36bd58252fe6edb71294ff0a2ed58c907f4999b8a749b6c55b07e79611bccf7` |
+| `drafts/slang_stress_20261120/advice/sources.md` | `cdc1a9a3eb23fc14fa8d24d07f81c0109f1f7d2404cbe8605ed7ed59857d40e4` |
+| `drafts/slang_stress_20261120/advice/build_dryrun_report.json` | `8902e75a3847f0127c2176ef94543c76996ad7736a26aa122b1d5ecc000909e1` |
 | `drafts/slang_stress_20261120/petri/petri_seeds_slang.draft.json` | `e700a790482e79633a849d4e6b57a73b32df82ec6356ec5503cf17fc104a7062` |
 | `drafts/slang_stress_20261120/petri/lay_careful_swaps_slang.draft.json` | `0e97b6ca199bae6ee58c95b37d7eb407b9f9598af231bbdc61208a63bda04560` |
 | `drafts/slang_stress_20261120/petri/sources.md` | `bd1aaa28a1c4285513e8efd4b46323f6e2a4190650820fc4b9ee56f0b2db8cbb` |

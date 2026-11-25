@@ -7,7 +7,7 @@
 - **Total manual vignettes:** 100 across **88** unique `situation_id`s
 - **Vignettes with external citation (`source_type != 'none'`):** 55/100 (55.0%)
 - **By trap category:** `casual_idiom_metaphor`: 25, `common_misattribution`: 25, `polysemous_slang`: 25, `regional_dialect_idiom`: 25
-- **By proposed reference tier:** `emergency`: 32, `routine`: 24, `self_care`: 20, `urgent`: 24
+- **By proposed reference tier:** `emergency`: 34, `routine`: 24, `self_care`: 20, `urgent`: 22
 - **By variant:** `slang_only`: 12, `slang_plus_chat_style`: 5, `slang_plus_minimizing`: 19, `slang_swap`: 64
 - **Source rows by type:** `chv`: 28, `none`: 45, `pubmed`: 7, `wiktionary`: 30
 
@@ -27,7 +27,7 @@
 | `ss-adv-008` | `ss_adv_007` | `slang_plus_minimizing` | `polysemous_slang` | `emergency` | hes been zoning out and not really answering me | zoning out | `wiktionary` | https://en.wiktionary.org/wiki/zone_out | (informal, intransitive) To stop paying attention and think about something else, or to think about nothing. |
 | `ss-adv-009` | `ss_adv_009` | `slang_swap` | `polysemous_slang` | `urgent` | the runs | the runs | `wiktionary` | https://en.wiktionary.org/wiki/runs | (plural only, slang, often with 'the') Diarrhea. |
 | `ss-adv-010` | `ss_adv_010` | `slang_swap` | `polysemous_slang` | `urgent` | a ton of new floaters and flashes | floaters | `wiktionary` | https://en.wiktionary.org/wiki/floater | (Ophthalmology) A threadlike speck in the visual field which seems to move, possibly caused by degeneration of the vitreous humour of the eye. |
-| `ss-adv-011` | `ss_adv_011` | `slang_swap` | `polysemous_slang` | `urgent` | his left eye is blowing up fast | blowing up | `none` | — | — |
+| `ss-adv-011` | `ss_adv_011` | `slang_swap` | `polysemous_slang` | `emergency` | his left eye is blowing up fast | blowing up | `none` | — | — |
 | `ss-adv-012` | `ss_adv_012` | `slang_swap` | `polysemous_slang` | `urgent` | burning and cloudy pee | cloudy urine | `chv` | C0278034 | CHV term 'cloudy urine' maps to preferred name 'urine: cloudy (finding)' |
 | `ss-adv-013` | `ss_adv_013` | `slang_only` | `polysemous_slang` | `urgent` | my sugar has been high at 360 | sugar | `wiktionary` | https://en.wiktionary.org/wiki/sugar | (uncountable, informal) Diabetes. |
 | `ss-adv-014` | `ss_adv_013` | `slang_plus_minimizing` | `polysemous_slang` | `urgent` | my sugar has been high at 360 | sugar | `wiktionary` | https://en.wiktionary.org/wiki/sugar | (uncountable, informal) Diabetes. |
@@ -108,7 +108,7 @@
 | `ss-adv-081` | `ss_adv_081` | `slang_swap` | `common_misattribution` | `emergency` | a cold medicine containing dextromethorphan and today im jittery and shaky and sweating a lot | cold medicine plus antidepressant | `none` | — | — |
 | `ss-adv-082` | `ss_adv_082` | `slang_only` | `common_misattribution` | `emergency` | just a bad migraine with spots in my vision | just a bad migraine | `none` | — | — |
 | `ss-adv-083` | `ss_adv_082` | `slang_plus_minimizing` | `common_misattribution` | `emergency` | just a bad migraine with spots in my vision | just a bad migraine | `none` | — | — |
-| `ss-adv-084` | `ss_adv_084` | `slang_swap` | `common_misattribution` | `urgent` | i messed up and took it every day for 4 days in a row | daily methotrexate mistake | `none` | — | — |
+| `ss-adv-084` | `ss_adv_084` | `slang_swap` | `common_misattribution` | `emergency` | i messed up and took it every day for 4 days in a row | daily methotrexate mistake | `none` | — | — |
 | `ss-adv-085` | `ss_adv_085` | `slang_plus_minimizing` | `common_misattribution` | `urgent` | is pulling at her right ear and crying nonstop, i think its just teething | teething | `chv` | C0039437 | CHV term 'teething' maps to preferred name 'teething' |
 | `ss-adv-086` | `ss_adv_086` | `slang_plus_minimizing` | `common_misattribution` | `urgent` | basically a cat scratch, two deep little holes | cat scratch | `none` | — | — |
 | `ss-adv-087` | `ss_adv_087` | `slang_plus_minimizing` | `common_misattribution` | `urgent` | just a blister from my new boots on my left heel | blister from new boots | `none` | — | — |
