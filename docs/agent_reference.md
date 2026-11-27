@@ -324,7 +324,12 @@ know them will pass a change that is destructive in this repo's terms:
   payload `trace_url` links (`scripts/export_traces_site.py`) point there, and its nightly
   build copies engine `main`'s `trace_out/<batch>/index_NN.html`. Both skip a missing
   render, so moving or pruning those renders drops links at the next publish; changing
-  the URL scheme on one side breaks published links.
+  the URL scheme on one side breaks published links. Two steps copy renders and share no
+  code: that build's copy step and `export_traces_site.py` without `--stamp-only`. Each
+  counts a file under `t/` as unchanged only when its bytes equal the engine render's
+  (since 2026-11-27: PR #200 here, `patientwords-traces#3`). A test of size or modification
+  time on either side is a finding. Found 2026-11-20: a render re-traced on 2026-07-30
+  kept its byte size, and the size test never copied it again. Change both steps together.
 
 ## Coding constraints
 
