@@ -6,7 +6,10 @@ logits models (run 42633312846). Run 42633307499 failed at index 27 on a Neuronp
 two lost pairs (sc-049 with and without commas) were re-run alone as `part_27`; nothing landed was overwritten.
 All 36 pairs are measured on all 7 models.
 
-Reproduce: `python scripts/comma_test_analysis.py [--out results.json]`. It reads only the committed trace parts.
+Reproduce: `python scripts/comma_test_analysis.py [--out results.json]`. It reads only the committed trace parts
+of the seven models above. A run directory of either stem for any other model is not read: the result lists it
+under `skipped_run_dirs` (since 2026-11-27, when a CPU next-token run of the base model landed for the comma stem
+and would otherwise have been pooled as an eighth model).
 `tests/test_comma_test_analysis.py` pins every number below.
 
 `penalty` is the clinical target's probability on the everyday side minus on the clinical side. It is usually
