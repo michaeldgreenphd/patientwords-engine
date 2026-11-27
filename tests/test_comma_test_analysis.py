@@ -54,10 +54,34 @@ def test_the_committed_files_give_the_planned_units() -> None:
     assert len(narrow) == 10 and len({unit_of[i] for i in narrow}) == 8
 
 
+def test_a_run_of_a_model_outside_the_plan_is_listed_and_not_read(tmp_path: Path) -> None:
+    # 2026-11-27: a CPU gemma-2-2b run of the comma set landed and the analysis, which read every run under the
+    # stem, moved the one-comma mean from 0.0101 to 0.0114. The plan fixes seven models; any other run is named.
+    m = _mod()
+
+    def run(name: str, penalty: float) -> None:
+        d = tmp_path / "trace_out" / name
+        d.mkdir(parents=True)
+        (d / "batch_summary.part_01.json").write_text(json.dumps({"results": [
+            {"index": 1, "language_penalty": penalty, "probabilities": {"clinical": 0.5}}]}), encoding="utf-8")
+
+    run("agscen_x", -0.1)                     # hosted gemma-2-2b, a planned model
+    run("agscen_x__qwen3-4b", -0.2)           # planned
+    run("agscen_x__gemma-2-2b", -0.9)         # the CPU run of the hosted model: not planned
+    run("agscen_x__some-new-model", -0.9)     # not planned
+    not_read: dict[str, str] = {}
+    rows = m.read_rows(tmp_path, "agscen_x", {}, not_read)
+    assert sorted(rows) == [(1, m.HOSTED), (1, "qwen3-4b")]
+    assert not_read == {"agscen_x__gemma-2-2b": "gemma-2-2b", "agscen_x__some-new-model": "some-new-model"}
+
+
 def test_the_committed_traces_give_the_reported_numbers() -> None:
     """Pins docs/exploratory/comma_test_results_20261109.md to the committed trace parts."""
     m = _mod()
     res = m.analyse(ROOT)
+    assert res["models"] == sorted(m.PLANNED_MODELS)
+    assert all(reason.startswith("model ") and reason.split()[1] not in m.PLANNED_MODELS
+               for reason in res["runs_not_read"].values())
     assert res["distinct_clinical_units"] == 13 and res["missing_model_rows"] == {}
     c1 = res["1_commas_penalty"]
     assert (c1["units"], c1["up"], c1["down"], c1["zero"], c1["p"], c1["mean_unit"]) == (13, 10, 3, 0, 0.0923, 0.0101)

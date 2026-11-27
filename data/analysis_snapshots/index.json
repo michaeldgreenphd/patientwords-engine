@@ -2,7 +2,7 @@
  "schema": "patientwords.analysis-snapshot-index/1",
  "rule": "append-only; a snapshot file is never rewritten",
  "current": {
-  "study-interim/1": "study-interim-20261110-r2"
+  "study-interim/1": "study-interim-20261127"
  },
  "snapshots": [
   {
@@ -24,6 +24,16 @@
    "n_parts": 952,
    "change_record": "Bug correction only. The gallery payload's summary.penalty was not phrase-deduplicated (docs/corrections/payload_summary_dedupe_20261110.md); it is recomputed from the payload's own 1,774 scenarios: n_phrases 1163 to 1124, mean_phrase_deduped -0.0387 to -0.0367, ci95 [-0.0477, -0.0291] to [-0.046, -0.0267]. No scenario, no other statistics file, no pin and no membership rule changed. The parts list is the membership at this engine commit, which includes parts that landed on main on 2026-11-10; no statistics file was regenerated from them.",
    "sha256": "f48c64e3cd99c2da569e56e78be87b7e64f7f65f2ab47edf4432636c8cd8804b"
+  },
+  {
+   "id": "study-interim-20261127",
+   "created_utc": "2026-11-27T03:29:20Z",
+   "membership": "study-interim/1",
+   "engine_commit": "0707cf8664e4e8b5a9cf9ec6bf5d481ebbfcf4c5",
+   "supersedes": "study-interim-20261110-r2",
+   "n_parts": 956,
+   "change_record": "Two exporter fixes (engine PR 190) published: data/retrace_consistency.json now compares top words (85 of 87 re-traced pairs keep theirs; published 87 of 87), and data/advice_scenarios.json now carries the rubric's tier order, so its per-scenario tier summaries (595 comparisons, 50 less urgent, 48 more urgent) are published. No other statistics file was regenerated; data/model_stats.json is held for owner decision D4 (docs/corrections/payload_summary_dedupe_20261110.md). The parts list is the membership at this engine commit, which includes parts that landed after 2026-11-10; no statistics file was regenerated from them.",
+   "sha256": "ed37783f738431d17cb3183bf0daa58cd865eae8533bd22a4d62e481308dd456"
   }
  ],
  "publications": [
