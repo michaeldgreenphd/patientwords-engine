@@ -385,34 +385,41 @@ def test_committed_logits_parts_refuses_missing_or_unknown_backend(git_root):
 
 def test_translation_scale_reads_only_released_logits_parts(engine_root):
     ts = _load("translation_scale")
-    corpus = [{"top_prompt": "translated", "bottom_prompt": "patient",
-               "target_clinical_token": " alpha", "generation": {"source_batch": BATCH, "source_index": 1}}]
+    # the writer's layout: the clinical sentence on top, the rewrite below, the patient sentence in generation
+    corpus = [{"top_prompt": "alpha prompt 1", "bottom_prompt": "rewrite 1", "target_clinical_token": " alpha",
+               "generation": {"source_batch": BATCH, "source_index": 1, "original_patient": "beta prompt 1"}}]
     _write(engine_root / "data" / "simulated" / "txcorpus_A.json", corpus)
-    # released part
-    _write(engine_root / "trace_out" / "txcorpus_A__qwen3-4b" / "batch_summary.part_01.json",
-           {"backend": "logits", "graph_model": "qwen3-4b", "results": [
-               {"index": 1, "target_token": 'Output "alpha"',
-                "probabilities": {"clinical": 0.5, "patient": 0.2},
-                "predictive_spread": {"clinical": [['Output "alpha"', 0.5]], "patient": [['Output "beta"', 0.2]]}}]})
-    _manifest(engine_root, [QWEN_PART, "trace_out/txcorpus_A__qwen3-4b/batch_summary.part_01.json"])
-    # unreleased part
-    _write(engine_root / "trace_out" / "txcorpus_A__olmo-2-1b" / "batch_summary.part_01.json",
-           {"backend": "logits", "graph_model": "olmo-2-1b", "results": [
-               {"index": 1, "target_token": 'Output "alpha"',
-                "probabilities": {"clinical": 0.5, "patient": 0.2},
-                "predictive_spread": {"clinical": [['Output "alpha"', 0.5]], "patient": [['Output "beta"', 0.2]]}}]})
-    # held model part
-    _write(engine_root / "trace_out" / "txcorpus_A__gemma-4-e2b" / "batch_summary.part_01.json",
-           {"backend": "logits", "graph_model": "gemma-4-e2b", "results": [
-               {"index": 1, "target_token": 'Output "alpha"',
-                "probabilities": {"clinical": 0.5, "patient": 0.2},
-                "predictive_spread": {"clinical": [['Output "alpha"', 0.5]], "patient": [['Output "beta"', 0.2]]}}]})
+    # the seal is asked of every row: a Tier B batch that registers one phrase keeps the phrase set non-empty
+    _write(engine_root / "data" / "simulated" / "pairs_20260711T000000Z.json",
+           [{"top_prompt": "The patient reports symptom 4."}])
+    tx = {"index": 1, "prompts": {"clinical": "alpha prompt 1", "patient": "rewrite 1"},
+          "probabilities": {"clinical": 0.6, "patient": 0.5}, "predictive_spread": _SPREAD}
+
+    def tx_part(model: str) -> str:
+        rel = f"trace_out/txcorpus_A__{model}/batch_summary.part_01.json"
+        _write(engine_root / rel, {"backend": "logits", "graph_model": model, "results": [tx]})
+        return rel
+
+    # qwen3-4b: txcorpus part and source part both released (the fixture's QWEN_PART holds source pair 1)
+    released = [QWEN_PART, tx_part("qwen3-4b")]
+    # llama-3.2-3b: txcorpus part released, source part landed but outside the manifest
+    released.append(tx_part("llama-3.2-3b"))
+    _write(engine_root / "trace_out" / f"{BATCH}__llama-3.2-3b" / "batch_summary.part_01.json",
+           _summary([1, 2, 3], "llama-3.2-3b"))
+    _manifest(engine_root, released)
+    tx_part("olmo-2-1b")                                  # unreleased txcorpus part
+    tx_part("gemma-4-e2b")                                # held model
 
     gate = hold.Gate(engine_root)
-    out = ts.analyze(engine_root / "trace_out", engine_root / "data" / "simulated", gate=gate)
-    assert "qwen3-4b" in out["per_model"]
-    assert "olmo-2-1b" not in out["per_model"]
-    assert "gemma-4-e2b" not in out["per_model"]
+    out = ts.analyze(engine_root / "trace_out", engine_root / "data" / "simulated", gate=gate,
+                     dashboard_path=engine_root / "ops" / "dashboard.json")
+    assert out["per_model"]["qwen3-4b"]["n"] == 1
+    assert out["per_model"]["qwen3-4b"]["mean_recovery"] == 0.2      # rewrite 0.5 - patient 0.3 (source run)
+    # an unreleased source part supplies no baseline, and the pair it would have joined is named
+    assert "llama-3.2-3b" not in out["per_model"]
+    assert out["coverage"]["llama-3.2-3b"]["not_counted"] == {"source_part_outside_membership": 1}
+    assert "olmo-2-1b" not in out["per_model"] and "olmo-2-1b" not in out["coverage"]
+    assert "gemma-4-e2b" not in out["per_model"] and "gemma-4-e2b" not in out["coverage"]
     assert "logits part outside the pinned manifest" in gate.report()
     assert "model gemma-4-e2b" in gate.report()
 

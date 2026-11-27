@@ -10,7 +10,9 @@ run-to-run stability rather than the model's.
 Three layers are compared, each at the precision the files record
 (probabilities are stored to 3 decimals):
 - target-token probabilities and the full top-k spread lists (words + probs),
-- the top word under each wording,
+- the top word under each wording, read from the first entry of the recorded
+  predictive_spread list (best first); a pair whose top word is not recorded in
+  every run is counted as not recorded, never as stable,
 - clinical_mass, compared only between runs that share the same graph
   parameters (node budget and thresholds) AND the same feature source set,
   because the attribution graph is parameter-sensitive by design and the mass
@@ -42,6 +44,27 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from feature_models import clinical_mass_publishable  # noqa: E402
 from publication_hold import is_exploratory_run_dir  # noqa: E402
 from tierb_split import holdout_phrases  # noqa: E402  (script-style module)
+
+
+def top_word(ranked: object) -> str | None:
+    """The top token of one wording's recorded predictive_spread list, or None.
+
+    batch_eval writes ``predictive_spread[role]`` as [[token, probability], ...]
+    best first. A result's ``outputs`` holds render file paths, not tokens.
+    """
+    if isinstance(ranked, list) and ranked:
+        first = ranked[0]
+        if isinstance(first, (list, tuple)) and first and isinstance(first[0], str):
+            return first[0]
+    return None
+
+
+def top_word_stability(recs: list[dict], key: str) -> bool | None:
+    """True: one top word in every run. False: two runs differ. None: not recorded in some run."""
+    words = {r[key] for r in recs if r[key] is not None}
+    if len(words) > 1:
+        return False
+    return True if all(r[key] is not None for r in recs) else None
 
 
 def collect(trace_root: Path, skipped: list[str] | None = None):
@@ -82,7 +105,6 @@ def collect(trace_root: Path, skipped: list[str] | None = None):
                 continue
             if clin in sealed:
                 continue  # amendment 3: phrase-keyed holdout seal, all runs
-            outputs = row.get("outputs") or {}
             spread = row.get("predictive_spread") or {}
             # Mass enters the comparison only for a calibrated feature model
             # (feature_models): a labelled but uncalibrated model's mass
@@ -96,8 +118,8 @@ def collect(trace_root: Path, skipped: list[str] | None = None):
                 "params_sig": params_sig,
                 "p_clinical": probs.get("clinical"),
                 "p_patient": probs.get("patient"),
-                "top_clinical": (outputs.get("clinical") or [None])[0],
-                "top_patient": (outputs.get("patient") or [None])[0],
+                "top_clinical": top_word(spread.get("clinical")),
+                "top_patient": top_word(spread.get("patient")),
                 "spread_sig": json.dumps([spread.get("clinical"), spread.get("patient")]),
                 "cmass_clinical": cmass.get("clinical"),
                 "cmass_patient": cmass.get("patient"),
@@ -121,8 +143,6 @@ def compare(groups):
             continue
         pc = [r["p_clinical"] for r in recs if r["p_clinical"] is not None]
         pp = [r["p_patient"] for r in recs if r["p_patient"] is not None]
-        tc = {r["top_clinical"] for r in recs if r["top_clinical"]}
-        tp = {r["top_patient"] for r in recs if r["top_patient"]}
         spread_sigs = {r["spread_sig"] for r in recs}
         # clinical_mass: same-parameter repeats only; cross-parameter runs are
         # expected to differ (pruning budget), flagged separately
@@ -138,8 +158,8 @@ def compare(groups):
             "runs": sorted(by_run),
             "spread_p_clinical": round(max(pc) - min(pc), 6) if len(pc) > 1 else None,
             "spread_p_patient": round(max(pp) - min(pp), 6) if len(pp) > 1 else None,
-            "top_clinical_stable": len(tc) <= 1,
-            "top_patient_stable": len(tp) <= 1,
+            "top_clinical_stable": top_word_stability(recs, "top_clinical"),
+            "top_patient_stable": top_word_stability(recs, "top_patient"),
             "spread_lists_identical": len(spread_sigs) <= 1,
             "cmass_same_params_spread": round(max(cmass_same), 6) if cmass_same else None,
             "cmass_param_variants": len(by_params),
@@ -161,6 +181,10 @@ def main():
     spreads = [r["spread_p_clinical"] for r in rows if r["spread_p_clinical"] is not None] + \
               [r["spread_p_patient"] for r in rows if r["spread_p_patient"] is not None]
     stable_tops = sum(1 for r in rows if r["top_clinical_stable"] and r["top_patient_stable"])
+    # no observed change, but a run records no top word for one wording: not evidence of agreement
+    tops_not_recorded = sum(1 for r in rows
+                            if None in (r["top_clinical_stable"], r["top_patient_stable"])
+                            and False not in (r["top_clinical_stable"], r["top_patient_stable"]))
     lists_ok = sum(1 for r in rows if r["spread_lists_identical"])
     cmass_spreads = [r["cmass_same_params_spread"] for r in rows
                      if r["cmass_same_params_spread"] is not None]
@@ -173,6 +197,7 @@ def main():
         "prob_spread_max": round(max(spreads), 6) if spreads else None,
         "prob_spread_mean": round(sum(spreads) / len(spreads), 6) if spreads else None,
         "top_word_stable_pairs": stable_tops,
+        "top_word_not_recorded_pairs": tops_not_recorded,
         "spread_lists_identical_pairs": lists_ok,
         "cmass_same_params_spread_max": round(max(cmass_spreads), 6) if cmass_spreads else None,
         "cmass_same_params_pairs": len(cmass_spreads),
@@ -189,7 +214,7 @@ def main():
     else:
         print(f"retrace consistency: {len(rows)} pairs traced 2+ times · "
               f"max prob spread {payload['prob_spread_max']} (stored precision) · "
-              f"top word stable {stable_tops}/{len(rows)} · full spread lists identical "
+              f"top word stable {stable_tops}/{len(rows)} (not recorded {tops_not_recorded}) · full spread lists identical "
               f"{lists_ok}/{len(rows)} · clinical_mass same-params max spread "
               f"{payload['cmass_same_params_spread_max']} over {len(cmass_spreads)} pairs")
 

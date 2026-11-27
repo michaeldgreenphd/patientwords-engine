@@ -80,6 +80,27 @@ def collect_corpus(simulated_dir: Path, dashboard_path: Path) -> list[dict]:
     return corpus
 
 
+def corpus_pair(item: dict, translated: str, model: str) -> dict:
+    """One txcorpus row for a collected source pair and its rewrite.
+
+    top_prompt is the source pair's clinical sentence, unchanged; bottom_prompt is the rewrite of its
+    patient sentence. The patient sentence is not a prompt of the row: generation.original_patient keeps
+    it, and scripts/translation_scale.py takes its measurement from the source pair's own run.
+    tests/test_translation_scale.py holds the two scripts to this layout."""
+    return {
+        "top_prompt": item["top_prompt"],
+        "bottom_prompt": translated,
+        "target_clinical_token": item["target_clinical_token"],
+        "generation": {
+            "task": "txcorpus",
+            "source_batch": item["source_batch"],
+            "source_index": item["source_index"],
+            "original_patient": item["patient_prompt"],
+            "translation_model": model,
+        },
+    }
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--out", required=True)
@@ -129,18 +150,7 @@ def main(argv=None) -> int:
         if not translated:
             failed += 1
             continue
-        out_pairs.append({
-            "top_prompt": item["top_prompt"],
-            "bottom_prompt": translated,
-            "target_clinical_token": item["target_clinical_token"],
-            "generation": {
-                "task": "txcorpus",
-                "source_batch": item["source_batch"],
-                "source_index": item["source_index"],
-                "original_patient": item["patient_prompt"],
-                "translation_model": args.model,
-            },
-        })
+        out_pairs.append(corpus_pair(item, translated, args.model))
 
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)

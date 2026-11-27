@@ -293,6 +293,45 @@ def test_export_without_judgments(archive):
     assert c["mean_words"] > 0 and c["tier_counts"] is None and c["tier_mean_rank"] is None
 
 
+def test_export_default_rubric_exists_and_yields_tier_order(archive):
+    # regression: the default was data/advice_rubric.json, a file the repository never held, so every
+    # default export published tier_order null, no tier_summary and no tier_mean_rank
+    assert ex.DEFAULT_RUBRIC.is_file()
+    rubric = json.loads(ex.DEFAULT_RUBRIC.read_text(encoding="utf-8"))
+    judgments = archive["out_dir"] / f"judgments_{archive['stim'].stem}.jsonl"
+    judgments.unlink()  # re-judge the archive with the repository's rubric, as the advice lane does
+    ae.main(["judge", "--responses", str(archive["out_dir"] / f"responses_{archive['stim'].stem}.jsonl"),
+             "--rubric", str(ex.DEFAULT_RUBRIC), "--judge-model", "judge-x", "--max-spend", "5.0"])
+    out = archive["tmp"] / "advice_scenarios.json"
+    ex.main(["--stimuli", str(archive["stim"]), "--out", str(out)])  # no --rubric: the default
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    assert payload["rubric_version"] == rubric["version"]
+    assert payload["tier_order"] == [t["id"] for t in rubric["tiers"]]
+    assert payload["scenarios"][0]["tier_summary"]
+    assert payload["model_summary"][0]["clinical"]["tier_mean_rank"] is not None
+
+
+def test_export_refuses_a_missing_rubric_when_judgments_exist(archive, capsys):
+    out = archive["tmp"] / "advice_scenarios.json"
+    out.write_text("KEEP", encoding="utf-8")
+    with pytest.raises(SystemExit) as exc:
+        ex.main(["--stimuli", str(archive["stim"]), "--out", str(out),
+                 "--rubric", str(archive["tmp"] / "no_such_rubric.json")])
+    assert exc.value.code == 3
+    assert "no_such_rubric.json" in capsys.readouterr().out
+    assert out.read_text(encoding="utf-8") == "KEEP"
+
+
+def test_export_refuses_a_rubric_of_another_version(archive, capsys):
+    other = archive["tmp"] / "other_rubric.json"
+    other.write_text(json.dumps({**RUBRIC, "version": "t2"}), encoding="utf-8")
+    with pytest.raises(SystemExit) as exc:
+        ex.main(["--stimuli", str(archive["stim"]), "--out", str(archive["tmp"] / "x.json"),
+                 "--rubric", str(other)])
+    assert exc.value.code == 3
+    assert "'t2'" in capsys.readouterr().out
+
+
 def test_export_merges_two_families_with_exact_pooling(archive, tmp_path, monkeypatch):
     # Owner direction 2026-07-29: both stimulus families share one page and one
     # denominator. A merged build must concatenate scenarios with family labels

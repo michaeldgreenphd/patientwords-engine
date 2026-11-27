@@ -115,47 +115,30 @@ def test_txcorpus_stem_never_matches_confirmatory_regex():
     assert r"pairs_\d{8}T\d{6}Z" in rigor_src
 
 
-def test_translation_scale_self_contained_recovery(tmp_path):
-    # Recovery is computed from the ONE txcorpus run (clinical=translated,
-    # patient=patient); the old cross-join to a source-batch pairs_ run is retired.
-    # A source-batch run is present here precisely to prove it is IGNORED.
-    sim = tmp_path / "simulated"
-    sim.mkdir()
-    _write_batch(sim, "txcorpus_20260715T000000Z", [
-        {"top_prompt": "CL1", "bottom_prompt": "TR1", "target_clinical_token": " a",
-         "generation": {"source_batch": "pairs_20260711T000000Z", "source_index": 2,
-                        "original_patient": "PT1"}},
-    ])
-    troot = tmp_path / "trace_out"
-    # a declared model id: a part whose graph_model no cohort declares enters no analysis (results policy)
-    (troot / "txcorpus_20260715T000000Z__olmo-2-1b").mkdir(parents=True)
-    (troot / "txcorpus_20260715T000000Z__olmo-2-1b" / "batch_summary.part_01.json").write_text(json.dumps(
-        {"backend": "logits", "graph_model": "olmo-2-1b", "results": [{
-            "index": 1, "target_token": 'Output " a"',
-            "probabilities": {"clinical": 0.5, "patient": 0.1},
-            "predictive_spread": {"clinical": [['Output " a"', 0.5]], "patient": [['Output " b"', 0.2]]}}]}))
-    # a source-batch run the OLD cross-join would have folded in — must be ignored now
-    (troot / "pairs_20260711T000000Z__olmo-2-1b").mkdir(parents=True)
-    (troot / "pairs_20260711T000000Z__olmo-2-1b" / "batch_summary.part_01.json").write_text(json.dumps(
-        {"backend": "logits", "graph_model": "olmo-2-1b", "results": [{
-            "index": 2, "probabilities": {"clinical": 0.9, "patient": 0.9},
-            "predictive_spread": {"clinical": [["z", 0.9]], "patient": [["z", 0.9]]}}]}))
-    out = ts.analyze(troot, sim)
-    s = out["per_model"]["olmo-2-1b"]
-    assert s["n"] == 1
-    assert abs(s["mean_recovery"] - 0.4) < 1e-9          # 0.5 translated - 0.1 patient, self-contained
-    assert s["mean_gap_closed"] is None                  # no independent clinical baseline
-    assert s["top_restored"] == 1 and s["top_lost"] == 0  # translated top 'a'==target, patient top 'b'
+def test_corpus_pair_keeps_the_clinical_sentence_on_top_and_puts_the_rewrite_below():
+    # The layout translation_scale.py depends on: a txcorpus run's clinical side is the source pair's
+    # clinical sentence and its patient side is the rewrite. The patient sentence is no prompt of the row,
+    # so recovery is joined to the source pair's own run (tests/test_translation_scale.py).
+    item = {"top_prompt": "CL1", "patient_prompt": "PT1", "target_clinical_token": " a",
+            "source_batch": "pairs_20260707T000000Z", "source_index": 2}
+    assert tc.corpus_pair(item, "TR1", "translator") == {
+        "top_prompt": "CL1", "bottom_prompt": "TR1", "target_clinical_token": " a",
+        "generation": {"task": "txcorpus", "source_batch": "pairs_20260707T000000Z", "source_index": 2,
+                       "original_patient": "PT1", "translation_model": "translator"}}
 
 
 def test_lens_recovery_join(tmp_path):
     sim = tmp_path / "simulated"
     sim.mkdir()
+    # the seal is asked of every joined row: a dashboard, and a Tier B batch that registers one phrase
+    dash = tmp_path / "dashboard.json"
+    dash.write_text(json.dumps({"tierb": {"start_utc": "2026-07-10T01:14:38Z"}}))
+    _write_batch(sim, "pairs_20260711T000000Z", [{"top_prompt": "The patient reports symptom 4."}])
     _write_batch(sim, "txcorpus_20260715T000000Z", [
         {"top_prompt": "CL1", "bottom_prompt": "TR1",
-         "generation": {"source_batch": "pairs_20260711T000000Z", "source_index": 3}},
+         "generation": {"source_batch": "pairs_20260707T000000Z", "source_index": 3}},
         {"top_prompt": "CL2", "bottom_prompt": "TR2",
-         "generation": {"source_batch": "pairs_20260711T000000Z", "source_index": 4}},
+         "generation": {"source_batch": "pairs_20260707T000000Z", "source_index": 4}},
     ])
     troot = tmp_path / "trace_out"
 
@@ -168,7 +151,7 @@ def test_lens_recovery_join(tmp_path):
         return [{"layer": i, "target_rank": r} for i, r in enumerate(ranks)]
 
     # patient side: index 3 never forms; index 4 forms (two consecutive layers)
-    lens_dir("pairs_20260711T000000Z", [
+    lens_dir("pairs_20260707T000000Z", [
         {"index": 3, "parse_status": {"clinical": "ok", "patient": "ok"},
          "depth": {"patient": prof([None, None, 5, None])}},
         {"index": 4, "parse_status": {"clinical": "ok", "patient": "ok"},
@@ -181,7 +164,7 @@ def test_lens_recovery_join(tmp_path):
         {"index": 2, "parse_status": {"clinical": "ok", "patient": "ok"},
          "depth": {"patient": prof([None, None, 7, None])}},
     ])
-    out = ts.lens_recovery(troot, sim)
+    out = ts.lens_recovery(troot, sim, dashboard_path=dash)
     assert out["n_paired"] == 2
     assert out["patient_never_formed"] == 1
     assert out["recovered_to_formed"] == 1
