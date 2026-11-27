@@ -1,12 +1,13 @@
 """Companion traces-site exporter (scripts/export_traces_site.py) — offline.
 
 Pins the payload-as-source-of-truth rule (only published scenarios get a
-trace), the incremental copy, the trace_url stamping, and the refusal when
-the traces repo checkout is absent. No network.
+trace), the incremental copy and its comparison by content, the trace_url
+stamping, and the refusal when the traces repo checkout is absent. No network.
 """
 
 import importlib.util
 import json
+import os
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[1]
@@ -48,6 +49,63 @@ def test_publish_copies_stamps_and_counts(tmp_path):
     # second run is incremental
     copied2, unchanged2, _ = ets.publish(payload, trace_root, repo, BASE)
     assert (copied2, unchanged2) == (0, 2)
+
+
+def _one_render(tmp_path):
+    scenarios = [{"batch": "pairs_A", "batch_index": 5}]
+    trace_root, repo, _ = setup(tmp_path, scenarios, renders=[("pairs_A", 5)])
+    src = trace_root / "pairs_A" / "index_05.html"
+    dst = repo / "t" / "pairs_A" / "index_05.html"
+    dst.parent.mkdir(parents=True)
+    return {"scenarios": scenarios}, trace_root, repo, src, dst
+
+
+def test_same_size_different_bytes_is_recopied(tmp_path):
+    """Regression: a re-traced render can keep its byte size.
+
+    Found 2026-11-20: t/pairs_20260719T132706Z/index_44.html in the traces
+    repository and the engine's landed render were both 1,615,110 bytes with
+    different contents. Equal size counted as unchanged when the destination
+    was no older than the source, as in a traces checkout made after the
+    engine checkout, so the traces repository's copy stayed one render behind."""
+    payload, trace_root, repo, src, dst = _one_render(tmp_path)
+    fresh = src.read_bytes()
+    stale = fresh.replace(b"#5", b"#4")
+    assert len(stale) == len(fresh) and stale != fresh       # same size, other bytes
+    dst.write_bytes(stale)
+    newer = src.stat().st_mtime_ns + 60 * 10**9
+    os.utime(dst, ns=(newer, newer))                         # destination newer than source
+    copied, unchanged, missing = ets.publish(payload, trace_root, repo, BASE)
+    assert (copied, unchanged, missing) == (1, 0, 0)
+    assert dst.read_bytes() == fresh
+    assert ets.publish(payload, trace_root, repo, BASE) == (0, 1, 0)
+
+
+def test_identical_bytes_are_unchanged_whatever_the_mtime(tmp_path):
+    payload, trace_root, repo, src, dst = _one_render(tmp_path)
+    dst.write_bytes(src.read_bytes())
+    older = src.stat().st_mtime_ns - 60 * 10**9
+    os.utime(dst, ns=(older, older))                         # destination older than source
+    assert ets.publish(payload, trace_root, repo, BASE) == (0, 1, 0)
+    assert dst.stat().st_mtime_ns == older                   # not rewritten
+
+
+def test_different_size_is_recopied(tmp_path):
+    payload, trace_root, repo, src, dst = _one_render(tmp_path)
+    dst.write_bytes(src.read_bytes()[:-1])                   # e.g. an interrupted copy
+    assert ets.publish(payload, trace_root, repo, BASE) == (1, 0, 0)
+    assert dst.read_bytes() == src.read_bytes()
+
+
+def test_same_content_reads_whole_files(tmp_path):
+    """The difference may sit past the first chunk read."""
+    a, b = tmp_path / "a.bin", tmp_path / "b.bin"
+    body = b"x" * (ets._CHUNK + 7)
+    a.write_bytes(body)
+    b.write_bytes(body)
+    assert ets.same_content(a, b)
+    b.write_bytes(body[:-1] + b"y")                          # last byte only
+    assert not ets.same_content(a, b)
 
 
 def test_main_refuses_without_repo_checkout(tmp_path, monkeypatch):

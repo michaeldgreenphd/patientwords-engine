@@ -9,8 +9,13 @@ the site payload so every row can link a live trace. Owner decision
 
 Seal-safe by construction: the source of truth is the site payload — only
 scenarios the exporter already published get a trace copied; nothing under
-the Tier B holdout seal is reachable from here. Incremental: unchanged
-renders are not re-copied, so the nightly run touches only new batches.
+the Tier B holdout seal is reachable from here. Incremental: a render whose
+destination already holds the same bytes is not re-copied, so a run touches
+only new and changed renders. "Same" is decided by content, never by size or
+modification time: a re-traced render can keep its byte size (found
+2026-11-20, see same_content). The traces repository's nightly build has its
+own copy step (.github/workflows/build.yml there); a change to this rule
+belongs in both.
 Refuses (exit 3, payload untouched) when the traces repo checkout is absent.
 No medical vocabulary lives in this file.
 
@@ -34,12 +39,39 @@ except ImportError:
     from provenance_stamp import provenance
 
 
+_CHUNK = 1 << 20  # bytes read from each file per comparison step
+
+
 def render_source(trace_root: Path, batch: str, index: int) -> Path:
     return trace_root / batch / f"index_{index:02d}.html"
 
 
+def same_content(a: Path, b: Path) -> bool:
+    """True when the two files hold the same bytes.
+
+    A different size proves different content, so it is checked first and
+    nothing is read. An equal size proves nothing. Found 2026-11-20: equal
+    size (with a destination no older than the source) counted as unchanged,
+    and t/pairs_20260719T132706Z/index_44.html in the traces repository
+    stayed at an earlier trace of the same 1,615,110 bytes. Equal-sized files
+    are therefore read in full. Modification times are not consulted: a
+    checkout sets them to the checkout time."""
+    if a.stat().st_size != b.stat().st_size:
+        return False
+    with a.open("rb") as file_a, b.open("rb") as file_b:
+        while True:
+            chunk_a, chunk_b = file_a.read(_CHUNK), file_b.read(_CHUNK)
+            if chunk_a != chunk_b:
+                return False
+            if not chunk_a:
+                return True
+
+
 def publish(payload: dict, trace_root: Path, traces_repo: Path | None, base_url: str):
     """Copy renders + stamp trace_url; returns (copied, unchanged, missing).
+
+    A destination counts as unchanged only when it holds the source's bytes
+    (same_content); any other existing destination is overwritten.
 
     ``traces_repo=None`` is stamp-only: set trace_url for every scenario whose
     render exists locally, copying nothing — for when the traces repo builds
@@ -59,8 +91,7 @@ def publish(payload: dict, trace_root: Path, traces_repo: Path | None, base_url:
             unchanged += 1
         else:
             dst = traces_repo / rel
-            if dst.is_file() and dst.stat().st_size == src.stat().st_size \
-                    and dst.stat().st_mtime >= src.stat().st_mtime:
+            if dst.is_file() and same_content(src, dst):
                 unchanged += 1
             else:
                 dst.parent.mkdir(parents=True, exist_ok=True)
