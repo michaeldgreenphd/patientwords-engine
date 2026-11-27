@@ -263,10 +263,19 @@ def clean_spread(spread_side):
 
 
 def model_dir(stem, model):
-    """Where a model's trace outputs live; gemma keeps the bare stem."""
+    """Where a model's trace outputs live; gemma keeps the bare stem.
+
+    Always a directory named for the batch: a batch with no base-model directory
+    has no base-model measurement. Until 2026-11-20 a missing base directory fell
+    back to the top level of trace_out/, the layout of the first published trace
+    (pairs_20260706T175614Z, 2026-07-06), whose five summaries and ten renders
+    stayed there until 2026-09-12. A batch whose other models landed before its
+    base trace was then exported with that trace's rows as its base rows: its
+    prompts, probabilities and renders under the newer batch's name (28 rows of
+    three batches in the site payloads of 2026-08-06 to 2026-08-08;
+    tests/test_export_flat_trace_root.py)."""
     if model == BASE_MODEL:
-        d = ENGINE / f"trace_out/{stem}"
-        return d if d.is_dir() else ENGINE / "trace_out"  # legacy flat layout
+        return ENGINE / f"trace_out/{stem}"
     return ENGINE / f"trace_out/{stem}__{model}"
 
 
