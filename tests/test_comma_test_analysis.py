@@ -3,9 +3,12 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+SEVEN = ["gemma-2-2b (hosted)", "gemma-2-2b-it", "gemma-3-4b-it", "llama-3.2-3b", "olmo-2-1b", "qwen3-1.7b",
+         "qwen3-4b"]
 
 
 def _mod():
@@ -59,6 +62,9 @@ def test_the_committed_traces_give_the_reported_numbers() -> None:
     m = _mod()
     res = m.analyse(ROOT)
     assert res["distinct_clinical_units"] == 13 and res["missing_model_rows"] == {}
+    assert res["models"] == SEVEN                       # the plan's seven, whatever else has landed since
+    planned_dirs = {stem + suffix for stem in (m.COMMAS, m.R5) for suffix in [""] + ["__" + x for x in SEVEN[1:]]}
+    assert not set(res["skipped_run_dirs"]) & planned_dirs
     c1 = res["1_commas_penalty"]
     assert (c1["units"], c1["up"], c1["down"], c1["zero"], c1["p"], c1["mean_unit"]) == (13, 10, 3, 0, 0.0923, 0.0101)
     c2 = res["2_commas_baseline"]
@@ -70,3 +76,49 @@ def test_the_committed_traces_give_the_reported_numbers() -> None:
     assert (c4["units"], c4["up"], c4["down"], c4["p"]) == (10, 6, 4, 0.7539)
     c4s = res["4s_connective_penalty_insert_only"]
     assert (c4s["units"], c4s["up"], c4s["down"], c4s["p"]) == (8, 4, 4, 1.0)
+
+
+def _linked_root(tmp_path: Path, m, leave_out: tuple[str, ...] = ()) -> Path:
+    """A root that links the committed stimuli and every committed run directory of the two stems."""
+    (tmp_path / "trace_out").mkdir()
+    os.symlink(ROOT / "data", tmp_path / "data")
+    for run in sorted((ROOT / "trace_out").iterdir()):
+        if run.name.startswith((m.COMMAS, m.R5)) and run.name not in leave_out:
+            os.symlink(run, tmp_path / "trace_out" / run.name)
+    return tmp_path
+
+
+def test_a_later_model_directory_does_not_change_the_fixed_analysis(tmp_path: Path) -> None:
+    """Regression. Found 2026-11-27: the analysis read every run directory of its two stems, so
+    trace_out/agscen_commas_20261109__gemma-2-2b/ (a CPU next-token run of the base model, landed that day by
+    fa6d7695) was pooled as an eighth model and contrast 1's mean moved from 0.0101 to 0.0114."""
+    m = _mod()
+    root = _linked_root(tmp_path, m)
+    later = []
+    for stem in (m.COMMAS, m.R5):                       # a model outside the plan, with numbers that would show
+        src = next((ROOT / "trace_out" / f"{stem}__olmo-2-1b").glob("batch_summary.part_*.json"))
+        part = json.loads(src.read_text(encoding="utf-8"))
+        for r in part["results"]:
+            if isinstance(r.get("language_penalty"), (int, float)):
+                r["language_penalty"] += 0.5 if r["index"] % 2 else -0.5
+        run = root / "trace_out" / f"{stem}__later-model"
+        run.mkdir()
+        (run / src.name).write_text(json.dumps(part), encoding="utf-8")
+        later.append(run.name)
+    res, committed = m.analyse(root), m.analyse(ROOT)
+    assert set(later) <= set(res["skipped_run_dirs"])   # left out, and said so
+    assert res["models"] == SEVEN and res["missing_model_rows"] == {}
+    c1 = res["1_commas_penalty"]
+    assert (c1["units"], c1["up"], c1["down"], c1["zero"], c1["p"], c1["mean_unit"]) == (13, 10, 3, 0, 0.0923, 0.0101)
+    res.pop("skipped_run_dirs")
+    committed.pop("skipped_run_dirs")
+    assert res == committed
+
+
+def test_a_planned_model_with_no_directory_is_reported_as_missing(tmp_path: Path) -> None:
+    m = _mod()
+    root = _linked_root(tmp_path, m, leave_out=(f"{m.COMMAS}__olmo-2-1b",))
+    res = m.analyse(root)
+    assert res["models"] == SEVEN                       # the planned set, not the set that happens to be on disk
+    assert len(res["missing_model_rows"]) == 18
+    assert all(v == ["olmo-2-1b"] for v in res["missing_model_rows"].values())

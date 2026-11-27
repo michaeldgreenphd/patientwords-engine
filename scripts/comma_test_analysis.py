@@ -9,7 +9,9 @@ Exploratory. Reads only committed trace parts:
   trace_out/agscen_r5_20261108*/batch_summary.part_*.json       the round-5 rewrites (<scale id>-r5),
                                                                 data/simulated/agscen_r5_20261108.json
 
-Seven models: hosted gemma-2-2b (the directory without a model suffix) and six logits models. Per pair and model:
+Seven models, fixed by the plan: hosted gemma-2-2b (the directory without a model suffix) and the six logits
+models in PLANNED_LOGITS. A run directory of either stem that holds summary parts for any other model is not read;
+the result names it under skipped_run_dirs and main() prints it on stderr. Per pair and model:
 penalty (the engine's language_penalty, everyday minus clinical probability of the clinical target), p_clinical
 (the clinical side's target probability) and class (downgrade / upgrade / lateral / uninformative, with the tier
 rules of scripts/urgency_shift.py copied below and data/urgency_tiers.draft.json).
@@ -33,6 +35,7 @@ import collections
 import glob
 import json
 import re
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -40,13 +43,18 @@ from typing import Any
 try:  # repo root on sys.path (tests) vs sibling import (python scripts/comma_test_analysis.py)
     from scripts.sign_test_exact import sign_test
 except ImportError:
-    import sys
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from sign_test_exact import sign_test
 
 COMMAS = "agscen_commas_20261109"
 R5 = "agscen_r5_20261108"
 HOSTED = "gemma-2-2b (hosted)"
+# The plan's seven models (docs/exploratory/comma_test_plan_20261109.md, "Measures"). The set is fixed here because
+# a later run of either stem must not change a fixed analysis. Found 2026-11-27: read_rows took every run directory
+# of the stem, so trace_out/agscen_commas_20261109__gemma-2-2b/ (a CPU next-token run of the base model, landed that
+# day by fa6d7695) was pooled as an eighth model and contrast 1's mean moved from 0.0101 to 0.0114.
+PLANNED_LOGITS = ("gemma-2-2b-it", "gemma-3-4b-it", "llama-3.2-3b", "olmo-2-1b", "qwen3-1.7b", "qwen3-4b")
+PLANNED_MODELS = (HOSTED, *PLANNED_LOGITS)
 HYPHEN_REWRITES = {"sc-029", "sc-040", "sc-042", "sc-050", "sc-052"}
 AND_TO_WITH = {"sc-035", "sc-039", "sc-049"}
 
@@ -90,14 +98,21 @@ def num(x: Any) -> float | None:
     return float(x) if isinstance(x, (int, float)) and not isinstance(x, bool) else None
 
 
-def read_rows(root: Path, stem: str, vocab: dict[str, Any]) -> dict[tuple[int, str], dict[str, Any]]:
-    """(1-based pair index, model) -> {penalty, p_clinical, class} from every committed part of one stem."""
+def read_rows(root: Path, stem: str, vocab: dict[str, Any]) -> tuple[dict[tuple[int, str], dict[str, Any]], list[str]]:
+    """(1-based pair index, model) -> {penalty, p_clinical, class} from the committed parts of one stem.
+
+    Only the seven planned models are read. The second value names the run directories left out: those of this
+    stem that hold summary parts for any other model."""
     rows: dict[tuple[int, str], dict[str, Any]] = {}
+    skipped: set[str] = set()
     for path in sorted(glob.glob(str(root / "trace_out" / f"{stem}*" / "batch_summary.part_*.json"))):
         run = Path(path).parent.name
         if run != stem and not run.startswith(stem + "__"):
             continue
         model = run.split("__", 1)[1] if "__" in run else HOSTED
+        if model not in PLANNED_MODELS:
+            skipped.add(run)
+            continue
         for r in json.loads(Path(path).read_text(encoding="utf-8"))["results"]:
             sp = r.get("predictive_spread") or {}
             sc, spp = sp.get("clinical") or [], sp.get("patient") or []
@@ -109,7 +124,7 @@ def read_rows(root: Path, stem: str, vocab: dict[str, Any]) -> dict[tuple[int, s
             rows[key] = {"penalty": num(r.get("language_penalty")),
                          "p_clinical": num((r.get("probabilities") or {}).get("clinical")),
                          "class": cls}
-    return rows
+    return rows, sorted(skipped)
 
 
 def paired(a: dict[str, dict[str, Any]], b: dict[str, dict[str, Any]], measure: str) -> dict[str, float]:
@@ -154,7 +169,7 @@ def analyse(root: Path) -> dict[str, Any]:
     vocab = load_vocab(root)
     commas = json.loads((root / "data" / "simulated" / f"{COMMAS}.json").read_text(encoding="utf-8"))
     r5 = json.loads((root / "data" / "simulated" / f"{R5}.json").read_text(encoding="utf-8"))
-    rc, rr = read_rows(root, COMMAS, vocab), read_rows(root, R5, vocab)
+    (rc, skipped_commas), (rr, skipped_r5) = read_rows(root, COMMAS, vocab), read_rows(root, R5, vocab)
 
     def per_model(rows: dict[tuple[int, str], dict[str, Any]], index: int) -> dict[str, dict[str, Any]]:
         return {m: v for (i, m), v in rows.items() if i == index}
@@ -170,7 +185,9 @@ def analyse(root: Path) -> dict[str, Any]:
     ids = sorted(comma)
     assert sorted(nocomma) == ids and len(ids) == 18 and set(rewrite) == set(ids)
 
-    out: dict[str, Any] = {"models": sorted({m for (_, m) in rc}), "distinct_clinical_units": len(set(unit_of.values()))}
+    # models is the planned set, not the set found on disk: a planned model with no rows shows in missing_model_rows.
+    out: dict[str, Any] = {"models": sorted(PLANNED_MODELS), "skipped_run_dirs": skipped_commas + skipped_r5,
+                           "distinct_clinical_units": len(set(unit_of.values()))}
     missing = {i: sorted(set(out["models"]) - (comma[i].keys() & nocomma[i].keys())) for i in ids}
     out["missing_model_rows"] = {i: m for i, m in missing.items() if m}
     out["1_commas_penalty"] = contrast({i: paired(comma[i], nocomma[i], "penalty") for i in ids}, unit_of)
@@ -195,6 +212,8 @@ def main() -> None:
     ap.add_argument("--out", type=Path)
     a = ap.parse_args()
     res = analyse(a.root)
+    for run in res["skipped_run_dirs"]:
+        print(f"left out, not one of the seven planned models: trace_out/{run}", file=sys.stderr)
     text = json.dumps(res, indent=1)
     if a.out:
         a.out.write_text(text + "\n", encoding="utf-8")
