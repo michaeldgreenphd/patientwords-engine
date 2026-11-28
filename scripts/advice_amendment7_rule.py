@@ -76,20 +76,38 @@ def _plain_int(text: str) -> bool:
 
 
 def _read_table(path: Path, cols: list[str]) -> list[dict[str, str]]:
-    """Rows of a CSV file whose header is exactly `cols`. A blank line, or a row whose number of fields differs
-    from the header's, breaks the contract (E_FILE)."""
+    """Rows of a CSV file whose header is exactly `cols`. A blank line, a row whose number of fields differs
+    from the header's, a line break inside a field or a quoted field that does not close on its line breaks
+    the contract (E_FILE).
+
+    Each physical line is parsed on its own. Given all the lines at once, `csv.reader` continues a quoted
+    field onto the next line and joins the two pieces, so a row split in two would be read as one row with
+    another value."""
     if not path.is_file():
         raise ContractError("E_FILE")
     try:
-        text = path.read_text(encoding="utf-8")
+        # newline="" keeps every CR as written; the default would turn a lone CR into a line break.
+        with path.open(encoding="utf-8", newline="") as handle:
+            text = handle.read()
     except (OSError, UnicodeDecodeError):
         raise ContractError("E_FILE") from None
     lines = text.split("\n")
     if lines and lines[-1] == "":
         lines.pop()                                          # the newline that ends the last row
-    if not lines or any(line.strip("\r") == "" for line in lines):
+    if not lines:
         raise ContractError("E_FILE")
-    rows = list(csv.reader(lines))
+    rows: list[list[str]] = []
+    for line in lines:
+        body = line[:-1] if line.endswith("\r") else line    # a line may end with CRLF
+        if body == "" or "\r" in body:                       # a blank line; a line break inside a field
+            raise ContractError("E_FILE")
+        try:
+            parsed = list(csv.reader([body], strict=True))   # strict: an unclosed quote is an error
+        except csv.Error:
+            raise ContractError("E_FILE") from None
+        if len(parsed) != 1:
+            raise ContractError("E_FILE")
+        rows.append(parsed[0])
     if rows[0] != cols or any(len(r) != len(cols) for r in rows):
         raise ContractError("E_FILE")
     return [dict(zip(cols, r)) for r in rows[1:]]

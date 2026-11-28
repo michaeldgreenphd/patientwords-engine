@@ -931,6 +931,46 @@ def test_a_row_with_too_few_fields_stops_with_e_file(tmp_path: Path) -> None:
     assert error.value.code == "E_FILE"
 
 
+# A row is one physical line. Before 2026-11-28 the reader gave all lines to `csv.reader` at once, which
+# continued a quoted field onto the next line and joined the pieces: `"ant` and `h-1"` on two lines were
+# read as the assistant `anth-1`, and the run ended with a result. Each case below was accepted then.
+ROWS_OVER_TWO_LINES = [
+    ("a quoted field of replies.csv split over two lines",
+     lambda d: edit_row(d, "replies.csv", 9, COL["assistant"], '"ant\nh-1"')),
+    ("a quoted field of pairs.csv split over two lines", lambda d: edit_row(d, "pairs.csv", 1, 0, '"P\n1"')),
+    ("a carriage return inside a quoted field",
+     lambda d: (d / "replies.csv").write_bytes(
+         (d / "replies.csv").read_bytes().replace(b"\nP1,anth-1,", b'\nP1,"ant\rh-1",', 1))),
+    ("a quote that opens in the last field of the last row and never closes",
+     lambda d: (d / "replies.csv").write_bytes((d / "replies.csv").read_bytes().rstrip(b"\n") + b'"')),
+    ("lines that end with a carriage return alone",
+     lambda d: (d / "pairs.csv").write_bytes((d / "pairs.csv").read_bytes().replace(b"\n", b"\r"))),
+]
+
+
+@pytest.mark.parametrize("what, change", ROWS_OVER_TWO_LINES, ids=[v[0] for v in ROWS_OVER_TWO_LINES])
+def test_a_row_that_does_not_stay_on_one_line_stops_with_e_file(tmp_path: Path, what, change) -> None:
+    directory = small_case(tmp_path)
+    rule.load_case(directory)                                # the case is valid before the change
+    before = {name: (directory / name).read_bytes() for name in ("pairs.csv", "replies.csv")}
+    change(directory)
+    after = {name: (directory / name).read_bytes() for name in ("pairs.csv", "replies.csv")}
+    assert after != before, what                             # the change reached the file
+    with pytest.raises(rule.ContractError) as error:
+        rule.load_case(directory)
+    assert error.value.code == "E_FILE", what
+
+
+def test_a_quoted_field_that_closes_on_its_line_is_read_and_text_after_it_is_refused(tmp_path: Path) -> None:
+    path = tmp_path / "table.csv"
+    path.write_bytes(b'a,b\n"x,y",z\n"p""q",r\n')
+    assert rule._read_table(path, ["a", "b"]) == [{"a": "x,y", "b": "z"}, {"a": 'p"q', "b": "r"}]
+    path.write_bytes(b'a,b\n"x"y,z\n')                       # read as `xy` before 2026-11-28
+    with pytest.raises(rule.ContractError) as error:
+        rule._read_table(path, ["a", "b"])
+    assert error.value.code == "E_FILE"
+
+
 CONSTRAINT_VIOLATIONS = [
     # (what, file, line, column, value, code, flag_relied_on)
     ("another header", "replies.csv", 0, COL["whole_set"], "whole", "E_FILE", True),

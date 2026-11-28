@@ -80,6 +80,9 @@ Version 2 makes the format strict. Each rule names the error that a violation st
   header, a blank line anywhere (also after the last row), or a row whose number of fields differs from the
   header's: `E_FILE`. A field therefore holds no line break. A line may end with LF or with CRLF, and the last
   line may end without either.
+- Each line is read on its own, so a quoted field opens and closes on one line. A quoted field that does not
+  close on its line, text between a closing quote and the next comma, or a carriage return anywhere but at
+  the end of a line: `E_FILE`. A row split over two lines is never joined into one.
 - An integer is written in ASCII digits without a sign, a space or a leading zero. `07` as a sample index:
   `E_SET_SAMPLE`. `01` in `empty`, in a tier or in `flagged`: the error of that column.
 - `case.json` is one JSON object with the key `flag_relied_on` and no other key, and its value is `true` or
@@ -93,7 +96,7 @@ writes no output and exits with status 2.
 
 | Code | Violation |
 |---|---|
-| `E_FILE` | a CSV file is missing or is not UTF-8 text, its header is not exactly the one above, it has a blank line, or a row has another number of fields than the header |
+| `E_FILE` | a CSV file is missing or is not UTF-8 text, its header is not exactly the one above, it has a blank line, a row has another number of fields than the header, a quoted field does not close on its line or is followed by text before the next comma, or a carriage return stands anywhere but at the end of a line |
 | `E_MODE` | `case.json` is missing or malformed, lacks `flag_relied_on`, has another key, or the value is not `true` or `false`; or `flag_relied_on` is false and a non-empty reply has a non-blank `flagged`, `sample200` or `reader1` |
 | `E_PAIRS` | a pair id is blank or repeated, or `group` or `realism` has another value |
 | `E_UNKNOWN_PAIR` | a reply names a pair that is not in `pairs.csv` |
