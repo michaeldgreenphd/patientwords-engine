@@ -26,7 +26,6 @@ output is written); 1 on a usage error.
 """
 from __future__ import annotations
 
-import csv
 import json
 import sys
 from collections import Counter, defaultdict
@@ -75,14 +74,54 @@ def _plain_int(text: str) -> bool:
     return text.isascii() and text.isdigit() and (text == "0" or not text.startswith("0"))
 
 
+def _fields_of_line(line: str) -> list[str] | None:
+    """The fields of one line under the contract's grammar, or None when the line is outside it.
+
+    A row is fields separated by commas. A field is unquoted and then holds no double quote, or it is enclosed
+    in double quotes and then may hold commas and, written twice, double quotes. The caller has removed the
+    line end, so a quoted field cannot continue on the next line.
+
+    Python's `csv` module is not used, because it accepts lines outside this grammar and reads a value from
+    them: in every mode a double quote inside an unquoted field (`anth-1"` is read as another assistant), and
+    outside strict mode text after a closing quote and a quote that never closes."""
+    fields: list[str] = []
+    position, end = 0, len(line)
+    while True:
+        if line.startswith('"', position):
+            pieces: list[str] = []
+            start = position + 1
+            while True:
+                quote = line.find('"', start)
+                if quote < 0:
+                    return None                              # the quoted field never closes
+                pieces.append(line[start:quote])
+                if line.startswith('"', quote + 1):          # two quotes: one quote in the value
+                    pieces.append('"')
+                    start = quote + 2
+                else:
+                    position = quote + 1
+                    break
+            fields.append("".join(pieces))
+        else:
+            comma = line.find(",", position)
+            stop = end if comma < 0 else comma
+            if '"' in line[position:stop]:
+                return None                                  # a double quote in an unquoted field
+            fields.append(line[position:stop])
+            position = stop
+        if position == end:
+            return fields
+        if line[position] != ",":
+            return None                                      # text after a closing quote
+        position += 1
+
+
 def _read_table(path: Path, cols: list[str]) -> list[dict[str, str]]:
     """Rows of a CSV file whose header is exactly `cols`. A blank line, a row whose number of fields differs
-    from the header's, a line break inside a field or a quoted field that does not close on its line breaks
+    from the header's, a line break inside a field or a line outside the grammar of `_fields_of_line` breaks
     the contract (E_FILE).
 
-    Each physical line is parsed on its own. Given all the lines at once, `csv.reader` continues a quoted
-    field onto the next line and joins the two pieces, so a row split in two would be read as one row with
-    another value."""
+    Each physical line is read on its own, so a row split over two lines is never joined into one."""
     if not path.is_file():
         raise ContractError("E_FILE")
     try:
@@ -104,13 +143,10 @@ def _read_table(path: Path, cols: list[str]) -> list[dict[str, str]]:
         body = line[:-1] if ends_with_lf and line.endswith("\r") else line
         if body == "" or "\r" in body:                       # a blank line; a CR that is not before LF
             raise ContractError("E_FILE")
-        try:
-            parsed = list(csv.reader([body], strict=True))   # strict: an unclosed quote is an error
-        except csv.Error:
-            raise ContractError("E_FILE") from None
-        if len(parsed) != 1:
+        fields = _fields_of_line(body)
+        if fields is None:
             raise ContractError("E_FILE")
-        rows.append(parsed[0])
+        rows.append(fields)
     if rows[0] != cols or any(len(r) != len(cols) for r in rows):
         raise ContractError("E_FILE")
     return [dict(zip(cols, r)) for r in rows[1:]]

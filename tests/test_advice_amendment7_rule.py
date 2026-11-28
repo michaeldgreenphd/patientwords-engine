@@ -978,12 +978,42 @@ def test_a_quoted_field_that_closes_on_its_line_is_read_and_text_after_it_is_ref
     assert error.value.code == "E_FILE"
 
 
+# A double quote belongs only to a quoted field. Before 2026-11-28 the reader took a quote inside an unquoted
+# field as part of the value: one reply row written with the assistant `anth-1"` was counted under a second
+# assistant of that name, and the run ended with a result.
+QUOTES_IN_UNQUOTED_FIELDS = [
+    ("a quote after an assistant id", lambda d: edit_row(d, "replies.csv", 9, COL["assistant"], 'anth-1"')),
+    ("a quote inside an assistant id", lambda d: edit_row(d, "replies.csv", 9, COL["assistant"], 'an"th-1')),
+    ("a quote inside a pair id of pairs.csv", lambda d: edit_row(d, "pairs.csv", 1, 0, 'P"1')),
+    ("a quote after a tier", lambda d: edit_row(d, "replies.csv", PLAIN_LINE, COL["tier_h45"], '1"')),
+]
+
+
+@pytest.mark.parametrize("what, change", QUOTES_IN_UNQUOTED_FIELDS, ids=[v[0] for v in QUOTES_IN_UNQUOTED_FIELDS])
+def test_a_double_quote_in_an_unquoted_field_stops_with_e_file(tmp_path: Path, what, change) -> None:
+    directory = small_case(tmp_path)
+    rule.load_case(directory)                                # the case is valid before the change
+    change(directory)
+    with pytest.raises(rule.ContractError) as error:
+        rule.load_case(directory)
+    assert error.value.code == "E_FILE", what
+
+
+def test_the_fields_of_a_line_follow_the_grammar_of_the_contract() -> None:
+    assert rule._fields_of_line("x,,y") == ["x", "", "y"]
+    assert rule._fields_of_line(",") == ["", ""]
+    assert rule._fields_of_line('"x,y","p""q",""') == ["x,y", 'p"q', ""]
+    assert rule._fields_of_line('"x"') == ["x"]              # a field may be quoted without need
+    for outside in ('x"y', 'x"', '"x', '"x"y', '"x" ,y', 'x,"y', ' "x"', '"""'):
+        assert rule._fields_of_line(outside) is None, outside
+
+
 # The contract's "one row per line", written without the csv module:
 #   file  := row (EOL row)* [EOL]      EOL := LF | CRLF
 #   row   := field ("," field)*        not empty, and holds no CR and no LF
 #   field := '"' (any character but a quote, or two quotes)* '"'
-#            | characters without a comma, the first of them not a quote | nothing
-_FIELD = r'(?:"(?:[^"]|"")*"|[^,"\r\n][^,\r\n]*|)'
+#            | characters without a comma and without a quote, or nothing
+_FIELD = r'(?:"(?:[^"]|"")*"|[^,"\r\n]*)'
 _ROW = re.compile(rf"{_FIELD}(?:,{_FIELD})*\Z")
 _NEXT_FIELD = re.compile(rf"({_FIELD})(,|\Z)")
 
@@ -1013,7 +1043,8 @@ def rows_by_the_contract(text: str, cols: list[str]) -> list[dict[str, str]] | N
 def test_the_reader_accepts_exactly_the_files_of_the_contract_and_reads_them_alike(tmp_path: Path) -> None:
     """Every text of up to five characters from `x`, comma, quote, CR and LF after a header line: the reader
     accepts it exactly when the grammar above does, and with the same rows. The reader as first pushed
-    differed on hundreds of these texts (rows joined across lines, a lone CR read as a line end)."""
+    differed on hundreds of these texts (rows joined across lines, a lone CR read as a line end, a quote
+    inside an unquoted field). Every accepted text also reads the same with Python's csv module."""
     path = tmp_path / "table.csv"
     cols = ["a", "b"]
     assert rows_by_the_contract('a,b\n"x,y",z\r\n,"p""q"', cols) == [{"a": "x,y", "b": "z"}, {"a": "", "b": 'p"q'}]
@@ -1030,6 +1061,9 @@ def test_the_reader_accepts_exactly_the_files_of_the_contract_and_reads_them_ali
                     assert error.code == "E_FILE", repr(text)
                     got = None
                 assert got == rows_by_the_contract(text, cols), repr(text)
+                if got is not None:                          # an accepted file means the same to csv.reader
+                    by_csv = list(csv.reader(re.split(r"\r\n|\n", text.rstrip("\n")), strict=True))
+                    assert [dict(zip(cols, fields)) for fields in by_csv[1:]] == got, repr(text)
                 compared += 1
                 accepted += got is not None
     assert compared == 2 * sum(5 ** length for length in range(6))
