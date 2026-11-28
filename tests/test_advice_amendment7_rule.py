@@ -13,7 +13,9 @@ from __future__ import annotations
 
 import csv
 import importlib.util
+import itertools
 import json
+import re
 from fractions import Fraction
 from math import comb
 from pathlib import Path
@@ -945,6 +947,11 @@ ROWS_OVER_TWO_LINES = [
      lambda d: (d / "replies.csv").write_bytes((d / "replies.csv").read_bytes().rstrip(b"\n") + b'"')),
     ("lines that end with a carriage return alone",
      lambda d: (d / "pairs.csv").write_bytes((d / "pairs.csv").read_bytes().replace(b"\n", b"\r"))),
+    ("a last row that ends with a carriage return and no line feed",
+     lambda d: (d / "replies.csv").write_bytes((d / "replies.csv").read_bytes().rstrip(b"\n") + b"\r")),
+    ("a last row of a CRLF file that ends with a carriage return and no line feed",
+     lambda d: (d / "pairs.csv").write_bytes(
+         (d / "pairs.csv").read_bytes().rstrip(b"\n").replace(b"\n", b"\r\n") + b"\r")),
 ]
 
 
@@ -969,6 +976,64 @@ def test_a_quoted_field_that_closes_on_its_line_is_read_and_text_after_it_is_ref
     with pytest.raises(rule.ContractError) as error:
         rule._read_table(path, ["a", "b"])
     assert error.value.code == "E_FILE"
+
+
+# The contract's "one row per line", written without the csv module:
+#   file  := row (EOL row)* [EOL]      EOL := LF | CRLF
+#   row   := field ("," field)*        not empty, and holds no CR and no LF
+#   field := '"' (any character but a quote, or two quotes)* '"'
+#            | characters without a comma, the first of them not a quote | nothing
+_FIELD = r'(?:"(?:[^"]|"")*"|[^,"\r\n][^,\r\n]*|)'
+_ROW = re.compile(rf"{_FIELD}(?:,{_FIELD})*\Z")
+_NEXT_FIELD = re.compile(rf"({_FIELD})(,|\Z)")
+
+
+def rows_by_the_contract(text: str, cols: list[str]) -> list[dict[str, str]] | None:
+    """The rows of a CSV text under the grammar above, or None when the text breaks it."""
+    lines = re.split(r"\r\n|\n", text)
+    if lines[-1] == "":
+        lines.pop()
+    table: list[list[str]] = []
+    for line in lines:
+        if line == "" or "\r" in line or not _ROW.match(line):
+            return None
+        fields: list[str] = []
+        position, more = 0, True
+        while more:
+            found = _NEXT_FIELD.match(line, position)
+            field = found.group(1)
+            fields.append(field[1:-1].replace('""', '"') if field.startswith('"') else field)
+            position, more = found.end(), found.group(2) == ","
+        table.append(fields)
+    if not table or table[0] != cols or any(len(fields) != len(cols) for fields in table):
+        return None
+    return [dict(zip(cols, fields)) for fields in table[1:]]
+
+
+def test_the_reader_accepts_exactly_the_files_of_the_contract_and_reads_them_alike(tmp_path: Path) -> None:
+    """Every text of up to five characters from `x`, comma, quote, CR and LF after a header line: the reader
+    accepts it exactly when the grammar above does, and with the same rows. The reader as first pushed
+    differed on hundreds of these texts (rows joined across lines, a lone CR read as a line end)."""
+    path = tmp_path / "table.csv"
+    cols = ["a", "b"]
+    assert rows_by_the_contract('a,b\n"x,y",z\r\n,"p""q"', cols) == [{"a": "x,y", "b": "z"}, {"a": "", "b": 'p"q'}]
+    assert rows_by_the_contract('a,b\n"x\ny",z\n', cols) is None
+    compared = accepted = 0
+    for header in ("a,b\n", "a,b\r\n"):
+        for length in range(6):
+            for tail in itertools.product('x,"\r\n', repeat=length):
+                text = header + "".join(tail)
+                path.write_bytes(text.encode("utf-8"))
+                try:
+                    got: list[dict[str, str]] | None = rule._read_table(path, cols)
+                except rule.ContractError as error:
+                    assert error.code == "E_FILE", repr(text)
+                    got = None
+                assert got == rows_by_the_contract(text, cols), repr(text)
+                compared += 1
+                accepted += got is not None
+    assert compared == 2 * sum(5 ** length for length in range(6))
+    assert accepted > 100                                    # the comparison is not one of refusals only
 
 
 CONSTRAINT_VIOLATIONS = [
@@ -1064,6 +1129,9 @@ def test_crlf_line_ends_and_a_last_line_without_a_line_end_are_read(tmp_path: Pa
     for name in ("pairs.csv", "replies.csv"):
         text = (directory / name).read_text()
         (directory / name).write_bytes(text.rstrip("\n").replace("\n", "\r\n").encode("utf-8"))
+    assert rule.compute(rule.load_case(directory)) == want
+    for name in ("pairs.csv", "replies.csv"):                # and with CRLF after the last row as well
+        (directory / name).write_bytes((directory / name).read_bytes() + b"\r\n")
     assert rule.compute(rule.load_case(directory)) == want
 
 

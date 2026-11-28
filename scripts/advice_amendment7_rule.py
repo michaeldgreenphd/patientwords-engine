@@ -92,14 +92,17 @@ def _read_table(path: Path, cols: list[str]) -> list[dict[str, str]]:
     except (OSError, UnicodeDecodeError):
         raise ContractError("E_FILE") from None
     lines = text.split("\n")
-    if lines and lines[-1] == "":
+    last_line_has_lf = lines[-1] == ""                       # the text ends with LF, or is empty
+    if last_line_has_lf:
         lines.pop()                                          # the newline that ends the last row
     if not lines:
         raise ContractError("E_FILE")
     rows: list[list[str]] = []
-    for line in lines:
-        body = line[:-1] if line.endswith("\r") else line    # a line may end with CRLF
-        if body == "" or "\r" in body:                       # a blank line; a line break inside a field
+    for number, line in enumerate(lines):
+        # CR is part of a line end only directly before LF. A last line that has no LF may not end with CR.
+        ends_with_lf = last_line_has_lf or number < len(lines) - 1
+        body = line[:-1] if ends_with_lf and line.endswith("\r") else line
+        if body == "" or "\r" in body:                       # a blank line; a CR that is not before LF
             raise ContractError("E_FILE")
         try:
             parsed = list(csv.reader([body], strict=True))   # strict: an unclosed quote is an error
