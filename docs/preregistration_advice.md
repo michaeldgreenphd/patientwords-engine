@@ -1834,3 +1834,59 @@ cap still runs out, the second pass stops, its sidecar records the
 unjudged count, and the analysis of the judge of record still runs. No
 judgment, tier or analysis rule changes; `docs/triggers.md` has the
 operational detail.
+
+## Amendment 7 (2026-11-28, owner-approved): replication of the candidate pairs
+
+**Status: approved by the owner on 2026-11-28. It adds one wave and authorises no
+spending.** No reply has been collected under it.
+
+**The text.** The amendment is a file of its own, kept byte for byte as approved:
+[`docs/preregistration_advice_amendment7.md`](preregistration_advice_amendment7.md),
+37,568 bytes, SHA-256
+`5aa8fa90848faebb37de962722fc5bace61618af574a723f34f2ca1fb0d7b53d`. Its first 27,425
+bytes are the title, sections 0 to 13 and the annex, with SHA-256
+`b7eb54cb150d9a5b51fefca9452c15e611d500a4eb2394650e3e1ceb9e335e5a`.
+`tests/test_advice_amendment7_text.py` compares the file with both values. Sections 1
+to 13 of that file are the amendment. Its annex describes the pilot and fixes nothing,
+and its closing page, "What this approval fixes", lists what the text fixes.
+
+**What it adds.** One wave on 15 sentence pairs with the seven assistants of the pilot:
+20 replies to the everyday wording and 40 to the medical wording per pair and assistant,
+two Claude judges on rubric 1.1-draft, a separate judge call that flags replies that give
+no advice, a control for chance from a second set of replies to the medical wording, and
+a rule that must hold under both judges. It changes nothing in the frozen design for any
+other wave and nothing in Amendment 6 (its section 1).
+
+**How the text was produced.** It was drafted for the owner in a Claude Science thread
+over eight follow-ups that ended on 2026-11-28, from the pilot's replies
+(`data/advice/responses_stimuli_20260721T235403Z.jsonl`) and the grades of three judges
+in `data/advice/judgments_stimuli_20260721T235403Z.jsonl`. Before approval the rule was
+implemented three times from the copy of the text then current, by three language models
+that did not see each other's work, and run on 39 synthetic cases. The three agreed on 84,201 of 84,310 output
+values. The other 109 traced to nine causes: eight places where the text allowed two
+readings and one open point of the data format. None was an error in an implementation,
+and the final text settles each. The files of that comparison are held by the owner
+outside this repository.
+
+**Approval record.**
+
+- 2026-11-28, the owner, in the agent session, after sending the last four edits to the
+  drafting thread and before its reply: "sent stage 20, you have my approval".
+- The thread's reply applied the four edits, reported that none made another sentence
+  false, and gave the two SHA-256 values above. The file's first paragraph carries the
+  date of the thread's local clock, 2026-11-27. The owner passed that
+  reply to the agent session. The session rebuilt the file from it and found both values
+  equal.
+- The approval states no budget and changes no daily ceiling. Section 1 of the amendment
+  leaves both to the owner's approval, so the standing ceilings apply (`ops/dashboard.json`,
+  `spend.daily_ceiling_usd` and `spend.openrouter_daily_ceiling_usd`). As for Amendment 6,
+  approval of the amendment does not authorise spending: the test of the flag call
+  (section 7) and every fire of the wave still need the owner's explicit dollar
+  authorisation.
+
+**Still required before any reply is collected** (sections 4, 5.4, 7 and 8 of the text):
+rubric 1.2-draft as a file; the test of the flag call; the request plan (sets by sample
+index, one cell in one fire on one day, seeded order); a judge step that records an empty
+reply without sending it to a judge and makes one further attempt for a reply without a
+tier; the analysis script, committed before collection; and the questions and the pass
+rule of the separate physician bundle.
